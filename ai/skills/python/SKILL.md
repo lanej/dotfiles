@@ -5,6 +5,8 @@ description: Use uv for fast Python project management, script execution, depend
 
 # Python / uv
 
+Read the project’s stage through [source-code lifecycle](../source-code-lifecycle/SKILL.md) and use [testing](../testing/SKILL.md) for proportionate evidence. Language detection installs this guidance; it does not add or replace compiler, test, or CI configuration. Preserve existing repository gates.
+
 `uv` replaces pip, virtualenv, poetry, and pyenv. Standard `uv` subcommands work as documented;
 this file covers only the defaults to hold to and the traps that have actually cost time.
 
@@ -71,3 +73,5 @@ actually reads `pg8000.dbapi.paramstyle` at call time. Getting this wrong produc
 substitution failures with no exception pointing at the cause. Set `pg8000.dbapi.paramstyle`, not
 `pg8000.paramstyle`. A unit test built against a mocked cursor cannot catch this — verify with a
 real (or at least real-shaped) `pg8000` connection. (detail: memory "reference_pg8000_paramstyle_aliasing")
+
+Read [worktree runtime lessons](references/worktree-lessons.md) when running verification in a fresh or relocated checkout.

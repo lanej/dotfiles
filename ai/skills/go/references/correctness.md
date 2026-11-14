@@ -43,7 +43,7 @@ Keep concrete variants in the declaring package and handle nil explicitly when a
 
 ## Workflow and adoption
 
-Prefer `repo-bootstrap --go` for a new module or `repo-bootstrap --go-retrofit --pr-template none` for an existing repository. Bootstrap detects root modules, preserves existing config bytes and comments, merges YAML/JSON v2 policy into a separate strict layer, and retains the original lint gate. Existing configs or tracked Go source default to a ratchet; new projects default to strict. V1 configurations must be migrated first; TOML needs conversion.
+Prefer `source-code setup --go` for a new module or `source-code setup --go-retrofit --pr-template none` for an existing repository. Bootstrap detects root modules, preserves existing config bytes and comments, merges YAML/JSON v2 policy into a separate strict layer, and retains the original lint gate. Existing configs or tracked Go source default to a ratchet; new projects default to strict. V1 configurations must be migrated first; TOML needs conversion.
 
 Without dotfiles, copy the following files from this package's assets into a new project. Do not overwrite existing policy; use the installer when retrofitting.
 

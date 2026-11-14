@@ -280,6 +280,10 @@
           "type": "boolean",
           "description": "Link Python configuration; bootstrap provides the interpreter."
         },
+        "source-code": {
+          "type": "boolean",
+          "description": "Install project lifecycle, skill validation, and upgrade commands."
+        },
         "ruby": {
           "type": "boolean",
           "description": "Link Ruby tool configuration for a separately installed runtime."

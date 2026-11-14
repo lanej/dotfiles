@@ -17,7 +17,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       # Adapt this step for the project's package manager, build and native deps.
       - run: npm ci
       - run: npm ci --prefix .typescript-quality --ignore-scripts
-      - run: node scripts/check-typescript.mjs
+      - run: python3 scripts/check-source-code.py typescript

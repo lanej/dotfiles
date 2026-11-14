@@ -32,4 +32,4 @@ jobs:
         with:
           path: ~/.cache/go-quality
           key: go-quality-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/check-go.sh', 'go.mod') }}
-      - run: bash scripts/check-go.sh
+      - run: python3 scripts/check-source-code.py go

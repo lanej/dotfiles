@@ -34,7 +34,7 @@ function fixture(t, text, rollout = 'strict') {
   put('tsconfig.json', JSON.stringify({ compilerOptions: { target: 'ES2022', module: 'NodeNext', strict: false, strictNullChecks: false }, include: ['src'] }));
   put('src/main.ts', text);
   commit();
-  execute(root, ['python3', path.join(source, 'bin/repo-bootstrap'), '--repo', root,
+  execute(root, ['python3', path.join(source, 'bin/source-code'), 'setup', '--repo', root,
     '--skills', 'typescript', '--agents', 'codex', '--pr-template', 'none', '--no-go',
     '--typescript', '--typescript-rollout', rollout]);
   symlinkSync(path.join(toolInstallation, 'node_modules'), path.join(root, '.typescript-quality/node_modules'), 'dir');
@@ -49,6 +49,29 @@ function fixture(t, text, rollout = 'strict') {
 
 const clean = 'export const value = 1;\n';
 const indexDebt = 'export function first(values: string[]) {\n  return values[0].toUpperCase();\n}\n';
+
+test('lifecycle stages change generated gates and preserve inherited gates', (t) => {
+  const f = fixture(t, clean);
+  const policyPath = path.join(f.root, '.source-code.json');
+  const policy = JSON.parse(readFileSync(policyPath, 'utf8'));
+  const stage = (value, expected = 0) => {
+    writeFileSync(policyPath, JSON.stringify({ ...policy, stage: value }));
+    return execute(f.root, ['python3', 'scripts/check-source-code.py', 'typescript'], expected);
+  };
+  f.settings.commands.test = ['node', '-e', 'process.exit(7)'];
+  f.settings.commands.audit = ['node', '-e', 'process.exit(9)'];
+  writeFileSync(f.settingsPath, JSON.stringify(f.settings));
+  stage('research');
+  stage('alpha', 7);
+  f.settings.commands.test = ['node', '-e', 'process.exit(0)'];
+  writeFileSync(f.settingsPath, JSON.stringify(f.settings));
+  stage('alpha');
+  stage('beta', 9);
+  stage('production', 9);
+  f.settings.commands.legacy = [['node', '-e', 'process.exit(5)']];
+  writeFileSync(f.settingsPath, JSON.stringify(f.settings));
+  stage('research', 5);
+});
 
 test('strict mode rejects real unsafe operations and suppression bypasses', (t) => {
   const f = fixture(t, clean);

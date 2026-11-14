@@ -21,7 +21,7 @@ The [terminal design system](./design-system.mdx) catalogs shared foundations, a
 
 ## Shared AI workflows
 
-`ai/skills` and `ai/agents` hold shared instructions. `make claude-shared` links them for Claude. `make codex-skills` exposes skills through `~/.agents/skills/dotfiles`; `make codex-agents` converts shared Markdown agents into Codex TOML definitions. Local entries are preserved.
+`ai/skills` and `ai/agents` hold shared instructions. `make claude-shared` links them for Claude. `make codex-skills` exposes skills through `~/.agents/skills/dotfiles`; `make codex-agents` converts shared Markdown agents into Codex TOML definitions. Local entries are preserved. Source-code skills listed in `ai/skills/project-only.json` are excluded from user-level catalogs and installed explicitly per project.
 
 In Codex, invoke `$socrates Task title` to start a specification dialogue and draft a plan, or `$socrates` to resume a saved session. `$specify` stops at a validated specification, `$critique` reviews it independently, `$verify` evaluates execution evidence, and `$shape` coordinates the complete workflow. Existing `.socrates` sessions and Claude slash commands remain compatible.
 
@@ -29,7 +29,7 @@ Use `$compose` for evidence-backed document development, `$eureka` to capture a 
 
 These workflows and `$skill-authoring` are installed by `make codex-skills`. The [portable package manifest](../ai/skills/portable-workflows.json) selects self-contained packages copied into the managed Codex tree so they survive removal of the source worktree. Other shared skills retain their existing installation behavior. Claude command wrappers read the same canonical skills. The Quarto-specific `/think` command is retired; Quarto authoring remains available through its skill.
 
-For a selective refresh, `bin/sync-codex-skills --only shape` installs the entire portable workflow group, including its companion instructions and shared resources. Selecting a nonportable skill refreshes that skill alone. Selective refreshes preserve all unselected installed entries.
+For a selective refresh, `bin/sync-codex-skills --only shape` installs the entire portable workflow group, including its companion instructions and shared resources. Selecting a nonportable skill refreshes that skill alone. Selective refreshes preserve unselected entries except retired project-only defaults.
 
 The [Builder guide](./builder.mdx) explains my software development skill: begin with a steel thread, protect retained behavior and expand with proportionate architecture and verification. The [repository bootstrap guide](./repository-bootstrap.md) describes portable Builder, architecture, and PR-writer skills for other repositories.
 

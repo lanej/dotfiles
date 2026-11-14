@@ -45,6 +45,7 @@ def main():
         assert baseline["settings"]["codex.github_enabled"] is False
         assert baseline["settings"]["codex.easypost"] is False
         assert "octo-manager" not in {tool["name"] for tool in baseline["tools"]}
+        assert "source-code" not in {tool["name"] for tool in baseline["tools"]}
         config = home / ".config/dotfiles/config.toml"
         sets = config.parent / "sets"
         sets.mkdir(parents=True)
@@ -82,6 +83,8 @@ def main():
         (sets / "my-workstation.toml").write_text('sets = ["workstation", "easypost"]\n[tools]\nmermaid = true\n')
         config.write_text('sets = ["my-workstation"]\n[tools]\nmermaid = false\n' + disabled_native + ' = false\n[zellij]\nsource = "main"\n')
         selected = json.loads(run(*command, "--format", "json").stdout)
+        assert "source-code" in {tool["name"] for tool in selected["tools"]}
+        assert "source-code-config" in selected["setup"]
         assert selected["sets"] == ["base", platform_set, "shell", "terminal", "editor", "development", "ai", "workstation", "easypost", "my-workstation"]
         assert {tool["name"] for tool in selected["baseline"]["tools"]} == native_tools - {disabled_native}
         assert selected["settings"]["tools.mermaid"] is False

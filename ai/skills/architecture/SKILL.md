@@ -5,6 +5,8 @@ description: "Use when designing or reviewing software architecture, evaluating 
 
 # Architecture
 
+Before a software plan or a substantial model/interface change, read [data and interface planning](../data-change-planning/SKILL.md). Explain the problem, show how representation and exchange change, contain complexity within capabilities, and resolve consequential open choices before implementation. Apply the same expectations to delegated briefs.
+
 Read [the architecture standard](../builder/references/standard.md) before
 assessing a design or implementation. The companion `builder` skill supplies
 this shared standard; use its construction workflow only when implementation
@@ -24,3 +26,5 @@ For findings, identify the affected behavior, requirement ID, and supporting
 evidence. Record material deviations using the standard's exception format.
 Keep the response focused on the requested design decision or review; do not
 begin implementation or require a separate architecture report by default.
+
+Read [design lessons](references/design-lessons.md) when choosing a new layer, extending an existing idiom, or defining a classification threshold.

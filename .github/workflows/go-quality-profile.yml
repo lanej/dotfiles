@@ -5,6 +5,11 @@ on:
     paths:
       - 'ai/skills/go/**'
       - 'bin/repo-bootstrap'
+      - 'bin/source-code'
+      - 'scripts/source_code_languages.py'
+      - 'ai/skills/source-code-versions.json'
+      - 'ai/skills/source-code-lifecycle/**'
+      - 'ai/skills/testing/**'
       - 'scripts/test-go-quality.py'
       - '.github/workflows/go-quality-profile.yml'
   push:
@@ -12,6 +17,11 @@ on:
     paths:
       - 'ai/skills/go/**'
       - 'bin/repo-bootstrap'
+      - 'bin/source-code'
+      - 'scripts/source_code_languages.py'
+      - 'ai/skills/source-code-versions.json'
+      - 'ai/skills/source-code-lifecycle/**'
+      - 'ai/skills/testing/**'
       - 'scripts/test-go-quality.py'
       - '.github/workflows/go-quality-profile.yml'
 

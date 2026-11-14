@@ -66,7 +66,7 @@ test('review Go style defaults and gradual adoption on desktop and mobile', asyn
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.getByRole('link', { name: 'repository bootstrap guide', exact: true }).click();
   await expect(page).toHaveURL(/\/dotfiles\/reference\/repository-bootstrap\//);
-  await expect(page.locator('main')).toContainText('repo-bootstrap --repo ~/src/service --go-retrofit');
+  await expect(page.locator('main')).toContainText('source-code setup --repo ~/src/service --go-retrofit');
 });
 
 test('browse Zellij features and use the mobile keybinding map', async ({ page }) => {

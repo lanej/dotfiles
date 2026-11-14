@@ -1,5 +1,7 @@
 # TypeScript style guide
 
+Project lifecycle stages select engineering effort and the generated CI gate. Use `python3 scripts/check-source-code.py typescript` for the selected stage; beta and production run the full profile described below. Research and alpha defer some added checks while retaining inherited repository gates. See [source-code setup](repository-bootstrap.md#lifecycle-stages).
+
 Prefer explicit state, visible failures, and validated boundaries over a long list of stylistic preferences. The profile combines the TypeScript compiler, typed ESLint, separate formatting, and a shrinking diagnostic budget for existing code. Passing these checks does not establish business correctness.
 
 ## Adopt the profile
@@ -7,13 +9,13 @@ Prefer explicit state, visible failures, and validated boundaries over a long li
 Start with a Git repository containing a `package.json`, a `tsconfig.json`, and the dependencies needed to compile its source. Select a different config with `--typescript-project path/to/tsconfig.json`; repeat the option for independent leaf projects.
 
 ```sh
-repo-bootstrap --repo ~/src/service --typescript --pr-template none
+source-code setup --repo ~/src/service --typescript --pr-template none
 cd ~/src/service
 node scripts/check-typescript.mjs tools
 node scripts/check-typescript.mjs
 ```
 
-TypeScript adoption is opt-in. Tracked TypeScript source selects `ratchet` by default; a new project without tracked source selects `strict`. Choose `--typescript-rollout strict` explicitly when an existing repository is ready. `--typescript-retrofit` explicitly selects the legacy adoption path.
+TypeScript adoption is opt-in. Tracked TypeScript source selects `ratchet` by default; a new project without tracked source selects `strict`. Choose `--typescript-rollout strict` explicitly when an existing repository is ready. `--typescript-retrofit` explicitly selects the legacy adoption path. Both modes also install the shared comment policy and the library caller guidance; apply the library perspective to public library APIs. These guidance files follow the selected tracked or Git-excluded local installation mode.
 
 Bootstrap copies configuration, a runner, CI, and a portable skill. It does not install packages, rewrite application files, replace executable ESLint configuration, or change application dependencies. The explicit `tools` command installs exact tool versions in `.typescript-quality`, separate from the application's dependencies, using npm with lifecycle scripts disabled. Review and commit its generated `package-lock.json`. Subsequent installations use `npm ci`; normal checks never install tools. This pins transitive dependencies in each adopted project rather than claiming that exact direct versions alone pin the entire dependency graph.
 
@@ -70,7 +72,7 @@ Adding a variant breaks the switch and the total mapping. The runtime guard thro
 ## Retrofit without a cleanup campaign
 
 ```sh
-repo-bootstrap --repo ~/src/service --typescript-retrofit --pr-template none
+source-code setup --repo ~/src/service --typescript-retrofit --pr-template none
 cd ~/src/service
 node scripts/check-typescript.mjs tools
 node scripts/check-typescript.mjs baseline
