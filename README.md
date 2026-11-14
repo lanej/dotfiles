@@ -271,6 +271,10 @@ The installer preserves project instructions and local edits, supports Codex and
 
 Go modules also receive a strict correctness profile: exhaustive enums and sum types, error/resource/security checks, race tests, and vulnerability analysis. Use `repo-bootstrap --go` before creating a new module; root `go.mod` files are detected automatically. The committed `scripts/check-go.sh` runs the same pinned checks locally and in CI. Use `repo-bootstrap --go-retrofit --pr-template none` to merge an existing config and adopt a shrinking lint baseline. See [my Go style guide](docs/go-style.md) for defaults, examples, and rollout tradeoffs.
 
+## SSH approval on the Mac
+
+With the updated Keylease installed, `make keylease-ssh` configures ordinary OpenSSH connections to carry one-time Mac approval requests. It preserves the authentication agent and host settings; remote Go callers and commands can request review followed by native authentication. See [SSH approval setup](docs/keylease-ssh.md) for installation, connection sharing, recovery, and removal.
+
 ## Shared shell history
 
 With the Atuin recipe selected, `make install` configures sharing when an explicit sync host or saved account is available.
