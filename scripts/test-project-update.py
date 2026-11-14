@@ -142,6 +142,27 @@ class LifecycleTests(unittest.TestCase):
         self.invoke("clean", "fixture")
         self.assertEqual([json.loads(line) for line in self.log.read_text().splitlines()], [["restart"], ["clean"]])
 
+    def test_zellij_build_includes_plugins_for_selected_runtime(self):
+        make = self.base / "tools/make"
+        make.parent.mkdir()
+        log = self.base / "make-actions"
+        make.write_text(f"#!{sys.executable}\nimport json, sys\nwith open({str(log)!r}, 'a') as out: out.write(json.dumps(sys.argv[1:]) + '\\n')\n")
+        make.chmod(0o755)
+        config = self.base / "machine.toml"
+        env = {**self.env, "DOTFILES_CONFIG": str(config),
+               "PATH": str(make.parent) + os.pathsep + self.env["PATH"]}
+        expected = {"patched": ["zellij-runtime", "zellij-status", "zellij-config", "zellij-copy-hop"],
+                    "main": ["zellij-runtime", "zellij-status", "zellij-config"],
+                    "release": ["zellij-runtime", "zellij-config"]}
+        for source, targets in expected.items():
+            with self.subTest(source=source):
+                config.write_text(f'sets = []\n[zellij]\nsource = "{source}"\n')
+                result = subprocess.run([sys.executable, str(ADAPTER), "zellij", "build"],
+                                        env=env, text=True, capture_output=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                arguments = json.loads(log.read_text().splitlines()[-1])
+                self.assertEqual(arguments, ["-C", str(ROOT.resolve()), *targets])
+
     def test_zellij_restart_preserves_live_sessions(self):
         binary = self.base / ".local/bin/zellij"
         binary.parent.mkdir(parents=True)

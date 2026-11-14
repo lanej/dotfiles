@@ -107,7 +107,15 @@ def main():
         else:
             raise ValueError("OctoManager supports build, restart and status; clean is not configured")
     elif action == "build":
-        run(["make", "-C", str(ROOT), "zellij-runtime", "zellij-status", "zellij-config"])
+        configuration = json.loads(run([sys.executable, str(ROOT / "scripts/dotfiles-config.py"), "--format", "json"], capture=True))
+        source = configuration["settings"]["zellij.source"]
+        targets = ["zellij-runtime"]
+        if source != "release":
+            targets.append("zellij-status")
+        targets.append("zellij-config")
+        if source == "patched":
+            targets.append("zellij-copy-hop")
+        run(["make", "-C", str(ROOT), *targets])
     elif action == "restart":
         binary = Path.home() / ".local/bin/zellij"
         sessions = subprocess.run([str(binary), "list-sessions", "--no-formatting"], text=True, capture_output=True)
