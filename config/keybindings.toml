@@ -15,11 +15,18 @@ action = "kitten open_last_url.py"
 description = "Open the last web link, including Codex's padded output."
 
 [[binding]]
+id = "kitty.select-url"
+app = "kitty"
+chord = "ctrl+shift+e"
+action = "kitten select_hint.py url"
+description = "Select a visible URL with home-row hints."
+
+[[binding]]
 id = "kitty.select-hyperlink"
 app = "kitty"
 chord = "cmd+shift+u"
-action = "kitten hints --type hyperlink"
-description = "Select a labeled OSC 8 hyperlink with native hints."
+action = "kitten select_hint.py"
+description = "Select a hyperlink or preview an image from the current Zellij pane."
 
 [[binding]]
 id = "skhd.focus-kitty"

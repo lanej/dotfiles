@@ -6,6 +6,7 @@ mod clipboard;
 mod command;
 mod config;
 mod context;
+mod image_hints;
 mod ipc;
 mod navigation;
 mod notify;
@@ -20,7 +21,7 @@ mod util;
 mod view;
 use anyhow::{bail, Result};
 use std::io::{IsTerminal, Write};
-const HELP:&str="Usage: zellij-helper <status|agent|attach|ssh|auto-title|shell-title|clipboard|context|pane|navigate|popup|shutdown|balance|notify|picker|claude-title|codex-title> [arguments]";
+const HELP:&str="Usage: zellij-helper <status|agent|attach|ssh|auto-title|shell-title|clipboard|context|pane|image-hints|navigate|popup|shutdown|balance|notify|picker|claude-title|codex-title> [arguments]";
 fn run(args: &[String]) -> Result<()> {
     match args {
         [] => println!("{HELP}"),
@@ -50,6 +51,8 @@ fn run(args: &[String]) -> Result<()> {
                 }
             }
             "clipboard" => clipboard::main(rest)?,
+            "image-hints" if rest.is_empty() => image_hints::run()?,
+            "image-view" if rest.len() == 1 => image_hints::view(&rest[0])?,
             "context" if rest == ["provider"] => println!("{}", context::provider()?),
             "context" if rest == ["socket"] => println!("{}", context::socket()?),
             "context" if rest == ["title-context"] => println!("{}", auto_title::context()?),

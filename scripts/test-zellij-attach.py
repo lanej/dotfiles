@@ -40,6 +40,7 @@ if os.environ.get("ATTACH_FAIL"):
 Path(os.environ["ATTACHED"]).write_text(json.dumps(args))
 Path(os.environ["ATTACHED_ENV"]).write_text(json.dumps({
     "tty": os.isatty(0), "socket": os.environ.get("SSH_AUTH_SOCK"),
+    "nested": os.environ.get("ZELLIJ_NESTED_ATTACH"),
 }))
 ''')
         proxy.chmod(0o755)
@@ -164,7 +165,7 @@ raise SystemExit(os.waitstatus_to_exitcode(status))
         ]
         subprocess.run(remote, env=env, check=True, timeout=15)
         assert json.loads(attached.read_text()) == ["attach", "--create", "main"]
-        assert json.loads(observed.read_text()) == {"tty": True, "socket": forwarded_socket}
+        assert json.loads(observed.read_text()) == {"tty": True, "socket": forwarded_socket, "nested": "0"}
         assert not tab.exists(), "Outside Zellij, SSH must use the current terminal"
         session = "chosen 'session; $(printf injected) $HOME"
         subprocess.run([zsh, "-dfc", *remote[2:], session], env=env, check=True,
@@ -183,7 +184,7 @@ raise SystemExit(os.waitstatus_to_exitcode(status))
         assert not (work / "kitty-used").exists(), "Zellij must bypass Kitty's SSH bootstrap"
         assert json.loads(tab.read_text()) == ["action", "new-tab", "--name", "fixture-host"]
         assert json.loads(attached.read_text()) == ["attach", "--create", "main"]
-        assert json.loads(observed.read_text()) == {"tty": True, "socket": forwarded_socket}
+        assert json.loads(observed.read_text()) == {"tty": True, "socket": forwarded_socket, "nested": "1"}
         print("PASS: zj and zssh preserve sessions; remote login shells supply PATH, TTY, and forwarded agents.")
 
 
