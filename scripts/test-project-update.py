@@ -177,6 +177,44 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(result.returncode, 3, result.stderr)
         self.assertIn("manualCommand", result.stdout)
 
+    def test_registered_scope_is_exactly_three_projects(self):
+        result = subprocess.run([sys.executable, str(COMMAND), "update", "--all", "--dry-run"],
+                                env=self.env, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual({row["project"] for row in json.loads(result.stdout)},
+                         {"octo-manager", "zellij", "bedrock-router"})
+
+    def test_router_preserves_settings_and_requires_staged_binary(self):
+        go = self.base / "tools/go"
+        go.parent.mkdir()
+        log = self.base / "router-actions"
+        installer = (f"#!{sys.executable}\n"
+                     "import json, os, pathlib, shutil, sys\n"
+                     f"with open({str(log)!r}, 'a') as out: out.write(json.dumps(sys.argv[1:]) + '\\n')\n"
+                     "installed = pathlib.Path(os.environ['HOME']) / '.codex/bedrock-router/bedrock-router'\n"
+                     "installed.parent.mkdir(parents=True, exist_ok=True)\n"
+                     "shutil.copyfile(__file__, installed)\n")
+        go.write_text(f"#!{sys.executable}\nimport pathlib, sys\np = pathlib.Path(sys.argv[sys.argv.index('-o') + 1])\np.write_text({installer!r})\np.chmod(0o755)\n")
+        go.chmod(0o755)
+        env = {**self.env, "PATH": str(go.parent) + os.pathsep + self.env["PATH"]}
+        def invoke(action):
+            return subprocess.run([sys.executable, str(ADAPTER), "bedrock-router", action],
+                                  cwd=self.checkout, env=env, text=True, capture_output=True)
+        self.assertEqual(invoke("restart").returncode, 1)
+        self.assertFalse(log.exists())
+        result = invoke("build")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        result = invoke("restart")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        staged, activated = [json.loads(line) for line in log.read_text().splitlines()]
+        self.assertEqual(staged, ["install", "--config", str(self.checkout.resolve() / "config.json"),
+                                  "--keep-env", "--preserve-mcp", "--no-start"])
+        self.assertEqual(activated, staged[:-1])
+        installed = self.base / ".codex/bedrock-router/bedrock-router"
+        installed.write_text("different binary")
+        self.assertEqual(invoke("restart").returncode, 1)
+        self.assertEqual(len(log.read_text().splitlines()), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

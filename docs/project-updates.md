@@ -22,11 +22,12 @@ project-update update zellij --dry-run
 | Project | Source and build | Restart |
 | --- | --- | --- |
 | `octo-manager` | `~/src/octo-manager`; frozen dependencies and the existing revision-specific installer with `--no-start`. Uses Octo's platform-specific private Bun when installed, otherwise Bun from PATH. | Requires the checkout revision to be installed, then uses Octo's existing installer/service controls. No service manager returns restart-required with its foreground command. Existing hooks and state are preserved. |
+| `bedrock-router` | `~/src/bedrock-router`; Go build into a revision-specific cache, then its native installer with `--no-start --keep-env --preserve-mcp`. | Verifies that the staged and installed binary match, then uses the native installer to reload the service and check health. |
 | `zellij` | Dotfiles' default branch; existing runtime, helper, plugin and configuration targets. The curated runtime policy and compatible pins remain authoritative. | Inspects existing sessions. Active sessions return restart-required and stay running. Exited/resurrectable sessions need no restart. New sessions load the installed version. |
 
 Zellij's upstream default branch is a clean mirror and does not contain the curated fork features. Updating this installation therefore pulls the dotfiles default branch and installs its selected runtime; it does not replace the runtime with upstream main. The `zellij` entry includes its runtime and plugins in one update. Build includes installation but does not intentionally stop a running process. Zellij configuration also affects newly opened sessions.
 
-The project scope is Zellij (including its plugins), Bedrock Router and OctoManager. Bedrock Router is not registered until its actual checkout and restart entrypoints have been identified. They must not silently disappear from an assumed inventory: `--all` means the entries in the selected registry, listed by `status --all` or `update --all --dry-run`.
+The project scope is Zellij (including its plugins), Bedrock Router and OctoManager. `--all` means these three registered entries. A missing checkout is reported as a failure rather than skipped. Bedrock Router uses the standalone [lanej/bedrock-router](https://github.com/lanej/bedrock-router) source checkout, not the old dotfiles implementation. Its installer preserves environment and MCP choices; credentials and session state remain in their existing locations.
 
 ## Add a project
 

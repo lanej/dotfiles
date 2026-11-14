@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Project-owned adapters for the workstation lifecycle convention."""
 
+import hashlib
 import json
+import os
 from pathlib import Path
 import platform
 import shutil
@@ -17,10 +19,43 @@ def run(args, capture=False):
     return result.stdout.strip() if capture else ""
 
 
+def router(action):
+    installed = Path.home() / ".codex/bedrock-router/bedrock-router"
+    revision = run(["git", "rev-parse", "HEAD"], capture=True)
+    cache = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+    built = cache / "dotfiles/project-update/bedrock-router" / revision / "bedrock-router"
+    if action == "status":
+        print(json.dumps({"installed_binary": str(installed) if installed.is_file() else None,
+                          "installed_revision": revision if built.is_file() and installed.is_file() and same_binary(built, installed) else None,
+                          "running_revision": None}))
+        return 0
+    if action in ("build", "restart") and run(["git", "status", "--porcelain"], capture=True):
+        raise ValueError("Preserve Bedrock Router checkout changes before installing or restarting a versioned build")
+    flags = ["install", "--config", str(Path.cwd() / "config.json"), "--keep-env", "--preserve-mcp"]
+    if action == "build":
+        built.parent.mkdir(parents=True, exist_ok=True)
+        run(["go", "build", "-buildvcs=true", "-o", str(built), "."])
+        run([str(built), *flags, "--no-start"])
+    elif action == "restart":
+        if not built.is_file() or not installed.is_file() or not same_binary(built, installed):
+            raise ValueError("Build and stage this Bedrock Router revision before restarting")
+        run([str(built), *flags])
+    else:
+        raise ValueError("Bedrock Router supports build, restart and status; clean is not configured")
+    return 0
+
+
+def same_binary(first, second):
+    with first.open("rb") as a, second.open("rb") as b:
+        return hashlib.file_digest(a, "sha256").digest() == hashlib.file_digest(b, "sha256").digest()
+
+
 def main():
-    if len(sys.argv) != 3 or sys.argv[1] not in ("octo-manager", "zellij"):
+    if len(sys.argv) != 3 or sys.argv[1] not in ("octo-manager", "zellij", "bedrock-router"):
         raise ValueError("Usage: project-lifecycle.py PROJECT ACTION")
     project, action = sys.argv[1:]
+    if project == "bedrock-router":
+        return router(action)
     if action == "status":
         if project == "octo-manager":
             metadata = Path.home() / ".local/share/octo-manager/current/release.json"

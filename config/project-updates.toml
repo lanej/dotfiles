@@ -9,3 +9,7 @@ command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "octo-manager"
 [projects.zellij]
 path = "{dotfiles}"
 command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "zellij"]
+
+[projects.bedrock-router]
+path = "~/src/bedrock-router"
+command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "bedrock-router"]
