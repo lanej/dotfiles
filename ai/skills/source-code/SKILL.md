@@ -5,6 +5,8 @@ description: Use when installing, inspecting, validating, or upgrading project e
 
 # Source-code project setup
 
+Run `source-code skill` to retrieve this management skill as Markdown without locating its installation path. It works outside a Git repository and does not read project configuration.
+
 Manage the `source-code` CLI and its project installations. This workstation skill supplies tool usage, not engineering policy: it does not select Builder, testing, comments, or a lifecycle stage for ordinary coding tasks. Follow the target repository’s instructions and its explicitly installed project skills.
 
 ## Inspect the target
@@ -12,6 +14,8 @@ Manage the `source-code` CLI and its project installations. This workstation ski
 Resolve the intended checkout and inspect existing repository instructions, `.source-code.json`, and `AGENTS.override.md` when present. Reuse an assigned worktree; setup operates on that checkout and does not allocate worktrees. Existing policy records the installed lifecycle stage, skill pins, check profiles, and detection evidence. Read authored `source-code.toml` at the target Git root when present; it expresses desired policy separately from generated state.
 
 Use `source-code --help` and the chosen subcommand’s `--help` for the installed version’s supported options. If the command is missing, the dotfiles workstation set supplies it; `make source-code-config` from the owning dotfiles checkout links it explicitly. Do not apply unrelated workstation configuration or assume a newer release is installed.
+
+Run `source-code explain --repo PATH` to compare desired policy with the recorded installation and see each choice’s origin. Add `--json` for schema-versioned output, including package pins and differences. It shares setup selection rules and accepts the same policy overrides; retained check profiles are distinguished from selected updates. It works before Git initialization and never writes project/Git files, provisions dependencies, or runs project commands. Recorded metadata is not an integrity check; use validate and setup previews for those boundaries.
 
 Run `source-code detect --repo PATH --json` to inspect language evidence without changing files. Detection selects guidance for Go, TypeScript, JavaScript, Python, and Rust. Generated check profiles are a separate choice: root Go modules enable Go setup by default, while TypeScript checks require `--typescript`. For a new guidance-only install, use `--no-go --no-typescript`; these flags do not uninstall existing profiles. `--no-detect-languages` saves a detection opt-out.
 

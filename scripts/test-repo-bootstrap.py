@@ -47,6 +47,80 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     shutil.copytree(SOURCE / "ai", source / "ai", symlinks=True)
     shutil.copytree(SOURCE / "docs", source / "docs", symlinks=True)
     cli = source / "bin/source-code"
+    # Agents can discover the tool before choosing or creating a project.
+    assert run([str(cli), "skill"], cwd=workspace) == (source / "ai/skills/source-code/SKILL.md").read_text()
+    assert "skill" in run([str(cli), "--help"])
+    invalid_context = workspace / "discovery-only"
+    invalid_context.mkdir()
+    (invalid_context / "source-code.toml").write_text("not valid TOML [[[\n")
+    before = tree(invalid_context)
+    run([str(cli), "skill"], cwd=invalid_context)
+    assert tree(invalid_context) == before
+    management = source / "ai/skills/source-code/SKILL.md"
+    management.rename(management.with_suffix(".saved"))
+    assert "management skill is unavailable" in run([str(cli), "skill"], cwd=workspace, expected=1)
+    management.with_suffix(".saved").rename(management)
+
+    # Explain shares setup's resolver and never initializes Git or installs artifacts.
+    inspection = workspace / "inspection without Git"
+    inspection.mkdir()
+    intent = inspection / "source-code.toml"
+    intent.write_text('schema_version = 1\nstage = "alpha"\nkind = "library"\nmode = "shadow"\npr_template = "none"\n[checks.go]\nenabled = false\n[checks.typescript]\nenabled = false\n')
+    before = tree(inspection)
+    source_scripts_before = tree(source / "scripts")
+    explained = json.loads(run([str(cli), "explain", "--repo", str(inspection), "--json"]))
+    assert tree(source / "scripts") == source_scripts_before, "inspection wrote bytecode into its source checkout"
+    assert explained["schema_version"] == 1 and explained["installed"] is None
+    assert explained["desired"]["stage"] == "alpha" and explained["desired"]["kind"] == "library"
+    assert explained["origins"]["stage"]["source"] == "toml"
+    assert "library-code-comments" in explained["desired"]["skills"]
+    overridden = json.loads(run([str(cli), "explain", "--repo", str(inspection), "--stage", "research", "--json"]))
+    assert overridden["desired"]["stage"] == "research" and overridden["origins"]["stage"]["source"] == "cli"
+    preview = run([str(cli), "setup", "--repo", str(inspection), "--init", "--dry-run"])
+    effective = json.loads(next(line.split(": ", 1)[1] for line in preview.splitlines() if "Effective configuration:" in line))
+    assert explained["desired"] == effective
+    assert tree(inspection) == before, "inspection or preview changed authored content/Git metadata"
+    run([str(cli), "setup", "--repo", str(inspection), "--init"])
+    before = tree(inspection)
+    installed_view = json.loads(run([str(cli), "explain", "--repo", str(inspection), "--json"]))
+    assert installed_view["differences"] == []
+    subset = json.loads(run([str(cli), "explain", "--repo", str(inspection), "--skills", "pr-writer", "--json"]))
+    assert subset["selection"]["skills"] == ["pr-writer"]
+    assert "source-code-lifecycle" in subset["selection"]["retained_skills"]
+    assert "source-code-lifecycle" in subset["desired"]["skills"]
+    human = run([str(cli), "explain", "--repo", str(inspection)])
+    assert "Recorded installation" in human and "Skills retained" in human
+    assert tree(inspection) == before, "explain changed an installed project or Git metadata"
+    intent.write_text('schema_version = 1\nstage = "research"\n')
+    drift = json.loads(run([str(cli), "explain", "--repo", str(inspection), "--json"]))
+    assert any(item["field"] == "stage" and item["installed"] == "alpha" for item in drift["differences"])
+    intent.write_text('schema_version = true\n')
+    before = tree(inspection)
+    invalid = subprocess.run([str(cli), "explain", "--repo", str(inspection), "--json"], text=True, capture_output=True)
+    assert invalid.returncode == 1 and not invalid.stdout and "Traceback" not in invalid.stderr
+    assert tree(inspection) == before
+
+    # Go rollout inspection does not parse legacy YAML or provision its parser.
+    inspect_go = workspace / "inspection legacy Go"
+    inspect_go.mkdir()
+    (inspect_go / "go.mod").write_text("module example.com/inspection\n\ngo 1.26\n")
+    (inspect_go / ".golangci.yaml").write_text("invalid YAML [[[:\n")
+    before = tree(inspect_go)
+    legacy_view = json.loads(run([str(cli), "explain", "--repo", str(inspect_go), "--json"]))
+    assert legacy_view["desired"]["checks"]["go"]["rollout"] == "ratchet"
+    assert tree(inspect_go) == before
+
+    legacy_install = workspace / "inspection pre-pin installation"
+    legacy_skill = legacy_install / ".agents/skills/pr-writer/SKILL.md"
+    legacy_skill.parent.mkdir(parents=True)
+    legacy_skill.write_text("---\nname: pr-writer\ndescription: Use when drafting pull requests with clear review context.\n---\n")
+    legacy_state = {"version": 1, "mode": "tracked", "files": {".agents/skills/pr-writer/SKILL.md":
+        {"kind": "file", "sha256": hashlib.sha256(legacy_skill.read_bytes()).hexdigest(), "executable": False}}}
+    (legacy_install / ".agents/repo-bootstrap.json").write_text(json.dumps(legacy_state))
+    legacy_view = json.loads(run([str(cli), "explain", "--repo", str(legacy_install), "--json"]))
+    assert legacy_view["installed"]["skills"] == ["pr-writer"]
+    assert legacy_view["installed"]["skill_versions"]["pr-writer"] is None
+
     project = workspace / "new repository"
 
     def install(target, *args, expected=0):
@@ -106,7 +180,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     config.write_text(config_text.replace('[checks.go]\nenabled = false', '[checks.go]\nenabled = true\nrollout = "strict"'))
     before = tree(configured)
     override = install(configured, "--no-go", "--dry-run")
-    assert '"go": {"enabled": false}' in override
+    assert not json.loads(next(line.split(": ", 1)[1] for line in override.splitlines() if "Effective configuration:" in line))["checks"]["go"]["selected"]
     assert tree(configured) == before, "CLI override preview changed authored TOML"
     run([str(cli), "validate", "--skills-dir", str(source / "ai/skills/pr-writer"),
          "--config", str(config)], expected=1)
@@ -146,10 +220,23 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     setup_preview = install(profile_intent, "--dry-run")
     upgrade_preview = run([str(cli), "upgrade", "--repo", str(profile_intent), "--dry-run"])
     for preview in (setup_preview, upgrade_preview):
-        assert '"go": {"enabled": true' in preview and '"typescript": {"enabled": true' in preview
+        effective = json.loads(next(line.split(": ", 1)[1] for line in preview.splitlines() if "Effective configuration:" in line))
+        assert effective["checks"]["go"]["selected"] and effective["checks"]["typescript"]["selected"]
     run([str(cli), "upgrade", "--repo", str(profile_intent)])
     assert json.loads((profile_intent / ".source-code.json").read_text())["languages"] == ["go", "typescript"]
     run([str(cli), "validate", "--repo", str(profile_intent), "--strict"])
+    original_intent = (profile_intent / "source-code.toml").read_text()
+    (profile_intent / "source-code.toml").write_text('schema_version = 1\n[checks.go]\nrollout = "ratchet"\n[checks.typescript]\nprojects = ["ignored.json"]\n')
+    before = tree(profile_intent)
+    retained = json.loads(run([str(cli), "explain", "--repo", str(profile_intent), "--no-go", "--no-typescript", "--json"]))
+    assert retained["desired"]["checks"]["go"]["action"] == "retain"
+    assert retained["desired"]["checks"]["go"]["enabled"] and not retained["desired"]["checks"]["go"]["selected"]
+    assert retained["desired"]["checks"]["go"]["rollout"] == "strict"
+    assert retained["origins"]["checks.go.rollout"]["source"] == "saved"
+    assert retained["desired"]["checks"]["typescript"]["projects"] == ["tsconfig.json"]
+    assert retained["origins"]["checks.typescript.projects"]["source"] == "saved"
+    assert tree(profile_intent) == before
+    (profile_intent / "source-code.toml").write_text(original_intent)
 
     portable_config = workspace / "tracked configuration"
     portable_config.mkdir()
@@ -279,6 +366,8 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     before = tree(library)
     preview = run([str(cli), "upgrade", "--repo", str(library), "--dry-run"])
     assert "1.0.0 -> 1.1.0" in preview
+    release_view = json.loads(run([str(cli), "explain", "--repo", str(library), "--json"]))
+    assert any(item["field"] == "skill_versions.testing" and item["installed"] == "1.0.0" and item["desired"] == "1.1.0" for item in release_view["differences"])
     assert tree(library) == before, "upgrade preview wrote files"
     run([str(cli), "upgrade", "--repo", str(library)])
     upgraded = json.loads((library / ".source-code.json").read_text())
@@ -527,6 +616,9 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
             saved_kind = json.loads((target / ".source-code.json").read_text())["kind"]
             (target / "source-code.toml").write_text('schema_version = 1\nstage = "research"\nkind = "' + saved_kind + '"\n')
         installed_runner = (target / "scripts/check-source-code.py").read_bytes()
+        subset_view = json.loads(run([str(cli), "explain", "--repo", str(target), "--skills", "pr-writer", "--json"]))
+        assert subset_view["desired"]["skill_versions"]["source-code-lifecycle"] == "1.0.0"
+        assert subset_view["desired"]["skill_versions"]["pr-writer"] == "1.1.0"
         run([str(cli), "upgrade", "--repo", str(target), "--skills", "pr-writer"])
         pins = json.loads((target / ".source-code.json").read_text())["skills"]
         assert pins["pr-writer"] == "1.1.0" and pins["source-code-lifecycle"] == "1.0.0"

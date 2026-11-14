@@ -159,6 +159,11 @@ def load_configuration(args):
         if args.config is not None:
             raise ValueError("--config cannot be combined with --skills-dir")
         return
+    args.config_applied = set()
+    args.cli_values = {key: getattr(args, key) for key in (
+        "mode", "stage", "kind", "skills", "go", "go_rollout", "typescript", "typescript_rollout",
+        "typescript_project", "agents", "pr_template", "detect_languages", "policy_version")
+        if getattr(args, key, None) is not None}
     requested = args.repo.expanduser().resolve()
     found = git(requested, "rev-parse", "--show-toplevel", check=False)
     root = Path(found.stdout.strip()).resolve() if found.returncode == 0 else requested
@@ -226,14 +231,16 @@ def load_configuration(args):
                 continue
             if getattr(args, key) is None:
                 setattr(args, key, value)
+                args.config_applied.add(key)
         for language in ("go", "typescript"):
             if getattr(args, language) is False and (getattr(args, f"{language}_rollout") or language == "typescript" and args.typescript_project):
                 raise ValueError(f"cannot disable {language} checks while selecting rollout or projects")
     effective_policy = values.get("policy_version") if args.command == "validate" else args.policy_version
     if effective_policy and effective_policy != read_versions(SOURCE / "ai/skills/source-code-versions.json")["policy_version"]:
         raise ValueError("configuration requests a policy version not shipped by this source")
-    print(f"Configuration: {path}")
-    print("  Configured intent: " + json.dumps(values, sort_keys=True))
+    if args.command != "explain":
+        print(f"Configuration: {path}")
+        print("  Configured intent: " + json.dumps(values, sort_keys=True))
 
 
 def config_exclude_text(original, relative, private):
@@ -334,7 +341,12 @@ def complete_skills(skills, explicit_stage=False, kind=None):
 def detect_languages(root, state=None):
     spec = importlib.util.spec_from_file_location("source_code_languages", SOURCE / "scripts/source_code_languages.py")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    previous_bytecode = sys.dont_write_bytecode
+    try:
+        sys.dont_write_bytecode = True
+        spec.loader.exec_module(module)
+    finally:
+        sys.dont_write_bytecode = previous_bytecode
     state = read_state(root)[0] if state is None else state
     return module.detect(root, SOURCE / "ai/skills/source-code-lifecycle/references/languages.json", set(state["files"]))
 
@@ -440,8 +452,8 @@ def template_conflicts(root):
     return found
 
 
-def go_configuration(root, state, rollout, desired, payloads):
-    """Layer the profile beside project policy rather than rewriting it."""
+def go_adoption(root, state, rollout):
+    """Resolve adoption intent without parsing YAML or provisioning dependencies."""
     candidates = [name for name in GO_CONFIGS if inspect(root, name) is not None]
     if len(candidates) > 1:
         raise ValueError("multiple existing Go lint configurations; select one before merging: " + ", ".join(candidates))
@@ -462,6 +474,12 @@ def go_configuration(root, state, rollout, desired, payloads):
         rollout = "ratchet" if legacy or old_source else "strict"
     if rollout not in ("strict", "ratchet"):
         raise ValueError("invalid saved Go rollout")
+    return rollout, legacy
+
+
+def go_configuration(root, state, rollout, desired, payloads):
+    """Layer the profile beside project policy rather than rewriting it."""
+    rollout, legacy = go_adoption(root, state, rollout)
     settings = {"version": 1, "rollout": rollout, "config": ".golangci.yml", "legacy": None}
     snapshot = None
     if legacy:
@@ -642,43 +660,13 @@ def metadata_directory(root):
     return directory
 
 
-def install(args):
-    requested = args.repo.expanduser().resolve()
-    result = git(requested, "rev-parse", "--show-toplevel", check=False)
-    initializing = result.returncode != 0
-    if initializing:
-        if (requested / ".git").exists() or (requested / ".git").is_symlink() or git(requested, "rev-parse", "--is-bare-repository", check=False).stdout.strip() == "true":
-            raise ValueError("target has existing Git metadata but is not a working tree; inspect it before initialization")
-        if not args.init:
-            raise ValueError("target is not a Git working tree; use --init to create one")
-        ancestor = requested.parent
-        while not ancestor.exists() and ancestor != ancestor.parent:
-            ancestor = ancestor.parent
-        containing = git(ancestor, "rev-parse", "--show-toplevel", check=False)
-        if containing.returncode == 0:
-            raise ValueError(f"target is inside {containing.stdout.strip()}; refusing to initialize a nested repository")
-        if requested.exists() and not requested.is_dir():
-            raise ValueError(f"target is not a directory: {requested}")
-        root = requested
-    else:
-        root = Path(result.stdout.strip()).resolve()
-        if args.init and root != requested:
-            raise ValueError(f"target is already inside {root}; refusing to initialize a nested repository")
-    state, state_before = read_state(root)
-    old_pins = state.get("skill_versions", {})
-    if not old_pins and inspect(root, POLICY) is not None:
-        snapshot = inspect(root, POLICY)
-        if snapshot["kind"] == "file":
-            try:
-                old_policy = json.loads((root / POLICY).read_text())
-                old_pins = old_policy.get("skills", {}) if isinstance(old_policy, dict) else {}
-            except ValueError:
-                old_pins = {}
-    if not isinstance(old_pins, dict):
-        raise ValueError("invalid installed skill version pins")
-    if not all(name in SKILLS and isinstance(version, str) and VERSION_RE.fullmatch(version)
-               for name, version in old_pins.items()):
-        raise ValueError("invalid installed skill version pins")
+def recorded_skills(state):
+    return set(state.get("skills", [])) | {Path(name).parts[2] for name in state["files"]
+        if name.startswith(".agents/skills/") and name.endswith("/SKILL.md")}
+
+
+def resolve_policy(root, args, state):
+    """Resolve selections once for installation, upgrades, and inspection."""
     mode = args.mode or state.get("mode", "tracked")
     if mode == "shadow":
         mode = "local"
@@ -716,6 +704,89 @@ def install(args):
         template = "none"
     if typescript_profile and args.typescript_rollout == "ratchet" and args.pr_template is None:
         template = "none"
+
+    def origin(name, state_key=None, detail="built-in default"):
+        if name in args.cli_values:
+            return {"source": "cli", "key": name}
+        if name in args.config_applied:
+            return {"source": "toml", "key": name, "path": str(args.config_path)}
+        if (state_key or name) in state:
+            return {"source": "saved", "key": state_key or name}
+        return {"source": "default", "detail": detail}
+
+    origins = {name: origin(name) for name in ("mode", "stage", "kind", "agents", "pr_template", "detect_languages")}
+    origins["skills"] = {}
+    base_origin = origin("skills")
+    for name in skills:
+        sources = []
+        if name in selected.split(","):
+            sources.append(base_origin)
+        if name in detection["skills"]:
+            sources.append({"source": "detection", "evidence": detection["evidence"].get(name, [])})
+        if name == "go" and go_profile or name == "typescript" and typescript_profile:
+            sources.append({"source": "dependency", "detail": name + " check profile"})
+        if not sources:
+            sources.append({"source": "dependency", "detail": "required by selected skills or policy transition"})
+        origins["skills"][name] = sources
+    for name, rollout_key, saved_key, evidence in (
+            ("go", "go_rollout", "go_profile", "root go.mod"),
+            ("typescript", "typescript_rollout", "typescript_profile", "explicit TypeScript adoption")):
+        flag_origin = origin(name, saved_key)
+        if getattr(args, name) is None and (getattr(args, rollout_key) or name == "typescript" and args.typescript_project):
+            flag_origin = {"source": "dependency", "detail": "requested rollout or project selection"}
+        elif getattr(args, name) is None and name == "go" and not state.get(saved_key) and (root / "go.mod").is_file():
+            flag_origin = {"source": "detection", "detail": evidence}
+        origins[f"checks.{name}.selected"] = flag_origin
+    if args.pr_template is None and (go_profile and args.go_rollout == "ratchet" or typescript_profile and args.typescript_rollout == "ratchet"):
+        origins["pr_template"] = {"source": "dependency", "detail": "ratchet adoption omits a new template"}
+    return {"mode": mode, "skills": skills, "stage": stage, "kind": kind,
+            "go_profile": go_profile, "typescript_profile": typescript_profile,
+            "detect_enabled": detect_enabled, "detection": detection,
+            "agent_selection": agent_selection, "agents": agents, "template": template, "origins": origins}
+
+
+def install(args):
+    requested = args.repo.expanduser().resolve()
+    result = git(requested, "rev-parse", "--show-toplevel", check=False)
+    initializing = result.returncode != 0
+    if initializing:
+        if (requested / ".git").exists() or (requested / ".git").is_symlink() or git(requested, "rev-parse", "--is-bare-repository", check=False).stdout.strip() == "true":
+            raise ValueError("target has existing Git metadata but is not a working tree; inspect it before initialization")
+        if not args.init:
+            raise ValueError("target is not a Git working tree; use --init to create one")
+        ancestor = requested.parent
+        while not ancestor.exists() and ancestor != ancestor.parent:
+            ancestor = ancestor.parent
+        containing = git(ancestor, "rev-parse", "--show-toplevel", check=False)
+        if containing.returncode == 0:
+            raise ValueError(f"target is inside {containing.stdout.strip()}; refusing to initialize a nested repository")
+        if requested.exists() and not requested.is_dir():
+            raise ValueError(f"target is not a directory: {requested}")
+        root = requested
+    else:
+        root = Path(result.stdout.strip()).resolve()
+        if args.init and root != requested:
+            raise ValueError(f"target is already inside {root}; refusing to initialize a nested repository")
+    state, state_before = read_state(root)
+    old_pins = state.get("skill_versions", {})
+    if not old_pins and inspect(root, POLICY) is not None:
+        snapshot = inspect(root, POLICY)
+        if snapshot["kind"] == "file":
+            try:
+                old_policy = json.loads((root / POLICY).read_text())
+                old_pins = old_policy.get("skills", {}) if isinstance(old_policy, dict) else {}
+            except ValueError:
+                old_pins = {}
+    if not isinstance(old_pins, dict):
+        raise ValueError("invalid installed skill version pins")
+    if not all(name in SKILLS and isinstance(version, str) and VERSION_RE.fullmatch(version)
+               for name, version in old_pins.items()):
+        raise ValueError("invalid installed skill version pins")
+    resolved = resolve_policy(root, args, state)
+    mode, skills, stage, kind = (resolved[key] for key in ("mode", "skills", "stage", "kind"))
+    go_profile, typescript_profile = resolved["go_profile"], resolved["typescript_profile"]
+    detect_enabled, detection = resolved["detect_enabled"], resolved["detection"]
+    agent_selection, agents, template = (resolved[key] for key in ("agent_selection", "agents", "template"))
     desired, payloads = package(sorted(skills), agents, template, go_profile, typescript_profile)
     if skills:
         versions = read_versions(SOURCE / "ai/skills/source-code-versions.json")
@@ -881,16 +952,7 @@ def install(args):
     print(f"source-code setup: {root} ({mode})")
     print("  Detected language guidance: " + (", ".join(detection["languages"]) or "none"))
     if getattr(args, "config_path", None):
-        effective = {"mode": mode, "stage": stage, "policy_version": versions["policy_version"], "skills": sorted(skills), "agents": agent_selection,
-                     "pr_template": template, "detect_languages": detect_enabled,
-                     "checks": {"go": {"enabled": go_profile}, "typescript": {"enabled": typescript_profile}}}
-        if go_profile:
-            effective["checks"]["go"]["rollout"] = rollout
-        if typescript_profile:
-            effective["checks"]["typescript"].update(rollout=ts_rollout,
-                projects=json.loads(payloads[".typescript-quality.json"])["projects"])
-        if kind is not None:
-            effective["kind"] = kind
+        effective = policy_view(root, resolved, state, versions["policy_version"], rollout, ts_rollout, payloads, pins)
         print("  Effective configuration: " + json.dumps(effective, sort_keys=True))
     if skills:
         previous = state.get("stage", "beta (legacy full checks)")
@@ -993,18 +1055,8 @@ def prepare_upgrade(args):
         args.go = bool(args.go_rollout) or state.get("go_profile", False)
     if args.typescript is None:
         args.typescript = bool(args.typescript_rollout or args.typescript_project) or state.get("typescript_profile", False)
-    skills = set(args.skills.split(","))
-    detect_enabled = args.detect_languages if args.detect_languages is not None else state.get("detect_languages", True)
-    if detect_enabled:
-        skills.update(detect_languages(root, state)["skills"])
-    if args.go:
-        skills.add("go")
-    if args.typescript:
-        skills.add("typescript")
-    kind = args.kind or state.get("kind")
-    skills = complete_skills(skills, bool(args.stage) and args.stage != state.get("stage"), kind if kind != state.get("kind") else None)
-    if not skills <= set(SKILLS):
-        raise ValueError("upgrade selected an unknown skill")
+    resolved = resolve_policy(root, args, state)
+    skills = resolved["skills"]
     available = read_versions(SOURCE / "ai/skills/source-code-versions.json")
     pins = state.get("skill_versions", {})
     for name in skills:
@@ -1133,16 +1185,171 @@ def validate_project(args):
     return int(bool(errors) or bool(args.strict and warnings))
 
 
+def policy_view(root, resolved, state, policy_version, go_rollout=None, ts_rollout=None, payloads=None, pins=None):
+    """Represent effective selections without confusing retention with removal."""
+    payloads = payloads or {}
+    view = {"mode": resolved["mode"], "stage": resolved["stage"], "kind": resolved["kind"],
+            "policy_version": policy_version, "skills": sorted(resolved["skills"] | recorded_skills(state)),
+            "agents": resolved["agent_selection"], "pr_template": resolved["template"],
+            "detect_languages": resolved["detect_enabled"], "checks": {}}
+    view["skill_versions"] = {name: (pins if pins is not None else state.get("skill_versions", {})).get(name) for name in view["skills"]}
+    for language, runner, rollout, settings_name in (
+            ("go", "scripts/check-go.sh", go_rollout, ".go-quality.json"),
+            ("typescript", "scripts/check-typescript.mjs", ts_rollout, ".typescript-quality.json")):
+        selected = resolved[language + "_profile"]
+        recorded = runner in state["files"]
+        settings = {}
+        if settings_name in payloads:
+            settings = json.loads(payloads[settings_name])
+        elif recorded and (root / settings_name).is_file():
+            settings = json.loads((root / settings_name).read_text())
+        if not isinstance(settings, dict):
+            raise ValueError(f"invalid recorded {language} profile settings")
+        item = {"enabled": selected or recorded, "selected": selected,
+                "action": ("update" if recorded else "install") if selected else ("retain" if recorded else "absent"),
+                "rollout": rollout or settings.get("rollout")}
+        if language == "typescript":
+            item["projects"] = settings.get("projects", [])
+        view["checks"][language] = item
+    return view
+
+
+def recorded_policy(root, state, snapshot):
+    if snapshot is None:
+        return None
+    policy = {}
+    if (root / POLICY).exists():
+        policy = json.loads((root / POLICY).read_text())
+        if not isinstance(policy, dict):
+            raise ValueError("invalid recorded project policy")
+    for name, choices in (("stage", STAGES), ("kind", KINDS)):
+        if name in policy and policy[name] not in choices:
+            raise ValueError(f"invalid recorded policy {name}")
+    if policy.get("stage", state.get("stage")) != state.get("stage") or policy.get("kind", state.get("kind")) != state.get("kind"):
+        raise ValueError("recorded policy and manifest disagree; run validate")
+    resolved = {"mode": state.get("mode", "tracked"), "stage": state.get("stage", "beta"), "kind": state.get("kind"),
+                "skills": recorded_skills(state), "agent_selection": state.get("agents", "codex"),
+                "template": state.get("pr_template", "none"), "detect_enabled": state.get("detect_languages", True),
+                "go_profile": state.get("go_profile", False), "typescript_profile": state.get("typescript_profile", False)}
+    pins = policy.get("skills", state.get("skill_versions", {}))
+    if not isinstance(pins, dict) or any(name not in SKILLS or not isinstance(version, str) or not VERSION_RE.fullmatch(version) for name, version in pins.items()):
+        raise ValueError("invalid recorded skill pins")
+    if state.get("skill_versions") is not None and pins != state["skill_versions"]:
+        raise ValueError("recorded skill pins and manifest disagree; run validate")
+    view = policy_view(root, resolved, state, state.get("policy_version"), pins=pins)
+    for item in view["checks"].values():
+        item.pop("action")
+    return view
+
+
+def explain_policy(args):
+    requested = args.repo.expanduser().resolve()
+    if not requested.is_dir():
+        raise ValueError(f"project directory does not exist: {requested}")
+    found = git(requested, "rev-parse", "--show-toplevel", check=False)
+    root = Path(found.stdout.strip()).resolve() if found.returncode == 0 else requested
+    state, snapshot = read_state(root)
+    installed = recorded_policy(root, state, snapshot)
+    resolved = resolve_policy(root, args, state)
+    versions = read_versions(SOURCE / "ai/skills/source-code-versions.json")
+    if args.policy_version and args.policy_version != versions["policy_version"]:
+        raise ValueError(f"requested policy {args.policy_version}; this source ships {versions['policy_version']}")
+    desired, payloads = package(sorted(resolved["skills"]), resolved["agents"], resolved["template"],
+                                resolved["go_profile"], resolved["typescript_profile"])
+    go_rollout, ts_rollout = None, None
+    if resolved["go_profile"]:
+        go_rollout, legacy = go_adoption(root, state, args.go_rollout)
+    if resolved["typescript_profile"]:
+        ts_rollout, _ = typescript_configuration(root, args, desired, payloads)
+    installed_pins = (installed or {}).get("skill_versions", {})
+    pins = {name: versions["skills"][name] if name in resolved["skills"] else installed_pins.get(name)
+            for name in resolved["skills"] | recorded_skills(state)}
+    view = policy_view(root, resolved, state, versions["policy_version"], go_rollout, ts_rollout, payloads, pins)
+    selected = sorted(resolved["skills"])
+    retained = sorted(recorded_skills(state) - resolved["skills"])
+    origins = resolved["origins"]
+    for name in retained:
+        origins["skills"][name] = [{"source": "saved", "detail": "retained outside the selected update subset"}]
+    origins["skill_versions"] = {name: {"source": "source" if name in resolved["skills"] else "saved"} for name in pins}
+    origins["policy_version"] = ({"source": "cli", "key": "policy_version"} if "policy_version" in args.cli_values else
+                                  {"source": "toml", "path": str(args.config_path), "key": "policy_version"} if "policy_version" in args.config_applied else
+                                  {"source": "source", "detail": "installed command's version registry"})
+    for language in ("go", "typescript"):
+        name = language + "_rollout"
+        if name in args.cli_values:
+            source = {"source": "cli", "key": name}
+        elif name in args.config_applied:
+            source = {"source": "toml", "key": name, "path": str(args.config_path)}
+        elif state.get(name) is not None or (root / (".go-quality.json" if language == "go" else ".typescript-quality.json")).exists():
+            source = {"source": "saved", "detail": "recorded profile settings"}
+        else:
+            source = {"source": "default", "detail": "profile adoption rules"}
+        origins[f"checks.{language}.rollout"] = source
+    origins["checks.typescript.projects"] = (
+        {"source": "cli", "key": "typescript_project"} if "typescript_project" in args.cli_values else
+        {"source": "toml", "key": "typescript_project", "path": str(args.config_path)} if "typescript_project" in args.config_applied else
+        {"source": "saved"} if snapshot and ".typescript-quality.json" in state["files"] else {"source": "default"})
+    differences = []
+
+    def compare(wanted, actual, prefix=""):
+        for key, value in wanted.items():
+            if key == "action":
+                continue
+            field = prefix + key
+            previous = actual.get(key) if isinstance(actual, dict) else None
+            if isinstance(value, dict):
+                compare(value, previous, field + ".")
+            elif value != previous:
+                differences.append({"field": field, "desired": value, "installed": previous})
+
+    compare(view, installed)
+    warnings = ["Recorded installation is metadata, not an integrity or readiness check; use validate and project checks.",
+                "Inspection resolves policy; install conflicts and profile content are not validated. Use setup --dry-run before applying."]
+    if snapshot is not None and any(value is None for value in installed["skill_versions"].values()):
+        warnings.append("Some recorded skills have no version pins; upgrade is needed to version the legacy installation.")
+    if snapshot is None:
+        warnings.append("No source-code installation is recorded; no files or Git metadata were created.")
+    result = {"schema_version": 1, "repository": str(root), "configuration": str(args.config_path) if args.config_path else None,
+              "desired": view, "installed": installed, "selection": {"skills": selected, "retained_skills": retained},
+              "origins": origins, "differences": differences, "warnings": warnings}
+    if args.json:
+        print(json.dumps(result, indent=2, sort_keys=True))
+    else:
+        print(f"Source-code policy: {root}")
+        print(f"Configuration: {result['configuration'] or 'none (saved selections and defaults)'}")
+        print("Field | Desired | Recorded installation | Origin")
+        for name in ("stage", "kind", "mode", "policy_version", "agents", "pr_template", "detect_languages"):
+            value = (installed or {}).get(name)
+            print(f"{name} | {json.dumps(view[name])} | {json.dumps(value)} | {json.dumps(origins[name])}")
+        print("Skills selected for update: " + ", ".join(selected))
+        print("Skills retained: " + (", ".join(retained) or "none"))
+        for name in view["skills"]:
+            previous = (installed or {}).get("skill_versions", {}).get(name)
+            print(f"skill {name} | {json.dumps(view['skill_versions'][name])} | {json.dumps(previous)} | {json.dumps(origins['skills'][name])}")
+        for language, profile in view["checks"].items():
+            previous = (installed or {}).get("checks", {}).get(language)
+            print(f"{language} checks | {json.dumps(profile, sort_keys=True)} | {json.dumps(previous, sort_keys=True)} | {json.dumps(origins[f'checks.{language}.selected'])}")
+        for field in differences:
+            print(f"Difference {field['field']}: {json.dumps(field['installed'])} -> {json.dumps(field['desired'])}")
+        for warning in warnings:
+            print("Note: " + warning)
+    return 0
+
+
 def main():
     command = argparse.ArgumentParser(description="Manage source-code standards and repository setup.")
     subcommands = command.add_subparsers(dest="command", required=True)
     parser = subcommands.add_parser("setup", help="install or update repository guidance and checks", description=__doc__)
+    explain_parser = subcommands.add_parser("explain", help="show desired policy, recorded installation, and origins without writes")
+    add_install_arguments(explain_parser, inspection=True)
+    explain_parser.add_argument("--json", action="store_true", help="emit one versioned JSON object")
     upgrade_parser = subcommands.add_parser("upgrade", help="update an existing installation to this source's versions")
     validation_parser = subcommands.add_parser("validate", help="check skill best practices, version pins, and installed integrity")
     validation_parser.add_argument("--repo", type=Path, default=Path.cwd())
     validation_parser.add_argument("--config", type=Path, help="authored TOML configuration (relative to invocation directory)")
     validation_parser.add_argument("--skills-dir", type=Path, help="check a skill or skill tree without requiring an installation")
     validation_parser.add_argument("--strict", action="store_true", help="treat best-practice and customization warnings as failures")
+    subcommands.add_parser("skill", help="print the source-code management skill as Markdown for agent discovery")
     detection_parser = subcommands.add_parser("detect", help="inspect language evidence without installing guidance or checks")
     detection_parser.add_argument("--repo", type=Path, default=Path.cwd())
     detection_parser.add_argument("--json", action="store_true")
@@ -1151,8 +1358,16 @@ def main():
     upgrade_parser.add_argument("--strict", action="store_true", help="reject best-practice warnings in the upgrade source")
     args = command.parse_args()
     try:
+        if args.command == "skill":
+            skill_path = SOURCE / "ai/skills/source-code/SKILL.md"
+            if not skill_path.is_file():
+                raise ValueError(f"management skill is unavailable: {skill_path}; restore the source-code installation")
+            sys.stdout.buffer.write(skill_path.read_bytes())
+            command.exit(0)
         if args.command != "detect":
             load_configuration(args)
+        if args.command == "explain":
+            command.exit(explain_policy(args))
         if args.command == "validate":
             command.exit(validate_project(args))
         if args.command == "detect":
@@ -1174,14 +1389,15 @@ def main():
             prepare_upgrade(args)
         install(args)
     except (OSError, ValueError) as error:
-        suffix = "" if args.command in {"validate", "detect"} else "No existing conflicts were overwritten without explicit replacement. If an I/O error interrupted installation, inspect the reported paths before retrying.\n"
+        suffix = "" if args.command in {"validate", "detect", "skill", "explain"} else "No existing conflicts were overwritten without explicit replacement. If an I/O error interrupted installation, inspect the reported paths before retrying.\n"
         command.exit(1, f"source-code {args.command}: {error}\n{suffix}")
 
 
-def add_install_arguments(parser):
+def add_install_arguments(parser, inspection=False):
     parser.add_argument("--repo", type=Path, default=Path.cwd(), help="repository path (default: current directory)")
     parser.add_argument("--config", type=Path, help="authored TOML configuration (default: source-code.toml at repository root; explicit relative paths use invocation directory)")
-    parser.add_argument("--init", action="store_true", help="create a Git repository if the target is not one")
+    if not inspection:
+        parser.add_argument("--init", action="store_true", help="create a Git repository if the target is not one")
     parser.add_argument("--mode", choices=("tracked", "local", "shadow"), help="shareable files or local Git exclusions; shadow aliases local (default: previous mode, else tracked)")
     parser.add_argument("--skills", help="comma-separated skill names (default: saved selection, else core and PR writer): " + ", ".join(SKILLS))
     parser.add_argument("--go", action=argparse.BooleanOptionalAction, default=None,
@@ -1200,8 +1416,9 @@ def add_install_arguments(parser):
                         help="repository-relative leaf tsconfig (repeat for multiple projects)")
     parser.add_argument("--agents", choices=("codex", "both"), help="Codex skills only, or add Claude aliases (default: saved selection, else both)")
     parser.add_argument("--pr-template", choices=("github", "local", "none"), help="GitHub default, local drafting template, or omit (default follows mode)")
-    parser.add_argument("--conflict", choices=("fail", "skip", "replace"), default="fail", help="existing/edited file policy; replace saves backups, never replaces symlinks")
-    parser.add_argument("--dry-run", action="store_true", help="show the complete plan without writes")
+    if not inspection:
+        parser.add_argument("--conflict", choices=("fail", "skip", "replace"), default="fail", help="existing/edited file policy; replace saves backups, never replaces symlinks")
+        parser.add_argument("--dry-run", action="store_true", help="show the complete plan without writes")
     parser.add_argument("--kind", choices=KINDS, help="software usage kind (default: saved kind, else unspecified; never inferred)")
     parser.add_argument("--stage", choices=STAGES, help="lifecycle assurance level (default: previous stage, else beta/full checks)")
     parser.add_argument("--policy-version", help="require the policy version shipped by this installed source; no implicit version fetching")

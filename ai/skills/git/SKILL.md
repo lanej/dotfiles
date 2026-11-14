@@ -21,12 +21,7 @@ the failure modes on this machine that have actually cost time.
 
 ## Pull requests
 
-Follow [the shared PR guidance](../../../docs/pull-requests.md) when creating or
-updating a PR. Use `github-pr-writer` for GitHub titles and bodies, and
-`pull-request-writer` for other review platforms. Lead with the
-outcome and why, include screenshots when useful, and add context only when
-the diff and checks do not supply it. Do not reproduce automated test results.
-Use `--body-file` for multiline descriptions and verify the rendered result.
+Follow [the shared PR guidance](../../../docs/pull-requests.md) when creating or updating a PR. Use Octo's recorded writer for GitHub creation, a separate `github-pr-writer` for title/body revisions, and `pull-request-writer` for other review platforms. Lead with the outcome and why, include screenshots when useful, and add context only when the diff and checks do not supply it. Do not reproduce automated test results. Use `--body-file` for multiline updates and verify the rendered result.
 
 ## Branch naming
 

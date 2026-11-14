@@ -70,6 +70,18 @@ source-code setup --repo ~/src/app --mode tracked --pr-template local
 
 `--skills` accepts the names listed by `source-code setup --help`, comma-separated. The core includes Builder, architecture, data/interface planning, Git/PR workflow, testing, lifecycle, and shared comments. Language guidance covers Go, TypeScript, JavaScript, Python, and Rust; `gh-pr-stack`, `github-actions`, and `just` are available explicitly. These are curated portable packages, not an automatic copy of workstation skills. Language detection selects matching guidance; root Go modules retain their existing automatic check-profile behavior.
 
+## Policy inspection and agent discovery
+
+`source-code skill` prints the exact management `SKILL.md` as Markdown, including frontmatter, with no extra stdout text. It works outside Git, ignores project TOML, and exits nonzero with a diagnostic on stderr if the packaged skill is unavailable. It does not install skills into the target or select engineering policy.
+
+Use `source-code explain --repo PATH` for a human-readable desired-versus-recorded policy comparison, or add `--json` for one machine-readable object. It accepts the setup policy-selection options, including `--config`, `--kind`, `--stage`, `--skills`, and language flags, but not `--init`, `--conflict`, or `--dry-run`. It uses setup resolution and supports an existing directory before Git initialization. It does not initialize Git, modify project/Git files, provision dependencies, or run project commands.
+
+The JSON contract has `schema_version = 1`, `repository`, `configuration` (path or null), `desired`, `installed` (recorded metadata or null), `selection`, `origins`, `differences`, and `warnings`. Desired/installed views include stage, optional kind, mode, skills and release pins, agent/template choices, detection choice, and check profiles. `selection` separates packages selected for update from retained packages. Origins distinguish CLI, applied TOML, saved state, defaults, detection, dependencies, and source release metadata; skills have individual origins. Differences identify dotted field names with desired and recorded values. Unversioned legacy skills remain visible with null pins.
+
+For each check profile, `enabled` means it would be present after setup, `selected` means this invocation selects it for installation/update, and `action` is `install`, `update`, `retain`, or `absent`. Thus `--no-go` on an existing Go installation reports a retained profile rather than implying removal. JSON output contains no progress text; failures report to stderr and exit nonzero. Invalid TOML or malformed recorded metadata is an error rather than an empty successful result.
+
+Inspection reports choices and recorded installation, not integrity or readiness. It does not parse or merge legacy Go YAML, validate install conflicts, or execute the selected gates. Follow inspection with `setup --dry-run` for installation planning and `validate` plus the project's checks for their respective evidence. Upgrade-specific compatibility checks remain in `upgrade --dry-run`.
+
 ## TOML configuration
 
 Author `source-code.toml` at the target repository root to make desired policy reviewable. The file is optional: installations without it retain existing CLI and saved-state behavior. Setup, validation, and upgrades discover the same file. Generated `.source-code.json` records installed policy; do not replace it with authored configuration.
@@ -110,7 +122,7 @@ Shadow mode adds a local exclusion for the selected authored file only when it i
 
 ## Workstation installation and language detection
 
-The user-level `source-code` skill explains installation, detection, validation, and upgrades without loading project engineering policy. Coding skills remain project-only.
+The user-level `source-code` skill explains installation, detection, validation, and upgrades without loading project engineering policy. Agents can retrieve the exact skill with `source-code skill`, including outside a Git repository; the command prints only Markdown and never reads project configuration. Coding skills remain project-only.
 
 The `workstation` set selects `tools.source-code`, whose setup target links `source-code` and the `repo-bootstrap` compatibility command. Basic shell/terminal setup does not install those commands. Select `[tools] source-code = true` independently or use `false` to opt out. This installs commands only; project policies are still selected explicitly.
 
