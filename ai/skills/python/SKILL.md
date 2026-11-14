@@ -73,3 +73,5 @@ actually reads `pg8000.dbapi.paramstyle` at call time. Getting this wrong produc
 substitution failures with no exception pointing at the cause. Set `pg8000.dbapi.paramstyle`, not
 `pg8000.paramstyle`. A unit test built against a mocked cursor cannot catch this — verify with a
 real (or at least real-shaped) `pg8000` connection. (detail: memory "reference_pg8000_paramstyle_aliasing")
+
+Read [worktree runtime lessons](references/worktree-lessons.md) when running verification in a fresh or relocated checkout.

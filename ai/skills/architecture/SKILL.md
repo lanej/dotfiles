@@ -26,3 +26,5 @@ For findings, identify the affected behavior, requirement ID, and supporting
 evidence. Record material deviations using the standard's exception format.
 Keep the response focused on the requested design decision or review; do not
 begin implementation or require a separate architecture report by default.
+
+Read [design lessons](references/design-lessons.md) when choosing a new layer, extending an existing idiom, or defining a classification threshold.

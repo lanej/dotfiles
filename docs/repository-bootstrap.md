@@ -86,7 +86,7 @@ Detection chooses language skills and records evidence in the policy's `detectio
 
 ## Lifecycle stages
 
-Source-code skills are project-only: they are absent from the default user-level Claude, Codex, and Pi catalogs. `ai/skills/project-only.json` defines that boundary. Install them explicitly, then reload the client's skill catalog if necessary. Normal workstation setup retires the managed global Builder rule and guidance, preserves personal skills and aliases, and keeps explicit legacy package references readable.
+Source-code skills are project-only: they are absent from the default user-level Claude, Codex, and Pi catalogs. `ai/skills/project-only.json` defines that boundary, including Git, GitHub Actions, PR stacks, and PR writing. Coding lessons formerly bundled into user-level `operating-lessons` now ship with the relevant project Git, testing, architecture, Python, and JavaScript skills; general agent coordination and tool/account verification remain user-level. Install them explicitly, then reload the client's skill catalog if necessary. Normal workstation setup retires the managed global Builder rule and guidance, preserves personal skills and aliases, and keeps explicit legacy package references readable.
 
 ```sh
 source-code setup --repo ~/src/experiment --go --stage research --mode shadow --pr-template none

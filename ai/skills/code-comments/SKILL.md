@@ -21,3 +21,5 @@ When purpose or searchability helps, use lowercase `type(scope): explanation` in
 For reviews, identify missing, misleading, or redundant information, its effect on the reader, and a concrete improvement. A missing tag alone is not a defect. Report behavior problems outside the requested scope.
 
 Read [the full specification](references/standard.md) only when changing the convention, resolving a detail not covered here, or needing extended examples or editor-compatibility guidance. It remains the canonical standard; routine edits do not require loading it.
+
+For TOML source configuration, put comments on their own line above the relevant value; preserve repository-specific conventions.

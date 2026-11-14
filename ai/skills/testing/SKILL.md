@@ -19,3 +19,5 @@ TDD is optional unless the project requires it. Protect meaningful retained beha
 Use independent review for complex interactions, state transitions, security-sensitive logic, or material uncertainty at every stage. Simple mechanically verifiable changes need no review dispatch. Assess hosted CI separately from local checks. Give reviewers the changed capability, relevant constraints, and actionable findings; have material fixes reviewed again. Reviewers must not recursively dispatch reviews.
 
 During detector sensitivity checks, modify only task-owned inputs and restore only the known mutation; do not use Git checkout/restore or leave the target directory. Do not use a shared stash for baseline checks. Read the project's Git verification reference when assigning evidence tiers or recording the detector that caught a fault.
+
+Read [software verification lessons](references/verification-lessons.md) for detector sensitivity checks, delegated implementation evidence, integration wiring, or browser verification after a rebuild.

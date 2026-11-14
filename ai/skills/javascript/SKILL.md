@@ -242,3 +242,5 @@ Astro dev server does **not** serve `public/index.html` at `/` — the router in
 Fix for dev: create `src/pages/index.astro` with the same content. In production, `public/index.html` overwrites it.
 
 Other `public/` filenames (e.g., `/principles.html`, `/walkthrough.html`) serve correctly in dev — only the root `/` conflicts.
+
+Read [worktree runtime lessons](references/worktree-lessons.md) when running verification in a fresh or relocated checkout.
