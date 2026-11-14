@@ -388,7 +388,7 @@ elif name == "make" and args[-1:] == ["zellij-helpers"]:
     assert shutil.which("cargo"), "native helpers require Rust"
     record("zellij helpers")
 elif name == "make":
-    assert {"configure", "atuin-sync", "agent-status-broker", "sql-formatters", "zellij-status", "zellij-config"}.intersection(args), args
+    assert {"configure", "atuin-sync", "agent-status-broker", "sql-formatters", "zellij-status", "zellij-config", "zellij-copy-hop"}.intersection(args), args
     for tool in ("node", "python3", "uv", "codex", "claude", "btop", "zellij"):
         value = subprocess.check_output([tool, "--version"], text=True).strip()
         expected = {

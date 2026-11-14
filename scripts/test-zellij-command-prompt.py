@@ -653,16 +653,15 @@ def exercise_session_keys(first, second, home, clients):
     assert old_cwd == str(focused)
     original_panes = {p['id'] for p in first.terminals()}
 
-    def create(client, bystander, label):
-        # Native ordinary attachments need three seconds to establish their
-        # nesting identity before a key may switch them to another session.
-        client.drain(3.2)
+    def create(client, bystander, label, *, ordinary=True):
+        if ordinary:
+            client.settle_ordinary_navigation()
         before = sessions(client)
         # Keep the other client active around the asynchronous private dispatch.
         bystander.send(b'\x15')
         os.write(client.fd, b'\x06C')
         bystander.send(b'\x15')
-        created = client.until('Ctrl-f C immediately creates an unnamed session',
+        created = client.until('Ctrl-f C creates an unnamed session',
                                lambda: sessions(client) - before)
         assert len(created) == 1, created
         name = created.pop()
@@ -756,8 +755,9 @@ def exercise_session_keys(first, second, home, clients):
     popup.name = 'pop-up'
     grant_bar(popup)
     popup.prefix(b'j')
-    _, popup_pid, _ = shell_probe(popup, 'popup-shell')
-    popup_name, regular_pid, _ = create(popup, second, 'created-from-popup')
+    actual, popup_pid, _ = shell_probe(popup, 'popup-shell')
+    assert actual == 'pop-up', 'Popup keys reached the containing shell'
+    popup_name, regular_pid, _ = create(popup, second, 'created-from-popup', ordinary=False)
     assert client_count('pop-up') == 0
     os.kill(popup_pid, 0)
     popup.prefix(b'P')
@@ -796,8 +796,8 @@ def main():
                'XDG_STATE_HOME': str(work / 'state'), 'XDG_RUNTIME_DIR': str(runtime),
                'ZELLIJ_SOCKET_DIR': str(runtime), 'TMPDIR': str(temporary)}
         workflow.preserve_rust_homes(env)
-        for key in ('ZELLIJ', 'ZELLIJ_SESSION_NAME', 'ZELLIJ_PANE_ID', 'ZELLIJ_CONFIG_DIR',
-                    'ZELLIJ_CONFIG_FILE', 'ZELLIJ_NESTED_ATTACH', 'SSH_CONNECTION', 'SSH_TTY',
+        for key in ('ZELLIJ', 'ZELLIJ_SESSION_NAME', 'ZELLIJ_PANE_ID', 'ZELLIJ_NESTED_ATTACH', 'ZELLIJ_CONFIG_DIR',
+                    'ZELLIJ_CONFIG_FILE', 'SSH_CONNECTION', 'SSH_TTY',
                     'TMUX', 'TMUX_PANE', 'ENV', 'BASH_ENV'):
             env.pop(key, None)
         build_cache = os.environ.get('ZELLIJ_TEST_BUILD_CACHE')

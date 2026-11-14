@@ -74,8 +74,8 @@ def main():
                "ZELLIJ_PEER_SCAN_INTERVAL_MS": "50",
                "PATH": str(home / ".local/bin") + os.pathsep + os.environ["PATH"]}
         workflow.preserve_rust_homes(env)
-        for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
-                    "ZELLIJ_CONFIG_FILE", "ZELLIJ_NESTED_ATTACH", "SSH_CONNECTION", "SSH_TTY",
+        for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_NESTED_ATTACH", "ZELLIJ_CONFIG_DIR",
+                    "ZELLIJ_CONFIG_FILE", "SSH_CONNECTION", "SSH_TTY",
                     "TMUX", "TMUX_PANE", "ENV", "BASH_ENV"):
             env.pop(key, None)
         subprocess.run(["make", "--no-print-directory", "zellij-status", "zellij"], cwd=ROOT,
@@ -217,9 +217,6 @@ def main():
             clients.append(other)
             other.until("second shell is ready", lambda:
                         PROMPT in other.output and len(other.terminals()) == 1)
-            # Cross-session navigation requires the native three-second
-            # attachment discovery period to establish an ordinary client.
-            other.drain(3.2)
             second_pane = other.terminals()[0]["id"]
             other.remember_sole_client()
             second_working_tab = other.focused_tab()
@@ -245,6 +242,7 @@ def main():
             other.until("attention key completes without leaving the current session", lambda:
                         "PREFIX" not in top_line(other)
                         and bool(other.action("list-clients", session=second).strip().splitlines()[1:]))
+            other.settle_ordinary_navigation()
             other.action("go-to-next-attention")
             other.until("native triage enters the detached session", lambda:
                         any(f"terminal_{first_pane}" in row for row in

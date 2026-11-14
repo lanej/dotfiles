@@ -426,7 +426,7 @@ claude-bedrock() {
 	echo "🟠 Claude Code → AWS Bedrock (long-lived key, no SSO)"
 
 	AWS_REGION="${AWS_REGION:-us-west-2}" \
-		claude --settings '{"env":{"CLAUDE_CODE_USE_BEDROCK":"1","CLAUDE_CODE_USE_VERTEX":"","ANTHROPIC_VERTEX_PROJECT_ID":"","ANTHROPIC_DEFAULT_SONNET_MODEL":"us.anthropic.claude-sonnet-5","ANTHROPIC_DEFAULT_OPUS_MODEL":"us.anthropic.claude-opus-5"}}' "$@"
+		claude --settings '{"env":{"CLAUDE_CODE_USE_BEDROCK":"1","CLAUDE_CODE_USE_VERTEX":"","ANTHROPIC_VERTEX_PROJECT_ID":""}}' "$@"
 }
 cbd() {
 	if [ "$#" -gt 0 ]; then

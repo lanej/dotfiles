@@ -1,0 +1,237 @@
+#!/usr/bin/env bash
+# Print Amazon Bedrock provider/model x region availability matrices for the
+# current credentials. Bedrock has two independent serving surfaces, each with
+# its own model list, so each gets its own matrix:
+#   runtime  bedrock-runtime (InvokeModel/Converse; e.g. Claude Code), from
+#            ListFoundationModels plus system-defined ListInferenceProfiles
+#   mantle   bedrock-mantle /v1/models (OpenAI/Anthropic-compatible APIs;
+#            e.g. Codex)
+#
+# Usage: bedrock-model-matrix [-p PROFILE] [-r REGIONS] [-s runtime|mantle|both]
+#                             [-f matrix|tsv|json] [-m REGEX]
+#   -p  AWS CLI profile to sign requests with (SigV4) instead of the API key
+#   -r  comma-separated regions (default: all commercial Bedrock regions)
+#   -s  matrix surface(s) to print (default: both); tsv/json carry both
+#   -f  output format (default: matrix)
+#   -m  extended regex filter on the model id, e.g. 'sol|sonnet-5'
+#
+# Runtime cell: od = in-region on-demand; us/global/eu/... = system inference
+#   profiles callable from that region; - = in catalog but not invocable
+# Mantle cell:  yes = served; listed = listed but status unavailable
+# Either:       . = not listed for that region
+#
+# A listing is not an entitlement: IAM, model access, and account data-retention
+# settings can still reject a call (OpenAI models reject retention mode "none").
+#
+# Dated catalog IDs (anthropic.claude-haiku-4-5-20251001-v1) and undated Mantle
+# IDs (anthropic.claude-haiku-4-5) are not merged; they appear as separate rows.
+#
+# Auth: -p PROFILE uses that profile's credentials (log in first, e.g.
+# aws sso login --profile PROFILE); otherwise AWS_BEARER_TOKEN_BEDROCK, sourced
+# from ~/.config/bedrock/env if unset. The two may belong to different accounts.
+# Regions that deny or fail are reported on stderr and omitted from the output.
+
+set -euo pipefail
+
+all_regions="us-east-1 us-east-2 us-west-1 us-west-2 ca-central-1 ca-west-1 sa-east-1 mx-central-1 eu-west-1 eu-west-2 eu-west-3 eu-central-1 eu-central-2 eu-north-1 eu-south-1 eu-south-2 ap-northeast-1 ap-northeast-2 ap-northeast-3 ap-south-1 ap-south-2 ap-southeast-1 ap-southeast-2 ap-southeast-3 ap-southeast-4 ap-southeast-5 ap-southeast-7 ap-east-2 me-central-1 me-south-1 il-central-1 af-south-1"
+regions="$all_regions"
+format=matrix
+filter=""
+profile=""
+surface=both
+
+usage() { sed -n '2,33p' "$0" | sed 's/^# \{0,1\}//' >&2; exit "${1:-2}"; }
+
+while getopts "p:r:s:f:m:h" opt; do
+	case "$opt" in
+	p) profile="$OPTARG" ;;
+	r) regions="${OPTARG//,/ }" ;;
+	s) surface="$OPTARG" ;;
+	f) format="$OPTARG" ;;
+	m) filter="$OPTARG" ;;
+	h) usage 0 ;;
+	*) usage ;;
+	esac
+done
+
+case "$format" in matrix | tsv | json) ;; *) usage ;; esac
+case "$surface" in runtime | mantle | both) ;; *) usage ;; esac
+
+for cmd in curl jq column; do
+	command -v "$cmd" >/dev/null || {
+		echo "bedrock-model-matrix: $cmd not found" >&2
+		exit 1
+	}
+done
+
+if [ -n "$profile" ]; then
+	command -v aws >/dev/null || {
+		echo "bedrock-model-matrix: aws not found (needed for -p)" >&2
+		exit 1
+	}
+	if ! creds=$(aws configure export-credentials --profile "$profile" --format env 2>&1); then
+		echo "bedrock-model-matrix: $profile: ${creds##*$'\n'}" >&2
+		exit 1
+	fi
+	eval "$creds"
+	unset creds
+else
+	if [ -z "${AWS_BEARER_TOKEN_BEDROCK:-}" ] && [ -f ~/.config/bedrock/env ]; then
+		# shellcheck source=/dev/null
+		. ~/.config/bedrock/env
+	fi
+	if [ -z "${AWS_BEARER_TOKEN_BEDROCK:-}" ]; then
+		echo "bedrock-model-matrix: AWS_BEARER_TOKEN_BEDROCK not set (or pass -p PROFILE)" >&2
+		exit 1
+	fi
+fi
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+
+# auth_config REGION SERVICE -> curl config lines on stdout, so credentials
+# stay out of the process argument list
+auth_config() {
+	if [ -n "$profile" ]; then
+		printf 'aws-sigv4 = "aws:amz:%s:%s"\n' "$1" "$2"
+		printf 'user = "%s:%s"\n' "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY"
+		[ -n "${AWS_SESSION_TOKEN:-}" ] && printf 'header = "x-amz-security-token: %s"\n' "$AWS_SESSION_TOKEN"
+	else
+		printf 'header = "Authorization: Bearer %s"\n' "$AWS_BEARER_TOKEN_BEDROCK"
+	fi
+	return 0
+}
+
+# get URL OUTFILE REGION SERVICE -> prints HTTP status (000 on transport failure)
+get() {
+	auth_config "$3" "$4" | curl -sS --connect-timeout 5 --max-time 30 -o "$2" -w '%{http_code}' \
+		-K - "$1" 2>/dev/null || true
+}
+
+# fetch_region REGION -> writes $work/REGION.{catalog,profiles,mantle}.jsonl and REGION.status
+fetch_region() {
+	local r=$1 d="$work/$1" code tok q
+	mkdir -p "$d"
+
+	code=$(get "https://bedrock.$r.amazonaws.com/foundation-models" "$d/fm.json" "$r" bedrock)
+	if [ "$code" != 200 ]; then
+		echo "$code $(jq -r '.Message // .message // empty' "$d/fm.json" 2>/dev/null | tr '\n' ' ')" >"$d/status"
+		return 0
+	fi
+	jq -c --arg r "$r" '.modelSummaries[] | {region: $r, model: (.modelId | sub(":[0-9]+$"; "")),
+		catalog: .inferenceTypesSupported, lifecycle: .modelLifecycle.status}' "$d/fm.json" >"$d/catalog.jsonl"
+
+	: >"$d/profiles.jsonl"
+	tok=""
+	while :; do
+		q="maxResults=1000"
+		[ -n "$tok" ] && q="$q&nextToken=$(jq -rn --arg t "$tok" '$t | @uri')"
+		code=$(get "https://bedrock.$r.amazonaws.com/inference-profiles?$q" "$d/ip.json" "$r" bedrock)
+		[ "$code" = 200 ] || break
+		jq -c --arg r "$r" '.inferenceProfileSummaries[] | select(.type == "SYSTEM_DEFINED" and .status == "ACTIVE")
+			| .inferenceProfileId | capture("^(?<p>[a-z-]+)\\.(?<m>.+)$")
+			| {region: $r, model: (.m | sub(":[0-9]+$"; "")), profile: .p}' "$d/ip.json" >>"$d/profiles.jsonl"
+		tok=$(jq -r '.nextToken // empty' "$d/ip.json")
+		[ -n "$tok" ] || break
+	done
+
+	code=$(get "https://bedrock-mantle.$r.api.aws/v1/models" "$d/mantle.json" "$r" bedrock-mantle)
+	if [ "$code" = 200 ]; then
+		jq -c --arg r "$r" '.data[] | {region: $r, model: .id, mantle: .status,
+			retention: .data_retention.allowed_modes}' "$d/mantle.json" >"$d/mantle.jsonl"
+	fi
+	echo "ok mantle=$code" >"$d/status"
+}
+
+for r in $regions; do fetch_region "$r" & done
+wait
+
+ok_regions=""
+failures=""
+for r in $regions; do
+	read -r st rest <"$work/$r/status"
+	if [ "$st" = ok ]; then
+		ok_regions="$ok_regions $r"
+		case "$rest" in mantle=200) ;; *) failures="$failures$r	mantle unavailable ($rest)"$'\n' ;; esac
+		continue
+	fi
+	case "$st:$rest" in
+	000:*) why="unreachable" ;;
+	*"explicit deny"*) why="explicit IAM deny (policy ${rest##*policy/})" ;;
+	*"no identity-based policy allows"*) why="not allowed by IAM" ;;
+	*"Authentication failed"*) why="API key rejected (region not enabled for this key/account?)" ;;
+	*) why="HTTP $st: ${rest:0:160}" ;;
+	esac
+	failures="$failures$r	$why"$'\n'
+done
+
+# One stderr line per distinct failure reason, listing its regions.
+if [ -n "$failures" ]; then
+	printf '%s' "$failures" | awk -F'\t' '
+		!($2 in seen) { seen[$2] = ++n; reason[n] = $2 }
+		{ rs[seen[$2]] = rs[seen[$2]] (rs[seen[$2]] ? " " : "") $1 }
+		END { for (i = 1; i <= n; i++) printf "bedrock-model-matrix: %s: %s\n", reason[i], rs[i] }' >&2
+fi
+
+if [ -z "$ok_regions" ]; then
+	echo "bedrock-model-matrix: no region returned data" >&2
+	exit 1
+fi
+
+# shellcheck disable=SC2086 # word-split region list into per-file globs
+rows=$(for r in $ok_regions; do cat "$work/$r"/*.jsonl 2>/dev/null; done |
+	jq -sc --arg f "$filter" '
+		map(select($f == "" or (.model | test($f))))
+		| group_by([.region, .model])
+		| map({
+			region: .[0].region,
+			provider: (.[0].model | split(".")[0]),
+			model: .[0].model,
+			catalog: (map(.catalog // empty) | add // []),
+			lifecycle: (map(.lifecycle // empty) | first),
+			profiles: (map(.profile // empty) | unique),
+			mantle: (map(.mantle // empty) | first),
+			retention: (map(.retention // empty) | first)
+		})
+		| sort_by(.provider, .model)')
+
+# matrix SURFACE -> one model x region table for that serving surface
+matrix() {
+	# shellcheck disable=SC2086 # region list is space-separated by construction
+	jq -r --arg s "$1" --args '
+		def listed: if $s == "mantle" then .mantle != null
+			else .lifecycle != null or (.profiles | length) > 0 end;
+		def cell: if (listed | not) then "."
+			elif $s == "mantle" then (if .mantle == "available" then "yes" else "listed" end)
+			else ([if (.catalog | index("ON_DEMAND")) then "od" else empty end] + .profiles)
+				| if length > 0 then join("+") else "-" end
+			end;
+		$ARGS.positional as $rs
+		| (["provider", "model"] + $rs | @tsv),
+		  (map(select(listed)) | group_by(.model) | sort_by(.[0].provider, .[0].model)[]
+			| (map({key: .region, value: cell}) | from_entries) as $c
+			| [.[0].provider, .[0].model] + [$rs[] | $c[.] // "."] | @tsv)
+	' $ok_regions <<<"$rows" | column -t -s "$(printf '\t')"
+}
+
+case "$format" in
+json)
+	jq . <<<"$rows"
+	;;
+tsv)
+	jq -r '(["region", "provider", "model", "catalog", "lifecycle", "profiles", "mantle", "retention_modes"] | @tsv),
+		(.[] | [.region, .provider, .model, (.catalog | join(",")), (.lifecycle // ""),
+			(.profiles | join(",")), (.mantle // ""), ((.retention // []) | sort | join(","))] | @tsv)' <<<"$rows"
+	;;
+matrix)
+	if [ "$surface" = both ]; then
+		echo "# bedrock-runtime"
+		matrix runtime
+		echo
+		echo "# bedrock-mantle"
+		matrix mantle
+	else
+		matrix "$surface"
+	fi
+	;;
+esac

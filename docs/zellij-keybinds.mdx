@@ -106,9 +106,9 @@ To tile the shared popup's outer pane, first press **Ctrl-f u** to focus the con
 
 | Key after Ctrl-f | Action |
 | --- | --- |
-| `e` | [Open scrollback in Neovim for selection](zellij/copy-paste.mdx) |
+| `e` | [Enter native keyboard copy mode](zellij/copy-paste.mdx) |
 | `p` | Paste the session's last Neovim yank |
-| `[` | Enter Scroll mode |
+| `[` | Enter native keyboard copy mode |
 | `/` | Enter a scrollback search query |
 | `a` | [Jump to the highest-ranked local activity tab](zellij/attention.mdx) |
 | `Ctrl-a` | [Cycle through other local tabs needing you, otherwise activity/bell](zellij/attention.mdx) |
@@ -123,7 +123,7 @@ To tile the shared popup's outer pane, first press **Ctrl-f u** to focus the con
 
 ## Keys inside modes
 
-Enter a mode once, then use bare keys. In Scroll and Search modes, **Ctrl-f** pages down rather than starting another prefix command.
+Enter a mode once, then use bare keys. In Copy, Scroll, and Search modes, **Ctrl-f** pages down rather than starting another prefix command.
 
 ### Resize mode: Ctrl-f Ctrl-r
 
@@ -137,23 +137,25 @@ Enter a mode once, then use bare keys. In Scroll and Search modes, **Ctrl-f** pa
 
 For example, **Ctrl-f Ctrl-r**, **h**, **h**, **Enter** grows left twice, then exits. `=` inside this mode means increase size, not equalize.
 
-### Scroll mode: Ctrl-f [
+### Copy mode: Ctrl-f [ or Ctrl-f e
 
 | Key | Action |
 | --- | --- |
-| `j` / `Down`, `k` / `Up` | Scroll down / up |
+| `h/j/k/l` or arrows | Move the copy cursor |
+| `w/b/e`, `W/B/E` | Move by word or whitespace-delimited word |
+| `0`, `^`, `$` | Start of row, first nonblank character, last character |
+| `gg`, `G`, `42G` | First row, last row, or a numbered retained display row |
+| `10j`, `3w` | Repeat a motion |
 | `Ctrl-f` / `PageDown`, `Ctrl-b` / `PageUp` | Page down / up |
-| `d` / `Ctrl-d`, `u` / `Ctrl-u` | Half-page down / up |
-| `g` / `Home`, `G` / `End` | Top / bottom |
-| `[` / `]` | Previous / next shell prompt |
-| `/` / `s` | Enter a search query |
-| `m` | Select the command at the scroll position |
-| `y` | Copy an existing selection and return |
-| `c` | Copy the last command output and return |
-| `e` | Open scrollback in Neovim |
-| `Esc` / `Enter` / `q` / `Ctrl-c` | Return to the application |
+| `Ctrl-d`, `Ctrl-u` | Half-page down / up |
+| `v` / `Space`, `V` | Toggle character selection or whole logical-line selection |
+| `y` | Copy the selection to the system clipboard and return |
+| `Esc` | Cancel the selection, then leave on a second press |
+| `Enter` / `q` / `Ctrl-c` | Return to the application |
 
-Prompt jumps and command copying depend on support from the running application. `y` does not begin arbitrary visual selection; use **e** to select text in Neovim.
+The pane frame shows the copy cursor's row and whether character or line selection is active. Copied text rejoins soft-wrapped rows. **Ctrl-h/j/k/l** moves to another pane and leaves copy mode.
+
+Native Scroll mode remains available when leaving search entry. There, **v** or **e** enters Copy mode, **[** / **]** jumps between shell prompts, **m** selects a marked command, and **c** copies the last command output. Prompt actions depend on shell integration.
 
 ### Search entry and Search mode: Ctrl-f /
 
@@ -169,7 +171,7 @@ Type a query and press **Enter**. **Esc** or **Ctrl-c** while entering the query
 | `c` | Toggle case sensitivity |
 | `w` | Toggle wrapping |
 | `o` | Toggle whole-word matching |
-| `e` | Open scrollback in Neovim |
+| `e` | Enter native keyboard copy mode |
 | `Esc` / `Enter` / `q` / `Ctrl-c` | Return to the application |
 
 `c` changes search options here; it does not copy command output.
@@ -207,7 +209,7 @@ If your installed keys differ, you may be using the older configuration. Modern-
 | Client chooser: `D` | Available | Unbound |
 | Session paste: `p` | Available | Unbound |
 | Gather panes: `M` | Available | Unbound |
-| Scrollback editor: `e` | Keeps terminal colors | Plain text |
+| Scrollback selection: `e` | Native keyboard copy mode | Opens a plain-text editor |
 | Mouse interaction | Disabled | Enabled |
 
 The legacy configuration still assigns `m` and `W`, but their custom pickers require a modern installation. A key appearing in a configuration is not a guarantee that its feature is available on an older runtime.

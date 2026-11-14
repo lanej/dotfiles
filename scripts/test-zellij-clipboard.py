@@ -96,7 +96,7 @@ os.execv({str(installed)!r}, [{str(installed)!r}, *sys.argv[1:]])
             terminal.until("shell ready", lambda: PROMPT in terminal.output and len(terminal.terminals()) == 1)
             terminal.send((shlex.join(["cat", str(source)]) + "\r").encode())
             terminal.until("source text reaches scrollback", lambda: "select β two" in terminal.action("dump-screen"))
-            terminal.prefix(b"e")
+            terminal.action("edit-scrollback", "--ansi")
             terminal.until("installed scrollback editor", lambda: Path(env["CLIPBOARD_NVIM_SOCKET"]).exists())
 
             def buffer():

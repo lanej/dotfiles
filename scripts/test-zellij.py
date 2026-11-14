@@ -37,18 +37,17 @@ class Terminal:
     def __init__(self, binary, env, name, command=None, *, install_navigation=True, columns=120):
         self.binary, self.env, self.name = binary, env, name
         self.output = bytearray()
-        command_prompt = Path(env["HOME"]) / ".local/share/zellij/plugins/command-prompt.wasm"
         config = Path(env["HOME"]) / ".config/zellij/config.kdl"
-        if config.exists() and not command_prompt.exists():
-            # Other feature detectors need neither this optional plugin's build
-            # nor its consent dialog. Keep the real binding, but omit its startup
-            # node in their private config. Its own detector installs and tests it.
-            contents = config.read_text()
-            without_prompt = re.sub(r"(?m)^\s*command-prompt\s*$", "", contents)
-            if without_prompt != contents:
-                if config.is_symlink():
-                    config.unlink()
-                config.write_text(without_prompt)
+        for plugin in ("command-prompt", "copy-hop"):
+            installed = Path(env["HOME"]) / f".local/share/zellij/plugins/{plugin}.wasm"
+            if config.exists() and not installed.exists():
+                # rationale(tests): Each detector loads only the optional plugin it exercises.
+                contents = config.read_text()
+                without_plugin = re.sub(rf"(?m)^\s*{re.escape(plugin)}\s*$", "", contents)
+                if without_plugin != contents:
+                    if config.is_symlink():
+                        config.unlink()
+                    config.write_text(without_plugin)
         if install_navigation:
             navigation = Path.home() / ".local/share/zellij/plugins/pane-navigation.wasm"
             assert navigation.exists(), "Install pane navigation with scripts/install-zellij-navigation.py"
@@ -82,6 +81,10 @@ class Terminal:
     def send(self, value):
         os.write(self.fd, value)
         self.drain()
+
+    def settle_ordinary_navigation(self):
+        """Allow the three-second discovery grace for a known ordinary attachment."""
+        self.drain(3.1)
 
     def prefix(self, key):
         self.send(b"\x06" + key)
@@ -372,6 +375,9 @@ def check_move_picker(terminal, home, clients):
     for pane in terminal.terminals():
         if pane["tab_id"] == source_tab and pane["id"] != source_id:
             terminal.action("close-pane", "--pane-id", f"terminal_{pane['id']}")
+    terminal.until("only the source working pane remains and has focus", lambda:
+                   [p["id"] for p in terminal.terminals() if p["tab_id"] == source_tab] == [source_id]
+                   and source_pane()["is_focused"])
     open_picker()
     terminal.send(b"\r")
     terminal.until("single working pane moves to New Tab", lambda:
@@ -821,7 +827,7 @@ def main():
                "PATH": str(home / ".local/bin") + os.pathsep + os.environ["PATH"]}
         preserve_rust_homes(env)
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
-                    "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "FZF_DEFAULT_OPTS",
+                    "ZELLIJ_CONFIG_FILE", "ZELLIJ_NESTED_ATTACH", "TMUX", "TMUX_PANE", "FZF_DEFAULT_OPTS",
                     "FZF_DEFAULT_OPTS_FILE", "FZF_DEFAULT_COMMAND", "ENV", "BASH_ENV"):
             env.pop(key, None)
         subprocess.run(["make", "--no-print-directory", "zellij-status", "zellij"], cwd=ROOT, env=env,

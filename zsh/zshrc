@@ -60,6 +60,12 @@ bindkey -M vicmd v edit-command-line
 
 [[ -r "${HOME}/.profile" ]] && source "${HOME}/.profile"
 
+# SSH and multiplexer shells can lose the color settings our terminals support.
+if [[ -o interactive && -t 1 && "${TERM:-dumb}" != dumb ]]; then
+	unset NO_COLOR FORCE_COLOR
+	export COLORTERM=truecolor
+fi
+
 # Load integrations after .profile has added installed tools to PATH.
 [[ -r "${HOME}/.files/zsh/lazy-load.zsh" ]] && source "${HOME}/.files/zsh/lazy-load.zsh"
 
