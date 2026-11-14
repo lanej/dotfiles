@@ -56,6 +56,7 @@ def configuration(session_keys=False):
         'default_layout "test"', 'show_startup_tips false',
         'show_release_notes false', 'session_serialization false',
         'pane_frames true', 'mouse_mode false',
+        re.search(r'^nested_session_handling.*$', source, re.M).group(),
         'plugins { ' + alias + '\n}', 'load_plugins { ' + load + '\n}',
         'keybinds clear-defaults=true {', block(bindings, r'\blocked\s*\{'),
         'tmux {', *keys, 'bind "Esc" { SwitchToMode "Locked"; }', '}',
@@ -653,6 +654,9 @@ def exercise_session_keys(first, second, home, clients):
     original_panes = {p['id'] for p in first.terminals()}
 
     def create(client, bystander, label):
+        # Native ordinary attachments need three seconds to establish their
+        # nesting identity before a key may switch them to another session.
+        client.drain(3.2)
         before = sessions(client)
         # Keep the other client active around the asynchronous private dispatch.
         bystander.send(b'\x15')
@@ -719,8 +723,8 @@ def exercise_session_keys(first, second, home, clients):
     for invalid in ('', 'bad/name', original):
         first.prefix(b'w')
         first.send(invalid.encode() + b'\r')
-        first.until('invalid/colliding name displays native error', lambda: 'Could not rename session' in text(first))
-        assert 'RENAME SESSION:' not in text(first)
+        first.until('invalid/colliding name displays native error outside rename mode', lambda:
+                    'Could not rename session' in text(first) and 'RENAME SESSION:' not in text(first))
         assert sessions(first) == (before - {created}) | {renamed}, 'Invalid/colliding rename changed names'
         # Dismiss the native rejection notice before the next rename.
         first.send(b'\x1b')
@@ -729,16 +733,27 @@ def exercise_session_keys(first, second, home, clients):
     assert client_count(original) == 1 and client_count(renamed) == 2
     os.kill(old_pid, 0)
 
-    # Start the actual popup launcher on its own PTY to inspect its client
-    # directly, without adding a second nested terminal decoder. Its layout
-    # overlay is exactly the one used when Ctrl-f P launches it in a float.
-    popup_env = {**first.env, 'ZELLIJ_SESSION_NAME': renamed}
-    popup = Terminal(first.binary, popup_env, 'pop-up',
-                     [str(ROOT / 'bin/zellij-popup')], install_navigation=False)
-    clients.append(popup)
-    popup.until('popup shell starts', lambda: PROMPT.decode().strip() in text(popup))
-    if '(y/n)' in text(popup).lower():
-        popup.send(b'y')
+    # The launcher marks its attachment as nested, so exercise it inside the
+    # real containing session that supplies the native ancestry handshake.
+    log = Path(first.env['TMPDIR']) / f'zellij-{os.getuid()}/zellij-log/zellij.log'
+    log_offset = log.stat().st_size if log.exists() else 0
+    first.prefix(b'P')
+    first.until('popup shell starts', lambda:
+                client_count('pop-up') == 1 and PROMPT.decode().strip() in
+                first.action('dump-screen', session='pop-up'))
+
+    def popup_registered():
+        if not log.exists():
+            return False
+        with log.open('rb') as handle:
+            handle.seek(log_offset)
+            output = handle.read().decode(errors='replace')
+        return ('nested session handshake complete: this session is nested inside ancestry '
+                f'["{renamed}"]') in output
+
+    first.until('popup registers its containing session', popup_registered)
+    popup = first
+    popup.name = 'pop-up'
     grant_bar(popup)
     popup.prefix(b'j')
     _, popup_pid, _ = shell_probe(popup, 'popup-shell')
@@ -782,7 +797,8 @@ def main():
                'ZELLIJ_SOCKET_DIR': str(runtime), 'TMPDIR': str(temporary)}
         workflow.preserve_rust_homes(env)
         for key in ('ZELLIJ', 'ZELLIJ_SESSION_NAME', 'ZELLIJ_PANE_ID', 'ZELLIJ_CONFIG_DIR',
-                    'ZELLIJ_CONFIG_FILE', 'TMUX', 'TMUX_PANE', 'ENV', 'BASH_ENV'):
+                    'ZELLIJ_CONFIG_FILE', 'ZELLIJ_NESTED_ATTACH', 'SSH_CONNECTION', 'SSH_TTY',
+                    'TMUX', 'TMUX_PANE', 'ENV', 'BASH_ENV'):
             env.pop(key, None)
         build_cache = os.environ.get('ZELLIJ_TEST_BUILD_CACHE')
         if build_cache:
