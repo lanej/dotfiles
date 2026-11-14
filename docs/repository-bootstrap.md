@@ -108,7 +108,7 @@ enabled = false
 # projects = ["tsconfig.json"]
 ```
 
-The supported top-level keys are `schema_version` (required, currently `1`), `stage`, `kind`, `mode`, `skills`, `agents`, `pr_template`, `detect_languages`, `policy_version`, and `checks`. Skills are a nonempty array of unique curated names. `[checks.go]` accepts `enabled` and `rollout`; `[checks.typescript]` additionally accepts `projects`, a nonempty array of unique repository-relative leaf tsconfig paths. Rollout is `strict` or `ratchet`. Omitted fields preserve saved choices or existing defaults; false is an explicit choice. A disabled check cannot also select its rollout or projects. Existing check profiles are retained under the CLI's `--no-go` / `--no-typescript` semantics rather than silently removed.
+The supported top-level keys are `schema_version` (required, currently `1`), `stage`, `kind`, `mode`, `skills`, `agents`, `pr_template`, `detect_languages`, `policy_version`, and `checks`. `[checks.python]` accepts `enabled` and a nonempty `paths` array; `--python-path` overrides that array. Skills are a nonempty array of unique curated names. `[checks.go]` accepts `enabled` and `rollout`; `[checks.typescript]` additionally accepts `projects`, a nonempty array of unique repository-relative leaf tsconfig paths. Rollout is `strict` or `ratchet`. Omitted fields preserve saved choices or existing defaults; false is an explicit choice. A disabled check cannot also select its rollout or projects. Existing check profiles are retained under the CLI's `--no-go` / `--no-typescript` semantics rather than silently removed.
 
 Optional `kind = "service" | "library" | "tool"` selects how the software is consumed. It is independent of lifecycle stage and language, never inferred, and retained when omitted on subsequent runs. `--kind KIND` overrides TOML. Service guidance focuses on integrations and operations, library guidance on public caller contracts and compatibility, and tool guidance on invocation, diagnostics, exit outcomes, and installation. Library kind also selects the library comment skill. Kind appears in generated policy and agent guidance; it does not change generated test commands or prescribe architecture. Repeating an unchanged kind or stage does not broaden a requested skill-subset upgrade or refresh retained package pins. Directory-specific kinds remain future work.
 
@@ -119,6 +119,22 @@ Use `--config PATH` on setup, validation, or upgrade for an alternate or private
 Shadow mode adds a local exclusion for the selected authored file only when it is inside the target repository and untracked. It never hides tracked configuration or adds outside files to managed artifacts. Tracked authored configuration remains visible even when its generated installation is private. Configuration sources are not included in generated content fingerprints or silently overwritten by upgrades.
 
 `source-code validate` checks TOML and installed packages without writes. With an authored file but no installation, it explicitly reports configuration-only validation. With an installation, declared choices that differ from installed state produce drift warnings (`--strict` fails on them); run setup or upgrade to reconcile. `--skills-dir` remains package-only validation and cannot be combined with an explicit `--config`.
+
+## Strict Python checks
+
+Opt in with `source-code setup --python`; Python detection remains guidance-only. Select scope with repeatable `--python-path PATH` or authored TOML:
+
+```toml
+[checks.python]
+enabled = true
+paths = ["src", "tests"]
+```
+
+Python adoption is strict immediately, without a ratchet baseline. Generated `.python-quality.json` records paths and explicit test/legacy argv; root project configuration and dependency files are preserved. The isolated `.python-quality/` tool project pins Ruff, ty, and pip-audit with a committed uv lock. Run `python3 scripts/check-python.py tools` explicitly, then `python3 scripts/check-source-code.py python`. Checks verify both the lock and installed tools before running, and never format source in place.
+
+Research runs strict typing and inherited gates. Alpha adds format checking, safety/lint checks, and tests; beta/production add locked dependency auditing. Unsupported or unlocked runtime dependency declarations fail the audit without execution. Configure `commands.test` and `commands.legacy` in `.python-quality.json` to retain the application's real gates; the default test is `uv run --locked pytest`. `--no-python` retains an existing profile rather than uninstalling it.
+
+The source-code implementation itself uses this profile: `make source-code-python-tools` provisions pinned tools and `make source-code-python-check` runs the full gate, including real installer acceptance and profile failure cases. The committed scope includes the CLI, detector, canonical Python/lifecycle runners, and Python profile acceptance detector, rather than unrelated dotfiles Python. CI runs the same committed runner as the Make entrypoint. The root `source-code.toml` declares this desired scope; the committed standalone profile avoids installing duplicate agent packages into this repository.
 
 ## Workstation installation and language detection
 
@@ -134,7 +150,7 @@ source-code setup --repo ~/src/project --no-detect-languages
 
 Basic detection uses manifests and source-file extensions for Go, TypeScript, JavaScript, Python, and Rust, including nested projects. Git supplies tracked and unignored files; pre-Git directories use a pruned directory walk that skips dependency/build directories. Installed managed files do not classify their own implementation language as application code. Results include a small set of evidence paths and are read-only. Detection is heuristic, not an exhaustive language census; select additional skills explicitly when needed.
 
-Detection chooses language skills and records evidence in the policy's `detection` field. It does not introduce TypeScript checks, Python/Rust tooling, or CI; those remain explicit project choices. `languages` separately records installed generated Go/TypeScript check profiles. The detection opt-out persists across upgrades. Removing a language file can update detection evidence without uninstalling existing skills or checks.
+Detection chooses language skills and records evidence in the policy's `detection` field. It does not introduce TypeScript/Python checks, Rust tooling, or CI; those remain explicit project choices. `languages` separately records installed generated Go/TypeScript/Python check profiles. The detection opt-out persists across upgrades. Removing a language file can update detection evidence without uninstalling existing skills or checks.
 
 ## Lifecycle stages
 

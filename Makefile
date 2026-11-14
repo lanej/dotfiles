@@ -52,6 +52,16 @@ plan:
 test-dotfiles-config:
 	@python3 "$(DOTFILES)/scripts/test-dotfiles-config.py"
 
+.PHONY: source-code-python-tools source-code-python-check test-python-quality
+source-code-python-tools:
+	@python3 "$(DOTFILES)/scripts/check-python.py" tools
+
+source-code-python-check:
+	@python3 "$(DOTFILES)/scripts/check-python.py" all
+
+test-python-quality:
+	@python3 "$(DOTFILES)/scripts/test-python-quality.py"
+
 .PHONY: test-repo-bootstrap
 test-repo-bootstrap:
 	@python3 "$(DOTFILES)/scripts/test-repo-bootstrap.py"

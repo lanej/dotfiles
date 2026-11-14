@@ -2,9 +2,97 @@
   "schema_version": 1,
   "policy_version": "1.0.0",
   "stages": {
-    "research": {"go": [["bash", "scripts/check-go.sh", "compile"]], "typescript": [["node", "scripts/check-typescript.mjs", "typecheck"]]},
-    "alpha": {"go": [["bash", "scripts/check-go.sh", "alpha"]], "typescript": [["node", "scripts/check-typescript.mjs", "alpha"]]},
-    "beta": {"go": [["bash", "scripts/check-go.sh", "all"]], "typescript": [["node", "scripts/check-typescript.mjs", "all"]]},
-    "production": {"go": [["bash", "scripts/check-go.sh", "all"]], "typescript": [["node", "scripts/check-typescript.mjs", "all"]]}
+    "research": {
+      "go": [
+        [
+          "bash",
+          "scripts/check-go.sh",
+          "compile"
+        ]
+      ],
+      "typescript": [
+        [
+          "node",
+          "scripts/check-typescript.mjs",
+          "typecheck"
+        ]
+      ],
+      "python": [
+        [
+          "python3",
+          "scripts/check-python.py",
+          "typecheck"
+        ]
+      ]
+    },
+    "alpha": {
+      "go": [
+        [
+          "bash",
+          "scripts/check-go.sh",
+          "alpha"
+        ]
+      ],
+      "typescript": [
+        [
+          "node",
+          "scripts/check-typescript.mjs",
+          "alpha"
+        ]
+      ],
+      "python": [
+        [
+          "python3",
+          "scripts/check-python.py",
+          "alpha"
+        ]
+      ]
+    },
+    "beta": {
+      "go": [
+        [
+          "bash",
+          "scripts/check-go.sh",
+          "all"
+        ]
+      ],
+      "typescript": [
+        [
+          "node",
+          "scripts/check-typescript.mjs",
+          "all"
+        ]
+      ],
+      "python": [
+        [
+          "python3",
+          "scripts/check-python.py",
+          "all"
+        ]
+      ]
+    },
+    "production": {
+      "go": [
+        [
+          "bash",
+          "scripts/check-go.sh",
+          "all"
+        ]
+      ],
+      "typescript": [
+        [
+          "node",
+          "scripts/check-typescript.mjs",
+          "all"
+        ]
+      ],
+      "python": [
+        [
+          "python3",
+          "scripts/check-python.py",
+          "all"
+        ]
+      ]
+    }
   }
 }

@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "paths": ["."],
+  "commands": {
+    "test": ["uv", "run", "--locked", "pytest"],
+    "legacy": []
+  }
+}

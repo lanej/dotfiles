@@ -11,6 +11,9 @@ import subprocess
 import tempfile
 
 
+# Fixture visibility must not inherit the workstation's global Git ignore rules.
+os.environ["GIT_CONFIG_GLOBAL"] = os.devnull
+
 SOURCE = Path(__file__).resolve().parents[1]
 VALIDATOR = SOURCE / "ai/skills/skill-authoring/scripts/validate.py"
 
@@ -259,6 +262,40 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     run([str(cli), "validate", "--repo", str(config_clone), "--strict"])
     run([str(cli), "upgrade", "--repo", str(config_clone)])
     assert (config_clone / "source-code.toml").read_text() == tracked_config.read_text()
+
+    # Python profiles are explicit, preserve project config, and participate in lifecycle/upgrade metadata.
+    python_project = workspace / "strict Python project"
+    python_project.mkdir()
+    git(python_project, "init", "--quiet")
+    (python_project / "app.py").write_text("def answer() -> int:\n    return 42\n")
+    pyproject = python_project / "pyproject.toml"
+    pyproject.write_text('[project]\nname = "existing"\nversion = "1.0.0"\n[tool.ruff]\nline-length = 99\n')
+    original_project = pyproject.read_bytes()
+    install(python_project, "--stage", "alpha", "--pr-template", "none")
+    assert "python" in json.loads((python_project / ".source-code.json").read_text())["skills"]
+    assert not (python_project / "scripts/check-python.py").exists(), "detection installed Python checks implicitly"
+    (python_project / "source-code.toml").write_text('schema_version = 1\nstage = "beta"\n[checks.python]\nenabled = true\npaths = ["app.py"]\n')
+    before = tree(python_project)
+    inspected = json.loads(run([str(cli), "explain", "--repo", str(python_project), "--json"]))
+    assert inspected["desired"]["checks"]["python"]["selected"]
+    assert inspected["desired"]["checks"]["python"]["paths"] == ["app.py"]
+    assert tree(python_project) == before
+    install(python_project)
+    assert pyproject.read_bytes() == original_project
+    assert json.loads((python_project / ".source-code.json").read_text())["languages"] == ["python"]
+    assert json.loads((python_project / ".python-quality.json").read_text())["paths"] == ["app.py"]
+    run([str(cli), "validate", "--repo", str(python_project), "--strict"])
+    for stage, mode in (("research", "typecheck"), ("alpha", "alpha"), ("beta", "all"), ("production", "all")):
+        install(python_project, "--stage", stage)
+        plan = run(["python3", str(python_project / "scripts/check-source-code.py"), "python", "--dry-run"])
+        assert json.dumps(["python3", "scripts/check-python.py", mode]) in plan
+    run([str(cli), "upgrade", "--repo", str(python_project)])
+    assert json.loads((python_project / ".source-code.json").read_text())["stage"] == "beta"
+    retained_python = json.loads(run([str(cli), "explain", "--repo", str(python_project), "--no-python", "--json"]))
+    assert retained_python["desired"]["checks"]["python"]["action"] == "retain"
+    local_python = workspace / "private Python profile"
+    install(local_python, "--init", "--python", "--mode", "shadow", "--pr-template", "none")
+    assert not git(local_python, "status", "--porcelain", "--untracked-files=all")
 
     # Kind selects usage guidance independently from lifecycle and language gates.
     for kind in ("service", "library", "tool"):
