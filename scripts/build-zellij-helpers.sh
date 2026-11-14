@@ -9,10 +9,6 @@ trap '/bin/rm -f "$started"' EXIT
 
 cargo build --locked --release --manifest-path "$checkout/zellij/Cargo.toml" \
     --target-dir "$checkout/zellij/target" -p lane-zellij
-[[ -x "$release/lane-zellij" ]] || {
-    printf 'Helper build did not produce an executable.\n' >&2
-    exit 1
-}
 
 # A pre-build timestamp keeps edits during compilation visible to the next request.
 # Concurrent older stamps can only cause another check, never hide an unbuilt edit.

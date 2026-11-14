@@ -73,6 +73,8 @@ print("fixture build output")
 time.sleep(float(os.environ.get("BUILD_DELAY", "0")))
 if os.environ.get("FAIL_BUILD"):
     sys.exit(19)
+if os.environ.get("NO_ARTIFACT"):
+    sys.exit(0)
 target = Path(sys.argv[sys.argv.index("--target-dir") + 1]) / "release/lane-zellij"
 if not os.environ.get("KEEP_BINARY"):
     shutil.copyfile(work / "candidate", target)
@@ -136,6 +138,13 @@ target.chmod(0o755)
         self.assertEqual(result.stdout, "")
         self.assertIn("fixture build output", result.stderr)
         self.assertIn("previous binary was not run", result.stderr)
+        self.assertFalse((self.work_path / "native-ran").exists())
+        self.binary.unlink()
+        self.env.pop("FAIL_BUILD")
+        self.env["NO_ARTIFACT"] = "1"
+        result = self.run_launcher(check=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("did not produce an executable helper", result.stderr)
         self.assertFalse((self.work_path / "native-ran").exists())
         self.cargo.unlink()
         result = self.run_launcher(check=False)
