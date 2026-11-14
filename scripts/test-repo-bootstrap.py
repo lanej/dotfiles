@@ -52,6 +52,127 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     def install(target, *args, expected=0):
         return run([str(cli), "setup", "--repo", str(target), *args], expected=expected)
 
+    configured = workspace / "toml project"
+    configured.mkdir()
+    git(configured, "init", "--quiet")
+    config = configured / "source-code.toml"
+    config_text = ("# Authored choices stay byte-for-byte intact.\nschema_version = 1\n"
+                   'stage = "research"\nmode = "shadow"\nskills = ["pr-writer"]\n'
+                   'agents = "codex"\npr_template = "none"\ndetect_languages = false\n'
+                   '[checks.go]\nenabled = false\n[checks.typescript]\nenabled = false\n')
+    config.write_text(config_text)
+    assert "TOML configuration only" in run([str(cli), "validate", "--repo", str(configured)])
+    config.write_text(config_text.replace('stage = "research"', 'stage = "research"\npolicy_version = "99.0.0"'))
+    before = tree(configured)
+    run([str(cli), "validate", "--repo", str(configured)], expected=1)
+    assert tree(configured) == before, "unsupported config-only policy validation wrote files"
+    config.write_text(config_text)
+    before = tree(configured)
+    preview = install(configured, "--dry-run")
+    assert "Effective configuration" in preview and '"enabled": false' in preview
+    assert tree(configured) == before, "TOML preview wrote files"
+    install(configured)
+    assert config.read_text() == config_text
+    config_policy = json.loads((configured / ".source-code.json").read_text())
+    assert config_policy["stage"] == "research" and config_policy["languages"] == []
+    assert not (configured / "scripts/check-go.sh").exists()
+    assert git(configured, "check-ignore", "source-code.toml") == "source-code.toml"
+    state = json.loads((configured / ".agents/repo-bootstrap.json").read_text())
+    assert str(config) not in json.dumps(state) and "source-code.toml" not in state["files"]
+    assert "already current" in install(configured)
+    install(configured, "--stage", "alpha")
+    assert config.read_text() == config_text
+    assert json.loads((configured / ".source-code.json").read_text())["stage"] == "alpha"
+    assert "configuration stage differs" in run([str(cli), "validate", "--repo", str(configured), "--strict"], expected=1)
+    run([str(cli), "upgrade", "--repo", str(configured)])
+    assert json.loads((configured / ".source-code.json").read_text())["stage"] == "research"
+    run([str(cli), "validate", "--repo", str(configured), "--strict"])
+    for invalid in ["schema_version = true\n", "schema_version = 2\n", 'schema_version = 1\nunknown = true\n',
+                    'schema_version = 1\ndetect_languages = "false"\n', 'schema_version = 1\n[checks.go]\nenabled = 0\n',
+                    'schema_version = 1\n[checks.typescript]\nenabled = false\nprojects = ["tsconfig.json"]\n',
+                    'schema_version = 1\n[checks.go]\nunknown = true\n', 'schema_version = 1\nstage = [\n']:
+        config.write_text(invalid)
+        before = tree(configured)
+        install(configured, expected=1)
+        run([str(cli), "validate", "--repo", str(configured)], expected=1)
+        assert tree(configured) == before, "invalid configuration changed installation"
+    config.write_text(config_text.replace('stage = "research"', 'stage = "research"\npolicy_version = "99.0.0"'))
+    before = tree(configured)
+    install(configured, "--dry-run", expected=1)
+    run([str(cli), "validate", "--repo", str(configured)], expected=1)
+    overridden_pin = install(configured, "--policy-version", "1.0.0", "--dry-run")
+    assert '"policy_version": "1.0.0"' in overridden_pin
+    assert tree(configured) == before, "CLI policy override changed authored configuration"
+    config.write_text(config_text.replace('[checks.go]\nenabled = false', '[checks.go]\nenabled = true\nrollout = "strict"'))
+    before = tree(configured)
+    override = install(configured, "--no-go", "--dry-run")
+    assert '"go": {"enabled": false}' in override
+    assert tree(configured) == before, "CLI override preview changed authored TOML"
+    run([str(cli), "validate", "--skills-dir", str(source / "ai/skills/pr-writer"),
+         "--config", str(config)], expected=1)
+    config.write_text(config_text.replace('stage = "research"', 'stage = "beta"'))
+    local_guide = configured / ".agents/skills/pr-writer/SKILL.md"
+    local_guide.write_text(local_guide.read_text() + "\nLocal customization.\n")
+    before = tree(configured)
+    assert "preserving existing" in run([str(cli), "upgrade", "--repo", str(configured)], expected=1)
+    assert tree(configured) == before, "TOML upgrade overwrote customization"
+
+    alternate = workspace / "alternate project"
+    alternate.mkdir()
+    git(alternate, "init", "--quiet")
+    private_config = alternate / "private settings.toml"
+    private_config.write_text(config_text)
+    # Explicit relative paths resolve from the invocation directory, not --repo.
+    relative_config = str(private_config.relative_to(workspace))
+    run([str(cli), "setup", "--repo", str(alternate), "--config", relative_config], cwd=workspace)
+    assert git(alternate, "check-ignore", private_config.name) == private_config.name
+    run([str(cli), "validate", "--repo", str(alternate), "--config", relative_config, "--strict"], cwd=workspace)
+    run([str(cli), "upgrade", "--repo", str(alternate), "--config", relative_config], cwd=workspace)
+    private_config.write_text(config_text.replace('mode = "shadow"', 'mode = "tracked"'))
+    run([str(cli), "setup", "--repo", str(alternate), "--config", relative_config], cwd=workspace)
+    assert not run(["git", "-C", str(alternate), "check-ignore", "--no-index", private_config.name], expected=1)
+    before = tree(alternate)
+    run([str(cli), "setup", "--repo", str(alternate), "--config", "missing.toml"], cwd=workspace, expected=1)
+    assert tree(alternate) == before
+
+    profile_intent = workspace / "inferred profiles"
+    profile_intent.mkdir()
+    git(profile_intent, "init", "--quiet")
+    (profile_intent / "go.mod").write_text("module example.com/intent\n\ngo 1.26\n")
+    (profile_intent / "package.json").write_text('{"name":"intent","scripts":{"test":"echo ok"}}\n')
+    (profile_intent / "tsconfig.json").write_text('{"compilerOptions":{"strict":true}}\n')
+    install(profile_intent, "--stage", "research", "--no-go", "--no-typescript", "--no-detect-languages", "--pr-template", "none")
+    (profile_intent / "source-code.toml").write_text('schema_version = 1\n[checks.go]\nrollout = "strict"\n[checks.typescript]\nprojects = ["tsconfig.json"]\n')
+    setup_preview = install(profile_intent, "--dry-run")
+    upgrade_preview = run([str(cli), "upgrade", "--repo", str(profile_intent), "--dry-run"])
+    for preview in (setup_preview, upgrade_preview):
+        assert '"go": {"enabled": true' in preview and '"typescript": {"enabled": true' in preview
+    run([str(cli), "upgrade", "--repo", str(profile_intent)])
+    assert json.loads((profile_intent / ".source-code.json").read_text())["languages"] == ["go", "typescript"]
+    run([str(cli), "validate", "--repo", str(profile_intent), "--strict"])
+
+    portable_config = workspace / "tracked configuration"
+    portable_config.mkdir()
+    git(portable_config, "init", "--quiet")
+    tracked_config = portable_config / "source-code.toml"
+    tracked_config.write_text(config_text)
+    git(portable_config, "add", "source-code.toml")
+    git(portable_config, "commit", "-qm", "Track authored policy")
+    install(portable_config)
+    # A tracked authored policy must not be hidden even with a shadow installation.
+    assert not run(["git", "-C", str(portable_config), "check-ignore", "--no-index", "source-code.toml"], expected=1)
+    assert tracked_config.read_text() == config_text
+    # Share a tracked installation and prove the file works from a different checkout.
+    tracked_config.write_text(config_text.replace('mode = "shadow"', 'mode = "tracked"'))
+    install(portable_config)
+    git(portable_config, "add", ".")
+    git(portable_config, "commit", "-qm", "Share project profile")
+    config_clone = workspace / "configuration clone"
+    run(["git", "clone", "--quiet", str(portable_config), str(config_clone)])
+    run([str(cli), "validate", "--repo", str(config_clone), "--strict"])
+    run([str(cli), "upgrade", "--repo", str(config_clone)])
+    assert (config_clone / "source-code.toml").read_text() == tracked_config.read_text()
+
     install(project, "--init", "--dry-run")
     assert not project.exists(), "preview initialized the target"
     run([str(source / "bin/repo-bootstrap"), "--repo", str(project), "--init", "--mode", "tracked"])

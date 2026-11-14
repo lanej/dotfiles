@@ -12,6 +12,10 @@ import shutil
 import subprocess
 import sys
 import tempfile
+try:
+    import tomllib
+except ImportError:
+    raise SystemExit("source-code requires Python 3.11 or newer; use the workstation Python installed by dotfiles bootstrap")
 
 
 SOURCE = Path(__file__).resolve().parents[1]
@@ -144,6 +148,129 @@ def read_state(root):
         if not valid:
             raise ValueError(f"invalid managed entry in manifest: {path}")
     return state, snapshot
+
+
+def load_configuration(args):
+    """Validate authored intent, leaving installed state and the file untouched."""
+    if getattr(args, "skills_dir", None):
+        if args.config is not None:
+            raise ValueError("--config cannot be combined with --skills-dir")
+        return
+    requested = args.repo.expanduser().resolve()
+    found = git(requested, "rev-parse", "--show-toplevel", check=False)
+    root = Path(found.stdout.strip()).resolve() if found.returncode == 0 else requested
+    path = args.config.expanduser().resolve() if args.config is not None else root / "source-code.toml"
+    if not path.exists():
+        if args.config is not None:
+            raise ValueError(f"configuration file does not exist: {path}")
+        args.config_path, args.config_values = None, {}
+        return
+    with path.open("rb") as stream:
+        data = tomllib.load(stream)
+    allowed = {"schema_version", "stage", "mode", "skills", "agents", "pr_template", "detect_languages", "policy_version", "checks"}
+    unknown = set(data) - allowed
+    if unknown:
+        raise ValueError("unknown configuration keys: " + ", ".join(sorted(unknown)))
+    if type(data.get("schema_version")) is not int or data["schema_version"] != 1:
+        raise ValueError("configuration requires schema_version = 1")
+    choices = {"stage": STAGES, "mode": ("tracked", "shadow", "local"), "agents": ("codex", "both"), "pr_template": ("none", "local", "github")}
+    values = {}
+    for key, options in choices.items():
+        if key in data:
+            if not isinstance(data[key], str) or data[key] not in options:
+                raise ValueError(f"invalid configuration {key}; expected one of {', '.join(options)}")
+            values[key] = data[key]
+    if "detect_languages" in data:
+        if type(data["detect_languages"]) is not bool:
+            raise ValueError("configuration detect_languages must be a boolean")
+        values["detect_languages"] = data["detect_languages"]
+    if "policy_version" in data:
+        if not isinstance(data["policy_version"], str) or not VERSION_RE.fullmatch(data["policy_version"]):
+            raise ValueError("configuration policy_version must be a semantic version")
+        values["policy_version"] = data["policy_version"]
+    if "skills" in data:
+        skills = data["skills"]
+        if not isinstance(skills, list) or not skills or not all(isinstance(name, str) and name in SKILLS for name in skills) or len(set(skills)) != len(skills):
+            raise ValueError("configuration skills must be a nonempty array of unique supported skill names")
+        values["skills"] = ",".join(skills)
+    checks = data.get("checks", {})
+    if not isinstance(checks, dict) or set(checks) - {"go", "typescript"}:
+        raise ValueError("configuration checks accepts only go and typescript tables")
+    for language, fields in checks.items():
+        allowed_fields = {"enabled", "rollout"} | ({"projects"} if language == "typescript" else set())
+        if not isinstance(fields, dict) or set(fields) - allowed_fields:
+            raise ValueError(f"invalid checks.{language} keys")
+        if "enabled" in fields:
+            if type(fields["enabled"]) is not bool:
+                raise ValueError(f"checks.{language}.enabled must be a boolean")
+            values[language] = fields["enabled"]
+        if "rollout" in fields:
+            if fields["rollout"] not in ("strict", "ratchet"):
+                raise ValueError(f"checks.{language}.rollout must be strict or ratchet")
+            values[f"{language}_rollout"] = fields["rollout"]
+        if "projects" in fields:
+            projects = fields["projects"]
+            if not isinstance(projects, list) or not projects or not all(isinstance(name, str) and re.fullmatch(r"[A-Za-z0-9._/-]+", name) and not PurePosixPath(name).is_absolute() and ".." not in PurePosixPath(name).parts for name in projects) or len(set(projects)) != len(projects):
+                raise ValueError("checks.typescript.projects must be unique repository-relative paths")
+            values["typescript_project"] = projects
+        if fields.get("enabled") is False and set(fields) - {"enabled"}:
+            raise ValueError(f"checks.{language} cannot disable checks while selecting rollout or projects")
+    args.config_path, args.config_values = path, values
+    if args.command != "validate":
+        disabled_cli = {language for language in ("go", "typescript") if getattr(args, language) is False}
+        for key, value in values.items():
+            if any(key.startswith(language + "_") for language in disabled_cli):
+                continue
+            if getattr(args, key) is None:
+                setattr(args, key, value)
+        for language in ("go", "typescript"):
+            if getattr(args, language) is False and (getattr(args, f"{language}_rollout") or language == "typescript" and args.typescript_project):
+                raise ValueError(f"cannot disable {language} checks while selecting rollout or projects")
+    effective_policy = values.get("policy_version") if args.command == "validate" else args.policy_version
+    if effective_policy and effective_policy != read_versions(SOURCE / "ai/skills/source-code-versions.json")["policy_version"]:
+        raise ValueError("configuration requests a policy version not shipped by this source")
+    print(f"Configuration: {path}")
+    print("  Configured intent: " + json.dumps(values, sort_keys=True))
+
+
+def config_exclude_text(original, relative, private):
+    """Keep authored configuration separate from managed generated artifacts."""
+    if relative is None:
+        return original
+    # Git ignore syntax needs escaping even though the path is not shell code.
+    if "\n" in relative or "\r" in relative:
+        raise ValueError("private configuration path cannot contain line breaks")
+    escaped = "".join("\\" + char if char in "*?[]\\!# " else char for char in relative)
+    rule = "/" + escaped
+    marker = "# source-code private configuration"
+    owned = marker + "\n" + rule + "\n"
+    if not private:
+        return original.replace(owned, "")
+    if rule in original.splitlines():
+        return original
+    return original + ("\n" if original and not original.endswith("\n") else "") + owned
+
+
+def configuration_drift(args, state, root):
+    warnings = []
+    mapping = {"go": "go_profile", "typescript": "typescript_profile"}
+    for key, desired in args.config_values.items():
+        if key == "skills":
+            expected = complete_skills(set(desired.split(",")), bool(args.config_values.get("stage")))
+            if not expected <= set(state.get("skills", [])):
+                warnings.append("configuration skills are not installed; run setup or upgrade")
+            continue
+        if key in ("typescript_rollout", "typescript_project"):
+            policy_path = root / ".typescript-quality.json"
+            installed = json.loads(policy_path.read_text()) if policy_path.is_file() else {}
+            actual = installed.get("rollout" if key == "typescript_rollout" else "projects")
+        else:
+            actual = state.get(mapping.get(key, key), False if key in mapping else None)
+        if key == "mode" and desired == "shadow":
+            desired = "local"
+        if actual != desired:
+            warnings.append(f"configuration {key} differs from installed state: {actual!r} -> {desired!r}; run setup or upgrade")
+    return warnings
 
 
 def read_versions(path):
@@ -686,6 +813,7 @@ def install(args):
         if ts_rollout == "ratchet":
             paths.add(TS_BASELINE)
     visible_paths = paths | {legacy} if mode == "tracked" and legacy else paths
+    tracked = set()
     if initializing:
         exclude = root / ".git/info/exclude"
         old_exclude = ""
@@ -702,7 +830,14 @@ def install(args):
         if mode == "local" and paths & tracked:
             raise ValueError("local mode cannot hide tracked files: " + ", ".join(sorted(paths & tracked))
                              + "; keep tracked mode or explicitly remove them from the index first")
-    new_exclude = exclude_text(old_exclude, paths if mode == "local" else set())
+    relative_config = None
+    if getattr(args, "config_path", None):
+        try:
+            relative_config = args.config_path.relative_to(root).as_posix()
+        except ValueError:
+            relative_config = None
+    private_config = mode == "local" and relative_config is not None and relative_config not in tracked
+    new_exclude = config_exclude_text(exclude_text(old_exclude, paths if mode == "local" else set()), relative_config, private_config)
     check_visibility(root, visible_paths if initializing or mode == "local" else visible_paths - tracked, new_exclude, mode)
     revision = git(SOURCE, "rev-parse", "HEAD", check=False).stdout.strip() or "unknown"
     new_state = {"version": 1, "mode": mode, "source_revision": revision,
@@ -725,6 +860,16 @@ def install(args):
 
     print(f"source-code setup: {root} ({mode})")
     print("  Detected language guidance: " + (", ".join(detection["languages"]) or "none"))
+    if getattr(args, "config_path", None):
+        effective = {"mode": mode, "stage": stage, "policy_version": versions["policy_version"], "skills": sorted(skills), "agents": agent_selection,
+                     "pr_template": template, "detect_languages": detect_enabled,
+                     "checks": {"go": {"enabled": go_profile}, "typescript": {"enabled": typescript_profile}}}
+        if go_profile:
+            effective["checks"]["go"]["rollout"] = rollout
+        if typescript_profile:
+            effective["checks"]["typescript"].update(rollout=ts_rollout,
+                projects=json.loads(payloads[".typescript-quality.json"])["projects"])
+        print("  Effective configuration: " + json.dumps(effective, sort_keys=True))
     if skills:
         previous = state.get("stage", "beta (legacy full checks)")
         print(f"  Lifecycle: {previous} -> {stage}; policy {versions['policy_version']}")
@@ -762,7 +907,7 @@ def install(args):
             raise ValueError(f"preserving linked Git exclude: {exclude}")
         # git init may supply a template's existing exclude file.
         old_exclude = exclude.read_text() if exclude.exists() else ""
-        new_exclude = exclude_text(old_exclude, paths if mode == "local" else set())
+        new_exclude = config_exclude_text(exclude_text(old_exclude, paths if mode == "local" else set()), relative_config, private_config)
         check_visibility(root, visible_paths, new_exclude, mode)
     for relative, before in snapshots.items():
         if inspect(root, relative) != before:
@@ -821,9 +966,9 @@ def prepare_upgrade(args):
             "github" if ".github/pull_request_template.md" in state["files"] else
             "local" if ".agents/templates/pull_request_template.md" in state["files"] else "none")
     if args.go is None:
-        args.go = state.get("go_profile", False)
+        args.go = bool(args.go_rollout) or state.get("go_profile", False)
     if args.typescript is None:
-        args.typescript = state.get("typescript_profile", False)
+        args.typescript = bool(args.typescript_rollout or args.typescript_project) or state.get("typescript_profile", False)
     skills = set(args.skills.split(","))
     detect_enabled = args.detect_languages if args.detect_languages is not None else state.get("detect_languages", True)
     if detect_enabled:
@@ -877,9 +1022,16 @@ def validate_project(args):
     if args.skills_dir:
         directory = args.skills_dir.expanduser().resolve()
     else:
-        root = Path(git(root, "rev-parse", "--show-toplevel").stdout.strip())
+        found = git(root, "rev-parse", "--show-toplevel", check=False)
+        if found.returncode == 0:
+            root = Path(found.stdout.strip()).resolve()
+        elif not getattr(args, "config_path", None):
+            raise ValueError(found.stderr.strip() or "target is not a Git working tree")
         directory = root / ".agents/skills"
     if not directory.is_dir():
+        if not args.skills_dir and getattr(args, "config_path", None) and inspect(root, STATE) is None:
+            print("Validated TOML configuration only; no source-code installation exists (installed packages not checked)")
+            return 0
         raise ValueError(f"no skill directory: {directory}")
     folders = [directory] if (directory / "SKILL.md").is_file() else sorted(
         path for path in directory.iterdir() if path.is_dir() and not path.name.startswith(".") and path.name != "__pycache__")
@@ -892,6 +1044,8 @@ def validate_project(args):
         warnings.extend(f"{finding['path']}: {message}" for message in finding["warnings"])
     if not args.skills_dir:
         state, snapshot = read_state(root)
+        if snapshot is not None:
+            warnings.extend(configuration_drift(args, state, root))
         if snapshot is None:
             warnings.append("no installation manifest; only skill structure was checked")
         else:
@@ -953,6 +1107,7 @@ def main():
     upgrade_parser = subcommands.add_parser("upgrade", help="update an existing installation to this source's versions")
     validation_parser = subcommands.add_parser("validate", help="check skill best practices, version pins, and installed integrity")
     validation_parser.add_argument("--repo", type=Path, default=Path.cwd())
+    validation_parser.add_argument("--config", type=Path, help="authored TOML configuration (relative to invocation directory)")
     validation_parser.add_argument("--skills-dir", type=Path, help="check a skill or skill tree without requiring an installation")
     validation_parser.add_argument("--strict", action="store_true", help="treat best-practice and customization warnings as failures")
     detection_parser = subcommands.add_parser("detect", help="inspect language evidence without installing guidance or checks")
@@ -963,6 +1118,8 @@ def main():
     upgrade_parser.add_argument("--strict", action="store_true", help="reject best-practice warnings in the upgrade source")
     args = command.parse_args()
     try:
+        if args.command != "detect":
+            load_configuration(args)
         if args.command == "validate":
             command.exit(validate_project(args))
         if args.command == "detect":
@@ -990,6 +1147,7 @@ def main():
 
 def add_install_arguments(parser):
     parser.add_argument("--repo", type=Path, default=Path.cwd(), help="repository path (default: current directory)")
+    parser.add_argument("--config", type=Path, help="authored TOML configuration (default: source-code.toml at repository root; explicit relative paths use invocation directory)")
     parser.add_argument("--init", action="store_true", help="create a Git repository if the target is not one")
     parser.add_argument("--mode", choices=("tracked", "local", "shadow"), help="shareable files or local Git exclusions; shadow aliases local (default: previous mode, else tracked)")
     parser.add_argument("--skills", help="comma-separated skill names (default: saved selection, else core and PR writer): " + ", ".join(SKILLS))

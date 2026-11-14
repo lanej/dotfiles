@@ -2,7 +2,7 @@
 
 Use `source-code setup` to bring the shared Builder, architecture, and PR-writing guidance into a new or existing Git repository. It copies portable files rather than linking to a particular machine's dotfiles checkout. It preserves existing shared instructions and installs a project override that routes to the selected policy. It does not install software, modify global agent settings, stage files, or publish changes.
 
-The command needs Python 3.9+ and Git 2.31+ on macOS or Linux. Run `~/.files/bin/source-code setup` directly, or use `source-code setup` after `make source-code-config` has linked the commands into `~/.local/bin`.
+The command needs Python 3.11+ and Git 2.31+ on macOS or Linux. Run `~/.files/bin/source-code setup` directly, or use `source-code setup` after `make source-code-config` has linked the commands into `~/.local/bin`.
 
 `repo-bootstrap` remains a compatibility alias for `source-code setup`, accepting its existing flags. Existing `.agents/repo-bootstrap.json` manifests, exclusion markers, and backup paths retain their names so either command can safely update an existing installation.
 
@@ -69,6 +69,41 @@ source-code setup --repo ~/src/app --mode tracked --pr-template local
 ```
 
 `--skills` accepts the names listed by `source-code setup --help`, comma-separated. The core includes Builder, architecture, data/interface planning, Git/PR workflow, testing, lifecycle, and shared comments. Language guidance covers Go, TypeScript, JavaScript, Python, and Rust; `gh-pr-stack`, `github-actions`, and `just` are available explicitly. These are curated portable packages, not an automatic copy of workstation skills. Language detection selects matching guidance; root Go modules retain their existing automatic check-profile behavior.
+
+## TOML configuration
+
+Author `source-code.toml` at the target repository root to make desired policy reviewable. The file is optional: installations without it retain existing CLI and saved-state behavior. Setup, validation, and upgrades discover the same file. Generated `.source-code.json` records installed policy; do not replace it with authored configuration.
+
+```toml
+schema_version = 1
+stage = "alpha"
+mode = "shadow"
+skills = ["builder", "architecture", "pr-writer"]
+agents = "both"
+pr_template = "none"
+detect_languages = true
+# policy_version = "1.0.0" # Optional constraint on the installed source release.
+
+[checks.go]
+enabled = false
+
+[checks.typescript]
+enabled = false
+# To adopt TypeScript checks instead:
+# enabled = true
+# rollout = "ratchet"
+# projects = ["tsconfig.json"]
+```
+
+The supported top-level keys are `schema_version` (required, currently `1`), `stage`, `mode`, `skills`, `agents`, `pr_template`, `detect_languages`, `policy_version`, and `checks`. Skills are a nonempty array of unique curated names. `[checks.go]` accepts `enabled` and `rollout`; `[checks.typescript]` additionally accepts `projects`, a nonempty array of unique repository-relative leaf tsconfig paths. Rollout is `strict` or `ratchet`. Omitted fields preserve saved choices or existing defaults; false is an explicit choice. A disabled check cannot also select its rollout or projects. Existing check profiles are retained under the CLI's `--no-go` / `--no-typescript` semantics rather than silently removed.
+
+Explicit CLI options override TOML values, which override saved installation selections, which override defaults. A CLI `--no-go` or `--no-typescript` suppresses lower-priority rollout/projects settings from TOML for that invocation. Setup and upgrade print the configuration source, supplied intent, and resolved configuration before applying changes; `--dry-run` prints the same plan without writes. Ordinary setup and upgrade leave authored TOML, comments, and formatting byte-for-byte intact.
+
+Use `--config PATH` on setup, validation, or upgrade for an alternate or private file. Explicit relative paths resolve from the invocation directory, not `--repo`. Missing explicit files, malformed TOML, unknown keys, unsupported versions, invalid types, and incompatible settings fail before installation writes. An alternate path is not persisted in shared state: supply it again on later commands; otherwise root `source-code.toml` discovery applies.
+
+Shadow mode adds a local exclusion for the selected authored file only when it is inside the target repository and untracked. It never hides tracked configuration or adds outside files to managed artifacts. Tracked authored configuration remains visible even when its generated installation is private. Configuration sources are not included in generated content fingerprints or silently overwritten by upgrades.
+
+`source-code validate` checks TOML and installed packages without writes. With an authored file but no installation, it explicitly reports configuration-only validation. With an installation, declared choices that differ from installed state produce drift warnings (`--strict` fails on them); run setup or upgrade to reconcile. `--skills-dir` remains package-only validation and cannot be combined with an explicit `--config`.
 
 ## Workstation installation and language detection
 
@@ -154,7 +189,7 @@ Baseline creation records existing lint/style findings against committed Go code
 
 Use `--go-rollout strict` for whole-project enforcement. Use `--no-go` to retain existing checks without updating the added profile; `--skills go --no-go` installs guidance alone. Existing workflow paths and other managed-file edits retain normal conflict protection. Reruns remember the rollout. As elsewhere, opt-outs do not uninstall previously copied files.
 
-Run `bash scripts/check-go.sh lint` while editing, `fmt path/to/file.go` for formatting, and the full command before delivery. `fix ./path/to/package` applies available cuddling fixes in that package; inspect its diff. A ratchet requires explicit formatting paths to avoid a broad cleanup. Go and Python 3.9+ are required; initial pinned tool setup needs network access, and race tests require cgo and a C compiler.
+Run `bash scripts/check-go.sh lint` while editing, `fmt path/to/file.go` for formatting, and the full command before delivery. `fix ./path/to/package` applies available cuddling fixes in that package; inspect its diff. A ratchet requires explicit formatting paths to avoid a broad cleanup. Go and Python 3.11+ are required; initial pinned tool setup needs network access, and race tests require cgo and a C compiler.
 
 Local mode hides copied files and the baseline without changing the original config's visibility. Shared CI requires committing a tracked installation, including its required original config. Make the `Go quality` job required in branch rules for a merge gate; bootstrap does not change GitHub settings. The default runner covers one root module on its host platform. Add other modules, build tags, platform variants, native dependencies, and required integration tests explicitly.
 
