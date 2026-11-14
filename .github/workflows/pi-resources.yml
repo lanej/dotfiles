@@ -5,6 +5,7 @@ on:
     paths:
       - 'bin/sync-pi-resources'
       - 'bin/sync-codex-skills'
+      - 'ai/skills/project-only.json'
       - 'scripts/install-software-standard.py'
       - 'scripts/test-pi-resources.py'
       - 'scripts/test-bootstrap.py'
@@ -18,6 +19,7 @@ on:
     paths:
       - 'bin/sync-pi-resources'
       - 'bin/sync-codex-skills'
+      - 'ai/skills/project-only.json'
       - 'scripts/install-software-standard.py'
       - 'scripts/test-pi-resources.py'
       - 'scripts/test-bootstrap.py'

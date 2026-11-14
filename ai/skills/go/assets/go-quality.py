@@ -96,7 +96,7 @@ def policy():
         if legacy.get("path") not in (".golangci.yml", ".golangci.yaml", ".golangci.json"):
             raise ValueError("invalid legacy Go config path")
         if hashlib.sha256(Path(legacy["path"]).read_bytes()).hexdigest() != legacy.get("sha256"):
-            raise ValueError("existing lint policy changed; rerun repo-bootstrap --go to refresh the merged layer")
+            raise ValueError("existing lint policy changed; rerun source-code setup --go to refresh the merged layer")
     return value
 
 

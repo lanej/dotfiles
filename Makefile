@@ -296,7 +296,7 @@ claude-plugins:
 	$(call require-command,claude)
 	@"$(DOTFILES)/bin/claude-remove-blocked-plugins" --blocklist "$(DOTFILES)/claude/blocked-plugins.json"
 software-standard:
-	@python3 "$(DOTFILES)/scripts/install-software-standard.py" --source "$(DOTFILES)/ai/skills/builder" --home "$(HOME)"
+	@python3 "$(DOTFILES)/scripts/install-software-standard.py" --source "$(DOTFILES)/ai/skills/builder" --home "$(HOME)" --project-only
 
 claude-shared: software-standard
 	@python3 "$(DOTFILES)/bin/sync-claude-shared" --source "$(DOTFILES)/ai" --home "$(HOME)"

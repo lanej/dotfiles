@@ -1,6 +1,6 @@
 # TypeScript correctness defaults
 
-Use the [compiler options](../assets/tsconfig.strict.json), [typed lint profile](../assets/eslint.config.mjs), and [runner](../assets/check-typescript.mjs) as one policy. Install with `repo-bootstrap --typescript` or `--typescript-retrofit`; a separate `tools` invocation installs pinned dependencies without changing the application's package manifest. Review and commit the generated quality-tool lockfile.
+Use the [compiler options](../assets/tsconfig.strict.json), [typed lint profile](../assets/eslint.config.mjs), and [runner](../assets/check-typescript.mjs) as one policy. Install with `source-code setup --typescript` or `--typescript-retrofit`; a separate `tools` invocation installs pinned dependencies without changing the application's package manifest. Review and commit the generated quality-tool lockfile.
 
 Use discriminated unions, explicit state transitions, and compiler-checked total maps. Validate `unknown` at I/O boundaries. A cast is not a validator; `void promise` is not a rejection handler. Throw a runtime error in an unreachable-case helper rather than returning a value whose static type is `never`.
 

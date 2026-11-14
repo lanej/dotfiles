@@ -5,7 +5,7 @@ description: Use when designing, implementing, modifying, debugging or reviewing
 
 # Builder
 
-This core applies to software produced by humans or agents. `MUST` properties are required; `SHOULD` techniques are defaults whose departures need concrete justification. Apply it within the changed capability, preserving project constraints and instruction precedence. Passing checks, instruction following, directory layout and written explanations cannot establish software compliance.
+Read the project's installed `source-code-lifecycle` skill and apply its construction expectations. If no project lifecycle policy is installed, preserve existing project requirements and the core's safeguards. This core applies to software produced by humans or agents. `MUST` properties are required; `SHOULD` techniques are defaults whose departures need concrete justification. Apply it within the changed capability, preserving project constraints and instruction precedence. Passing checks, instruction following, directory layout and written explanations cannot establish software compliance.
 
 ## Required properties
 
@@ -39,13 +39,7 @@ Start with a **steel thread**: one narrow, executable path from the capability's
 
 Keep the thread narrow in scope but real in execution. Resolve consequential uncertainty with a result that could contradict the approach; failure can be useful. For known requirements an early test may fit; for feasibility use a focused experiment at the relevant real boundary, then connect the result into the thread. Mocks cannot establish that the boundary they replace works. If a boundary is unavailable, state the substitution and remaining gap; do not claim the complete path is verified. Use safe, authorized experiments without bypassing permissions or production protections.
 
-TDD is optional; verification is mandatory. During early development, favor a few checks through the steel thread, starting with a representative happy path. Maximize meaningful protection with minimum testing machinery. Add failure and boundary checks early when they affect safety, feasibility or the credibility of the result; otherwise expand them as behavior becomes established. Introduce unit tests when isolating stable decisions improves protection or diagnosis, rather than as an initial development requirement.
-
-Once meaningful behavior will be retained or its conclusion relied on, capture repeatable protection before substantial expansion or material restructuring. Prefer extending an existing behavioral detector; protect intended behavior rather than speculative internals and preserve consequential failures where practical. Characterize old observed behavior separately from required behavior.
-
-Discarded experiments do not automatically need a permanent suite. One-off manual demonstrations do not provide regression protection: automate consequential retained behavior where practical, otherwise preserve a reproducible check and its limits. Address security, performance and failure handling initially when they determine viability; never defer safeguards against irreversible harm.
-
-Grow from the protected thread by adding the next meaningful behavior, failure condition or integration, verifying each increment before further expansion. Plan working-and-verifying increments together, without prescribed commit sequences or reports per loop. Construction feedback does not waive delivery gates, reviews, CI or explicit test-first mandates. Review protection of retained behavior, not test authorship order unless mandated. Report specific requirement violations, affected behavior, contradictory evidence, assumptions and verification gaps.
+Read the project's installed `testing` skill when selecting, writing, running, or reviewing checks. It owns stage-specific evidence requirements and protection of retained behavior. Research may use disposable structure; alpha protects the working thread; beta adds adoption and compatibility evidence; production adds controlled-change, independent-review, and applicable recovery evidence. Preserve explicit project requirements and protections against irreversible harm at every stage. If the testing skill is unavailable, use the construction reference's retained-behavior safeguards and report the missing stage guidance.
 
 ## Load detail when needed
 

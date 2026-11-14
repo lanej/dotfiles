@@ -253,17 +253,11 @@ def main():
         assert (home / ".codex/AGENTS.md").read_bytes() == expected_guidance
         skill = home / ".agents/skills/dotfiles/builder"
         source = repo / "ai/skills/builder"
-        assert (skill / "SKILL.md").read_bytes() == (source / "SKILL.md").read_bytes()
-        assert (skill / "references/standard.md").read_bytes() == (repo / "docs/pragmatic-hexagonal-architecture.md").read_bytes()
-        assert (skill / "references/construction.md").read_bytes() == (repo / "docs/software-construction.md").read_bytes()
-        assert (skill / "scripts/check_examples.py").is_file()
+        assert not skill.exists() and not skill.is_symlink()
         package = home / ".local/share/software-standards/builder"
-        claude_skill = home / ".claude/skills/builder"
-        rule = home / ".claude/rules/builder.md"
-        assert skill.resolve() == package
-        assert claude_skill.resolve() == package
-        assert not (package / "references/standard.md").is_symlink()
-        assert rule.read_bytes() == (source / "references/instructions.md").read_bytes()
+        assert (package / "references/construction.md").read_bytes() == (repo / "docs/software-construction.md").read_bytes()
+        assert not (home / ".claude/skills/builder").exists()
+        assert not (home / ".claude/rules/builder.md").exists()
         # Guidance installs even while optional tools and network are absent.
         assert (home / ".codex/agents/code-reviewer.toml").is_file()
         assert not (home / ".tmux/plugins/tpm").exists()

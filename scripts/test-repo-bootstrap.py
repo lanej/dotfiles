@@ -2,6 +2,7 @@
 """One acceptance workflow: share a bootstrap, then retrofit and upgrade locally."""
 
 import json
+import hashlib
 import os
 from pathlib import Path
 import re
@@ -11,10 +12,11 @@ import tempfile
 
 
 SOURCE = Path(__file__).resolve().parents[1]
+VALIDATOR = SOURCE / "ai/skills/skill-authoring/scripts/validate.py"
 
 
-def run(command, cwd=None, expected=0):
-    result = subprocess.run(command, cwd=cwd, text=True, capture_output=True)
+def run(command, cwd=None, expected=0, env=None):
+    result = subprocess.run(command, cwd=cwd, text=True, capture_output=True, env=env)
     assert result.returncode == expected, (command, result.stdout, result.stderr)
     return result.stdout + result.stderr
 
@@ -31,23 +33,26 @@ def tree(root):
 
 
 with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as temporary:
+    run(["python3", str(VALIDATOR), *[str(SOURCE / "ai/skills" / name)
+        for name in ("builder", "testing", "source-code-lifecycle", "code-comments", "library-code-comments", "go", "typescript")]])
     # macOS commonly exposes its temporary directory through /var -> /private/var.
     workspace = Path(temporary).resolve()
     # A private source copy lets the workflow exercise a real subsequent update.
     source = workspace / "dotfiles"
     (source / "bin").mkdir(parents=True)
     shutil.copy2(SOURCE / "bin/repo-bootstrap", source / "bin/repo-bootstrap")
-    shutil.copytree(SOURCE / "ai", source / "ai")
+    shutil.copy2(SOURCE / "bin/source-code", source / "bin/source-code")
+    shutil.copytree(SOURCE / "ai", source / "ai", symlinks=True)
     shutil.copytree(SOURCE / "docs", source / "docs", symlinks=True)
-    cli = source / "bin/repo-bootstrap"
+    cli = source / "bin/source-code"
     project = workspace / "new repository"
 
     def install(target, *args, expected=0):
-        return run([str(cli), "--repo", str(target), *args], expected=expected)
+        return run([str(cli), "setup", "--repo", str(target), *args], expected=expected)
 
     install(project, "--init", "--dry-run")
     assert not project.exists(), "preview initialized the target"
-    install(project, "--init", "--mode", "tracked")
+    run([str(source / "bin/repo-bootstrap"), "--repo", str(project), "--init", "--mode", "tracked"])
     nested = project / "not-yet-created"
     assert "nested repository" in install(nested, "--init", "--dry-run", expected=1)
     assert not nested.exists()
@@ -57,12 +62,29 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     before = tree(project)
     assert "already current" in install(project)
     assert tree(project) == before
+    assert "already current" in run([str(source / "bin/repo-bootstrap"), "--repo", str(project)])
+    assert tree(project) == before
+    install(project, "--skills", "builder,architecture,pr-writer,library-code-comments")
     assert not git(project, "diff", "--cached", "--name-only"), "installer staged files"
-    git(project, "add", ".agents", ".claude", ".github")
+    git(project, "add", ".")
     git(project, "commit", "-qm", "Adopt repository guidance")
     shared = workspace / "colleague checkout"
     run(["git", "clone", "--quiet", str(project), str(shared)])
     assert (shared / ".claude/skills/pr-writer/SKILL.md").is_file()
+    assert (shared / ".claude/skills/library-code-comments/SKILL.md").is_file()
+    assert (shared / ".agents/skills/code-comments/references/standard.md").is_file()
+    before = tree(shared)
+    run([str(cli), "validate", "--repo", str(shared), "--strict"])
+    assert tree(shared) == before, "validation wrote project files"
+    installed_skills = [str(shared / ".agents/skills" / name)
+                        for name in ("code-comments", "library-code-comments")]
+    run(["python3", str(VALIDATOR), *installed_skills])
+    library_guide = shared / ".agents/skills/library-code-comments/SKILL.md"
+    guide = library_guide.read_bytes()
+    library_guide.write_bytes(guide + b"\nRead [missing guidance](missing.md).\n")
+    run(["python3", str(VALIDATOR), *installed_skills], expected=1)
+    run([str(cli), "validate", "--repo", str(shared)], expected=1)
+    library_guide.write_bytes(guide)
     # Follow actual local Markdown resource links after cloning, without dotfiles.
     for path in (shared / ".agents/skills").rglob("*.md"):
         text = path.read_text()
@@ -71,6 +93,56 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
             if "://" not in link and not link.startswith("#"):
                 assert (path.parent / link.split("#", 1)[0]).exists(), (path, link)
     run(["python3", "scripts/check_examples.py"], cwd=shared / ".agents/skills/builder")
+
+    library = workspace / "private library"
+    install(library, "--init", "--skills", "library-code-comments", "--mode", "shadow", "--pr-template", "none")
+    assert not git(library, "status", "--porcelain", "--untracked-files=all")
+    assert not (library / "AGENTS.md").exists()
+    assert not (library / ".gitignore").exists()
+    assert (library / ".claude/skills/library-code-comments/SKILL.md").is_file()
+    before = tree(library)
+    assert "already current" in install(library, "--skills", "library-code-comments", "--pr-template", "none")
+    assert tree(library) == before
+    run([str(cli), "validate", "--repo", str(library), "--strict"])
+    override = library / "AGENTS.override.md"
+    assert override.is_file()
+    assert json.loads((library / ".source-code.json").read_text())["skills"]["testing"] == "1.0.0"
+    registry = source / "ai/skills/source-code-versions.json"
+    registry_bytes = registry.read_bytes()
+    versions = json.loads(registry_bytes)
+    versions["skills"]["testing"] = "1.1.0"
+    registry.write_text(json.dumps(versions))
+    testing_guide = source / "ai/skills/testing/SKILL.md"
+    testing_bytes = testing_guide.read_bytes()
+    testing_guide.write_bytes(testing_bytes + b"\nAdditional project verification guidance.\n")
+    before = tree(library)
+    preview = run([str(cli), "upgrade", "--repo", str(library), "--dry-run"])
+    assert "1.0.0 -> 1.1.0" in preview
+    assert tree(library) == before, "upgrade preview wrote files"
+    run([str(cli), "upgrade", "--repo", str(library)])
+    upgraded = json.loads((library / ".source-code.json").read_text())
+    assert upgraded["skills"]["testing"] == "1.1.0" and upgraded["stage"] == "beta"
+    assert not (library / ".github").exists(), "upgrade added an unselected PR template"
+    assert not git(library, "status", "--porcelain", "--untracked-files=all")
+    run([str(cli), "validate", "--repo", str(library), "--strict"])
+    assert "already current" in run([str(cli), "upgrade", "--repo", str(library)])
+    saved_override = override.read_bytes()
+    override.write_bytes(saved_override + b"\nPersonal local instructions.\n")
+    before = tree(library)
+    run([str(cli), "upgrade", "--repo", str(library)], expected=1)
+    run([str(cli), "upgrade", "--repo", str(library), "--conflict", "skip"], expected=1)
+    assert tree(library) == before, "conflicting override partially upgraded the project"
+    override.write_bytes(saved_override)
+    registry.write_bytes(registry_bytes)
+    before = tree(library)
+    assert "downgrade" in run([str(cli), "upgrade", "--repo", str(library)], expected=1)
+    assert tree(library) == before
+    testing_guide.write_bytes(testing_bytes)
+    standalone = workspace / "standalone-skill"
+    standalone.mkdir()
+    (standalone / "SKILL.md").write_text("---\nname: standalone-skill\ndescription: Helpful details.\n---\nUseful instructions.\n")
+    assert "WARNING" in run([str(cli), "validate", "--skills-dir", str(standalone)])
+    run([str(cli), "validate", "--skills-dir", str(standalone), "--strict"], expected=1)
 
     # Retrofit an existing linked worktree, retaining its instructions/template.
     existing = workspace / "existing repository"
@@ -157,11 +229,100 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     assert os.access(go_project / "scripts/check-go.sh", os.X_OK)
     assert (go_project / ".github/workflows/go-quality.yml").is_file()
     assert (go_project / ".claude/skills/go").resolve() == go_project / ".agents/skills/go"
+    assert (go_project / ".claude/skills/library-code-comments/SKILL.md").is_file()
+    assert (go_project / ".agents/skills/code-comments/references/standard.md").is_file()
     # Remember explicit adoption even before a new project has its module file.
     (go_project / "go.mod").unlink()
     assert "already current" in install(go_project, "--skills", "go")
     explicit_go = workspace / "future Go module"
     install(explicit_go, "--init", "--go", "--skills", "go", "--pr-template", "none")
     assert (explicit_go / "scripts/check-go.sh").is_file()
+    assert (explicit_go / ".agents/skills/library-code-comments/SKILL.md").is_file()
+    assert json.loads((explicit_go / ".source-code.json").read_text())["stage"] == "beta"
+    fake = workspace / "controlled lifecycle commands"
+    fake.mkdir()
+    boundary = fake / "bash"
+    boundary.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$LIFECYCLE_TRACE"\nexit "${LIFECYCLE_FAIL:-0}"\n')
+    boundary.chmod(0o755)
+    trace = workspace / "lifecycle trace"
+    environment = {**os.environ, "PATH": str(fake) + os.pathsep + os.environ["PATH"], "LIFECYCLE_TRACE": str(trace)}
+    runner = explicit_go / "scripts/check-source-code.py"
+    for stage, mode in (("research", "compile"), ("alpha", "alpha"), ("beta", "all"), ("production", "all")):
+        before = tree(explicit_go)
+        assert stage in install(explicit_go, "--skills", "go", "--stage", stage, "--dry-run")
+        assert tree(explicit_go) == before
+        install(explicit_go, "--skills", "go", "--stage", stage)
+        run(["python3", str(runner), "go"], env=environment)
+        assert trace.read_text().splitlines()[-1] == f"scripts/check-go.sh {mode}"
+        assert "already current" in install(explicit_go, "--skills", "go")
+    run(["python3", str(runner), "go"], env={**environment, "LIFECYCLE_FAIL": "7"}, expected=7)
+    policy_path = explicit_go / ".source-code.json"
+    original = policy_path.read_text()
+    for key, invalid in (("stage", "unknown"), ("schema_version", 99), ("policy_version", "99.0.0")):
+        policy = json.loads(original)
+        policy[key] = invalid
+        policy_path.write_text(json.dumps(policy))
+        trace_before = trace.read_bytes()
+        run(["python3", str(runner), "go"], env=environment, expected=1)
+        assert trace.read_bytes() == trace_before
+    assert "locally modified lifecycle policy" in install(explicit_go, "--skills", "go", "--stage", "research", "--conflict", "skip", expected=1)
+    policy_path.write_text(original)
+    legacy_runner = explicit_go / "scripts/check-go.sh"
+    legacy_bytes = legacy_runner.read_bytes()
+    legacy_runner.write_bytes(b"#!/bin/sh\nexit 0\n")
+    manifest_path = explicit_go / ".agents/repo-bootstrap.json"
+    manifest_bytes = manifest_path.read_bytes()
+    manifest = json.loads(manifest_bytes)
+    manifest["files"]["scripts/check-go.sh"]["sha256"] = hashlib.sha256(legacy_runner.read_bytes()).hexdigest()
+    manifest_path.write_text(json.dumps(manifest))
+    before = tree(explicit_go)
+    assert "requires an updated go runner" in install(explicit_go, "--skills", "go", "--no-go", "--stage", "research", expected=1)
+    assert tree(explicit_go) == before
+    legacy_runner.write_bytes(legacy_bytes)
+    manifest_path.write_bytes(manifest_bytes)
+    versions = json.loads(registry_bytes)
+    versions["skills"]["go"] = "1.1.0"
+    registry.write_text(json.dumps(versions))
+    legacy_runner.write_bytes(legacy_bytes + b"\n# Local runner customization.\n")
+    before = tree(explicit_go)
+    assert "scripts/check-go.sh" in run([str(cli), "upgrade", "--repo", str(explicit_go), "--conflict", "skip"], expected=1)
+    assert tree(explicit_go) == before, "version upgrade retained a modified runtime with a newer pin"
+    legacy_runner.write_bytes(legacy_bytes)
+    before = tree(explicit_go)
+    assert "retained runtime" in run([str(cli), "upgrade", "--repo", str(explicit_go), "--no-go"], expected=1)
+    assert tree(explicit_go) == before
+    registry.write_bytes(registry_bytes)
+    versions = json.loads(registry_bytes)
+    versions["policy_version"] = "1.1.0"
+    registry.write_text(json.dumps(versions))
+    plans_path = source / "ai/skills/source-code-lifecycle/references/stages.json"
+    plans_bytes = plans_path.read_bytes()
+    plans = json.loads(plans_bytes)
+    plans["policy_version"] = "1.1.0"
+    plans_path.write_text(json.dumps(plans))
+    before = tree(shared)
+    assert "complete upgrade" in run([str(cli), "upgrade", "--repo", str(shared), "--skills", "pr-writer"], expected=1)
+    assert tree(shared) == before
+    registry.write_bytes(registry_bytes)
+    plans_path.write_bytes(plans_bytes)
+    testing_guide.write_bytes(testing_bytes.replace(b"name: testing", b"name: testing\nname: testing"))
+    before = tree(shared)
+    assert "duplicate frontmatter key" in run([str(cli), "upgrade", "--repo", str(shared)], expected=1)
+    assert tree(shared) == before, "invalid source instructions partially upgraded the project"
+    testing_guide.write_bytes(testing_bytes)
+    versions = json.loads(registry_bytes)
+    versions["skills"].update({"source-code-lifecycle": "1.1.0", "pr-writer": "1.1.0"})
+    registry.write_text(json.dumps(versions))
+    runner_asset = source / "ai/skills/source-code-lifecycle/assets/check-source-code.py"
+    runner_bytes = runner_asset.read_bytes()
+    runner_asset.write_bytes(runner_bytes + b"\n# New lifecycle runtime release.\n")
+    installed_runner = (shared / "scripts/check-source-code.py").read_bytes()
+    run([str(cli), "upgrade", "--repo", str(shared), "--skills", "pr-writer"])
+    pins = json.loads((shared / ".source-code.json").read_text())["skills"]
+    assert pins["pr-writer"] == "1.1.0" and pins["source-code-lifecycle"] == "1.0.0"
+    assert (shared / "scripts/check-source-code.py").read_bytes() == installed_runner
+    run([str(cli), "validate", "--repo", str(shared), "--strict"])
+    runner_asset.write_bytes(runner_bytes)
+    registry.write_bytes(registry_bytes)
 
 print("PASS: portable repository and Go bootstrap with safe retrofit/update through the real CLI")

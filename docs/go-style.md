@@ -1,5 +1,7 @@
 # Josh Lane’s Go style guide
 
+Project lifecycle stages select engineering effort and the generated CI gate. Use `python3 scripts/check-source-code.py go` for the selected stage; beta and production run the full profile described below. Research and alpha defer some added checks while retaining inherited repository gates. See [source-code setup](repository-bootstrap.md#lifecycle-stages).
+
 I want Go code that makes decisions explicit, preserves failure information, and catches routine mistakes before review. Small, understandable changes matter more than satisfying a large collection of stylistic preferences. Use strict defaults for new projects and introduce them into existing projects without bundling a repository-wide cleanup into a feature PR.
 
 The [lint profile](../ai/skills/go/assets/golangci.yml) is the executable policy; the [check runner](../ai/skills/go/assets/check-go.sh) pins its tools. This guide explains the choices and their consequences. Repository-specific requirements can strengthen these defaults. Passing the checks does not establish that a business decision is correct.
@@ -106,12 +108,12 @@ Do not turn off a check globally because one call needs an exception. Do not add
 
 ## Adopt without a cleanup campaign
 
-New repositories use whole-project strict checks. Existing repositories default to a ratchet when bootstrap finds an existing config or tracked Go source. The initial adoption changes tooling and records current lint debt; it does not rewrite Go files.
+New repositories use whole-project strict checks. Existing repositories default to a ratchet when bootstrap finds an existing config or tracked Go source. The initial adoption changes tooling and records current lint debt; it does not rewrite Go files. Both modes also install the shared comment policy and the library caller guidance; apply the library perspective to public library APIs. These guidance files follow the selected tracked or Git-excluded local installation mode.
 
 Start with committed Go source, including any source needed to analyze the project. YAML and JSON golangci-lint v2 configurations can be merged; migrate v1 first. TOML configurations require explicit conversion. Config merging needs PyYAML; the installer can use the workstation’s `uv` to cache a pinned parser when it is absent.
 
 ```sh
-repo-bootstrap --repo ~/src/service --go-retrofit --pr-template none
+source-code setup --repo ~/src/service --go-retrofit --pr-template none
 cd ~/src/service
 bash scripts/check-go.sh baseline
 bash scripts/check-go.sh

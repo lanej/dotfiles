@@ -55,15 +55,13 @@ These are architectural defaults, with justified alternatives allowed. Simple ha
 
 ## Install and use Builder
 
-From this dotfiles checkout, install the complete package with:
+Install Builder into a project with its lifecycle, testing, and comment skills:
 
 ```sh
-make software-standard
+source-code setup --repo ~/src/project --stage alpha --mode shadow --pr-template none
 ```
 
-The installed core lives at `~/.local/share/software-standards/builder/SKILL.md`, alongside its references and runnable examples. Start a fresh assistant session after installation. Claude and Codex loading, migration behavior and installation checks are covered in [Using Builder](./pragmatic-hexagonal-usage.md).
-
-For another repository, use the [repository bootstrap guide](./repository-bootstrap.md) to install a portable package. Copy the complete skill rather than only `SKILL.md`; the core routes to its supporting references when their task triggers apply.
+Add `--go` or `--typescript` for a language profile. Builder is absent from the default user-level skill catalog. Use tracked mode when the team should share the policy. The [source-code setup guide](./repository-bootstrap.md) describes stages and upgrades; [Using Builder](./pragmatic-hexagonal-usage.md) explains loading and preservation of existing explicit references.
 
 A task brief can make the intended first increment concrete:
 

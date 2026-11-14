@@ -5,9 +5,12 @@ description: Use when deciding whether to add a source comment, writing or revis
 
 # Code Comments
 
+Read the project’s stage through [source-code lifecycle](../source-code-lifecycle/SKILL.md). In research, explain assumptions and consequential interactions without documenting speculative APIs. In alpha, document caller information needed for retained behavior and mark provisional contracts. In beta and production, maintain public contracts, constraints, failure outcomes, and useful examples. Preserve explicit documentation requirements at every stage.
+
 Use this guide for routine comment edits and reviews:
 
 - Comment when it materially reduces the effort needed to understand or safely change code. Useful explanations of behavior and phase labels are welcome; omit obvious narration and decoration.
+- Judge usefulness by what the reader would otherwise have to infer, not sentence count. Explain consequential interactions, such as why setting one value changes how another is interpreted; omit comments that merely repeat an assignment.
 - Prefer clearer code when it carries the information better. Do not extract functions solely to eliminate useful prose.
 - Put caller contracts in native documentation, local reasoning beside the code, and broad decisions in design documentation with useful local context.
 - Distinguish current behavior, intent, assumptions, and known defects. Keep guarantees bounded to what is established; do not write reassuring claims over a behavior problem.

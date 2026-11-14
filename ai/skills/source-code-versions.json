@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "policy_version": "1.0.0",
+  "skills": {
+    "architecture": "1.0.0",
+    "builder": "1.0.0",
+    "code-comments": "1.0.0",
+    "go": "1.0.0",
+    "library-code-comments": "1.0.0",
+    "pr-writer": "1.0.0",
+    "source-code-lifecycle": "1.0.0",
+    "testing": "1.0.0",
+    "typescript": "1.0.0"
+  }
+}

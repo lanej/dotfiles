@@ -20,6 +20,7 @@ def test_make_claude_shared_migrates_links_and_preserves_local_entries(tmp_path)
     obsolete.mkdir()
     (obsolete / "SKILL.md").write_text("Retired instructions.\n")
     shutil.copytree(ROOT / "ai/skills/builder", repo / "ai/skills/builder")
+    shutil.copyfile(ROOT / "ai/skills/project-only.json", repo / "ai/skills/project-only.json")
     (repo / "scripts").mkdir()
     (repo / "scripts/install-software-standard.py").symlink_to(ROOT / "scripts/install-software-standard.py")
     agents = repo / "ai/agents"
@@ -62,6 +63,7 @@ def test_make_claude_shared_migrates_links_and_preserves_local_entries(tmp_path)
     assert (installed_agents / "reviewer.md").readlink() == agents / "reviewer.md"
     assert (installed_agents / "reviewer.md").read_text() == external.read_text()
     assert not retired.is_symlink()
+    assert not (installed_skills / "builder").exists()
     assert local.read_text() == "Local instructions.\n"
     assert local_agent.read_text() == "Local agent.\n"
     assert not (installed_skills / "paseo-plugin").exists()

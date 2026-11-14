@@ -2,6 +2,7 @@
 """Link shared AI skills and agents into Claude while preserving local entries."""
 
 import argparse
+import json
 import os
 from pathlib import Path
 import platform
@@ -19,6 +20,12 @@ def owned_entry(path, roots):
 
 
 def sync(source, home):
+    manifest = source / "skills/project-only.json"
+    excluded = json.loads(manifest.read_text()) if manifest.is_file() else []
+    if (not isinstance(excluded, list) or not all(isinstance(name, str) and name not in {"", ".", ".."}
+            and Path(name).name == name for name in excluded) or len(set(excluded)) != len(excluded)):
+        raise ValueError(f"{manifest}: expected unique project skill directory names")
+    project_only = set(excluded)
     for group in ("skills", "agents"):
         if not (source / group).is_dir():
             raise ValueError(f"missing shared source: {source / group}")
@@ -36,13 +43,18 @@ def sync(source, home):
             entry.name: entry for entry in root.iterdir()
             if entry.exists() and not (
                 group == "skills" and (
-                    entry.name == "paseo" or entry.name.startswith("paseo-")
+                    entry.name in project_only or entry.name == "paseo" or entry.name.startswith("paseo-")
                     or platform.system() != "Darwin"
                     and entry.name == "problem-definition-contract"
                 )
             )
         }
         for installed in destination.iterdir():
+            package = home / ".local/share/software-standards" / installed.name
+            if (group == "skills" and installed.name in project_only and installed.is_symlink()
+                    and installed.resolve() == package.resolve() and (package / ".dotfiles-managed").is_file()):
+                installed.unlink()
+                continue
             if installed.is_symlink():
                 target = link_target(installed)
                 if legacy in target.parents:
