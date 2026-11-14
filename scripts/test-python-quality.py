@@ -113,7 +113,10 @@ def main() -> int:
             parent_project.replace('version = "1.0.0"', 'version = "1.0.0"\nrequires-python = ">=3.12"')
         )
         app.write_text("from typing import override\n\n\n" + original)
+        # The isolated Ty configuration uses the selected environment for its target version.
+        run(root, ["uv", "venv", "--python", "3.12", str(root / ".venv")])
         run(root, [*checker, "typecheck"])
+        shutil.rmtree(root / ".venv")
         (root / "pyproject.toml").write_text(parent_project)
         wrong = original.replace("return value * 2", 'return "wrong"')
         app.write_text(wrong)
