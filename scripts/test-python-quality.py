@@ -102,6 +102,8 @@ def main() -> int:
         assert configured.returncode == 0, configured.stderr
         assert list(foreign.iterdir()) == [foreign / "sentinel"]
         assert (foreign / "sentinel").read_text() == "preserve"
+        run(root, [*checker, "project-tools"])
+        assert not (root / ".venv").exists()
         run(root, [*checker, "alpha"])
         assert app.read_text() == original
         assert (root / "pyproject.toml").read_text() == parent_project
@@ -122,6 +124,10 @@ def main() -> int:
         app.write_text(wrong)
         failed = run(root, [*checker, "typecheck"], success=False)
         assert "invalid-explicit-return" in failed.stdout and app.read_text() == wrong
+        app.write_text("# mypy: disallow-untyped-defs, warn-return-any=True\n" + original)
+        run(root, [*checker, "typecheck"])
+        app.write_text("# mypy: disallow-untyped-defs=False\n" + original)
+        assert "blanket type-check override" in run(root, [*checker, "typecheck"], success=False).stderr
         app.write_text("# mypy: ignore-errors\n" + wrong)
         assert "blanket type-check override" in run(root, [*checker, "typecheck"], success=False).stderr
         app.write_text("# ty: ignore[invalid-explicit-return]\n" + wrong)
@@ -166,6 +172,13 @@ def main() -> int:
         assert "invalid-explicit-return" in dash_result.stdout
         settings["paths"] = ["app.py"]
         config.write_text(json.dumps(settings))
+        (root / "pyproject.toml").write_text(
+            '[project]\nname="application"\nversion="0.1.0"\nrequires-python=">=3.11"\ndependencies=["six==1.17.0"]\n[tool.uv]\npackage=false\n'
+        )
+        run(root, ["uv", "lock"])
+        run(root, [*checker, "project-tools"])
+        app.write_text("import six\n\n" + original)
+        run(root, [*checker, "typecheck"])
         # A runnable but stale tool version must be rejected before any gate executes.
         uv = shutil.which("uv")
         assert uv is not None

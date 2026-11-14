@@ -804,7 +804,12 @@ def package(
         add(f"{template_directory}/pull_request_template.md", SOURCE / "ai/templates/pull_request_template.md")
     if go_profile:
         for destination, name in GO_FILES.items():
-            add(destination, SOURCE / "ai/skills/go/assets" / name)
+            replacements = (
+                [("bash scripts/check-go.sh", "python3 scripts/check-source-code.py go")]
+                if name == "go-quality.yml"
+                else ()
+            )
+            add(destination, SOURCE / "ai/skills/go/assets" / name, replacements)
     if typescript_profile:
         for destination, name in TS_FILES.items():
             add(destination, SOURCE / "ai/skills/typescript/assets" / name)

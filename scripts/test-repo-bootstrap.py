@@ -35,6 +35,15 @@ def tree(root):
             for path in root.rglob("*") if path.is_symlink() or path.is_file()}
 
 
+# Exercise the standalone workflow command with only its documented runner present.
+with tempfile.TemporaryDirectory(prefix="go-standalone-workflow-") as temporary:
+    standalone = Path(temporary)
+    (standalone / "scripts").mkdir()
+    (standalone / "scripts/check-go.sh").write_text("printf 'standalone-go-gate\\n'\n")
+    workflow = (SOURCE / "ai/skills/go/assets/go-quality.yml").read_text()
+    command = workflow.rsplit("- run: ", 1)[1].strip()
+    assert "standalone-go-gate" in run(["bash", "-c", command], cwd=standalone)
+
 with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as temporary:
     run(["python3", str(VALIDATOR), *[str(SOURCE / "ai/skills" / name)
         for name in json.loads((SOURCE / "ai/skills/source-code-versions.json").read_text())["skills"]]])

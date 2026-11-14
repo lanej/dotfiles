@@ -169,6 +169,25 @@ def source_files(root: Path, paths: Sequence[str]) -> set[Path]:
     return files
 
 
+def relaxing_mypy_directive(comment: str) -> bool:
+    if not comment.startswith("mypy:"):
+        return False
+    for setting in comment.removeprefix("mypy:").split(","):
+        name, _, value = setting.strip().partition("=")
+        name = name.strip().replace("_", "-")
+        value = value.strip().lower()
+        enabled = value not in {"false", "0"}
+        if name.startswith(("ignore-", "allow-")) and enabled:
+            return True
+        if name == "disable-error-code" and value:
+            return True
+        if name == "follow-imports" and value in {"skip", "silent"}:
+            return True
+        if name.startswith(("disallow-", "warn-", "check-")) and not enabled:
+            return True
+    return False
+
+
 def reject_blanket_overrides(root: Path, paths: Sequence[str]) -> None:
     files = source_files(root, paths)
     for path in sorted(files):
@@ -180,7 +199,7 @@ def reject_blanket_overrides(root: Path, paths: Sequence[str]) -> None:
                     comment = token.string.removeprefix("#").strip()
                     standalone = not token.line[: token.start[1]].strip()
                     if (
-                        comment.startswith("mypy:")
+                        relaxing_mypy_directive(comment)
                         or (comment.startswith("ty:") and standalone)
                         or (comment.startswith("type: ignore") and standalone)
                     ):
@@ -193,7 +212,9 @@ def reject_blanket_overrides(root: Path, paths: Sequence[str]) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("tools", "format", "lint", "typecheck", "test", "audit", "alpha", "all"))
+    parser.add_argument(
+        "command", choices=("tools", "project-tools", "format", "lint", "typecheck", "test", "audit", "alpha", "all")
+    )
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     try:
@@ -202,6 +223,17 @@ def main() -> int:
         config = settings(root)
         if args.command == "tools":
             run(root, [uv(), "sync", "--project", str(root / ".python-quality"), "--locked"])
+            return 0
+        if args.command == "project-tools":
+            if (root / "pyproject.toml").is_file() and (root / "uv.lock").is_file():
+                if (root / ".venv").is_symlink():
+                    raise ValueError("Python project environment must not be a symlink")
+                environment = dict(os.environ)
+                environment.pop("VIRTUAL_ENV", None)
+                environment["UV_PROJECT_ENVIRONMENT"] = str(root / ".venv")
+                subprocess.run(  # noqa: S603 -- explicit project provisioning
+                    [uv(), "sync", "--project", str(root), "--locked"], cwd=root, env=environment, check=True
+                )
             return 0
         if not (root / ".python-quality/.venv").is_dir():
             raise ValueError("Python quality tools are missing; run python3 scripts/check-python.py tools")
