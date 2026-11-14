@@ -377,3 +377,7 @@ $ sh transfer.sh
 
 See [docs/](docs/) for tool-specific notes and decision rationale.
 For creating and updating pull requests, follow [the PR guidance](docs/pull-requests.md).
+
+## Ancillary project updates
+
+Use `project-update status --all --fetch` to compare registered checkouts with their upstream default branches, and `project-update update --all` to pull, build and activate them using project-specific restart controls. Individual actions remain available; see the [project update convention](docs/project-updates.md).

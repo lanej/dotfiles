@@ -1,0 +1,176 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = []
+# ///
+"""Run the shared source/build/restart convention without owning processes."""
+
+import argparse
+from contextlib import ExitStack
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tomllib
+
+ROOT = Path(__file__).resolve().parent.parent
+ACTIONS = ("status", "pull", "build", "restart", "clean", "update")
+
+
+def run(args, cwd, capture=False):
+    result = subprocess.run(args, cwd=cwd, text=True, check=True,
+                            stdout=subprocess.PIPE if capture else sys.stderr,
+                            stderr=subprocess.PIPE if capture else None)
+    return result.stdout.strip() if capture else ""
+
+
+def git(path, *args):
+    return run(["git", "-C", str(path), *args], path, capture=True)
+
+
+def load_projects(config):
+    data = tomllib.loads(config.read_text())
+    projects = data.get("projects", {})
+    if not projects:
+        raise ValueError(f"No projects registered in {config}")
+    for name, project in projects.items():
+        if not isinstance(project, dict) or not isinstance(project.get("path"), str):
+            raise ValueError(f"{name}: expected a project path")
+        command = project.get("command")
+        if not isinstance(command, list) or not command or not all(isinstance(x, str) and x for x in command):
+            raise ValueError(f"{name}: command must be a nonempty argv array")
+        project["path"] = Path(project["path"].replace("{dotfiles}", str(ROOT))).expanduser().resolve()
+        project["command"] = [x.replace("{dotfiles}", str(ROOT)).replace("{python}", sys.executable) for x in command]
+        if "remote" in project and (not isinstance(project["remote"], str) or not project["remote"] or project["remote"].startswith("-")):
+            raise ValueError(f"{name}: invalid remote name")
+    return projects
+
+
+def remote_for(path, project):
+    remotes = git(path, "remote").splitlines()
+    remote = project.get("remote", "upstream" if "upstream" in remotes else "origin")
+    if remote not in remotes:
+        raise ValueError(f"No {remote} remote in {path}")
+    return remote
+
+
+def refresh(path, remote):
+    head = git(path, "ls-remote", "--symref", remote, "HEAD")
+    refs = [line.split()[1] for line in head.splitlines() if line.startswith("ref: refs/heads/")]
+    if len(refs) != 1:
+        raise ValueError(f"Cannot resolve default branch of {remote}")
+    branch = refs[0].removeprefix("refs/heads/")
+    target = f"refs/remotes/{remote}/{branch}"
+    git(path, "fetch", remote, f"refs/heads/{branch}:{target}")
+    return branch, target
+
+
+def pull(path, project):
+    for operation in ("MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "rebase-merge", "rebase-apply", "sequencer", "BISECT_START"):
+        location = Path(git(path, "rev-parse", "--git-path", operation))
+        if not location.is_absolute():
+            location = path / location
+        if location.exists():
+            raise ValueError(f"{path}: unfinished Git operation ({operation}); reconcile manually")
+    if git(path, "status", "--porcelain", "--untracked-files=all"):
+        raise ValueError(f"Preserve dirty checkout: {path}")
+    remote = remote_for(path, project)
+    branch, target = refresh(path, remote)
+    current = git(path, "symbolic-ref", "--quiet", "--short", "HEAD")
+    if current != branch:
+        raise ValueError(f"{path}: switch to {branch} explicitly; current branch is {current}")
+    ancestor = subprocess.run(["git", "-C", str(path), "merge-base", "--is-ancestor", "HEAD", target])
+    if ancestor.returncode:
+        raise ValueError(f"{path}: local commits or diverged history; reconcile manually")
+    git(path, "merge", "--ff-only", target)
+
+
+def status(path, project, fetch):
+    remote = remote_for(path, project)
+    target = None
+    if fetch:
+        _, target = refresh(path, remote)
+    else:
+        result = subprocess.run(["git", "-C", str(path), "symbolic-ref", "--quiet", f"refs/remotes/{remote}/HEAD"], text=True, capture_output=True)
+        if result.returncode == 0:
+            target = result.stdout.strip()
+    revision = None
+    if target:
+        revision = git(path, "rev-parse", "--verify", target)
+    runtime = json.loads(run([*project["command"], "status"], path, capture=True))
+    return {"path": str(path), "checkout_revision": git(path, "rev-parse", "HEAD"),
+            "dirty": bool(git(path, "status", "--porcelain", "--untracked-files=all")),
+            "upstream_ref": target, "upstream_revision": revision,
+            "upstream_freshness": "fetched-now" if fetch else "cached-or-unknown",
+            "runtime": runtime}
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("action", choices=ACTIONS)
+    parser.add_argument("projects", nargs="*")
+    parser.add_argument("--all", action="store_true", help="select every registered project")
+    parser.add_argument("--config", type=Path, help="replace the bundled project registry")
+    parser.add_argument("--fetch", action="store_true", help="refresh upstream while inspecting status")
+    parser.add_argument("--dry-run", action="store_true", help="print the actions without running them")
+    args = parser.parse_args()
+    if args.all == bool(args.projects):
+        parser.error("select project names or --all")
+    if args.fetch and args.action != "status":
+        parser.error("--fetch applies only to status")
+    projects = load_projects(args.config or ROOT / "config/project-updates.toml")
+    names = list(projects) if args.all else list(dict.fromkeys(args.projects))
+    unknown = set(names) - projects.keys()
+    if unknown:
+        parser.error("unknown projects: " + ", ".join(sorted(unknown)))
+    steps = ("pull", "build", "restart") if args.action == "update" else (args.action,)
+    if args.dry_run:
+        print(json.dumps([{ "project": name, "path": str(projects[name]["path"]),
+                            "steps": list(steps), "command": projects[name]["command"]} for name in names], indent=2))
+        return 0
+    results, pulled = [], set()
+    with ExitStack() as locks:
+        if args.action != "status" or args.fetch:
+            cache = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "dotfiles/project-update"
+            cache.mkdir(parents=True, exist_ok=True)
+            for path in sorted({projects[name]["path"] for name in names}):
+                key = hashlib.sha256(os.fsencode(path)).hexdigest()
+                lock = locks.enter_context((cache / f"{key}.lock").open("a"))
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        for name in names:
+            project = projects[name]
+            path = project["path"]
+            row = {"project": name, "completed": [], "outcome": "ok"}
+            try:
+                if not path.is_dir():
+                    raise ValueError(f"Checkout not found: {path}")
+                for step in steps:
+                    print(f"{name}: {step}", file=sys.stderr, flush=True)
+                    if step == "status":
+                        row.update(status(path, project, args.fetch))
+                    elif step == "pull":
+                        key = (path, project.get("remote"))
+                        if key not in pulled:
+                            pull(path, project)
+                            pulled.add(key)
+                    else:
+                        run([*project["command"], step], path)
+                    row["completed"].append(step)
+            except (OSError, ValueError, subprocess.CalledProcessError) as error:
+                pending = isinstance(error, subprocess.CalledProcessError) and error.returncode == 3
+                row.update(outcome="restart-required" if pending else "failed", error=str(error))
+                if isinstance(error, subprocess.CalledProcessError) and error.stderr:
+                    row["error"] += ": " + error.stderr.strip()
+            results.append(row)
+    print(json.dumps(results, indent=2))
+    return 1 if any(r["outcome"] == "failed" for r in results) else 3 if any(r["outcome"] == "restart-required" for r in results) else 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except (OSError, ValueError, tomllib.TOMLDecodeError) as error:
+        sys.exit(f"project-update: {error}")
