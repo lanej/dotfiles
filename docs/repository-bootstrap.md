@@ -72,6 +72,8 @@ source-code setup --repo ~/src/app --mode tracked --pr-template local
 
 ## Workstation installation and language detection
 
+The user-level `source-code` skill explains installation, detection, validation, and upgrades without loading project engineering policy. Coding skills remain project-only.
+
 The `workstation` set selects `tools.source-code`, whose setup target links `source-code` and the `repo-bootstrap` compatibility command. Basic shell/terminal setup does not install those commands. Select `[tools] source-code = true` independently or use `false` to opt out. This installs commands only; project policies are still selected explicitly.
 
 ```sh
