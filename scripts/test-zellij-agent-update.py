@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Probe a shell-only agent updater on the pinned native Zellij runtime.
+"""Probe a per-user stable agent on the pinned native Zellij runtime.
 
 Run after installing the pinned runtime:
     python3 scripts/test-zellij-agent-update.py
@@ -161,6 +161,8 @@ export PS1="$ZELLIJ_SESSION_NAME:agent-probe-ready> "
         def attach(name, raw, native_control=False):
             if name not in names:
                 names.append(name)
+            if not native_control:
+                command(["/bin/sh", str(ROOT / "sh/ssh-rc")], SSH_AUTH_SOCK=raw)
             client = Terminal(binary, {**env, "SSH_AUTH_SOCK": raw}, name,
                               command=([binary, "attach", name] if native_control else
                                        [str(bindir / "zellij-attach"), name]),
@@ -221,14 +223,14 @@ export PS1="$ZELLIJ_SESSION_NAME:agent-probe-ready> "
 
         def update(name, raw, stable):
             before = snapshot(name)
-            command([str(bindir / "zellij-agent"), "refresh", name], SSH_AUTH_SOCK=raw)
+            command([str(bindir / "zellij-agent"), "publish-login"], SSH_AUTH_SOCK=raw)
             deadline = time.monotonic() + 5
             while snapshot(name) != before:
                 if time.monotonic() >= deadline:
                     assert_snapshot(name, before, "Updater changed pane IDs, visible focus, tabs, or geometry")
                     break
                 time.sleep(0.02)
-            assert stable.resolve() == Path(raw).resolve(), "Updater did not replace its own session's link"
+            assert stable.resolve() == Path(raw).resolve(), "Login did not replace the per-user link"
 
         def prove_agent(path):
             result = subprocess.run(["ssh-add", "-l"], env={**env, "SSH_AUTH_SOCK": str(path)},
@@ -297,9 +299,26 @@ export PS1="$ZELLIJ_SESSION_NAME:agent-probe-ready> "
             action("pop-up", "write-chars", "popup_agent_token=survived\n")
             popup_expected = popup_proof()
             popup_stable = Path(popup_expected.split("|")[2])
-            assert popup_stable != stable1, "Popup did not initialize its own stable socket"
+            assert popup_stable == stable1, "Popup did not inherit the per-user socket"
             hide_popup(first)
             update(first.name, raw2, stable1)
+            # A long-running caller can keep a raw socket in its environment.
+            # Its SSH child must select the stable agent even while that raw
+            # path remains a socket; repairing the parent is unnecessary.
+            proxy = home / "capture-ssh"
+            proxy.write_text('#!/bin/sh\nprintf "%s" "$SSH_AUTH_SOCK" > "$HOME/git-child-socket"\n')
+            proxy.chmod(0o755)
+            first.send((f"SSH_AUTH_SOCK={shlex.quote(raw1)}; export SSH_AUTH_SOCK; "
+                        f"{shlex.quote(str(ROOT / 'bin/git-ssh'))} -F /dev/null "
+                        f"-o ProxyCommand={shlex.quote(str(proxy))} fixture; "
+                        'printf "%s" "$SSH_AUTH_SOCK" > "$HOME/git-parent-socket"; '
+                        f"SSH_AUTH_SOCK={shlex.quote(str(stable1))}; export SSH_AUTH_SOCK\r").encode())
+            first.until("SSH child selects the owning Zellij agent", lambda:
+                        (home / "git-child-socket").exists()
+                        and (home / "git-parent-socket").exists())
+            assert (home / "git-child-socket").read_text() == str(stable1)
+            assert (home / "git-parent-socket").read_text() == raw1
+            print("PASS: Git's SSH child selects the refreshed agent while its parent retains the old socket.", flush=True)
             agents[0].terminate()
             agents[0].wait(timeout=5)
             prove_agent(stable1)
@@ -313,7 +332,7 @@ export PS1="$ZELLIJ_SESSION_NAME:agent-probe-ready> "
                         (home / "nested-socket").exists()
                         and (home / "nested-socket").read_text().strip() == str(stable1))
             assert stable1.resolve() == Path(raw2).resolve(), "old pane republished its stale socket"
-            print("PASS: native helper identifies the owning server parent; attached update preserves layout and focus.", flush=True)
+            print("PASS: nested mux shells retain the stable path; login updates preserve layout and focus.", flush=True)
 
             detach(first)
             first = attach("probe-original", raw3)
@@ -336,15 +355,15 @@ export PS1="$ZELLIJ_SESSION_NAME:agent-probe-ready> "
             replacement = attach("probe-original", raw2)
             prepare_tiled_workspace(replacement)
             server2, stable2 = identity()
-            assert server2 != server1 and stable2 != stable1, "Reused visible name inherited the renamed server identity"
-            assert stable1.resolve() == Path(raw3).resolve()
+            assert server2 != server1 and stable2 == stable1, "Sessions did not share the per-user agent"
+            assert stable1.resolve() == Path(raw2).resolve()
             open_popup(replacement)
             popup_proof()
-            assert popup_stable.readlink() == stable2, "Popup did not select its new containing server"
+            assert popup_stable == stable2, "Popup changed the stable per-user path"
             hide_popup(replacement)
             update(first.name, raw2, stable1)
             update(replacement.name, raw3, stable2)
-            assert stable1.resolve() == Path(raw2).resolve() and stable2.resolve() == Path(raw3).resolve()
+            assert stable1.resolve() == stable2.resolve() == Path(raw3).resolve()
             prove_agent(stable1)
             prove_agent(stable2)
             popup_proof()
@@ -353,20 +372,20 @@ export PS1="$ZELLIJ_SESSION_NAME:agent-probe-ready> "
             # from its selected containing server's managed agent.
             unmanaged = home / "unmanaged-agent.sock"
             unmanaged.symlink_to(raw2)
-            rejected = command([str(bindir / "zellij-agent"), "follow-popup"],
+            rejected = command([str(bindir / "zellij-agent"), "publish-login"],
                                check=False, SSH_AUTH_SOCK=str(unmanaged))
             assert rejected.returncode != 0, "Accepted an unmanaged popup agent source"
-            assert popup_stable.readlink() == stable2
+            assert popup_stable.resolve() == Path(raw3).resolve()
             popup_proof()
             print("PASS: the same popup shell follows host agent updates and detached reconnects; "
-                  "opening from another host switches only the popup's source; an unmanaged link is rejected.", flush=True)
-            print("PASS: rename keeps the owning identity; reuse of its old name gets an isolated agent link.", flush=True)
+                  "all sessions share the latest login; an unmanaged source is rejected.", flush=True)
+            print("PASS: session names and server identity do not change the per-user agent path.", flush=True)
 
             stopped = attach("probe-restored", raw2)
-            _, restored_stable = identity(stopped.name)
+            restored_server, restored_stable = identity(stopped.name)
             cache = (home / "Library/Caches/org.Zellij-Contributors.Zellij"
                      if sys.platform == "darwin" else Path(env["XDG_CACHE_HOME"]) / "zellij")
-            restored_key = restored_stable.stem.removeprefix("zellij-")
+            restored_key = Path(restored_server).name
             action(stopped.name, "save-session")
             stopped.until("session layout is saved for resurrection", lambda:
                           any(path.parent.name == restored_key
@@ -391,14 +410,12 @@ export PS1="$ZELLIJ_SESSION_NAME:agent-probe-ready> "
 
             before_failure = snapshot(first.name)
             missing_socket = str(home / "missing-agent.sock")
-            failed = command([str(bindir / "zellij-agent"), "refresh", first.name],
+            failed = command([str(bindir / "zellij-agent"), "publish-login"],
                              check=False, SSH_AUTH_SOCK=missing_socket)
             assert failed.returncode != 0, "Refresh falsely accepted a missing socket"
-            detach(first)
-            first = attach("probe-renamed", missing_socket)
-            assert_snapshot(first.name, before_failure, "Failed updater changed the existing workspace")
-            assert stable1.resolve() == Path(raw2).resolve()
-            print(f"PASS: actual refresh rejects a missing socket (status {failed.returncode}); actual launcher still attaches to existing panes.", flush=True)
+            assert_snapshot(first.name, before_failure, "Rejected login changed the workspace")
+            assert stable1.resolve() == Path(raw3).resolve()
+            print("PASS: a missing incoming socket fails visibly and preserves the current agent and workspace.", flush=True)
         finally:
             for name in names:
                 try:

@@ -50,9 +50,9 @@ The [picker](../bin/zellij-picker) preserves live panes when moving or swapping.
 
 ## Forwarded-agent and session safety
 
-The attach workflow maintains owner-only session-specific SSH-agent links keyed by persistent native session identity. Renaming or reusing a display name does not retarget an existing session. The shared popup follows its selected outer session's managed link; arbitrary symlinks, follower chains, self-reference, and loops are rejected. Raw agent sockets remain the ordinary session-refresh input.
+Remote programs share `~/.ssh/dotfiles-agent/forwarded.sock`, a per-user link inside an owner-only directory. Each fresh forwarded SSH login atomically selects its owned raw socket. Mux children only select the stable path, so stale inherited sockets cannot roll back a newer login. Session names, server identity, and popup ownership do not affect the selection. The latest forwarded login serves every session on the host.
 
-Recovery identifies the target session's server through a short unfocused native command. It needs no Python or SQLite client at runtime. Failure falls back to ordinary attachment with the incoming socket rather than blocking attachment. No private key material is copied.
+The SSH login hook updates the link before launching programs, without running a command inside Zellij or discovering a server through parent processes. Missing or invalid incoming sockets fail visibly and leave the selected agent unchanged. No private key material is copied.
 
 Shutdown validates the owning Unix socket again before ending a session. The client-detach chooser uses fresh attachment identities and receiver ownership, rejecting observed stale selections rather than falling back to detaching every other viewer.
 
@@ -83,7 +83,7 @@ make test-zellij-session-keys
 
 The real-terminal detectors install into private temporary homes and sessions. They exercise configured prefix keys, preserve process and scrollback identity, and clean up only their own sessions. Some checks require Neovim, fzf, Rust, or installed navigation artifacts. Runtime installation has its own cache and upstream-download boundary; orchestration tests do not establish live release availability.
 
-Run `make test-ssh-agent` for local-agent, tmux, and attachment-failure checks and `python3 scripts/test-zellij-agent-update.py` for pinned-runtime reconnects, popup survival, and unsafe-source rejection. These use real temporary agents but do not open a real SSH connection or authenticate against 1Password.
+Run `make test-ssh-agent` for local-agent preservation, shell startup, direct attachment, and invalid-source checks and `python3 scripts/test-zellij-agent-update.py` for pinned-runtime reconnects, popup survival, and unsafe-source rejection. These use real temporary agents but do not open a real SSH connection or authenticate against 1Password.
 
 The notification detector validates fixed-width wide and narrow layouts and colored source previews. A previous live-resize check disrupted input; whether that came from the runtime or the test harness remains unresolved. Do not treat fixed-width checks as proof of live-resize behavior.
 

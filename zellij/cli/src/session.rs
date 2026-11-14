@@ -9,7 +9,7 @@ use std::io::{self, IsTerminal, Write};
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::os::unix::process::{CommandExt, ExitStatusExt};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Command;
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -68,22 +68,11 @@ pub fn attach(args: &[String]) -> Result<()> {
     }
     let defaults = vec!["main".to_owned()];
     let args = if args.is_empty() { &defaults } else { args };
-    if !args[0].starts_with('-')
-        && crate::agent::refresh(&args[0], false).is_err()
-        && crate::agent::can_refresh()
-    {
-        // A restored server only starts during attach. Retry in a separate,
-        // bounded process while this process becomes the interactive client.
-        if let Ok(exe) = executable() {
-            let _ = Command::new(exe)
-                .args(["agent", "refresh-after-attach", &args[0]])
-                .stdin(Stdio::null())
-                .stdout(Stdio::null())
-                .spawn();
-        }
-    }
     let mut command = Command::new("zellij");
     command.args(["attach", "--create"]).args(args);
+    if let Some(path) = crate::agent::select()? {
+        command.env("SSH_AUTH_SOCK", path);
+    }
     if env::var("SSH_CONNECTION").is_ok_and(|s| !s.is_empty())
         && env::var("TMUX").map_or(true, |s| s.is_empty())
         && io::stdout().is_terminal()
@@ -169,23 +158,8 @@ pub fn popup() -> Result<()> {
         .context("The installed tmux layout is missing; run make zellij")?;
     let layout=layout+"\n// Scratch processes survive detaching, but are never resurrected after exit.\nsession_serialization false\nkeybinds {\n    tmux {\n        bind \"P\" \"d\" \"D\" { SwitchToMode \"Locked\"; Detach; }\n    }\n}\n";
     let mut command = Command::new("zellij");
-    if crate::agent::enabled() {
-        if let Ok(raw) = env::var("SSH_AUTH_SOCK") {
-            if let Ok(selected) = crate::agent::publish("init", Path::new(&raw), None) {
-                command.env("SSH_AUTH_SOCK", &selected);
-                // A subprocess gets the guest environment without mutating this process's environment.
-                let exe = executable()?;
-                let _ = Command::new(exe)
-                    .args(["agent", "follow-popup"])
-                    .env("SSH_AUTH_SOCK", &selected)
-                    .env_remove("ZELLIJ")
-                    .env_remove("ZELLIJ_SESSION_NAME")
-                    .env_remove("ZELLIJ_PANE_ID")
-                    .stdout(std::process::Stdio::null())
-                    .stderr(std::process::Stdio::null())
-                    .status();
-            }
-        }
+    if let Some(path) = crate::agent::select()? {
+        command.env("SSH_AUTH_SOCK", path);
     }
     Err(command
         .args(["--layout-string", &layout, "attach", "--create", "pop-up"])
