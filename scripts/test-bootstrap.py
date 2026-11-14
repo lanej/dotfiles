@@ -447,6 +447,8 @@ elif name == "rustup" and args[:3] == ["run", "1.95.0", "cargo"]:
     assert "--locked" in args and "--no-default-features" in args, args
     assert args[args.index("--features") + 1] == "plugins_from_target,vendored_curl,web_server_capability", args
     assert args[-3:] == ["--bin", "zellij", "zellij"], args
+    assert os.environ["CARGO_PROFILE_RELEASE_LTO"] == "true"
+    assert os.environ["CARGO_PROFILE_RELEASE_CODEGEN_UNITS"] == "1"
     target = args[args.index("--target") + 1]
     assert target == "aarch64-unknown-linux-gnu", args
     install_root = Path(args[args.index("--root") + 1])
@@ -630,7 +632,9 @@ else:
         # Repeat the real entrypoint with the installed executable already in
         # place. Cargo owns installation and caching; the fixture models its output.
         runtime_command = ["/bin/bash", str(checkout / "scripts/install-zellij")]
-        runtime_env = {**env, "PATH": f"{home / '.cargo/bin'}:{env['PATH']}"}
+        runtime_env = {**env, "PATH": f"{home / '.cargo/bin'}:{env['PATH']}",
+                       "CARGO_PROFILE_RELEASE_LTO": "false",
+                       "CARGO_PROFILE_RELEASE_CODEGEN_UNITS": "16"}
         installed = home / ".local/bin/zellij"
         previous = installed.read_bytes()
         repeated = subprocess.run(runtime_command, env=runtime_env, capture_output=True, text=True)
@@ -660,6 +664,20 @@ else:
         assert repeated.returncode == 0, repeated.stdout + repeated.stderr
         assert not runtime_calls()[-1]["force"]
         assert (home / "events").read_text().splitlines().count("zellij") == 2
+        receipt = home / ".local/.dotfiles-zellij-install"
+        receipt.write_text(f"revision-target-v1:{revision}\n")
+        failed = subprocess.run(runtime_command,
+                                env={**runtime_env, "FIXTURE_FAIL_ZELLIJ_INSTALL": "1"},
+                                capture_output=True, text=True)
+        assert failed.returncode != 0 and runtime_calls()[-1]["force"]
+        assert installed.read_bytes() == previous
+        assert receipt.read_text() == f"revision-target-v1:{revision}\n"
+        optimized = subprocess.run(runtime_command, env=runtime_env, capture_output=True, text=True)
+        assert optimized.returncode == 0, optimized.stdout + optimized.stderr
+        assert runtime_calls()[-1]["force"], "Old-profile installation skipped the optimized rebuild"
+        repeated = subprocess.run(runtime_command, env=runtime_env, capture_output=True, text=True)
+        assert repeated.returncode == 0, repeated.stdout + repeated.stderr
+        assert not runtime_calls()[-1]["force"], "Matching optimized installation rebuilt unnecessarily"
         isolated_target = runtime_calls()[-1]["target_dir"]
         # Exercise a second pinned recipe through the same installer entrypoint.
         alternate_revision = "1" * 40
