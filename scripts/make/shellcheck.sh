@@ -22,6 +22,8 @@ shellcheck -x \
     "$dotfiles/bin/ac-awake-service" \
     "$dotfiles/bin/paseo-pi" \
     "$dotfiles/bin/fix-ssh" \
+    "$dotfiles/bin/zellij-image-hints" \
+    "$dotfiles/scripts/build-zellij-helpers.sh" \
     "$dotfiles/sh/ssh-rc" \
     "$dotfiles/bin/fzf-path-preview" \
     "$dotfiles/bin/git-ssh" \

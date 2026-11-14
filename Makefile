@@ -212,7 +212,7 @@ test-zellij-session-keys: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-command-prompt.py" --session-keys
 .PHONY: zellij-status zellij-helpers test-zellij-helpers test-zellij-pane test-zellij-status
 zellij-helpers:
-	@cargo build --locked --release --manifest-path "$(DOTFILES)/zellij/Cargo.toml" --target-dir "$(DOTFILES)/zellij/target" -p lane-zellij
+	@bash "$(DOTFILES)/scripts/build-zellij-helpers.sh"
 test-zellij-helpers: zellij-helpers
 	@cargo fmt --all --manifest-path "$(DOTFILES)/zellij/Cargo.toml" --check
 	@cargo clippy --locked --all-targets --manifest-path "$(DOTFILES)/zellij/Cargo.toml" -- -D warnings
