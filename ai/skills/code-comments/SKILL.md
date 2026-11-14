@@ -5,9 +5,12 @@ description: Use when deciding whether to add a source comment, writing or revis
 
 # Code Comments
 
+Read the project’s stage through [source-code lifecycle](../source-code-lifecycle/SKILL.md). In research, explain assumptions and consequential interactions without documenting speculative APIs. In alpha, document caller information needed for retained behavior and mark provisional contracts. In beta and production, maintain public contracts, constraints, failure outcomes, and useful examples. Preserve explicit documentation requirements at every stage.
+
 Use this guide for routine comment edits and reviews:
 
 - Comment when it materially reduces the effort needed to understand or safely change code. Useful explanations of behavior and phase labels are welcome; omit obvious narration and decoration.
+- Judge usefulness by what the reader would otherwise have to infer, not sentence count. Explain consequential interactions, such as why setting one value changes how another is interpreted; omit comments that merely repeat an assignment.
 - Prefer clearer code when it carries the information better. Do not extract functions solely to eliminate useful prose.
 - Put caller contracts in native documentation, local reasoning beside the code, and broad decisions in design documentation with useful local context.
 - Distinguish current behavior, intent, assumptions, and known defects. Keep guarantees bounded to what is established; do not write reassuring claims over a behavior problem.
@@ -18,3 +21,5 @@ When purpose or searchability helps, use lowercase `type(scope): explanation` in
 For reviews, identify missing, misleading, or redundant information, its effect on the reader, and a concrete improvement. A missing tag alone is not a defect. Report behavior problems outside the requested scope.
 
 Read [the full specification](references/standard.md) only when changing the convention, resolving a detail not covered here, or needing extended examples or editor-compatibility guidance. It remains the canonical standard; routine edits do not require loading it.
+
+For TOML source configuration, put comments on their own line above the relevant value; preserve repository-specific conventions.

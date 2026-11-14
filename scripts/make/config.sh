@@ -40,12 +40,18 @@ case "$target" in
     dev)
         mkdir -p "${setup_home}/src"
         ;;
+    source-code-config)
+        mkdir -p "$setup_home/.local/bin"
+        ln -fs "$dotfiles/bin/source-code" "$setup_home/.local/bin/source-code"
+        ln -fs "$dotfiles/bin/repo-bootstrap" "$setup_home/.local/bin/repo-bootstrap"
+        ;;
     shell)
         mkdir -p "${setup_home}/.local/bin"
         for source in "${dotfiles}"/bin/*; do
-            if [ "${source##*/}" != ep-direnv ]; then
-                ln -fs "$source" "${setup_home}/.local/bin/"
-            fi
+            case "${source##*/}" in
+                ep-direnv|source-code|repo-bootstrap) ;;
+                *) ln -fs "$source" "${setup_home}/.local/bin/" ;;
+            esac
         done
         # Preserve existing login hooks; they may own required host setup.
         if [ ! -e "$setup_home/.ssh/rc" ] && [ ! -L "$setup_home/.ssh/rc" ]; then

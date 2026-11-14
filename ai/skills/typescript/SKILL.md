@@ -5,9 +5,13 @@ description: Use when writing or reviewing TypeScript, enforcing exhaustive stat
 
 # TypeScript correctness
 
+Read the project’s stage through [source-code lifecycle](../source-code-lifecycle/SKILL.md). When `typescript` is listed in the project policy’s `languages`, run `python3 scripts/check-source-code.py typescript` for its generated gate. Otherwise follow existing repository checks; detected language guidance alone does not install a check profile. Full profile commands below remain available when that profile is installed. Research and alpha use the selected stage’s checks while preserving existing repository gates.
+
+For comment decisions, read the [shared comment guidance](../code-comments/SKILL.md). For public library APIs, also read the [library comment guidance](../library-code-comments/SKILL.md). Bootstrap bundles both with this skill in tracked or local mode; apply the library perspective only to library work and preserve project requirements.
+
 Make decisions explicit, preserve failures, and validate untrusted data at boundaries. Follow the repository's existing architecture and stronger checks; do not replace them with a generic framework.
 
-Read [the correctness guide](references/correctness.md) before adopting or changing the profile. Use the shipped assets through `repo-bootstrap --typescript`, or `--typescript-retrofit` for existing code. Installation changes tooling only; it does not install dependencies or rewrite source.
+Read [the correctness guide](references/correctness.md) before adopting or changing the profile. Use the shipped assets through `source-code setup --typescript`, or `--typescript-retrofit` for existing code. Installation changes tooling only; it does not install dependencies or rewrite source.
 
 ## Implementation
 
@@ -18,7 +22,7 @@ Read [the correctness guide](references/correctness.md) before adopting or chang
 
 ## Verification
 
-Require Biome lint alongside typed ESLint and the existing formatter. Run `node scripts/check-typescript.mjs lint` during implementation and the full command before handoff. `typecheck`, `test`, and `audit` isolate checks. `fmt` requires explicit TypeScript file paths and is the only source-writing mode.
+When the stage requires lint, use Biome alongside typed ESLint and the existing formatter. Run the selected lifecycle gate before handoff. `lint`, `typecheck`, `test`, and `audit` isolate checks; the full command remains available explicitly. `fmt` requires explicit TypeScript file paths and is the only source-writing mode.
 
 Treat missing tools, parser errors, uncovered source, failing project checks, and suppression-policy violations as failures. Never add a baseline allowance to unblock a feature. After repairing old findings, run `ratchet` and commit the reduced baseline with the fix. Review suppression explanations, exclusions, baseline changes, and tool upgrades as policy changes.
 

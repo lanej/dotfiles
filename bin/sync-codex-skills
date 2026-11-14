@@ -61,17 +61,25 @@ def sync(source, home, only=None):
         return
 
     portable = portable_names(source)
+    manifest = source / "project-only.json"
+    excluded = json.loads(manifest.read_text()) if manifest.is_file() else []
+    if (not isinstance(excluded, list) or not all(isinstance(name, str) and name not in {"", ".", ".."}
+            and Path(name).name == name for name in excluded) or len(set(excluded)) != len(excluded)):
+        raise ValueError(f"{manifest}: expected unique project skill directory names")
+    project_only = set(excluded)
     if only is not None:
         for name in only:
             if Path(name).name != name or not (source / name / "SKILL.md").is_file():
                 raise ValueError(f"unknown selected skill {name!r}")
+            if name in project_only:
+                raise ValueError(f"{name} is project-only; install it with source-code setup")
         # Portable workflows share relative resources and install as one group.
         if only & portable:
             only = only | portable
     cache.mkdir(parents=True, exist_ok=True)
     shared = set()
     for folder in sorted(source.iterdir()):
-        if folder.name == "paseo" or folder.name.startswith("paseo-"):
+        if folder.name in project_only or folder.name == "paseo" or folder.name.startswith("paseo-"):
             continue
         if only is not None and folder.name not in only:
             continue
@@ -120,7 +128,7 @@ def sync(source, home, only=None):
         shared.add(folder.name)
 
     for child in cache.iterdir():
-        if only is None and child.name not in shared:
+        if child.name in project_only or only is None and child.name not in shared:
             remove(child)
     destination.parent.mkdir(parents=True, exist_ok=True)
     link(cache, destination)

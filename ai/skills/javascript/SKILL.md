@@ -5,6 +5,8 @@ description: Node.js and JavaScript development patterns, gotchas, and library c
 
 # JavaScript / Node.js Skill
 
+Read the project’s stage through [source-code lifecycle](../source-code-lifecycle/SKILL.md) and use [testing](../testing/SKILL.md) for proportionate evidence. Language detection installs this guidance; it does not add or replace compiler, test, or CI configuration. Preserve existing repository gates.
+
 ## Project Setup Basics
 
 - Always check `package.json` first to understand available scripts before running anything
@@ -240,3 +242,5 @@ Astro dev server does **not** serve `public/index.html` at `/` — the router in
 Fix for dev: create `src/pages/index.astro` with the same content. In production, `public/index.html` overwrites it.
 
 Other `public/` filenames (e.g., `/principles.html`, `/walkthrough.html`) serve correctly in dev — only the root `/` conflicts.
+
+Read [worktree runtime lessons](references/worktree-lessons.md) when running verification in a fresh or relocated checkout.

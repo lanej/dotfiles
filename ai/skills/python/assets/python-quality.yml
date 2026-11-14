@@ -1,0 +1,16 @@
+name: Python quality
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+permissions:
+  contents: read
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: python3 scripts/check-python.py tools
+      - run: python3 scripts/check-python.py project-tools
+      - run: python3 scripts/check-source-code.py python

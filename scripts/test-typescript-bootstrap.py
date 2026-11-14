@@ -33,7 +33,7 @@ class TypeScriptBootstrap(unittest.TestCase):
         command(self.root, "git", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "initial")
 
     def install(self, *args, ok=True):
-        return command(self.root, "python3", str(SOURCE / "bin/repo-bootstrap"), "--repo", str(self.root),
+        return command(self.root, "python3", str(SOURCE / "bin/source-code"), "setup", "--repo", str(self.root),
                        "--skills", "typescript", "--no-go", "--agents", "codex", "--pr-template", "none",
                        "--typescript", *args, ok=ok)
 
@@ -43,6 +43,8 @@ class TypeScriptBootstrap(unittest.TestCase):
         self.install("--dry-run")
         self.assertFalse((self.root / ".agents").exists())
         self.install()
+        self.assertTrue((self.root / ".agents/skills/library-code-comments/SKILL.md").is_file())
+        self.assertTrue((self.root / ".agents/skills/code-comments/references/standard.md").is_file())
         settings = json.loads((self.root / ".typescript-quality.json").read_text())
         self.assertEqual(settings["rollout"], "ratchet")
         self.assertIn(["npm", "run", "lint"], settings["commands"]["legacy"])
@@ -50,6 +52,7 @@ class TypeScriptBootstrap(unittest.TestCase):
         self.assertFalse((self.root / ".typescript-quality/node_modules").exists())
         self.assertIn("already current", self.install().stdout)
         self.install("--typescript-rollout", "strict")
+        self.assertTrue((self.root / ".agents/skills/library-code-comments/SKILL.md").is_file())
         self.assertEqual(json.loads((self.root / ".typescript-quality.json").read_text())["rollout"], "strict")
 
     def test_local_install_hides_generated_baseline_and_lock(self):

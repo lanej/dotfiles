@@ -29,6 +29,8 @@ Follow [the shared PR guidance](../../../docs/pull-requests.md) when creating or
 
 ## Safety rules
 
+Commit coherent, finished, verified project changes unless the task forbids it; preserve the user’s publication authority for pushes and PRs. Review the complete staged snapshot and avoid path-based commits that sweep in unrelated unstaged content. Never restore or reset someone else’s diff; inspect current history and ownership first. Use a task-owned WIP commit for a baseline check rather than the stash shared by worktrees.
+
 1. Never force-push to `main`/`master` — warn instead.
 2. Never `--no-verify` unless explicitly requested.
 3. `--force-with-lease`, never bare `--force`.
@@ -91,3 +93,5 @@ your commit.
 -p0` against an extracted patch), commit with a bare `git commit` against the index, and verify with
 `git show --stat` before pushing. Recovery if it already landed: `git reset --soft HEAD^` (working
 tree untouched), then hand-stage the intended hunks.
+
+Read [worktree lessons](references/worktrees.md) before operating on an assigned worktree, and [Git/GitHub verification lessons](references/verification-lessons.md) before accepting delegated commits, branch comparisons, or remote changes.

@@ -229,6 +229,12 @@ description = "Link Python configuration; bootstrap provides the interpreter."
 installer = "config"
 setup = ["python"]
 
+[tools.source-code]
+description = "Install project lifecycle, skill validation, and upgrade commands."
+installer = "config"
+requires = ["git", "python"]
+setup = ["source-code-config"]
+
 [tools.ruby]
 description = "Link Ruby tool configuration for a separately installed runtime."
 installer = "config"

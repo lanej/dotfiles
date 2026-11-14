@@ -1,0 +1,7 @@
+{
+  "go": {"skill": "go", "extensions": [".go"], "manifests": ["go.mod", "go.work"]},
+  "typescript": {"skill": "typescript", "extensions": [".ts", ".tsx", ".mts", ".cts"], "manifests": ["tsconfig.json"]},
+  "javascript": {"skill": "javascript", "extensions": [".js", ".jsx", ".mjs", ".cjs"], "manifests": ["package.json"]},
+  "python": {"skill": "python", "extensions": [".py", ".pyi"], "manifests": ["pyproject.toml", "requirements.txt", "Pipfile", "setup.py"]},
+  "rust": {"skill": "rust", "extensions": [".rs"], "manifests": ["Cargo.toml"]}
+}

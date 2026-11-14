@@ -124,8 +124,21 @@ with tempfile.TemporaryDirectory(prefix="go-quality-acceptance-") as temporary:
     assert "gofumpt" in output and "not properly formatted" in output, output
     (project / "state.go").write_text(CODE)
     run([*check, "fmt"], project)
-    run(check, project)
+    run(["python3", "scripts/check-source-code.py", "go"], project)
     clean = (project / "state.go").read_text()
+    policy_path = project / ".source-code.json"
+    policy = json.loads(policy_path.read_text())
+    policy["stage"] = "research"
+    policy_path.write_text(json.dumps(policy))
+    (project / "state_test.go").write_text(TEST + '\nfunc TestLifecycleFailure(t *testing.T) { t.Fatal("lifecycle detector") }\n')
+    run(["python3", "scripts/check-source-code.py", "go"], project)
+    policy["stage"] = "alpha"
+    policy_path.write_text(json.dumps(policy))
+    assert "lifecycle detector" in run(["python3", "scripts/check-source-code.py", "go"], project, success=False)
+    (project / "state_test.go").write_text(TEST)
+    run(["python3", "scripts/check-source-code.py", "go"], project)
+    policy["stage"] = "beta"
+    policy_path.write_text(json.dumps(policy))
 
     # New enum/union members must fail despite default branches. Discarded
     # errors must also fail, without splitting feedback across successive runs.
