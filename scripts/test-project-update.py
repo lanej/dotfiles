@@ -191,12 +191,13 @@ class LifecycleTests(unittest.TestCase):
         installer = (f"#!{sys.executable}\n"
                      "import json, os, pathlib, shutil, sys\n"
                      f"with open({str(log)!r}, 'a') as out: out.write(json.dumps(sys.argv[1:]) + '\\n')\n"
-                     "installed = pathlib.Path(os.environ['HOME']) / '.codex/bedrock-router/bedrock-router'\n"
+                     "installed = pathlib.Path(os.environ.get('CODEX_HOME') or pathlib.Path(os.environ['HOME']) / '.codex') / 'bedrock-router/bedrock-router'\n"
                      "installed.parent.mkdir(parents=True, exist_ok=True)\n"
                      "shutil.copyfile(__file__, installed)\n")
         go.write_text(f"#!{sys.executable}\nimport pathlib, sys\np = pathlib.Path(sys.argv[sys.argv.index('-o') + 1])\np.write_text({installer!r})\np.chmod(0o755)\n")
         go.chmod(0o755)
-        env = {**self.env, "PATH": str(go.parent) + os.pathsep + self.env["PATH"]}
+        codex_home = self.base / "custom-codex"
+        env = {**self.env, "CODEX_HOME": str(codex_home), "PATH": str(go.parent) + os.pathsep + self.env["PATH"]}
         def invoke(action):
             return subprocess.run([sys.executable, str(ADAPTER), "bedrock-router", action],
                                   cwd=self.checkout, env=env, text=True, capture_output=True)
@@ -210,8 +211,18 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(staged, ["install", "--config", str(self.checkout.resolve() / "config.json"),
                                   "--keep-env", "--preserve-mcp", "--no-start"])
         self.assertEqual(activated, staged[:-1])
-        installed = self.base / ".codex/bedrock-router/bedrock-router"
+        installed = codex_home / "bedrock-router/bedrock-router"
+        revision = self.git(self.checkout, "rev-parse", "HEAD")
+        self.assertEqual(json.loads(invoke("status").stdout)["installed_revision"], revision)
+        self.git(self.checkout, "commit", "--allow-empty", "-m", "next source revision")
+        advanced = json.loads(invoke("status").stdout)
+        self.assertEqual(advanced["installed_revision"], revision)
+        self.assertNotEqual(revision, self.git(self.checkout, "rev-parse", "HEAD"))
+        self.assertEqual(advanced["installed_binary"], str(installed))
+        self.assertEqual(invoke("restart").returncode, 1)
+        self.git(self.checkout, "checkout", "--detach", revision)
         installed.write_text("different binary")
+        self.assertIsNone(json.loads(invoke("status").stdout)["installed_revision"])
         self.assertEqual(invoke("restart").returncode, 1)
         self.assertEqual(len(log.read_text().splitlines()), 2)
 

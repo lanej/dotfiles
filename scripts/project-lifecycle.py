@@ -9,6 +9,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -20,13 +21,19 @@ def run(args, capture=False):
 
 
 def router(action):
-    installed = Path.home() / ".codex/bedrock-router/bedrock-router"
+    codex_home = Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
+    installed = codex_home / "bedrock-router/bedrock-router"
+    receipt = installed.parent / ".project-update.json"
     revision = run(["git", "rev-parse", "HEAD"], capture=True)
     cache = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
     built = cache / "dotfiles/project-update/bedrock-router" / revision / "bedrock-router"
     if action == "status":
+        record = json.loads(receipt.read_text()) if receipt.is_file() else None
+        installed_revision = None
+        if record and installed.is_file() and record["sha256"] == binary_digest(installed):
+            installed_revision = record["revision"]
         print(json.dumps({"installed_binary": str(installed) if installed.is_file() else None,
-                          "installed_revision": revision if built.is_file() and installed.is_file() and same_binary(built, installed) else None,
+                          "installed_revision": installed_revision,
                           "running_revision": None}))
         return 0
     if action in ("build", "restart") and run(["git", "status", "--porcelain"], capture=True):
@@ -36,6 +43,15 @@ def router(action):
         built.parent.mkdir(parents=True, exist_ok=True)
         run(["go", "build", "-buildvcs=true", "-o", str(built), "."])
         run([str(built), *flags, "--no-start"])
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile("w", dir=receipt.parent, prefix=".project-update-", delete=False) as staged:
+                temporary = Path(staged.name)
+                json.dump({"revision": revision, "sha256": binary_digest(installed)}, staged)
+            os.replace(temporary, receipt)
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
     elif action == "restart":
         if not built.is_file() or not installed.is_file() or not same_binary(built, installed):
             raise ValueError("Build and stage this Bedrock Router revision before restarting")
@@ -46,8 +62,12 @@ def router(action):
 
 
 def same_binary(first, second):
-    with first.open("rb") as a, second.open("rb") as b:
-        return hashlib.file_digest(a, "sha256").digest() == hashlib.file_digest(b, "sha256").digest()
+    return binary_digest(first) == binary_digest(second)
+
+
+def binary_digest(path):
+    with path.open("rb") as binary:
+        return hashlib.file_digest(binary, "sha256").hexdigest()
 
 
 def main():

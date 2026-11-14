@@ -27,7 +27,7 @@ project-update update zellij --dry-run
 
 Zellij's upstream default branch is a clean mirror and does not contain the curated fork features. Updating this installation therefore pulls the dotfiles default branch and installs its selected runtime; it does not replace the runtime with upstream main. The `zellij` entry includes its runtime and plugins in one update. Build includes installation but does not intentionally stop a running process. Zellij configuration also affects newly opened sessions.
 
-The project scope is Zellij (including its plugins), Bedrock Router and OctoManager. `--all` means these three registered entries. A missing checkout is reported as a failure rather than skipped. Bedrock Router uses the standalone [lanej/bedrock-router](https://github.com/lanej/bedrock-router) source checkout, not the old dotfiles implementation. Its installer preserves environment and MCP choices; credentials and session state remain in their existing locations.
+The project scope is Zellij (including its plugins), Bedrock Router and OctoManager. `--all` means these three registered entries. A missing checkout is reported as a failure rather than skipped. Bedrock Router uses the standalone [lanej/bedrock-router](https://github.com/lanej/bedrock-router) source checkout, not the old dotfiles implementation. Its installer preserves environment and MCP choices and honors `CODEX_HOME`; credentials and session state remain in their existing locations. After staging, the adapter records the installed source revision and binary hash beside the binary. Status checks that hash, so the installed revision stays visible when the checkout advances and becomes unknown if the binary is replaced outside this command.
 
 ## Add a project
 
