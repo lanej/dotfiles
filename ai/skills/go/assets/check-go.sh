@@ -28,6 +28,19 @@ rollout=$(printf '%s\n' "$settings" | sed -n '2p')
 legacy_config=$(printf '%s\n' "$settings" | sed -n '3p')
 # WHY: A parent workspace must not replace dependencies that CI resolves alone.
 export GOWORK=off
+# Every entrypoint must select the module's check toolchain, including callers
+# that inherit GOTOOLCHAIN=local or have a newer Go installation on PATH.
+go_version=$(awk '$1 == "go" { print $2; exit }' go.mod)
+if [ -z "$go_version" ]; then
+    printf 'Add a go directive to go.mod to select the check toolchain.\n' >&2
+    exit 1
+fi
+case "$go_version" in
+    *rc*|*beta*|*.*.*) ;;
+    *.*) go_version=$go_version.0 ;;
+    *) printf 'Invalid Go version in go.mod: %s\n' "$go_version" >&2; exit 1 ;;
+esac
+export GOTOOLCHAIN=go$go_version
 case "$(uname -s)" in
     Darwin) tool_os=darwin ;;
     Linux) tool_os=linux ;;
