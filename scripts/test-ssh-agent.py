@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""Check local-agent preservation, tmux selection, and fail-open attachment.
+"""Check stable forwarded agents through real shell startup and temporary agents.
 
-The multiplexer CLI is controlled; ssh-add uses real temporary agent sockets.
-Native reconnect behavior is covered by test-zellij-agent-update.py.
+Zellij is controlled here; native reconnects use test-zellij-agent-update.py.
 """
 from pathlib import Path
 import json
@@ -25,54 +24,29 @@ def main():
         bindir.mkdir(parents=True)
         for name in ("fix-ssh", "zellij-agent", "zellij-attach"):
             (bindir / name).symlink_to(ROOT / "bin" / name)
+        (home / ".ssh").mkdir(mode=0o700)
+        (home / ".ssh/rc").symlink_to(ROOT / "sh/ssh-rc")
+        (home / ".zshenv").symlink_to(ROOT / "zsh/zshenv")
         attached = home / "attached.json"
-        # A failed or unavailable native updater must never block attachment.
         zellij = bindir / "zellij"
         zellij.write_text(f"#!{sys.executable}\n" + '''
 import json
 import os
 from pathlib import Path
 import sys
-import time
-import stat
-
-args = sys.argv[1:]
-if args[:1] == ["--session"] or (args and args[0].startswith("--session=")):
-    if os.environ.get("DELAYED_SERVER") and Path(os.environ["DELAYED_SERVER"]).exists():
-        assert stat.S_IMODE(Path(args[-1]).stat().st_mode) == 0o700
-        Path(os.environ["REFRESHED"]).write_text(args[-2])
-        (Path(args[-1]) / "success").write_text("acknowledged\\n")
-        raise SystemExit(0)
-    raise SystemExit(17)
-assert args[:2] == ["attach", "--create"], args
-if os.environ.get("DELAYED_SERVER"):
-    time.sleep(1)
-    Path(os.environ["DELAYED_SERVER"]).touch()
+assert sys.argv[1:3] == ["attach", "--create"], sys.argv
 Path(os.environ["ATTACHED"]).write_text(json.dumps({
-    "args": args, "socket": os.environ.get("SSH_AUTH_SOCK", ""),
+    "args": sys.argv[1:], "socket": os.environ.get("SSH_AUTH_SOCK", ""),
 }))
 ''')
         zellij.chmod(0o755)
-        tmux = bindir / "tmux"
-        tmux.write_text(f"#!{sys.executable}\n" + '''
-import os
-import sys
-
-assert len(sys.argv) == 3 and sys.argv[1] == "show-environment", sys.argv
-values = {
-    "SSH_AUTH_SOCK": os.environ["TMUX_SESSION_SOCKET"],
-    "SSH_CONNECTION": "127.0.0.1 2222 127.0.0.1 22",
-    "SSH_CLIENT": "127.0.0.1 2222 22",
-}
-print(sys.argv[2] + "=" + values[sys.argv[2]])
-''')
-        tmux.chmod(0o755)
         env = {
             "HOME": str(home),
             "PATH": os.pathsep.join((str(bindir), os.environ["PATH"])),
             "SSH_CONNECTION": "127.0.0.1 1111 127.0.0.1 22",
             "ATTACHED": str(attached),
         }
+        stable = home / ".ssh/dotfiles-agent/forwarded.sock"
         processes = []
 
         def start(name):
@@ -83,9 +57,7 @@ print(sys.argv[2] + "=" + values[sys.argv[2]])
             deadline = time.monotonic() + 5
             while not socket.is_socket() and agent.poll() is None and time.monotonic() < deadline:
                 time.sleep(0.01)
-            if not socket.is_socket():
-                detail = agent.stderr.read().decode() if agent.poll() is not None else "agent startup timed out"
-                raise AssertionError(f"agent socket missing: {detail}")
+            assert socket.is_socket(), "Temporary agent did not start"
             return str(socket), agent
 
         def shell(**updates):
@@ -99,66 +71,114 @@ print(sys.argv[2] + "=" + values[sys.argv[2]])
             attached.unlink(missing_ok=True)
             subprocess.run([str(bindir / "zellij-attach"), *args],
                            env={**env, **updates}, check=True, capture_output=True, text=True,
-                           timeout=15)
+                           timeout=5)
             return json.loads(attached.read_text())
 
+        def login(socket):
+            subprocess.run([shutil.which("zsh"), "-c", '/bin/sh "$HOME/.ssh/rc"'],
+                           env={**env, "SSH_AUTH_SOCK": socket},
+                           check=True, capture_output=True, text=True)
+
         def assert_live(socket):
-            result = subprocess.run([ssh_add, "-l"], env={**env, "SSH_AUTH_SOCK": socket},
-                                    capture_output=True, text=True)
+            result = subprocess.run([ssh_add, "-l"], env={**env, "SSH_AUTH_SOCK": str(socket)},
+                                    capture_output=True, text=True, timeout=5)
             assert result.returncode == 1 and "no identities" in result.stdout.lower(), result
 
         try:
-            first, _ = start("first.sock")
+            first, old_agent = start("first.sock")
             other, _ = start("other.sock")
             local = home / ".1password/agent.sock"
             local.parent.mkdir()
             local.symlink_to(first)
             assert shell(SSH_CONNECTION="", SSH_AUTH_SOCK=str(local)) == str(local)
-            local_pane = attach("local", SSH_CONNECTION="", SSH_AUTH_SOCK=str(local))
-            assert local_pane["socket"] == str(local), "local 1Password-style socket was changed"
-            assert not (home / ".ssh/dotfiles-agent").exists(), "local launch published an SSH agent"
+            assert attach("local", SSH_CONNECTION="", SSH_AUTH_SOCK=str(local))["socket"] == str(local)
+            assert not stable.parent.exists(), "Local launch published an SSH agent"
 
-            failed_update = attach("work", SSH_AUTH_SOCK=first)
-            assert failed_update["socket"] == first, "failed recovery replaced the incoming socket"
-            assert failed_update["args"] == ["attach", "--create", "work"]
-            assert_live(first)
-            assert attach(SSH_AUTH_SOCK=other)["args"] == ["attach", "--create", "main"]
-            assert attach("work")["socket"] == "", "unforwarded attachment borrowed an agent"
-            assert shell(ZELLIJ="0", SSH_AUTH_SOCK="") == "", "unforwarded pane borrowed an agent"
-            # Local 1Password sockets may be symlinks and must not be republished
-            # even if someone exports one in a remote environment.
-            assert attach("work", SSH_AUTH_SOCK=str(local))["socket"] == str(local)
-            assert not (home / ".ssh/dotfiles-agent").exists()
-            assert shell(SSH_AUTH_SOCK=first, ZELLIJ="0", TMUX="fixture",
-                         TMUX_SESSION_SOCKET=other) == other, "inherited ZELLIJ blocked tmux recovery"
-            (bindir / "zellij-agent").unlink()
-            assert attach("work", SSH_AUTH_SOCK=first)["socket"] == first, "missing helper blocked attach"
-            assert shell(SSH_AUTH_SOCK="", ZELLIJ="0", TMUX="fixture",
-                         TMUX_SESSION_SOCKET=other) == other, "missing helper or socket blocked tmux recovery"
+            # A remote shell selects the path even before the first forwarded login.
+            assert shell(SSH_AUTH_SOCK="") == str(stable)
+            assert not stable.exists()
+            legacy = stable.parent / "zellij-0123456789ab.sock"
+            legacy.symlink_to(first)
+            login(first)
+            assert shell(SSH_AUTH_SOCK=first) == str(stable)
+            assert stable.readlink() == Path(first)
+            assert_live(stable)
+            assert stable.parent.stat().st_mode & 0o077 == 0
 
-            tmux_pane = shell(SSH_AUTH_SOCK=first, TMUX="fixture", TMUX_SESSION_SOCKET=other)
-            assert tmux_pane == other, "tmux ignored its session's show-environment socket"
-            assert_live(tmux_pane)
-            assert shell(SSH_CONNECTION="", SSH_AUTH_SOCK=str(local), TMUX="fixture",
-                         TMUX_SESSION_SOCKET=other) == str(local), "local tmux changed its agent"
-            ready, refreshed = home / "server-ready", home / "refreshed"
-            delayed = attach("restored", SSH_AUTH_SOCK=first,
-                             DELAYED_SERVER=str(ready), REFRESHED=str(refreshed))
-            assert delayed["args"] == ["attach", "--create", "restored"]
-            deadline = time.monotonic() + 5
-            while not refreshed.exists() and time.monotonic() < deadline:
-                time.sleep(0.01)
-            assert refreshed.exists(), "Delayed server startup exhausted agent retries"
-            assert refreshed.read_text() == first, "Delayed server startup exhausted agent retries"
-            print("PASS: local agents and tmux selection are preserved; failed recovery never blocks attachment.")
-            print("PASS: stopped-session attachment retries agent refresh after delayed server startup.")
+            # The attach boundary also normalizes direct callers before starting
+            # Zellij, so command panes do not depend on an interactive shell.
+            login(other)
+            original = attach("work", SSH_AUTH_SOCK=other)
+            assert original == {"args": ["attach", "--create", "work"], "socket": str(stable)}
+            assert stable.readlink() == Path(other)
+            assert legacy.readlink() == Path(first), "Migration replaced an old consumer's link"
+            # Even an old non-mux caller selects without republishing its raw
+            # socket, while that socket still exists and after it disappears.
+            assert shell(SSH_AUTH_SOCK=first) == str(stable)
+            assert stable.readlink() == Path(other)
+            old_agent.terminate()
+            old_agent.wait(timeout=5)
+            assert_live(stable)
+            assert shell(SSH_AUTH_SOCK=first) == str(stable)
+            assert stable.readlink() == Path(other)
+            assert shell(SSH_AUTH_SOCK=first, ZELLIJ="0", TMUX="inherited") == str(stable)
+            assert stable.readlink() == Path(other), "Mux child republished its stale socket"
+            assert shell(SSH_AUTH_SOCK=first, TMUX="fixture") == str(stable)
+            assert attach(SSH_AUTH_SOCK="")["socket"] == str(stable)
+            assert_live(stable)
+
+            zsh = shutil.which("zsh")
+            assert zsh, "zsh is required to verify noninteractive startup"
+            selected = subprocess.run([zsh, "-c", 'printf "%s" "$SSH_AUTH_SOCK"'],
+                                      env={**env, "SSH_AUTH_SOCK": other}, check=True,
+                                      capture_output=True, text=True)
+            assert selected.stdout == str(stable), selected
+
+            if not Path("/etc/ssh/sshrc").exists():
+                xauth = bindir / "xauth"
+                xauth.write_text(f"#!{sys.executable}\n" + '''
+import json
+import os
+from pathlib import Path
+import sys
+Path(os.environ["HOME"]).joinpath("xauth.json").write_text(json.dumps({
+    "args": sys.argv[1:], "input": sys.stdin.read(),
+}))
+''')
+                xauth.chmod(0o755)
+                hook = subprocess.run(
+                    [zsh, "-c", '/bin/sh "$HOME/.ssh/rc"'],
+                    env={**env, "SSH_AUTH_SOCK": other, "DISPLAY": "localhost:10.0"},
+                    input="MIT-MAGIC-COOKIE-1 deadbeef\n", check=True,
+                    capture_output=True, text=True,
+                )
+                assert hook.stdout == "", "SSH hook must not write to stdout"
+                assert json.loads((home / "xauth.json").read_text()) == {
+                    "args": ["-q", "-"],
+                    "input": "add unix:10.0 MIT-MAGIC-COOKIE-1 deadbeef\n",
+                }, "X11 cookie must travel over stdin, never through process arguments"
+
+            for incoming in (str(home / "missing.sock"), str(local)):
+                rejected = subprocess.run([str(bindir / "zellij-agent"), "publish-login"],
+                                          env={**env, "SSH_AUTH_SOCK": incoming},
+                                          capture_output=True, text=True)
+                assert rejected.returncode != 0 and rejected.stderr
+                assert stable.readlink() == Path(other), "Rejected login changed the agent"
+
+            stable.unlink()
+            stable.write_text("preserve unmanaged file")
+            rejected = subprocess.run([str(bindir / "zellij-agent"), "publish-login"],
+                                      env={**env, "SSH_AUTH_SOCK": other}, capture_output=True)
+            assert rejected.returncode != 0
+            assert stable.read_text() == "preserve unmanaged file"
+            print("PASS: local agents are preserved; remote shells and direct attachments inherit one stable socket.")
+            print("PASS: reconnects refresh existing consumers; stale mux children and unsafe sources cannot replace it.")
         finally:
             for agent in processes:
                 if agent.poll() is None:
                     agent.terminate()
                 agent.wait(timeout=5)
-                if agent.stderr is not None:
-                    agent.stderr.close()
+                agent.stderr.close()
 
 
 if __name__ == "__main__":

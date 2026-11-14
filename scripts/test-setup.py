@@ -77,6 +77,15 @@ def main():
                                  capture_output=True, text=True, timeout=30)
         assert minimal.returncode == 0, minimal.stdout + minimal.stderr
         assert (minimal_home / ".bashrc").resolve() == repo / "bash/bashrc"
+        ssh_rc = minimal_home / ".ssh/rc"
+        assert ssh_rc.resolve() == repo / "sh/ssh-rc"
+        ssh_rc.unlink()
+        ssh_rc.write_text("# Existing host login setup\n")
+        repeated_shell = subprocess.run([*command, "shell"], cwd=repo, env=minimal_env,
+                                        capture_output=True, text=True, timeout=30)
+        assert repeated_shell.returncode == 0, repeated_shell.stderr
+        assert ssh_rc.read_text() == "# Existing host login setup\n"
+        assert "publish-login" in repeated_shell.stderr, "Custom hook needs an integration instruction"
         assert (minimal_home / ".gitconfig").resolve() == repo / "git/gitconfig"
         assert (minimal_home / ".gitattributes").resolve() == repo / "git/gitattributes"
         merger = executables / "mergiraf"

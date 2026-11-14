@@ -1,8 +1,15 @@
 # /etc/zshenv: user specific .zshenv file for zsh(1).
+
 #
 # Sourced on all invocations of the shell.
 #
 # Global Order: zshenv, zprofile, zshrc, zlogin
+
+# Select the forwarded agent even for noninteractive remote commands.
+if [ -n "${SSH_CONNECTION:-}" ] && [ -r "$HOME/.local/bin/fix-ssh" ]; then
+    # shellcheck disable=SC1091
+    . "$HOME/.local/bin/fix-ssh"
+fi
 
 HISTSIZE=99999999
 SAVEHIST=99999999
