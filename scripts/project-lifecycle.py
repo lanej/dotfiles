@@ -18,7 +18,7 @@ def run(args, capture=False):
 
 
 def main():
-    if len(sys.argv) != 3 or sys.argv[1] not in ("octo-manager", "zellij", "zellij-plugins"):
+    if len(sys.argv) != 3 or sys.argv[1] not in ("octo-manager", "zellij"):
         raise ValueError("Usage: project-lifecycle.py PROJECT ACTION")
     project, action = sys.argv[1:]
     if action == "status":
@@ -52,12 +52,7 @@ def main():
         else:
             raise ValueError("OctoManager supports build, restart and status; clean is not configured")
     elif action == "build":
-        if project == "zellij":
-            run(["make", "-C", str(ROOT), "zellij-runtime", "zellij-status", "zellij-config"])
-        else:
-            run(["python3", str(ROOT / "scripts/install-zellij-navigation.py")])
-            run(["python3", str(ROOT / "scripts/install-zellij-command-prompt.py")])
-            run(["make", "-C", str(ROOT), "zellij-status", "zellij-config"])
+        run(["make", "-C", str(ROOT), "zellij-runtime", "zellij-status", "zellij-config"])
     elif action == "restart":
         binary = Path.home() / ".local/bin/zellij"
         sessions = subprocess.run([str(binary), "list-sessions", "--no-formatting"], text=True, capture_output=True)

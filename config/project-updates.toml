@@ -9,7 +9,3 @@ command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "octo-manager"
 [projects.zellij]
 path = "{dotfiles}"
 command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "zellij"]
-
-[projects.zellij-plugins]
-path = "{dotfiles}"
-command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "zellij-plugins"]
