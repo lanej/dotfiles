@@ -339,7 +339,7 @@ def popup_workflow(first, second, home):
         return first.action("dump-screen", "--pane-id", str(original), session=POPUP)
     first.until("history fills the popup viewport", lambda: "popup-history-160" in screen())
     assert "popup-history-001" not in screen()
-    first.prefix(b"[")
+    first.action("switch-mode", "scroll", session=POPUP)
     first.send(b"g")
     first.until("scroll mode reaches old popup output", lambda: "popup-history-001" in screen())
     first.send(b"/")
@@ -348,7 +348,7 @@ def popup_workflow(first, second, home):
                 "popup-history-080" in screen())
     first.send(b"q")
     first.until("leaving search returns to live output", lambda: "popup-history-160" in screen())
-    first.prefix(b"e")
+    first.action("edit-scrollback", "--ansi", session=POPUP)
     def editor_ready():
         for pane in popup_panes(first):
             if pane["id"] in popup_ids:

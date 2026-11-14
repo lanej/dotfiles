@@ -1,0 +1,13 @@
+[package]
+name = "dotfiles-copy-hop"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+zellij-tile = { git = "https://github.com/lanej/zellij", rev = "aa0d5678823b323c9848920b4102a91bc453d31f" }
+
+[profile.release]
+strip = true
+opt-level = "s"
+lto = true

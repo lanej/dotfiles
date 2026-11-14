@@ -28,6 +28,7 @@ live_view_release_key "Alt Enter"
 load_plugins {
     pane-navigation
     command-prompt
+    copy-hop
     "zellij:link"
     "file:~/.config/zellij/plugins/lane-status.wasm" {
         role "clipboard-receiver"
@@ -50,10 +51,23 @@ attention {
 }
 
 plugins {
+    copy-hop location="file:~/.local/share/zellij/plugins/copy-hop.wasm"
     command-prompt location="file:~/.local/share/zellij/plugins/command-prompt.wasm"
     pane-navigation location="file:~/.local/share/zellij/plugins/pane-navigation.wasm"
 }
 keybinds clear-defaults=true {
+    shared {
+        // Kitty invokes this on the attached client to capture the source pane, also over SSH.
+        bind "Ctrl Alt F12" {
+            Run "zellij-helper" "image-hints" {
+                floating true
+                width "50%"
+                height "5"
+                close_on_exit true
+                name "Kitty hints"
+            }
+        }
+    }
     locked {
         bind "Ctrl f" { SwitchToMode "Tmux"; }
     }
@@ -200,7 +214,7 @@ keybinds clear-defaults=true {
             SwitchToMode "Locked"
         }
         bind "w" { SwitchToMode "RenameSession"; SessionNameInput 0; }
-        bind "e" { EditScrollback { ansi true; }; SwitchToMode "Locked"; }
+        bind "e" { SwitchToMode "Copy"; }
         bind "p" {
             // After visible-bar consent, the background clipboard receiver
             // replaces this marker with a client-specific MessagePluginId.
@@ -209,7 +223,7 @@ keybinds clear-defaults=true {
             }
             SwitchToMode "Locked"
         }
-        bind "[" { SwitchToMode "Scroll"; }
+        bind "[" { SwitchToMode "Copy"; }
         bind "/" { SwitchToMode "EnterSearch"; SearchInput 0; }
         // Display zero-based indices; Zellij's GoToTab API is one-based.
         bind "0" { GoToTab 1; SwitchToMode "Locked"; }
@@ -260,13 +274,22 @@ keybinds clear-defaults=true {
         bind "Enter" { SwitchToMode "Locked"; }
         bind "Esc" "Ctrl c" { UndoRenameTab; SwitchToMode "Locked"; }
     }
-    shared_among "scroll" "search" {
+    shared_among "scroll" "search" "copy" {
         bind "Ctrl h" { MoveFocus "Left"; SwitchToMode "Locked"; }
         bind "Ctrl j" { MoveFocus "Down"; SwitchToMode "Locked"; }
         bind "Ctrl k" { MoveFocus "Up"; SwitchToMode "Locked"; }
         bind "Ctrl l" { MoveFocus "Right"; SwitchToMode "Locked"; }
     }
+    copy {
+        bind "s" {
+            MessagePlugin "copy-hop" {
+                name "hop"
+            }
+        }
+        bind "Esc" { CopyModeInput "ESC"; }
+    }
     scroll {
+        bind "v" { SwitchToMode "Copy"; }
         bind "j" "Down" { ScrollDown; }
         bind "k" "Up" { ScrollUp; }
         bind "Ctrl f" "PageDown" { PageScrollDown; }
@@ -278,7 +301,7 @@ keybinds clear-defaults=true {
         bind "[" { ScrollToPreviousPrompt; }
         bind "]" { ScrollToNextPrompt; }
         bind "/" "s" { SwitchToMode "EnterSearch"; SearchInput 0; }
-        bind "e" { EditScrollback { ansi true; }; SwitchToMode "Locked"; }
+        bind "e" { SwitchToMode "Copy"; }
         bind "m" { SelectCommandAtScrollPosition; }
         bind "y" { Copy; ScrollToBottom; SwitchToMode "Locked"; }
         bind "c" { CopyLastCommandOutput; ScrollToBottom; SwitchToMode "Locked"; }
@@ -299,7 +322,7 @@ keybinds clear-defaults=true {
         bind "c" { SearchToggleOption "CaseSensitivity"; }
         bind "w" { SearchToggleOption "Wrap"; }
         bind "o" { SearchToggleOption "WholeWord"; }
-        bind "e" { EditScrollback { ansi true; }; SwitchToMode "Locked"; }
+        bind "e" { SwitchToMode "Copy"; }
         bind "Esc" "Enter" "q" "Ctrl c" { ScrollToBottom; SwitchToMode "Locked"; }
     }
 }

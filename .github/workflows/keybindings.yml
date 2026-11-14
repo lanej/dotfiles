@@ -7,6 +7,7 @@ on:
       - 'scripts/test-keybindings.py'
       - 'scripts/test-kitty-last-url.py'
       - 'kitty/open_last_url.py'
+      - 'kitty/select_hint.py'
       - 'kitty/kittyconf'
       - 'yabai/skhdrc'
       - '.github/workflows/keybindings.yml'
