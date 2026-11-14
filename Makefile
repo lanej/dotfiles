@@ -625,16 +625,16 @@ octo-manager-install octo-manager-reinstall octo-manager-pull-latest octo-manage
 
 octo-manager-pull: octo-manager-pull-latest
 
-# Explicit SSH integration configures an installed Keylease; it does not install
+# Explicit SSH integration configures an installed Intent; it does not install
 # software or start services during ordinary shell/default configuration.
-KEYLEASE_BINARY ?= $(HOME)/.local/bin/keylease
-.PHONY: keylease-ssh keylease-ssh-remove test-keylease-ssh
-keylease-ssh:
-	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/setup-keylease-ssh.py" --keylease "$(KEYLEASE_BINARY)"
-keylease-ssh-remove:
-	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/setup-keylease-ssh.py" --remove
-test-keylease-ssh:
-	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-keylease-ssh.py"
+INTENT_BINARY ?= $(HOME)/.local/bin/intent
+.PHONY: intent-ssh intent-ssh-remove test-intent-ssh
+intent-ssh:
+	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/setup-intent-ssh.py" --intent "$(INTENT_BINARY)"
+intent-ssh-remove:
+	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/setup-intent-ssh.py" --remove
+test-intent-ssh:
+	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-intent-ssh.py"
 
 .PHONY: test-project-update
 test-project-update:

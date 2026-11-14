@@ -119,9 +119,9 @@ Required correctness lint in the reusable [TypeScript profile](typescript-style.
 
 [Mergiraf](mergiraf.md): selected by the `shell` set, with a machine-level `tools.mergiraf = false` opt-out. Installation activates syntax-aware Git merging for its supported file types. Runnable TOML, Lua, and JSON examples demonstrate combined independent edits and retained disagreements. Revisit the trial after reviewing resolutions during normal branch integration; Zsh remains outside the installed binary's advertised language coverage.
 
-### Keylease
+### Intent
 
-[Keylease SSH approval](keylease-ssh.md): one-time Mac approval for remote commands and Go applications, configured through OpenSSH while preserving the authentication agent. Evaluate the cooperative approval interaction in normal remote workflows before broader adoption.
+[Intent SSH approval](intent-ssh.md): one-time Mac approval for remote commands and Go applications, configured through OpenSSH while preserving the authentication agent. Evaluate the cooperative approval interaction in normal remote workflows before broader adoption.
 
 ### Paseo
 

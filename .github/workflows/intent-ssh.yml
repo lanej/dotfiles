@@ -1,18 +1,18 @@
-name: Keylease SSH configuration
+name: Intent SSH configuration
 on:
   pull_request:
     paths:
-      - 'scripts/setup-keylease-ssh.py'
-      - 'scripts/test-keylease-ssh.py'
-      - 'ssh/keylease.conf.template'
-      - '.github/workflows/keylease-ssh.yml'
+      - 'scripts/setup-intent-ssh.py'
+      - 'scripts/test-intent-ssh.py'
+      - 'ssh/intent.conf.template'
+      - '.github/workflows/intent-ssh.yml'
   push:
     branches: [master]
     paths:
-      - 'scripts/setup-keylease-ssh.py'
-      - 'scripts/test-keylease-ssh.py'
-      - 'ssh/keylease.conf.template'
-      - '.github/workflows/keylease-ssh.yml'
+      - 'scripts/setup-intent-ssh.py'
+      - 'scripts/test-intent-ssh.py'
+      - 'ssh/intent.conf.template'
+      - '.github/workflows/intent-ssh.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -30,4 +30,4 @@ jobs:
         run: |
           brew install openssh
           echo "$(brew --prefix openssh)/bin" >> "$GITHUB_PATH"
-      - run: make test-keylease-ssh
+      - run: make test-intent-ssh

@@ -273,7 +273,7 @@ Go modules also receive a strict correctness profile: exhaustive enums and sum t
 
 ## SSH approval on the Mac
 
-With the updated Keylease installed, `make keylease-ssh` configures ordinary OpenSSH connections to carry one-time Mac approval requests. It preserves the authentication agent and host settings; remote Go callers and commands can request review followed by native authentication. See [SSH approval setup](docs/keylease-ssh.md) for installation, connection sharing, recovery, and removal.
+With the updated Intent installed, `make intent-ssh` configures ordinary OpenSSH connections to carry one-time Mac approval requests. It preserves the authentication agent and host settings; remote Go callers and commands can request review followed by native authentication. See [SSH approval setup](docs/intent-ssh.md) for installation, connection sharing, recovery, and removal.
 
 ## Shared shell history
 
