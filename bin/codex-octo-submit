@@ -61,7 +61,7 @@ def publication(tokens):
         if index > 0 and tokens[index - 1] not in {";", "&&", "||", "|", "(", ")"} and tokens[0] not in {"env", "command", "exec"}:
             continue
         if name == "gh-pr-create-from" and tokens[index + 1:index + 2] != ["--check"]:
-            return index, "file"
+            return index, "retired"
         if name == "gh" and tokens[index + 1:index + 3] == ["pr", "create"]:
             return index, "gh"
         if name == "octo-manager" and tokens[index + 1:index + 2] == ["submit-pr"]:
@@ -90,21 +90,15 @@ def translate(event):
     if found is None:
         return None
     index, kind = found
+    if kind == "retired":
+        raise ValueError("In Codex, gh-pr-create-from has been replaced by octo-manager submit-pr. Supply purpose and validation facts; Octo owns the dedicated writer, publication checks, and tracking. Claude retains its existing publisher.")
     if index != 0 or any(token and all(char in ";&|<>()\n" for char in token) for token in tokens) or "$" in command or "`" in command or "\n" in command:
         raise ValueError("Run PR submission as a standalone octo-manager submit-pr command; shell composition and expansion are not translated.")
     session, cwd = event.get("session_id"), event.get("cwd")
     if not isinstance(session, str) or not session or not isinstance(cwd, str) or not Path(cwd).is_absolute():
         raise ValueError("Octo requires the calling session ID and absolute working directory.")
-    args = tokens[2:] if kind == "octo" else tokens[3:] if kind == "gh" else tokens[1:]
+    args = tokens[2:] if kind == "octo" else tokens[3:]
     converted = []
-    if kind == "file":
-        if not args or args[0].startswith("-"):
-            raise ValueError("Supply the writer description file, or use octo-manager submit-pr --intent-file FILE.")
-        content = (Path(cwd) / args[0]).read_text()
-        if len(content.encode()) > 10000:
-            raise ValueError("Writer context exceeds 10000 bytes; supply a bounded intent file.")
-        converted += ["--purpose", content]
-        args = args[1:]
     if kind == "octo":
         # rationale: Caller identity comes from the hook event, never stale command flags.
         index = 0

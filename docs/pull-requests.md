@@ -66,6 +66,8 @@ This is enough for a routine UI fix; a screenshot can follow the paragraph when 
 
 Use the existing PR when updating a change. Confirm the repository, branch, review base, and publication authorization before creating a new one. Inspect the published title, rendered body, any included images, and stack relationship.
 
+In Codex, create GitHub PRs through [Octo's submission contract](octo-pr-submission.md) with `octo-manager submit-pr`. Octo runs the recorded writer, checks publication requirements, publishes, and enrolls the PR. Supply purpose and validation facts, and report unavailable submission rather than using direct publication. Claude retains its separate writer and `gh-pr-create-from <file>` publisher. Existing PR title/body revisions retain the separate-writer workflow described in [the operating procedures](agent-operating-procedures.md#automatic-pr-writing-and-code-review).
+
 Pass multiline descriptions through a file or structured API field so Markdown and literal text survive unchanged. Creating or updating a PR does not authorize merging it. The writer drafts; the calling agent publishes and verifies the saved result.
 
 Rendering checks verify presentation and links. They do not introduce a separate critic/editorial stage or routine second writing pass. Correct concrete factual or rendering defects when found.
