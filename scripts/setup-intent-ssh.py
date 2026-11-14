@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Configure automatic, connection-scoped Intent approval without replacing SSH settings."""
 import argparse
+import fnmatch
+import glob
 import os
 from pathlib import Path
 import platform
@@ -28,6 +30,47 @@ def atomic_write(path, content):
         os.replace(temporary, path)
     finally:
         Path(temporary).unlink(missing_ok=True)
+
+
+
+def validation_config(content, ssh_dir, legacy, snippet, staged_snippet):
+    """Project direct Includes onto the exact files present after migration."""
+    lines = []
+    for line in content.splitlines(keepends=True):
+        match = re.match(r"^\s*Include\s+(.*)$", line.rstrip("\n"), re.I)
+        if not match:
+            lines.append(line)
+            continue
+        patterns = shlex.split(match[1], comments=True)
+        includes = []
+        changed = False
+        for pattern in patterns:
+            path = Path(pattern).expanduser()
+            if not path.is_absolute():
+                path = ssh_dir / path
+            paths = sorted(glob.glob(str(path)))
+            owns_legacy = str(legacy) in paths
+            owns_snippet = len(snippet.parts) == len(path.parts) and all(
+                fnmatch.fnmatchcase(name, part) and (not name.startswith(".") or part.startswith("."))
+                for name, part in zip(snippet.parts, path.parts)
+            )
+            if not owns_legacy and not owns_snippet:
+                includes.append(pattern)
+                continue
+            changed = True
+            if owns_snippet and str(snippet) not in paths:
+                paths.append(str(snippet))
+                paths.sort()
+            includes.extend(str(staged_snippet) if name == str(snippet) else name
+                            for name in paths if name != str(legacy))
+        if not changed:
+            lines.append(line)
+        elif includes:
+            quoted = ['"' + name.replace('\\', '\\\\').replace('"', '\\"') + '"' for name in includes]
+            lines.append("    Include " + " ".join(quoted) + "\n")
+        else:
+            lines.append("    # Legacy managed include omitted during validation.\n")
+    return "".join(lines)
 
 
 def main():
@@ -109,7 +152,7 @@ def main():
         staged_snippet = stage / "intent.conf"
         staged_snippet.write_text(rendered)
         staged_config = stage / "config"
-        staged_config.write_text(updated.replace(str(snippet), str(staged_snippet)))
+        staged_config.write_text(validation_config(updated, ssh_dir, legacy_snippet, snippet, staged_snippet))
         result = subprocess.run([ssh, "-G", "-F", str(staged_config), "intent-config-check.invalid"], capture_output=True, text=True, check=True)
         effective = dict(line.split(" ", 1) for line in result.stdout.splitlines() if " " in line)
         if effective.get("controlmaster") not in ("auto", "true", "yes") or effective.get("permitlocalcommand") != "yes" or str(control) not in effective.get("controlpath", "") or str(binary) not in effective.get("localcommand", ""):
