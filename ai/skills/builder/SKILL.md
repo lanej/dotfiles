@@ -43,6 +43,10 @@ Keep the thread narrow in scope but real in execution. Resolve consequential unc
 
 Read the project's installed `testing` skill when selecting, writing, running, or reviewing checks. It owns stage-specific evidence requirements and protection of retained behavior. Research may use disposable structure; alpha protects the working thread; beta adds adoption and compatibility evidence; production adds controlled-change, independent-review, and applicable recovery evidence. Preserve explicit project requirements and protections against irreversible harm at every stage. If the testing skill is unavailable, use the construction reference's retained-behavior safeguards and report the missing stage guidance.
 
+## Describe the current system
+
+Committed source comments and project documentation describe the current behavior, contracts, configuration, and rationale. Keep change summaries, implementation narratives, and before/after comparisons in commits or PR descriptions. Preserve explicitly historical artifacts, such as changelogs, decision records, and dated acceptance or benchmark evidence; identify their scope and date so readers can distinguish them from current guidance.
+
 ## Load detail when needed
 
 Read [the architecture standard](references/standard.md) for capability boundaries, models, adapters, consequential effects or architecture reviews for rationale, evidence and limits. Read the [construction policy](references/construction.md) for uncertain feasibility, retained prototypes, manual-only protection, security/performance viability or ambiguity about verification timing. Read [instruction routing](references/instructions.md) when configuring host loading.
