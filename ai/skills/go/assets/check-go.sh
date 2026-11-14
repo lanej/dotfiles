@@ -6,8 +6,8 @@ lint_version=2.13.2
 vuln_version=v1.9.0
 mode=${1:-all}
 case "$mode" in
-    all|lint|fmt|fix|test|vuln|tools|baseline|ratchet) ;;
-    *) printf 'Usage: %s [all|lint|fmt [files...]|fix packages...|test|vuln|tools|baseline|ratchet]\n' "$0" >&2; exit 2 ;;
+    all|compile|alpha|lint|fmt|fix|test|vuln|tools|baseline|ratchet) ;;
+    *) printf 'Usage: %s [all|compile|alpha|lint|fmt [files...]|fix packages...|test|vuln|tools|baseline|ratchet]\n' "$0" >&2; exit 2 ;;
 esac
 if [ "$#" -gt 0 ]; then shift; fi
 if [ "$mode" != fmt ] && [ "$mode" != fix ] && [ "$#" -gt 0 ]; then
@@ -86,8 +86,16 @@ install_vuln() (
 )
 
 case "$mode" in
-    tools|lint|fmt|fix|all|baseline|ratchet) install_lint ;;
+    tools|lint|fmt|fix|all|alpha|baseline|ratchet) install_lint ;;
 esac
+if [ "$mode" = compile ]; then
+    if [ -n "$legacy_config" ]; then
+        install_lint
+        "$lint" config verify --config "$legacy_config"
+        "$lint" run --config "$legacy_config" --fix=false ./...
+    fi
+    go build ./...
+fi
 if [ "$mode" = tools ]; then
     install_vuln
 fi
@@ -105,7 +113,7 @@ if [ "$mode" = fix ]; then
     fi
     "$lint" run --config "$lint_config" --enable-only=wsl_v5 --fix "$@"
 fi
-if [ "$mode" = lint ] || [ "$mode" = all ] || [ "$mode" = baseline ] || [ "$mode" = ratchet ]; then
+if [ "$mode" = lint ] || [ "$mode" = all ] || [ "$mode" = alpha ] || [ "$mode" = baseline ] || [ "$mode" = ratchet ]; then
     if [ -n "$legacy_config" ]; then
         "$lint" config verify --config "$legacy_config"
         "$lint" run --config "$legacy_config" --fix=false ./...
@@ -115,6 +123,13 @@ if [ "$mode" = lint ] || [ "$mode" = all ] || [ "$mode" = baseline ] || [ "$mode
     action=check
     case "$mode" in baseline|ratchet) action=$mode ;; esac
     python3 scripts/go-quality.py "$action" --linter "$lint"
+fi
+if [ "$mode" = alpha ]; then
+    if command -v gotestsum >/dev/null; then
+        gotestsum -- -count=1 ./...
+    else
+        go test -count=1 ./...
+    fi
 fi
 if [ "$mode" = test ] || [ "$mode" = all ]; then
     if [ "$(go env CGO_ENABLED)" != 1 ]; then

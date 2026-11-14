@@ -5,6 +5,8 @@ description: "Rust development with cargo - build strategy, clippy triage, testi
 
 # Rust / cargo
 
+Read the project’s stage through [source-code lifecycle](../source-code-lifecycle/SKILL.md) and use [testing](../testing/SKILL.md) for proportionate evidence. Language detection installs this guidance; it does not add or replace compiler, test, or CI configuration. Preserve existing repository gates.
+
 Standard cargo usage works as documented. This file covers build-cost discipline and clippy triage,
 where the default instinct is usually wrong.
 
@@ -20,6 +22,8 @@ Release builds and `cargo install --path .` are very slow and almost never what 
 | Need optimized performance | `cargo build --release` — only then |
 
 ## Validation order
+
+For research, begin with `cargo check` and exercise the experiment. Alpha adds formatting and affected regression checks. Beta and production use formatting, tests, and Clippy, plus existing project gates. The full sequence below applies when the selected stage or repository requires it.
 
 ```bash
 cargo test --quiet

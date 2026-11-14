@@ -8,7 +8,7 @@ Keep each Markdown paragraph on one source line. Do not hard-wrap prose to a fix
 
 # Code comments
 
-For source-comment decisions, use the `code-comments` skill's compact guidance. Routine edits do not require loading the full specification; follow the skill's conditional reference triggers. Honor the target repository's conventions and do not rewrite unrelated comments.
+For source-comment decisions, use the project's installed `code-comments` skill when present; preserve repository conventions when no project profile is installed. Routine edits do not require loading the full specification; follow the skill's conditional reference triggers. Honor the target repository's conventions and do not rewrite unrelated comments.
 
 # Unix philosophy
 

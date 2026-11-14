@@ -81,6 +81,13 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     (obsolete / "SKILL.md").write_text("Retired instructions.\n")
     builder = repo / "ai/skills/builder"
     shutil.copytree(ROOT / "ai/skills/builder", builder)
+    shutil.copyfile(ROOT / "ai/skills/project-only.json", repo / "ai/skills/project-only.json")
+    project_names = json.loads((repo / "ai/skills/project-only.json").read_text())
+    for name in project_names:
+        directory = repo / "ai/skills" / name
+        if not directory.exists():
+            directory.mkdir()
+            (directory / "SKILL.md").write_text(f"---\nname: {name}\ndescription: Project-only guidance.\n---\n")
     construction = builder / "references/construction.md"
     construction_text = construction.read_text()
     (repo / "ai/agents").mkdir()
@@ -129,6 +136,10 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     personal.mkdir()
     (personal / "SKILL.md").write_text("Keep my external skill.\n")
     (old_sources / "personal").symlink_to(personal)
+    for name in project_names:
+        if name != "builder":
+            (old_sources / name).symlink_to(repo / "ai/skills" / name)
+        (cache / name).symlink_to(repo / "ai/skills" / name)
     old_claude.symlink_to(legacy)
     old_rule = home / ".claude/rules/pragmatic-hexagonal.md"
     old_rule.symlink_to(legacy / "references/instructions.md")
@@ -157,6 +168,7 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     assert old_claude.parent.is_symlink(), "rejected update migrated the directory"
     assert not (home / ".local/share/software-standards/builder").exists()
     construction.write_text(construction_text)
+    subprocess.run([sys.executable, str(repo / "scripts/install-software-standard.py"), "--source", str(builder), "--home", str(home)], check=True, capture_output=True)
     subprocess.run(command, cwd=repo, env=env, check=True, capture_output=True, text=True)
 
     installed = home / ".agents/skills/dotfiles/shared-workflow"
@@ -165,22 +177,22 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     assert not (installed / "SKILL.md").is_symlink()
     assert (installed / "references/guide.md").read_text() == "Review guide.\n"
     builder_installed = home / ".agents/skills/dotfiles/builder"
-    assert (builder_installed / "references/standard.md").read_bytes() == (builder / "references/standard.md").read_bytes()
-    assert (builder_installed / "references/construction.md").read_text() == construction_text
-    assert (builder_installed / "scripts/operations.py").read_bytes() == (builder / "scripts/operations.py").read_bytes()
-    assert re.search(r"^name: builder$", (builder_installed / "SKILL.md").read_text(), re.M)
+    for base in (home / ".agents/skills/dotfiles", home / ".claude/skills"):
+        for name in project_names:
+            assert not (base / name).exists() and not (base / name).is_symlink()
+    assert not builder_installed.exists() and not builder_installed.is_symlink()
     assert local.read_text() == "Local instructions.\n"
     assert not (home / ".agents/skills/dotfiles/paseo-plugin").exists()
     assert not (home / ".claude/skills/paseo-plugin").exists()
     assert (obsolete / "SKILL.md").read_text() == "Retired instructions.\n"
     package = (home / ".local/share/software-standards/builder").resolve()
-    assert builder_installed.resolve() == package
-    assert (home / ".claude/skills/builder").resolve() == package
+    assert (package / "references/construction.md").read_text() == construction_text
+    assert not (home / ".claude/skills/builder").exists()
     assert not old_claude.parent.is_symlink()
     assert (home / ".claude/skills/personal").resolve() == personal
     assert (old_sources / "pragmatic-hexagonal").readlink() == legacy
     assert builder.is_dir() and not builder.is_symlink(), "migration replaced the source skill"
-    assert (home / ".claude/rules/builder.md").read_bytes() == (package / "references/instructions.md").read_bytes()
+    assert not (home / ".claude/rules/builder.md").exists()
     assert not old_claude.is_symlink() and not old_rule.is_symlink()
     assert (alias / "SKILL.md").read_bytes() == (builder / "SKILL.md").read_bytes()
     assert reference_alias.read_bytes() == (package / "references/instructions.md").read_bytes()
@@ -191,9 +203,8 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     assert global_file.read_text().endswith("Keep my existing global preferences.\n")
     assert local_rule.read_text() == "Keep my local rule.\n"
     guidance = global_file.read_text()
-    # Follow the actual installed instruction path, without claiming model loading.
-    target, = re.findall(r"`(~\/[^`]+)`", guidance)
-    assert (home / target[2:]).read_bytes() == (package / "SKILL.md").read_bytes()
+    assert "<!-- builder:start -->" not in guidance
+    assert "<!-- pragmatic-hexagonal:start -->" not in guidance
 
     instruction.write_text(instruction.read_text() + "Use the latest guide.\n")
     construction_text += "Protect retained behavior during the next increment.\n"
@@ -209,11 +220,11 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
 
     # A copied skill package must not depend on the dotfiles checkout layout.
     portable = tmp_path / "portable"
-    shutil.copytree(builder_installed, portable)
+    shutil.copytree(package, portable)
     assert global_file.read_text() == guidance, "repeat install changed global instructions"
     shutil.rmtree(repo)
-    assert (builder_installed / "references/standard.md").is_file()
-    assert (home / ".claude/skills/builder/references/construction.md").read_text() == construction_text
+    assert not builder_installed.exists()
+    assert (package / "references/construction.md").read_text() == construction_text
     assert (home / ".claude/skills/personal/SKILL.md").read_text() == "Keep my external skill.\n"
     assert (alias / "references/construction.md").read_text() == construction_text
     assert reference_alias.read_bytes() == (package / "references/instructions.md").read_bytes()

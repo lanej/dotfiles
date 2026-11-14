@@ -54,6 +54,8 @@ Use these annotations when their purpose or searchability helps. They are not a 
 
 Ask what a reader needs to understand or safely change the code. If a comment only translates nearby syntax into English, omit it. If a straightforward code improvement carries the information better, make that improvement. If useful information remains, place it where the reader needs it and use an annotation only when its purpose warrants one.
 
+Judge usefulness by what the reader would otherwise have to infer, not by sentence count. “Set X to Y” repeats an assignment; explaining how that setting changes other values or enables later interpretation preserves a consequential relationship.
+
 | Situation | Guidance |
 | --- | --- |
 | Intent or behavior is already clear | Leave it uncommented. |
@@ -64,6 +66,14 @@ Ask what a reader needs to understand or safely change the code. If a comment on
 | A temporary accommodation or known defect remains | Describe it with `workaround` or `fixme`; distinguish future work with `todo`. |
 | A caller needs a contract | Put it in documentation comments, docstrings, or types; keep local implementation reasoning beside the code. |
 | A decision spans components | Keep the full decision in design documentation and leave useful local context with a reference. |
+
+## Library caller perspective
+
+For libraries, the reader is also the caller who uses the public API without reading its implementation. Public API documentation SHOULD explain how to use the API and what to expect. Names and types can carry obvious details; documentation SHOULD supply meaningful behavior, interactions, constraints, and failure outcomes that callers would otherwise have to infer. Examples SHOULD be included when they clarify usage. Repository or language requirements for public API documentation still apply; this policy adds no per-symbol comment quota.
+
+Keep caller-facing explanations in native documentation comments or docstrings so they appear in generated API documentation and editor help. Keep implementation reasoning beside the implementation. A setter that affects later encoding, for example, should document that consequence rather than merely say it sets a field.
+
+The shared policy is the default within an installed project profile; it is no longer advertised as a user-level skill. The project lifecycle stage sets the expected contract detail, preserving explicit repository documentation requirements. Install the optional [library comment skill](../ai/skills/library-code-comments/SKILL.md) for library work; see [repository bootstrap](repository-bootstrap.md) for shared or Git-excluded local installation. In mixed repositories, project instructions can select it for library directories while retaining the default elsewhere.
 
 ## Examples
 

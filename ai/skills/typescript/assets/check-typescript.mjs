@@ -14,7 +14,7 @@ const tools = path.join(root, '.typescript-quality');
 const baselinePath = '.typescript-quality-baseline.json';
 const require = createRequire(path.join(tools, 'package.json'));
 const [mode = 'all', ...args] = process.argv.slice(2);
-const modes = new Set(['all', 'lint', 'typecheck', 'fmt', 'test', 'audit', 'tools', 'baseline', 'ratchet']);
+const modes = new Set(['all', 'alpha', 'lint', 'typecheck', 'fmt', 'test', 'audit', 'tools', 'baseline', 'ratchet']);
 const sourcePattern = /\.(?:ts|tsx|mts|cts)$/u;
 const declarationPattern = /\.d\.(?:ts|mts|cts)$/u;
 const readJSON = (file) => JSON.parse(readFileSync(file, 'utf8'));
@@ -282,7 +282,7 @@ function enforce(findings, settings) {
 async function main() {
   process.chdir(root);
   if (process.env.DOTFILES_TYPESCRIPT_QUALITY_ACTIVE === root) fail('Recursive quality command: preserve the original project gate instead of calling this runner from it.');
-  if (!modes.has(mode) || (mode !== 'fmt' && args.length)) fail('Usage: node scripts/check-typescript.mjs [all|lint|typecheck|fmt FILE...|test|audit|tools|baseline|ratchet]');
+  if (!modes.has(mode) || (mode !== 'fmt' && args.length)) fail('Usage: node scripts/check-typescript.mjs [all|alpha|lint|typecheck|fmt FILE...|test|audit|tools|baseline|ratchet]');
   if (Number(process.versions.node.split('.')[0]) < 22) fail('TypeScript quality requires Node 22+.');
   if (mode === 'tools') {
     run(['npm', existsSync(path.join(tools, 'package-lock.json')) ? 'ci' : 'install',
@@ -313,8 +313,10 @@ async function main() {
     findings.push(...await lint(built.files, built.programs), ...await formatting(built.files));
   }
   enforce(findings, settings);
-  if (mode === 'all') {
+  if (mode === 'all' || mode === 'alpha') {
     run(settings.commands.test);
+  }
+  if (mode === 'all') {
     run(settings.commands.audit);
   }
   console.log(`TypeScript quality: ${mode} passed (${settings.rollout}).`);

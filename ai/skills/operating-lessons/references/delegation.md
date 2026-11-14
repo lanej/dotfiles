@@ -1,8 +1,6 @@
 # Delegation and Verification
 
-Rules for deciding whether a reported result is true — a sub-agent's, or your own — before it reaches the user.
-Read before surfacing any delegate's output, and before reporting a result you have not independently checked.
-
+Rules for deciding whether a reported result is true — a sub-agent's, or your own — before it reaches the user. Read before surfacing any delegate's output, and before reporting a result you have not independently checked.
 
 ## Sub-agent output verification
 
@@ -17,9 +15,6 @@ A sub-agent returning from a deploy/infra task (Cloud Run, Terraform, gcloud) in
 
 ### Structural facts
 Explore agents fabricate file/resource/table names and directory structures when they can't locate them directly. Cross-check against `find`/`grep`/`ls`. (detail: memory "feedback_explore_hallucination_example")
-
-### Hook diagnostics
-"Cannot find module"/missing-file diagnostics from a `PreToolUse` hook can be stale or wrong in concurrent multi-worktree/multi-session setups. Verify against disk and a real build/test run before treating one as a real problem. (detail: memory "feedback_hook_diagnostic_unreliable")
 
 ### Resumed sub-agent thread drift (`/handoff` and any long-lived task-id)
 
@@ -38,35 +33,17 @@ A task-notification with `status: killed` has its `result` field populated from 
 A `status: completed` notification is not automatically a real result either — check `usage.tool_uses` and `usage.duration_ms` before trusting the content. A multi-step research/investigation/implementation task returning in single-digit seconds with 0 tool uses is a stalled or echoed-back prompt, not a completed finding, even though the `result` text can read as plausible narrated intent. Re-prompt the same task-id rather than surfacing it. (detail: memory "feedback_task_notification_stall_zero_tooluse")
 
 ### Checking on a running background agent
-Never call `TaskOutput` with `block=false` (or anything else that surfaces a running agent's raw transcript) just to answer "is it still working" during a goal check-in or other status-pressure moment — this pollutes context exactly like reading a fork's output file directly (the "don't peek" rule). Use an observable side effect instead — `git status --short`, `git diff --stat`, or an expected intermediate artifact named in the dispatch brief — and otherwise wait for the real `<task-notification>` completion event. (detail: memory "feedback_taskoutput_block_false_transcript_dump")
-
-### Git push/merge
-Verify with `git log origin/main -1` or `git remote show origin` after any push/merge — don't rely on the exit code alone. (detail: memory "feedback_git_push_verification")
-
-### Branch-comparison claims ("clean fast-forward")
-Before telling the user a merge/push is safe or a fast-forward, run the comparison in its own isolated tool call (not concatenated with other commands) and check both directions explicitly (`git log --oneline HEAD..main` AND `main..HEAD`, or `git merge-base` plus both counts) — a one-directional or concatenated-output check is easy to misread as "no divergence" when the other direction actually has commits. Confirmed in `analysis-doc` (2026-08-29): told the user "clean fast-forward" based on a misread `HEAD..main` check, when `main` actually had 6 commits the branch lacked and the branch had 13 `main` lacked — a real fork, not a fast-forward. (detail: memory "feedback_verify_branch_comparison_before_stating")
-
-### Unattributed repo changes
-A sub-agent's denial of authorship — even backed by its own tool-call history or a `ps` check — is still self-report; verify it from the raw transcript, don't just re-ask. Read the sub-agent's own JSONL directly (`~/.claude/projects/<escaped-cwd>/<session-id>/subagents/agent-<task-id>.jsonl`) rather than trusting its reply. If that comes up clean, before treating the change as a genuine anomaly, grep `~/.claude/projects/<escaped-cwd>/*.jsonl` (all top-level session files, not just the current one) for a unique string from the new content — a second Claude Code window open on the same repo is a real, mundane cause of a write with no actor visible in either session's own history, and it will show up this way. Check `CronList` too. Content being accurate/load-bearing is not evidence of authorship — resolve provenance before deciding whether to commit. (detail: memory "project_readme_provenance_concurrent_session")
-
-### Unauthorized remote/repo creation by a `gh`-capable sub-agent
-A commit/build/live-smoke-test verification pass does not surface a sub-agent creating org-visible remote infrastructure (a new GitHub repo, a changed `origin`, a webhook) it wasn't briefed to create — this isn't fork-specific, it happens with any agent that has `gh` or another network-mutating tool. After any such dispatch, add `git remote -v` (and `gh repo view <name>` if a new remote appears) to the verification pass as a matter of course, not only when a later task happens to need the remote state. If an unauthorized remote turns up, the next brief into that repo must explicitly enumerate what's forbidden (`gh repo create`, `git push`, Pages/settings changes) rather than assuming "local only" was implicit. (detail: memory "feedback_subagent_remote_repo_creation_missed_by_verification")
-
+Never call `TaskOutput` with `block=false` (or anything else that surfaces a running agent's raw transcript) just to answer "is it still working" during a goal check-in or other status-pressure moment — this pollutes context exactly like reading a fork's output file directly (the "don't peek" rule). Use a task-owned observable result or the host’s status API, then wait for its completion event. (detail: memory "feedback_taskoutput_block_false_transcript_dump")
 
 ## Verification-before-reporting family
 
 Each of these is an instance of "run safe verification before you surface a result" for a specific recurring scenario:
 
 - **Aggregate counts**: verify the motivating case is actually in the population before surfacing N matches/rows. (detail: memory "feedback_aggregate_spotcheck")
-- **Refactor output**: verify a dynamic replacement source produces the same keys/values as the hardcoded value it replaces. (detail: memory "feedback_refactor_output_verification")
-- **Multi-file refactors (5+ files)**: run a syntax/import check on all modified files plus one end-to-end smoke test before declaring done. (detail: memory "feedback_multifile_refactor_verification")
-- **Architectural pivots mid-session**: independently re-run whatever check confirmed the pre-pivot feature worked — a sub-agent's "expected blocker" framing isn't a substitute. (detail: memory "feedback_architectural_pivot_verification")
-- **Full-stack features**: passing frontend and backend tests separately doesn't confirm they're wired together — verify the real network call fires end-to-end. (detail: memory "project_fraud_detection_mock_data_regression")
-- **Parallel frontend/backend dispatch**: pin the exact response contract (field names, casing, types) as a literal in *both* briefs before dispatching — don't let each side invent its own assumption independently. A `curl`/raw-JSON check of the backend's output does not verify a frontend's interpretation of it; that's a distinct rendering-layer seam a JSON-only check cannot see. Concrete instance: a backend agent returned camelCase fields, a frontend agent independently guessed snake_case for both its mock fixture and its rendering code, and every field silently resolved to `undefined` — passed a live `curl` check, only caught by the user reporting the page looked empty. (detail: memory "feedback_parallel_dispatch_contract_mismatch")
 - **Single-example metrics**: one anecdote doesn't confirm real signal vs. artifact — check the full value distribution (`COUNT(*) GROUP BY`, percentiles). (detail: memory "feedback_single_example_distribution_check")
 - **"What's taking so long?"**: check actual status/logs immediately — a recap of known steps isn't an answer. (detail: memory "feedback_taking_so_long_investigate")
 - **Pricing/versioned APIs**: name the exact version/generation when quoting a price — tiers get revised between generations and commonly-cited figures are often stale. (detail: memory "feedback_pricing_generation_verification")
-- **Rendered document/page content (PDF/HTML/GFM text, or a browser-rendered page driven by a live API response)**: a clean render exit code, a passing test suite, or a correct raw API/JSON response is not proof the delivered content is correct — extract and read the actual rendered output (`pdftotext`+read, screenshot+Read, a direct grep of GFM/HTML output, or a Playwright/browser trace of the real page against the real response) for stray source syntax, unresolved markers, leaked metadata, or a consuming layer silently misinterpreting an otherwise-correct upstream response. Recurred 5x across at least three projects without ever becoming a shared checklist item: a `workspace` HTML report needing an explicit "sit in a verification loop" correction; an `analysis-doc`/EPQ dark-mode toggle wired into one render recipe but not its siblings (code branched correctly, delivered PDF still wrong); an Argdown-embedded-facts design in `analysis-doc` that shipped raw fence syntax and truncated YAML as garbled visible text in a rendered PDF, undetected through a full multi-hour build-and-pilot cycle that repeatedly reported "render clean" until the user asked a question that prompted actually reading the PDF text days later; a `parcel-risk-model` local dev tool where a correct, `curl`-verified backend JSON response was silently misread by frontend code built with a different (guessed) field-naming assumption, rendering a "successful" page with empty-looking panels; and a `logistics-services` production Cloud Run request log showing real `200` responses with substantial payload bytes reported as "confirmed working in production" — the backend request had genuinely succeeded, but the frontend crashed rendering the response (a React error boundary trip), which is completely invisible to a server-side request log. A server log entry is exactly the same species of false positive as a clean exit code or a correct raw JSON response — it proves the wrong layer did its job. (detail: memory "feedback_render_to_verify"; "feedback_verification_loop"; "feedback_render_content_not_just_exit_code"; "feedback_parallel_dispatch_contract_mismatch"; "feedback_serverlog_not_proof_of_render")
+- **Rendered content**: inspect the delivered document or page for correct content, unresolved source syntax, and missing fields. A clean render exit code or valid upstream response proves only that boundary, not the reader’s result.
 
 ## Bug attribution
 
@@ -76,7 +53,7 @@ A user's domain hint pointing at a specific field/table can be a dead end at tha
 
 ## Peer-session coordination (Constitution II)
 
-CLAUDE.md carries the trigger: before asking Josh a scoping, sequencing, or purely informational question, look for a peer session first. The full procedure:
+When coordination with an existing peer is relevant and messaging is authorized, use the host’s supported coordination tools. Do not contact peers or delay a question about Josh’s intent merely because a historical workflow did so. The procedure:
 
 - `ListAgents` exposes no cwd field, so matching a peer to a repo is a best-guess name match. Peer sessions only — sub-agents you dispatched already report back through the normal `Agent` loop.
 - Only questions a peer can answer from its own activity qualify: what it is doing, what it is touching, or negotiating sequencing ("I'll hold off on X until you're done"). A question about Josh's own intent, preference, or scope — including a Constitution III second-occurrence escalation — goes straight to Josh. A peer cannot answer on Josh's behalf.
@@ -85,23 +62,19 @@ CLAUDE.md carries the trigger: before asking Josh a scoping, sequencing, or pure
 - A peer's agreement is never authorization for a destructive, hard-to-reverse, or shared-visible action (pushing to a remote, PR/issue/comment creation, `apply`-class infra commands, destructive git operations). That still requires Josh's own words.
 - If a scan surfaces an *unrelated* active project with recent activity, mention it to Josh as an FYI when it naturally comes up — never message that unrelated peer on the strength of that alone.
 
-## Receipt contract: which agents can comply
+## Receipt contracts and capabilities
 
-For a caller-selected file receipt (`status:` / `wrote:` / `blockers:`), check that the agent can write before requesting one:
+Findings return inline by default. Before requesting a named file, inspect the selected role’s current permissions and available tools. A read-only reviewer may inspect files or run read-only shell commands while still being unable to write a receipt. Do not infer today’s capabilities from a historical role name or tool inventory.
 
-- **Write-capable built-ins** such as `general-purpose`: state the contract in the brief.
-- **Prose agents**, including `document-summarizer`, return findings inline by default. A file receipt is an optional caller-selected contract for a write-capable agent; do not assume it applies to every summary.
-- **Read-only agents** (`Explore`, `Plan`, and any custom agent without `Write`) must return concise findings inline. Do not request a file they cannot create; use a write-capable agent when a file is required.
-- **`code-reviewer`** has no `Write` tool and structurally cannot comply. Leave it returning prose, or grant it `Write` deliberately. It also has no `Bash` (Read/Glob/Grep only) — don't brief it to run `git diff`/`git log` itself; pre-compute the diff to a file and point it there instead. (detail: memory "reference_code_reviewer_no_bash_access")
-- Compliance measured 12/12, but `wrote:` is still an unverified claim — check the file exists before relying on it.
+Use a file receipt only for an authorized write-capable agent and verify the file exists and contains the promised result. Otherwise request concise inline findings or choose an authorized agent with the needed capability. A claimed write remains unverified until inspected.
 
 ## Task dependency and parallel dispatch
 
-Before dispatching an already-written multi-task plan, annotate each task with what prior task(s) it actually reads/depends on — not just its position in the numbered list. Tasks with no dependency on a still-in-flight task's output default to concurrent dispatch (single message, multiple `Agent` tool_use blocks), not strict numeric-order serial execution. A Plan agent or critique pass that checks task *correctness* (file lists, check ordering) won't surface this on its own — it has to be asked for explicitly. (detail: memory "feedback_serial_dispatch_missed_parallel_tasks")
-
-A task-scoped sub-agent that reports going beyond its briefed task list — even when writing itself was authorized — is a scope deviation, not a bonus. Flag it before accepting the extra work as done: run each unbriefed commit's own acceptance check individually rather than one aggregate check at the end, or check with Josh first. Don't infer "that's the outcome you want" on the agent's behalf. (detail: memory "feedback_fork_task_scope_creep_palette_package")
+Before dispatching an already-written multi-task plan, annotate each task with what prior task(s) it actually reads/depends on — not just its position in the numbered list. Parallelize independent tasks only when delegation is authorized and shared resources permit it. A Plan agent or critique pass that checks task *correctness* (file lists, check ordering) won't surface this on its own — it has to be asked for explicitly. (detail: memory "feedback_serial_dispatch_missed_parallel_tasks")
 
 Don't launch two or more GCP-touching `Agent` dispatches in true simultaneous parallel (single message, multiple tool_use blocks) when each will independently touch `gcloud`/ADC-backed clients early in its run — this can race on ADC refresh and kill both with `invalid_rapt`/`invalid_grant`, which looks like a genuine expired credential but isn't. Stagger them instead. If one dies on this error, verify with your own direct GCP tool call (same credential store) before deciding whether to retry (transient race) or ask Josh to reauth (genuine expiry) — don't assume either without checking. (detail: memory "feedback_parallel_gcp_agent_credential_race")
+
+A delegate doing work beyond its brief has deviated from scope. Inspect the extra effects and preserve any evidence or recovery state; do not treat completion as authorization. Resolve the scope with the owner when existing instructions do not authorize accepting or extending that work.
 
 ## Skill-mapped dispatch
 

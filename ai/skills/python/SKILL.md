@@ -1,9 +1,11 @@
 ---
 name: python
-description: Use uv for fast Python project management, script execution, dependency handling, and tool installation. AVOID pip - always use uv commands (uv add, uv sync, uv run) instead.
+description: Use when creating, modifying, testing, or reviewing Python code, or adopting its strict correctness profile. Use uv for Python dependencies and tools; preserve repository requirements.
 ---
 
 # Python / uv
+
+Read the project’s stage through [source-code lifecycle](../source-code-lifecycle/SKILL.md) and use [testing](../testing/SKILL.md) for proportionate evidence. Language detection installs guidance only. Opt into the strict profile with `source-code setup --python` or `[checks.python] enabled = true`. Read [the strict profile](references/strict-profile.md) before adoption or when running its gates. It provides pinned Ruff, strict ty and annotation checks, project tests, and dependency auditing, with lifecycle-selected commands. Preserve existing repository gates and root configuration.
 
 `uv` replaces pip, virtualenv, poetry, and pyenv. Standard `uv` subcommands work as documented;
 this file covers only the defaults to hold to and the traps that have actually cost time.
@@ -28,7 +30,7 @@ this file covers only the defaults to hold to and the traps that have actually c
 - **Commit `uv.lock`.** In CI use `uv sync --locked` / `uv run --locked` so a stale lockfile fails
   the build instead of being silently rewritten. `--frozen` skips the freshness check; use it only
   when deliberately consuming the existing lockfile without validating project metadata.
-- **Dev deps go in a group**: `uv add --dev pytest ruff mypy`.
+- **Dev deps go in a group**: `uv add --dev pytest ruff ty`.
 
 ## One-off scripts: PEP 723 inline metadata
 
@@ -71,3 +73,5 @@ actually reads `pg8000.dbapi.paramstyle` at call time. Getting this wrong produc
 substitution failures with no exception pointing at the cause. Set `pg8000.dbapi.paramstyle`, not
 `pg8000.paramstyle`. A unit test built against a mocked cursor cannot catch this — verify with a
 real (or at least real-shaped) `pg8000` connection. (detail: memory "reference_pg8000_paramstyle_aliasing")
+
+Read [worktree runtime lessons](references/worktree-lessons.md) when running verification in a fresh or relocated checkout.

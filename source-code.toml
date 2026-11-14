@@ -1,0 +1,7 @@
+schema_version = 1
+stage = "beta"
+kind = "tool"
+
+[checks.python]
+enabled = true
+paths = ["bin/source-code", "scripts/source_code_languages.py", "ai/skills/python/assets/check-python.py", "ai/skills/source-code-lifecycle/assets/check-source-code.py", "scripts/test-python-quality.py"]

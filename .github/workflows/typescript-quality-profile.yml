@@ -4,7 +4,15 @@ on:
   pull_request:
     paths:
       - 'bin/repo-bootstrap'
+      - 'bin/source-code'
+      - 'scripts/source_code_languages.py'
+      - 'ai/skills/source-code-versions.json'
+      - 'ai/skills/source-code-lifecycle/**'
+      - 'ai/skills/testing/**'
       - 'ai/skills/typescript/**'
+      - 'ai/skills/code-comments/**'
+      - 'ai/skills/library-code-comments/**'
+      - 'docs/conventional-code-comments.md'
       - 'scripts/test-typescript-*.py'
       - 'scripts/test-typescript-*.mjs'
       - '.github/workflows/typescript-quality-profile.yml'
@@ -12,7 +20,15 @@ on:
     branches: [master]
     paths:
       - 'bin/repo-bootstrap'
+      - 'bin/source-code'
+      - 'scripts/source_code_languages.py'
+      - 'ai/skills/source-code-versions.json'
+      - 'ai/skills/source-code-lifecycle/**'
+      - 'ai/skills/testing/**'
       - 'ai/skills/typescript/**'
+      - 'ai/skills/code-comments/**'
+      - 'ai/skills/library-code-comments/**'
+      - 'docs/conventional-code-comments.md'
       - 'scripts/test-typescript-*.py'
       - 'scripts/test-typescript-*.mjs'
       - '.github/workflows/typescript-quality-profile.yml'

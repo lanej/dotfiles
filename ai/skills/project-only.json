@@ -1,0 +1,19 @@
+[
+  "architecture",
+  "builder",
+  "code-comments",
+  "data-change-planning",
+  "gh-pr-stack",
+  "git",
+  "github-actions",
+  "go",
+  "javascript",
+  "just",
+  "library-code-comments",
+  "pr-writer",
+  "python",
+  "rust",
+  "source-code-lifecycle",
+  "testing",
+  "typescript"
+]

@@ -1,16 +1,6 @@
-<!-- builder:start -->
-# Default software guidance: Builder
-
-For software design, implementation, modification, debugging and review, use the project's explicitly selected repository-local Builder core when available; otherwise read `~/.local/share/software-standards/builder/SKILL.md`. Load detailed references by its task triggers; preserve project constraints and instruction precedence.
-<!-- builder:end -->
-
 # Shared practices
 
-Software plans must show how data structures and interfaces change: how data is represented and exchanged. Explain the problem before showing current and proposed types, schemas and contracts. Bound complexity within capabilities; state what remains internal and what crosses each boundary, preserving meaningful outcomes and errors. Connect implementation steps to these changes, including ownership, invariants and compatibility or migration when relevant. Review unresolved choices with Josh before building on them. Keep detail proportional, reuse existing contracts and explain when they suffice. Carry this focus into delegated planning and review briefs. For substantial model or interface changes, read `~/.agents/skills/dotfiles/data-change-planning/SKILL.md`.
-
-Keep Markdown paragraphs on one source line. For source-comment decisions, use the `code-comments` skill's compact guidance; load its full specification only when its conditional triggers apply. Honor repository conventions and leave unrelated comments alone.
-
-Follow ESR's Unix rules in software design: modularity, clarity, composition, separation of policy/mechanism and interface/engine, simplicity, parsimony, transparency, robustness, representation of knowledge as data, least surprise, silence without useful output, early clear failure/repair, programmer economy, generation, working behavior before optimization, diversity and extensibility.
+Keep Markdown paragraphs on one source line. Honor repository instructions and explicitly installed project guidance.
 
 # Agent coordination
 
@@ -22,9 +12,6 @@ Read the relevant section of `~/.files/docs/agent-operating-procedures.md` when 
 
 - **Zellij collaboration:** Recognize shared terminal context proactively. When running in Zellij, or task context indicates a shared Zellij session, read `~/.agents/skills/dotfiles/zellij/SKILL.md` and use its collaboration helpers. Interpret “show me” in context and present relevant content in a suitable existing pane or task-owned shared view when useful. Inspect the session before targeting panes. For images over SSH, use the skill's streamed display workflow. Missing environment variables or restricted socket access do not establish that Zellij is unavailable.
 - **Browser automation:** Default local/UI checks to headless Playwright MCP. Visible browsers require explicit request; use native/CUA for requested real signed-in work. Close owned browsers gracefully. Raw Playwright uses `headless: true` and `finally` cleanup; macOS raw launches require approved shell escalation.
-- **PRs and reviews:** Create GitHub PRs with `octo-manager submit-pr`, following `~/.files/docs/octo-pr-submission.md`; it replaces `gh-pr-create-from`. Octo owns the recorded writer, publication checks, and tracking. Report unavailable submission rather than bypassing the contract. Existing PR title/body revisions require separate `github-pr-writer`, including documentation-only changes; resolve blockers and use its draft. Other platforms use `pull-request-writer`. Complex behavior needs independent `code-reviewer`, actionable fixes and review of material fixes; line count is irrelevant. Writers/reviewers must not recurse.
-- **PR descriptions:** Explain final behavior and why concisely; omit duplicate automated results, unused sections, checklists and implementation history. Mention material manual evidence/gaps. Screenshots, when useful, show the actual result through a verified durable inline image URL.
-- **Go:** Read the repository-local Go skill or `~/.agents/skills/dotfiles/go/SKILL.md`. New Go repositories adopt its portable correctness profile through `repo-bootstrap --go`; preserve and reconcile existing project checks. Run the same committed checks locally and in CI.
 - **Bug reports:** Before filing/substantive revision use separate drafting-only `bug-reporter` and read `~/.files/docs/bug-reports.md`. Procedures specify inputs/fallbacks. Resolve blockers, submit with authorization and verify saved links/images. Missing reproduction alone is not blocking; reuse unchanged approved drafts. Reporter must not investigate, fix, submit or recurse; feature requests keep their writers.
 - **Worktrees:** Use `~/.agents/skills/dotfiles/treehouse/SKILL.md`; reuse user-selected/host-assigned/Firstmate checkouts without nesting or claiming leases. Return owned pool leases through Treehouse. Clean up task-owned non-pool worktrees before finishing only after preserving work, inspecting tracked/untracked/valuable ignored files and confirming no active need. Preserve other checkouts; never force removal or delete branches as a cleanup side effect. Read the full cleanup procedure before removal/pruning; report retained paths and concrete reasons.
 - **Storage:** Share download caches/verified read-only artifacts; isolate mutable dependencies/builds when versions differ. Remove task disposables; read `~/.files/docs/development-storage.md`.
