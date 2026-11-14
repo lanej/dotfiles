@@ -115,6 +115,10 @@ Required correctness lint in the reusable [TypeScript profile](typescript-style.
 
 [Mergiraf](mergiraf.md): selected by the `shell` set, with a machine-level `tools.mergiraf = false` opt-out. Installation activates syntax-aware Git merging for its supported file types. Runnable TOML, Lua, and JSON examples demonstrate combined independent edits and retained disagreements. Revisit the trial after reviewing resolutions during normal branch integration; Zsh remains outside the installed binary's advertised language coverage.
 
+### Keylease
+
+[Keylease SSH approval](keylease-ssh.md): one-time Mac approval for remote commands and Go applications, configured through OpenSSH while preserving the authentication agent. Evaluate the cooperative approval interaction in normal remote workflows before broader adoption.
+
 ### Paseo
 
 [Paseo](paseo-tasks.md): a workspace and conversation interface I’m trialing with Pi. Codex and Claude use their native agent tools; their Paseo providers, hooks, tools, and orchestration skills are disabled. This trial is separate from the retired Firstmate workflow.

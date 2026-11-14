@@ -74,10 +74,10 @@ test('CLI regenerates after a ring change, checks stale output, and preserves ou
 test('the migrated registry retains the accepted decisions and links', async () => {
   const { rings } = await loadRadar();
   assert.deepEqual(rings.map((ring) => ring.entries.map((entry) => entry.id)), [
-    ["neovim","git","zsh","starship","atuin","bat","fd","eza","ripgrep","direnv","git-delta","github-cli","jq","yq","just","tmux","claude-code","codex","fzf","kitty","yabai","zellij","biome"], ['mergiraf', 'paseo', 'viewrule'], ['pi', 'aerospace'],
+    ["neovim","git","zsh","starship","atuin","bat","fd","eza","ripgrep","direnv","git-delta","github-cli","jq","yq","just","tmux","claude-code","codex","fzf","kitty","yabai","zellij","biome"], ['mergiraf', 'keylease', 'paseo', 'viewrule'], ['pi', 'aerospace'],
     ['firstmate-through-paseo-and-github', 'superpowers', 'opencode', 'ghostty', 'andrej-karpathy-skills', 'sccache'],
   ]);
-  assert.equal(rings[1].entries[2].icon, 'viewrule.png');
+  assert.equal(rings[1].entries.find((entry) => entry.id === 'viewrule').icon, 'viewrule.png');
   assert.equal(rings[3].entries[0].anchor, 'firstmate-through-paseo-and-github');
 });
 

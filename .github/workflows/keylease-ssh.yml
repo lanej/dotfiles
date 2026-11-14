@@ -1,0 +1,33 @@
+name: Keylease SSH configuration
+on:
+  pull_request:
+    paths:
+      - 'scripts/setup-keylease-ssh.py'
+      - 'scripts/test-keylease-ssh.py'
+      - 'ssh/keylease.conf.template'
+      - '.github/workflows/keylease-ssh.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'scripts/setup-keylease-ssh.py'
+      - 'scripts/test-keylease-ssh.py'
+      - 'ssh/keylease.conf.template'
+      - '.github/workflows/keylease-ssh.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  config:
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v6
+      - name: Use OpenSSH with connection information support
+        run: |
+          brew install openssh
+          echo "$(brew --prefix openssh)/bin" >> "$GITHUB_PATH"
+      - run: make test-keylease-ssh

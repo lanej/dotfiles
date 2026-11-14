@@ -133,6 +133,11 @@ entries:
     icon: mergiraf.svg
     rationale: |-
       [Mergiraf](mergiraf.md): selected by the `shell` set, with a machine-level `tools.mergiraf = false` opt-out. Installation activates syntax-aware Git merging for its supported file types. Runnable TOML, Lua, and JSON examples demonstrate combined independent edits and retained disagreements. Revisit the trial after reviewing resolutions during normal branch integration; Zsh remains outside the installed binary's advertised language coverage.
+  - id: keylease
+    name: Keylease
+    ring: trial
+    rationale: |-
+      [Keylease SSH approval](keylease-ssh.md): one-time Mac approval for remote commands and Go applications, configured through OpenSSH while preserving the authentication agent. Evaluate the cooperative approval interaction in normal remote workflows before broader adoption.
   - id: pi
     name: Pi
     ring: assess
