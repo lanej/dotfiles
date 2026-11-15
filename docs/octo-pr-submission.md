@@ -1,6 +1,6 @@
 # Pull request publication
 
-Use `octo-manager pr publish --title TITLE --body-file FILE` to publish a caller-written PR description and enroll tracking. Follow repository contribution requirements and the PR-writer guidance before publication. Octo validates the local contract and pushed revision; it does not draft descriptions or require model-generated policy analysis.
+Use `octo-manager pr publish --title TITLE --body-file FILE --track` to publish a caller-written PR description and enroll tracking. Omit `--track` when only publication is wanted. Follow repository contribution requirements and the PR-writer guidance before publication. Octo validates the local contract and pushed revision; it does not draft descriptions or require model-generated policy analysis.
 
 Initialize a repository contract with `octo-manager pr init`, inspect its instructions with `octo-manager pr instructions`, and validate the final description with `octo-manager pr validate --title TITLE --body-file FILE`. Explicit `pr init --derive` or `pr guidance refresh` can sample repository history for advisory guidance; inferred rules do not become mandatory automatically.
 

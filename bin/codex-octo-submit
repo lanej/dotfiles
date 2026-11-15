@@ -93,7 +93,7 @@ def translate(event):
         return None
     index, kind = found
     if kind == "retired":
-        raise ValueError("gh-pr-create-from has been replaced by octo-manager pr publish. Supply a caller-written title and body; Octo validates publication and starts tracking.")
+        raise ValueError("gh-pr-create-from has been replaced by octo-manager pr publish. Supply a caller-written title and body; Octo validates publication and supports optional tracking.")
     if index != 0 or any(token and all(char in ";&|<>()\n" for char in token) for token in tokens) or "$" in command or "`" in command or "\n" in command:
         raise ValueError("Run PR submission as a standalone octo-manager pr publish command; shell composition and expansion are not translated.")
     session, cwd = event.get("session_id"), event.get("cwd")
