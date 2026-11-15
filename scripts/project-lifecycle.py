@@ -70,10 +70,62 @@ def binary_digest(path):
         return hashlib.file_digest(binary, "sha256").hexdigest()
 
 
+
+def approval_cli(project, action):
+    """Install through each CLI's native target without stopping live sessions."""
+    prefix = Path.home() / ".local"
+    installed = prefix / "bin" / project
+    receipt = prefix / "share/dotfiles/project-update" / f"{project}.json"
+    revision = run(["git", "rev-parse", "HEAD"], capture=True)
+    record = json.loads(receipt.read_text()) if receipt.is_file() else None
+    installed_revision = None
+    if record and installed.is_file() and record["sha256"] == binary_digest(installed):
+        installed_revision = record["revision"]
+    activation = ("Start new Keylease sessions; existing brokers and leases are preserved"
+                  if project == "keylease" else
+                  "Configure SSH to invoke Intent; let existing SSH masters exit naturally, "
+                  "then establish a new underlying connection. Do not terminate active shared sessions")
+    if action == "status":
+        print(json.dumps({"installed_binary": str(installed) if installed.is_file() else None,
+                          "installed_revision": installed_revision, "running_revision": None,
+                          "activation": activation}))
+        return 0
+    if action not in ("build", "restart"):
+        raise ValueError(f"{project} supports build, restart and status; clean is not configured")
+    if run(["git", "status", "--porcelain", "--untracked-files=all"], capture=True):
+        raise ValueError(f"Preserve {project} checkout changes before installing or restarting a versioned build")
+    if action == "restart":
+        if installed_revision != revision:
+            raise ValueError(f"Build and install this {project} revision before restarting")
+        print(activation + "; active process revisions are unknown", file=sys.stderr)
+        return 3
+    run(["make", "install", f"PREFIX={prefix}"])
+    built = Path.cwd() / "bin" / project
+    built_digest = binary_digest(built) if built.is_file() else None
+    if built_digest is None or not installed.is_file() or binary_digest(installed) != built_digest:
+        raise ValueError(f"Native {project} installation did not match the built executable")
+    if run(["git", "rev-parse", "HEAD"], capture=True) != revision or run(
+            ["git", "status", "--porcelain", "--untracked-files=all"], capture=True):
+        raise ValueError(f"{project} checkout changed during installation; installed revision remains unrecorded")
+    receipt.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile("w", dir=receipt.parent, prefix=f".{project}-", delete=False) as staged:
+            temporary = Path(staged.name)
+            json.dump({"revision": revision, "sha256": built_digest}, staged)
+        os.replace(temporary, receipt)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+    return 0
+
+
 def main():
-    if len(sys.argv) != 3 or sys.argv[1] not in ("octo-manager", "zellij", "bedrock-router"):
+    if len(sys.argv) != 3 or sys.argv[1] not in ("octo-manager", "zellij", "bedrock-router", "intent", "keylease"):
         raise ValueError("Usage: project-lifecycle.py PROJECT ACTION")
     project, action = sys.argv[1:]
+    if project in ("intent", "keylease"):
+        return approval_cli(project, action)
     if project == "bedrock-router":
         return router(action)
     if action == "status":

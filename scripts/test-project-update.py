@@ -5,6 +5,7 @@ import json
 import fcntl
 import hashlib
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -198,12 +199,83 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(result.returncode, 3, result.stderr)
         self.assertIn("manualCommand", result.stdout)
 
-    def test_registered_scope_is_exactly_three_projects(self):
+    def test_registered_scope_includes_both_approval_projects(self):
         result = subprocess.run([sys.executable, str(COMMAND), "update", "--all", "--dry-run"],
                                 env=self.env, text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual({row["project"] for row in json.loads(result.stdout)},
-                         {"octo-manager", "zellij", "bedrock-router"})
+                         {"octo-manager", "zellij", "bedrock-router", "intent", "keylease"})
+
+    def test_approval_projects_install_and_preserve_active_sessions(self):
+        make = self.base / "tools/make"
+        make.parent.mkdir()
+        log = self.base / "native-installs"
+        make.write_text(f"#!{sys.executable}\n"
+                        "import json, os, pathlib, sys\n"
+                        f"with open({str(log)!r}, 'a') as out: out.write(json.dumps(sys.argv[1:]) + '\\n')\n"
+                        "project = pathlib.Path('selected-project').read_text()\n"
+                        "prefix = pathlib.Path(sys.argv[2].split('=', 1)[1])\n"
+                        "built = pathlib.Path('bin') / project\n"
+                        "built.parent.mkdir(exist_ok=True)\n"
+                        "built.write_text('built ' + project)\n"
+                        "installed = prefix / 'bin' / project\n"
+                        "installed.parent.mkdir(parents=True, exist_ok=True)\n"
+                        "installed.write_bytes(built.read_bytes())\n"
+                        "if os.environ.get('APPROVAL_REPLACEMENT_MARKER'): pathlib.Path(os.environ['APPROVAL_REPLACEMENT_MARKER']).write_text(str(installed))\n")
+        make.chmod(0o755)
+        (self.checkout / ".gitignore").write_text("bin/\n")
+        (self.checkout / "selected-project").write_text("intent")
+        self.git(self.checkout, "add", ".gitignore", "selected-project")
+        self.git(self.checkout, "commit", "-m", "Native build fixture")
+        env = {**self.env, "PATH": str(make.parent) + os.pathsep + self.env["PATH"]}
+        for project in ("intent", "keylease"):
+            with self.subTest(project=project):
+                (self.checkout / "selected-project").write_text(project)
+                self.git(self.checkout, "add", "selected-project")
+                self.git(self.checkout, "commit", "--allow-empty", "-m", project)
+                def invoke(action):
+                    return subprocess.run([sys.executable, str(ADAPTER), project, action],
+                                          cwd=self.checkout, env=env, text=True, capture_output=True)
+                self.assertIsNone(json.loads(invoke("status").stdout)["installed_revision"])
+                self.assertEqual(invoke("restart").returncode, 1)
+                valuable = self.checkout / "active-session-state"
+                valuable.write_text("preserve")
+                self.assertEqual(invoke("build").returncode, 1)
+                self.assertEqual(valuable.read_text(), "preserve")
+                valuable.unlink()
+                result = invoke("build")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                revision = self.git(self.checkout, "rev-parse", "HEAD")
+                status = json.loads(invoke("status").stdout)
+                self.assertEqual(status["installed_revision"], revision)
+                self.assertIsNone(status["running_revision"])
+                self.assertEqual(invoke("restart").returncode, 3)
+                self.git(self.checkout, "commit", "--allow-empty", "-m", "advance source")
+                self.assertEqual(json.loads(invoke("status").stdout)["installed_revision"], revision)
+                self.assertEqual(invoke("restart").returncode, 1)
+                installed = self.base / ".local/bin" / project
+                installed.write_text("replaced externally")
+                self.assertIsNone(json.loads(invoke("status").stdout)["installed_revision"])
+                self.assertEqual(invoke("clean").returncode, 1)
+        self.assertEqual([json.loads(line) for line in log.read_text().splitlines()],
+                         [["install", f"PREFIX={self.base / '.local'}"]] * 2)
+        # Another installer replaces the file after verification, while the
+        # adapter checks that source did not move before publishing its receipt.
+        marker = self.base / "replace-after-verification"
+        real_git = shutil.which("git")
+        git = make.parent / "git"
+        git.write_text(f"#!{sys.executable}\n"
+                       "import os, pathlib, sys\n"
+                       f"marker = pathlib.Path({str(marker)!r})\n"
+                       "if sys.argv[1:] == ['rev-parse', 'HEAD'] and marker.exists():\n"
+                       " pathlib.Path(marker.read_text()).write_text('foreign replacement')\n"
+                       " marker.unlink()\n"
+                       f"os.execv({real_git!r}, [{real_git!r}, *sys.argv[1:]])\n")
+        git.chmod(0o755)
+        env["APPROVAL_REPLACEMENT_MARKER"] = str(marker)
+        result = invoke("build")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIsNone(json.loads(invoke("status").stdout)["installed_revision"])
 
     def test_router_preserves_settings_and_requires_staged_binary(self):
         go = self.base / "tools/go"
