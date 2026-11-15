@@ -2,6 +2,8 @@
 
 Use `project-update` for an individual project or the registered set. Each project owns its build, installation and restart behavior; the driver coordinates commands without managing processes. uv, Python 3.11+ and Git are required; the command uses uv to select a compatible Python. Run `make shell` to link the command after the change is checked out in your normal dotfiles source, or invoke `./bin/project-update` directly.
 
+From dotfiles, run `make update-zellij` to update Zellij and its compatible plugins, or `make update-projects` to update all registered projects. These targets invoke the repository's `project-update` directly without requiring `make shell` first. Ordinary build and installation targets continue to use the selected checkout.
+
 ```sh
 project-update status --all --fetch
 project-update update --all
@@ -15,7 +17,7 @@ project-update update zellij --dry-run
 
 `update` runs pull → build → restart for each selected project. A failed step stops that project's sequence; independent projects still run. Commands emit progress and child output on stderr and one JSON result array on stdout. Exit 0 means complete, 1 means failure, 2 means invalid usage, and 3 means activation still requires manual work. There is no rollback across projects. Never infer that a process runs the latest revision from a successful build or an installed binary.
 
-`pull` resolves the remote's current default branch, fetches it and fast-forwards a clean checkout already on that branch. It prefers `upstream` when present, otherwise `origin`; a registry entry can select `remote` explicitly. It preserves dirty checkouts, detached heads, topic branches, local commits and diverged history. It never stashes, resets, changes branches or pushes. Projects sharing a checkout pull it once per invocation. Concurrent mutations through this command are locked per checkout; this does not lock other Git tools.
+`pull` resolves the remote's current default branch, fetches it and fast-forwards a checkout already on that branch. It prefers `upstream` when present, otherwise `origin`; a registry entry can select `remote` explicitly. Local edits and untracked files are allowed when Git can preserve them during the fast-forward; conflicting changes stop the update before build or restart. Build uses the resulting checkout, including local edits. Detached heads, topic branches, local commits and diverged history remain blocked. It never stashes, resets, changes branches or pushes. Projects sharing a checkout pull it once per invocation. Concurrent mutations through this command are locked per checkout; this does not lock other Git tools.
 
 `status` reports checkout revision, dirtiness, upstream revision and project-specific installed state. Its default upstream information is explicitly cached or unknown. Use `--fetch` to query the current default branch. A missing running revision is unknown, not evidence that installed and running versions match. `--dry-run` prints the selected steps and adapter argv without fetching, building, locking or restarting.
 
