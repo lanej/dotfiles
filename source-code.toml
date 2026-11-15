@@ -1,7 +1,9 @@
 schema_version = 1
 stage = "beta"
 kind = "tool"
+authority = "owned"
+adoption = "new"
 
 [checks.python]
 enabled = true
-paths = ["bin/source-code", "scripts/source_code_languages.py", "ai/skills/python/assets/check-python.py", "ai/skills/source-code-lifecycle/assets/check-source-code.py", "scripts/test-python-quality.py"]
+paths = ["bin/source-code", "scripts/source_code_languages.py", "ai/skills/python/assets/check-python.py", "ai/skills/source-code-lifecycle/assets/check-source-code.py", "scripts/test-python-quality.py", "ai/skills/protobuf/assets/check-protobuf.py", "scripts/test-protobuf-quality.py"]

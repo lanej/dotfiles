@@ -23,10 +23,15 @@ def plan(root: Path, language: str) -> tuple[str, list[list[str]]]:
         or rules["schema_version"] != 1
     ):
         raise ValueError("unsupported source-code schema version")
-    if policy.get("policy_version") != "1.0.0" or rules.get("policy_version") != policy["policy_version"]:
+    if (
+        policy.get("policy_version") not in {"1.0.0", "1.1.0"}
+        or rules.get("policy_version") != policy["policy_version"]
+    ):
         raise ValueError("unsupported or mismatched source-code policy version")
     languages = policy.get("languages")
-    if not isinstance(languages, list) or not all(name in {"go", "typescript", "python"} for name in languages):
+    if not isinstance(languages, list) or not all(
+        name in {"go", "typescript", "python", "protobuf"} for name in languages
+    ):
         raise ValueError("invalid installed language list")
     if language not in languages:
         raise ValueError(f"language is not installed: {language}")
@@ -44,7 +49,7 @@ def plan(root: Path, language: str) -> tuple[str, list[list[str]]]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("language", choices=("go", "typescript", "python"))
+    parser.add_argument("language", choices=("go", "typescript", "python", "protobuf"))
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]

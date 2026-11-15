@@ -85,7 +85,7 @@ Coding agent used with shared skills, role instructions, and repository guidance
 
 ### Codex
 
-Coding agent used with shared skills, role instructions, and repository guidance. GitHub PR publication goes through [Octo's recorded writer and publication checks](octo-pr-submission.md). Shared specification, writing, learning-capture, and handoff workflows use portable skill packages and the repository-owned [skill-authoring workflow](skill-maintenance.md).
+Coding agent used with shared skills, role instructions, and repository guidance. Source-code setup installs repository-only publication guidance for projects that select Octo; the caller writes descriptions and [Octo validates format and publishes through pending receipts](octo-pr-submission.md), with daemon-backed tracking opt-in. Global Git and PR skills remain tool-neutral. Shared specification, writing, learning-capture, and handoff workflows use portable skill packages and the repository-owned [skill-authoring workflow](skill-maintenance.md).
 
 ### fzf
 
@@ -111,13 +111,21 @@ Required correctness lint in the reusable [TypeScript profile](typescript-style.
 
 [worktree](worktree-manager.md) creates identifiable repository-local agent checkouts, tracks full ownership and protects active tasks. Finishing protection and explicit safe pruning replace reusable Treehouse allocation for new agent work.
 
+### Source-code application stack
+
+The [project tool-choice policy](../ai/skills/source-code-lifecycle/references/tool-choices.md) selects Commander for TypeScript/JavaScript CLIs, Cobra with lanej/charmed for Go CLI/TUI work, Typer/Rich/Textual for Python, clap/Ratatui for Rust, and React/Vite/Connect Query/TanStack Router for web applications. It also selects validation, logging, configuration, and testing tools. Authority and adoption govern application independently of lifecycle stage, including research proofs of concept; existing stacks and upstream conventions are preserved according to project policy.
+
+### Connect
+
+[Connect](https://connectrpc.com/docs/introduction/) is the selected protocol for new application APIs we control under the [source-code adoption policy](repository-bootstrap.md#authority-and-tool-adoption), using Protobuf, Buf, generated clients/servers, and Protovalidate where supported. External services retain their protocols, and existing APIs migrate only within an explicitly agreed scope.
+
+### Buf
+
+Strict Protobuf compilation, lint, formatting, and compatibility checks through the reusable [source-code profile](repository-bootstrap.md#protobuf-correctness-profile), with a small native Buf check plugin rejecting string fields ending in `_json`.
+
 ***
 
 ## Trial
-
-### Commander
-
-Pinned CLI framework for Octo Manager. Capability-owned command groups provide argument validation, nested help, and short agent receipt commands; TypeScript and Go clients use the typed local API.
 
 ### Mergiraf
 
@@ -138,6 +146,10 @@ Pinned CLI framework for Octo Manager. Capability-owned command groups provide a
 ### Viewrule
 
 [Viewrule](ui-review.md): my tool for rendered UI checks, screenshot references, and a feedback-to-rule workflow. Trial task-specific density rules against actual rejected and accepted screens before promoting them globally.
+
+### Commander
+
+[Commander](https://github.com/tj/commander.js): capability-grouped TypeScript CLI parsing, validation, and generated help in Octo Manager. Evaluate command discovery and agent-friendly usage during normal operation.
 
 ***
 
