@@ -375,6 +375,14 @@
         "unzip": {
           "type": "boolean",
           "description": "Enable the unzip bootstrap recipe."
+        },
+        "intent": {
+          "type": "boolean",
+          "description": "Install Intent approval CLI and its embedded Mac helper without activating SSH transport."
+        },
+        "keylease": {
+          "type": "boolean",
+          "description": "Install the Keylease credential broker; preserve active brokers and leases."
         }
       }
     }

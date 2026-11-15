@@ -121,7 +121,11 @@ Required correctness lint in the reusable [TypeScript profile](typescript-style.
 
 ### Keylease
 
-[Keylease SSH approval](keylease-ssh.md): one-time Mac approval for remote commands and Go applications, configured through OpenSSH while preserving the authentication agent. Evaluate the cooperative approval interaction in normal remote workflows before broader adoption.
+[Keylease](keylease-ssh.md): credential broker installed by dotfiles alongside Intent. Its native installer preserves active brokers and leases; Intent supplies the shared approval SDK.
+
+### Intent
+
+[Intent SSH approval](intent-ssh.md): one-time Mac approval library and transport tooling for remote commands and Go applications. The stable remote socket proof uses dedicated SSH connections; automatic production activation remains pending. Keylease remains installed separately as the credential broker.
 
 ### Paseo
 

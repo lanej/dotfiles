@@ -1193,6 +1193,9 @@ install_dependencies() {
 				fi
 				python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-git-worktree-hooks.py" "${git_archive_args[@]}" || return 1
 				;;
+			approval-cli)
+				python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-approval-cli.py" "$tool" || return 1
+				;;
 			octo-manager)
 				python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-octo-manager.py" || return 1
 				;;
