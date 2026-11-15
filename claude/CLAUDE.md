@@ -22,7 +22,7 @@ Bug or small feature needed in one of Josh's `easypost-sandbox` tool/MCP-server 
 Infra change needed in `platform-infra` (github.com/easypost/platform-infra) — Josh's current, actively-chosen primary repo for this category, per his 2026-09-24 decision to migrate off the legacy repos below (migration in progress, not yet complete) — or in the legacy `easypost-enterprise-platform-infra` / `enterprise-platform-bootstrap` (secondary during the transition) (GCP resource, IAM, DNS, GitHub org/repo setting, Jira config): use the `report-infra-work` skill and message the `infra-dispatcher` session; never mutate any of the three directly.
 `Workflow` tool: explicit user opt-in only. For ad hoc fan-out, write a bespoke `Workflow` script; for independent tasks from a written plan, dispatch each via `Agent` per the `/delegate` routing table.
 Every `Agent` brief states: Context, Domain, Sub-problem, Success (implementation: the task's own acceptance check, never "all tests pass"), Constraints, Output format. Provide relevant task-local instructions and constraints. A worktree target's absolute path goes in Context; never pass `isolation: "worktree"` to sequential tasks sharing one existing worktree. (detail: memory "feedback_worktree_briefing_ambiguity"; more gotchas in `operating-lessons`)
-"Work in a worktree" from Josh is resolved by you before any implementation dispatch (`EnterWorktree`/`git worktree add`, or ask if ambiguous) — never delegated away or replaced by a `git status` check. (detail: memory "feedback_explicit_worktree_instruction_overridden")
+"Work in a worktree" from Josh is resolved by you before any implementation dispatch (reuse its assigned checkout or use the native `worktree create` manager, asking only when the intended scope is ambiguous) — never delegated away or replaced by a `git status` check. (detail: memory "feedback_explicit_worktree_instruction_overridden")
 **Never use `fork` when the brief depends on it not writing, committing, or running something.** A fork inherits the full toolset and prose restrictions have repeatedly failed; there is no hard gate. Use a fresh non-fork agent and verify its output. (detail: memory "feedback_fork_writes_despite_readonly_brief", "feedback_fork_scope_violation_department_turnover_20260828", "feedback_fork_committed_despite_do_not_commit", "feedback_fork_scope_creep_spec_overwrite")
 An `Agent` brief that ends in a git commit requires checking the complete staged diff and committing only its reviewed, authorized snapshot. Resolve unrelated staged changes before committing; do not unstage others' work or use a path-based commit that sweeps in unstaged hunks.
 **Delegated output.** Return findings inline by default. For large output that will be consumed later, optionally request a named file from a write-capable agent and verify it exists. Read-only agents return findings inline. See `operating-lessons`, `delegation.md`.
@@ -52,7 +52,7 @@ Before applying a new threshold or classification bar to a batch, confirm its ex
 
 ## Git Worktree Location
 
-Use the `treehouse` skill at `~/.claude/skills/treehouse/SKILL.md` for task isolation and agent-created worktrees.
+Use the `worktree` skill at `~/.claude/skills/worktree/SKILL.md` for task isolation and new agent-created checkouts at `<primary-repository>/.worktrees/<agent>-<8-hex>/`. Existing Treehouse leases retain their legacy return procedure.
 
 Reuse explicit user-selected, host-managed, and preassigned Firstmate checkouts.
 Do not nest worktrees or claim their leases.
