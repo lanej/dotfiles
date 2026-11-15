@@ -64,6 +64,8 @@ def publication(tokens):
             return index, "retired"
         if name == "gh" and tokens[index + 1:index + 3] == ["pr", "create"]:
             return index, "gh"
+        if name == "octo-manager" and tokens[index + 1:index + 3] == ["pr", "publish"]:
+            return index, "octo-grouped"
         if name == "octo-manager" and tokens[index + 1:index + 2] == ["submit-pr"]:
             return index, "octo"
     return None
@@ -91,15 +93,15 @@ def translate(event):
         return None
     index, kind = found
     if kind == "retired":
-        raise ValueError("gh-pr-create-from has been replaced by octo-manager submit-pr. Supply purpose and validation facts; Octo owns the dedicated writer, publication checks, and tracking.")
+        raise ValueError("gh-pr-create-from has been replaced by octo-manager pr publish. Supply a caller-written title and body; Octo validates publication and starts tracking.")
     if index != 0 or any(token and all(char in ";&|<>()\n" for char in token) for token in tokens) or "$" in command or "`" in command or "\n" in command:
-        raise ValueError("Run PR submission as a standalone octo-manager submit-pr command; shell composition and expansion are not translated.")
+        raise ValueError("Run PR submission as a standalone octo-manager pr publish command; shell composition and expansion are not translated.")
     session, cwd = event.get("session_id"), event.get("cwd")
     if not isinstance(session, str) or not session or not isinstance(cwd, str) or not Path(cwd).is_absolute():
         raise ValueError("Octo requires the calling session ID and absolute working directory.")
     args = tokens[2:] if kind == "octo" else tokens[3:]
     converted = []
-    if kind == "octo":
+    if kind in {"octo", "octo-grouped"}:
         # rationale: Caller identity comes from the hook event, never stale command flags.
         index = 0
         while index < len(args):
@@ -124,7 +126,7 @@ def translate(event):
                     value = args[index]
                 converted += [names[flag], value]
             else:
-                raise ValueError(f"Unsupported publication option {flag}; use octo-manager submit-pr --intent-file FILE.")
+                raise ValueError(f"Unsupported publication option {flag}; use octo-manager pr publish --title TITLE --body-file FILE.")
             index += 1
     converted += ["--thread-id", session, "--cwd", cwd, "--endpoint", "local"]
     if "--request-id" not in converted and not any(arg.startswith("--request-id=") for arg in converted):
@@ -134,7 +136,7 @@ def translate(event):
     executable = str(Path.home() / ".local/bin/octo-manager")
     if not Path(executable).is_file():
         raise ValueError("Install Octo Manager before submitting; the PR has not been published.")
-    return {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "updatedInput": {**tool, "command": shlex.join([executable, "submit-pr", *converted])}}}
+    return {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "updatedInput": {**tool, "command": shlex.join([executable, "pr", "publish", *converted])}}}
 
 
 def main():

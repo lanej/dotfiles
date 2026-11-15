@@ -115,6 +115,10 @@ Required correctness lint in the reusable [TypeScript profile](typescript-style.
 
 ## Trial
 
+### Commander
+
+Pinned CLI framework for Octo Manager. Capability-owned command groups provide argument validation, nested help, and short agent receipt commands; TypeScript and Go clients use the typed local API.
+
 ### Mergiraf
 
 [Mergiraf](mergiraf.md): selected by the `shell` set, with a machine-level `tools.mergiraf = false` opt-out. Installation activates syntax-aware Git merging for its supported file types. Runnable TOML, Lua, and JSON examples demonstrate combined independent edits and retained disagreements. Revisit the trial after reviewing resolutions during normal branch integration; Zsh remains outside the installed binary's advertised language coverage.

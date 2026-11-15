@@ -53,11 +53,11 @@ macOS uses launchd; Linux uses `octo-manager.service` under the selected configu
 The launcher is `~/.local/bin/octo-manager`, state is `~/.local/state/octo-manager`, installed releases are under `~/.local/share/octo-manager/releases`, and the macOS service is `com.lanej.octo-manager`. Hook/config installation backups remain under Octo's state directory. Platform-specific source/dependencies live under `$XDG_CACHE_HOME/dotfiles/octo-manager` (default `~/.cache/dotfiles/octo-manager`). An existing different-owner PR remains assigned to that owner.
 
 ```sh
-octo-manager tracked --json
+octo-manager pr list --json
 octo-manager inbox --agent-id AGENT_ID --applicable-only
 ```
 
-PR attachment is the automatic enrollment path. CLI-only sessions or unattached PRs can enroll explicitly with `octo-manager track --url URL --thread-id THREAD_ID`. Receipt means the host received context; it does not accept or resolve actions or authorize repairs or merges.
+PR attachment is the automatic enrollment path. CLI-only sessions or unattached PRs can enroll explicitly with `octo-manager pr track --url URL --thread-id THREAD_ID`. Receipt means the host received context; it does not accept or resolve actions or authorize repairs or merges.
 
 ## Disable future installation
 
