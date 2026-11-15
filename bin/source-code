@@ -315,7 +315,8 @@ def allowed_path(relative: str) -> bool:
     ):
         return False
     if relative in (
-        "octo-manager.toml",        ".github/pull_request_template.md",
+        "octo-manager.toml",
+        ".github/pull_request_template.md",
         ".agents/templates/pull_request_template.md",
         GO_STRICT,
         GO_BASELINE,
