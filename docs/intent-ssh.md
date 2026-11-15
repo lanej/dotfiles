@@ -1,58 +1,46 @@
-# Mac approval over ordinary SSH
+# Mac approval over SSH
 
-Intent lets a remote command or Go application request one-time approval on your Mac. Dotfiles configures ordinary OpenSSH sessions to carry those requests automatically. You review the remote caller's reason, then authenticate with an available Mac method: Touch ID, Apple Watch, or password. This is a cooperative checkpoint; approval does not verify or execute the claimed action.
+[Intent](https://github.com/lanej/intent) supplies the approval library and transport tooling. [Keylease](https://github.com/lanej/keylease) remains the credential broker and uses the Intent SDK. Dotfiles installs and updates both tools independently; moving approval transport into Intent does not remove Keylease.
 
-## Configure the Mac
+## Install both tools
 
-Build and install the updated [Intent](https://github.com/lanej/intent) with its embedded approval SDK, then enable the SSH configuration explicitly:
+The `workstation` set selects both tools for `make install`. They can also be selected individually in the machine TOML:
+
+```toml
+[tools]
+intent = true
+keylease = true
+```
+
+The selected Keylease plan includes Go and native build tools for its 1Password desktop backend. Explicit installation targets require those prerequisites to be available; Keylease installation rejects a CGO-disabled environment. For explicit installation without the full selected tool plan:
 
 ```sh
-cd ~/src/intent
-make install
 cd ~/.files
-make intent-ssh
+make intent-install keylease-install
 ```
 
-`make intent-ssh` configures an installed binary at `~/.local/bin/intent`; pass `INTENT_BINARY=/absolute/path/intent` for another installation. It requires macOS and OpenSSH 10.3 or newer, validates the resulting configuration with `ssh -G`, and preserves existing SSH settings, including your 1Password `IdentityAgent`. It saves the original config as `~/.ssh/config.before-intent` once. The config includes a generated `~/.ssh/config.d/intent.conf`; its source template is `ssh/intent.conf.template`.
+These targets clone missing sources into `~/src/intent` and `~/src/1password-agent`, then call each project's native `make install` through the project updater. Existing checkouts stay at their selected revision; dirty checkouts are rejected. Keylease's repository requires access to the private repository. Installation preserves running brokers, leases and credentials. Ordinary `make`, `make shell` and bootstrap do not install either tool or activate SSH approval.
 
-This is an opt-in configuration target. Ordinary `make`, `make shell`, and bootstrap do not install Intent or start an approval service. Remote Linux or macOS hosts need the updated Intent on their noninteractive SSH command PATH. No SSH daemon configuration change is required.
+Use `project-update pull intent` and `project-update pull keylease` to advance clean default-branch checkouts, then `project-update build intent` and `project-update build keylease` to install them. See [project updates](project-updates.md).
 
-## Use it
+## SSH transport status
 
-Connect normally, including with SSH options or a configured host alias:
+Automatic approval for ordinary SSH sessions is pending production integration of the [stable remote socket design and executable proof](https://github.com/lanej/intent/tree/main/experiments/stable-socket). The design uses dedicated SSH connections and a remote broker that owns a stable approval socket. It does not require connection multiplexing. The proof is merged, but installation does not enable it and `make intent-ssh` fails without changing configuration until a supported production integration is available.
 
-```sh
-ssh myhost
-intent request --reason 'Deploy revision abc123 to production' &&
-  ./deploy abc123
-```
+The proof demonstrates route handover, caller cancellation and transport loss without replay using a disposable real SSH server and synthetic native decisions. Human Touch ID, Apple Watch and password interaction remains unverified. Its README contains the explicit experimental commands and limits; do not treat it as automatic workstation setup.
 
-Direct commands work too:
+## Retire the old managed hook
 
-```sh
-ssh myhost "intent request --reason 'Publish build abc123'"
-```
-
-The remote Go package is `github.com/lanej/intent`. `intent.ClientFromEnv()` uses an explicit `INTENT_APPROVAL_SOCKET` first; otherwise it discovers a private receipt keyed by the `SSH_CONNECTION` set by sshd. Approval waits within the caller's context for setup to finish. A missing or failed setup cannot return approval, and submitted requests are not automatically retried.
-
-## Connection lifetime and recovery
-
-The generated configuration uses `ControlMaster auto`, a private `ControlPath`, and a 30-second `ControlPersist` timeout. A short `LocalCommand` starts an approval broker scoped to that underlying connection. Shells sharing the connection share the endpoint and its busy slot; every approval requires fresh authentication. The broker leaves your authentication agent and remote shell commands alone. Clients that do not use OpenSSH config need separate integration.
-
-The broker observes its SSH master's process and socket without keeping the connection alive. It stops after the master exits or its socket is replaced. The approval window shows the TCP endpoints reported by the local master; if a proxy transport hides the destination, it explicitly reports that missing destination. The request reason always comes from the remote caller.
-
-Once a transport closes, its remote metadata may remain until the next connection. Subsequent setup removes only owned receipts and matching private session directories whose socket has no listener, with a bounded cleanup pass. It preserves active sessions, unexpected files, and uncertain failures. These receipts contain only endpoint metadata, never credentials or approval decisions. Hook failures are logged under `~/.intent-ssh/*.log`; ordinary SSH remains usable when the remote host has no Intent.
-
-To disable automatic approval for a host, put `PermitLocalCommand no` in that host's earlier SSH configuration. To remove the managed integration for future connections:
+Remove the obsolete dotfiles-owned approval snippets and their exact managed Include blocks explicitly:
 
 ```sh
 make intent-ssh-remove
 ```
 
-Removal preserves your other SSH settings and does not interrupt existing connections. The focused setup check is `make test-intent-ssh`; native authentication requires a person at the Mac and is exercised separately in Intent.
+This also removes the old Keylease approval hook. The compatibility target `make keylease-ssh-remove` performs the same cleanup. Removal preserves both installed tools, existing sessions, backups, authentication-agent settings and other user configuration. It refuses unmanaged snippets or malformed managed blocks. User-authored SSH options and broad Includes remain yours to edit; the cleanup does not rewrite them or terminate connections.
 
-## Migrate from Keylease SSH approval
+## Application interfaces
 
-Install [Intent v0.1.0](https://github.com/lanej/intent/releases/tag/v0.1.0) on both ends before enabling `make intent-ssh`. Setup removes the previous dotfiles-owned Keylease include and snippet while preserving unrelated configuration and the original Keylease backup. Intent uses a new control directory, so existing sessions finish naturally; reconnect to use Intent. Remote commands and Go imports must migrate together: `intent request`, `github.com/lanej/intent`, and `INTENT_APPROVAL_SOCKET` replace the former Keylease interfaces without aliases.
+Remote cooperative callers use `intent request --reason 'Publish build abc123'`, the Go package `github.com/lanej/intent`, and an explicitly configured `INTENT_APPROVAL_SOCKET`. These interfaces replace the former Keylease approval commands and imports. Install Intent on remote hosts that invoke its CLI; Go applications may embed its SDK. The SDK embedded in Keylease does not require an installed Intent CLI for local credential approval.
 
-Keylease credential approval uses the Intent Go SDK directly and needs no installed Intent CLI. Intent's Mac helper is embedded, ad-hoc signed, and not notarized; no adjacent application bundle is required.
+Approval is a cooperative checkpoint. You review the caller-supplied reason and authenticate locally; approval does not verify or execute the claimed action. Credentials and authentication data do not travel to the remote caller.

@@ -206,6 +206,42 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual({row["project"] for row in json.loads(result.stdout)},
                          {"octo-manager", "zellij", "bedrock-router", "intent", "keylease"})
 
+    def test_dotfiles_install_clones_and_preserves_both_tools(self):
+        for project, directory in (("intent", "intent"), ("keylease", "1password-agent")):
+            with self.subTest(project=project):
+                (self.source / "payload").write_text("installed " + project)
+                (self.source / ".gitignore").write_text("bin/\n")
+                (self.source / "Makefile").write_text(
+                    "install:\n\tmkdir -p bin $(PREFIX)/bin\n"
+                    f"\tcp payload bin/{project}\n\tcp bin/{project} $(PREFIX)/bin/{project}\n")
+                self.git(self.source, "add", ".")
+                self.git(self.source, "commit", "-m", project)
+                self.git(self.source, "push")
+                env = {**self.env, "GIT_CONFIG_COUNT": "1",
+                       "GIT_CONFIG_KEY_0": f"url.{self.origin}.insteadOf",
+                       "GIT_CONFIG_VALUE_0": f"https://github.com/lanej/{project}.git"}
+                def install():
+                    return subprocess.run([sys.executable, str(ROOT / "scripts/install-approval-cli.py"), project],
+                                          env=env, text=True, capture_output=True)
+                result = install()
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                checkout = self.base / "src" / directory
+                head = self.git(checkout, "rev-parse", "HEAD")
+                self.git(self.source, "commit", "--allow-empty", "-m", "new remote source")
+                self.git(self.source, "push")
+                self.assertEqual(install().returncode, 0)
+                self.assertEqual(self.git(checkout, "rev-parse", "HEAD"), head)
+                if project == "keylease":
+                    disabled = subprocess.run([sys.executable, str(ROOT / "scripts/install-approval-cli.py"), project],
+                                              env={**env, "CGO_ENABLED": "0"}, text=True, capture_output=True)
+                    self.assertNotEqual(disabled.returncode, 0)
+                    self.assertIn("CGO_ENABLED=1", disabled.stdout + disabled.stderr)
+                valuable = checkout / "active-state"
+                valuable.write_text("preserve")
+                self.assertNotEqual(install().returncode, 0)
+                self.assertEqual(valuable.read_text(), "preserve")
+                self.assertEqual((self.base / ".local/bin" / project).read_text(), "installed " + project)
+
     def test_approval_projects_install_and_preserve_active_sessions(self):
         make = self.base / "tools/make"
         make.parent.mkdir()

@@ -1,18 +1,11 @@
 #!/usr/bin/env python3
-"""Configure automatic, connection-scoped Intent approval without replacing SSH settings."""
+"""Retire obsolete managed SSH approval hooks while preserving both installed tools."""
 import argparse
-import fnmatch
-import glob
 import os
 from pathlib import Path
-import platform
 import re
-import shlex
-import shutil
-import subprocess
 import tempfile
 
-ROOT = Path(__file__).resolve().parents[1]
 BEGIN = "# BEGIN dotfiles intent SSH approval"
 END = "# END dotfiles intent SSH approval"
 BLOCK = re.compile(r"(?m)^" + re.escape(BEGIN) + r"\n.*?^" + re.escape(END) + r"\n?", re.S)
@@ -32,52 +25,12 @@ def atomic_write(path, content):
         Path(temporary).unlink(missing_ok=True)
 
 
-
-def validation_config(content, ssh_dir, legacy, snippet, staged_snippet):
-    """Project direct Includes onto the exact files present after migration."""
-    lines = []
-    for line in content.splitlines(keepends=True):
-        match = re.match(r"^\s*Include\s+(.*)$", line.rstrip("\n"), re.I)
-        if not match:
-            lines.append(line)
-            continue
-        patterns = shlex.split(match[1], comments=True)
-        includes = []
-        changed = False
-        for pattern in patterns:
-            path = Path(pattern).expanduser()
-            if not path.is_absolute():
-                path = ssh_dir / path
-            paths = sorted(glob.glob(str(path)))
-            owns_legacy = str(legacy) in paths
-            owns_snippet = len(snippet.parts) == len(path.parts) and all(
-                fnmatch.fnmatchcase(name, part) and (not name.startswith(".") or part.startswith("."))
-                for name, part in zip(snippet.parts, path.parts)
-            )
-            if not owns_legacy and not owns_snippet:
-                includes.append(pattern)
-                continue
-            changed = True
-            if owns_snippet and str(snippet) not in paths:
-                paths.append(str(snippet))
-                paths.sort()
-            includes.extend(str(staged_snippet) if name == str(snippet) else name
-                            for name in paths if name != str(legacy))
-        if not changed:
-            lines.append(line)
-        elif includes:
-            quoted = ['"' + name.replace('\\', '\\\\').replace('"', '\\"') + '"' for name in includes]
-            lines.append("    Include " + " ".join(quoted) + "\n")
-        else:
-            lines.append("    # Legacy managed include omitted during validation.\n")
-    return "".join(lines)
-
-
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--intent", default=str(Path.home() / ".local/bin/intent"))
     parser.add_argument("--remove", action="store_true")
     args = parser.parse_args()
+    if not args.remove:
+        raise ValueError("Automatic SSH approval is pending production integration of the stable-socket design; see docs/intent-ssh.md. Use --remove to retire the old managed hooks.")
     home = Path.home()
     ssh_dir = home / ".ssh"
     config = ssh_dir / "config"
@@ -106,74 +59,15 @@ def main():
     snippet = ssh_dir / "config.d/intent.conf"
     if snippet.is_symlink() or (snippet.exists() and not snippet.read_text().startswith(OWNER)):
         raise ValueError(f"Preserve unmanaged SSH snippet: {snippet}")
-    if args.remove:
-        if original != unmanaged:
-            atomic_write(target, unmanaged)
-        snippet.unlink(missing_ok=True)
-        legacy_snippet.unlink(missing_ok=True)
-        print("Removed Intent SSH configuration; existing SSH settings preserved.")
-        return
-    if platform.system() != "Darwin":
-        raise ValueError("Configure outgoing native approval on the Mac; remote Linux callers only need Intent installed")
-    binary = Path(args.intent).expanduser().absolute()
-    if not binary.is_file() or not os.access(binary, os.X_OK):
-        raise ValueError(f"Install the updated Intent binary first: {binary}")
-    check = subprocess.run([str(binary), "ssh-hook", "--help"], capture_output=True, text=True)
-    if check.returncode or "-control" not in check.stderr:
-        raise ValueError("Installed Intent lacks the SSH config hook; build and install the updated Intent branch")
-    ssh = shutil.which("ssh")
-    if not ssh:
-        raise ValueError("OpenSSH is required")
-    version = subprocess.run([ssh, "-V"], capture_output=True, text=True, check=True)
-    match = re.search(r"OpenSSH_(\d+)\.(\d+)", version.stdout + version.stderr)
-    if not match or tuple(map(int, match.groups())) < (10, 3):
-        raise ValueError("Automatic approval needs OpenSSH 10.3+ for local connection labels")
-    control = ssh_dir / "intent-control"
-    if len(os.fsencode(str(control))) + 1 + 40 >= 100:
-        raise ValueError("SSH control directory path is too long for Unix sockets")
-    if control.is_symlink():
-        raise ValueError(f"Preserve symlinked SSH control directory: {control}")
-    if control.exists() and (not control.is_dir() or control.stat().st_uid != os.getuid()):
-        raise ValueError(f"Preserve unowned SSH control directory: {control}")
-    template = (ROOT / "ssh/intent.conf.template").read_text()
-    # Only %C (OpenSSH's hexadecimal route hash) is substituted at connection
-    # time. Hostnames never enter a LocalCommand shell command.
-    rendered = template.replace("__CONTROL_SHELL__", shlex.quote(str(control)))
-    rendered = rendered.replace("__CONTROL__", str(control).replace('\\', '\\\\').replace('"', '\\"'))
-    rendered = rendered.replace("__INTENT__", shlex.quote(str(binary)))
-    include = '"' + str(snippet).replace("\\", "\\\\").replace('"', '\\"') + '"'
-    separator_note = NO_NEWLINE + "\n" if unmanaged and not unmanaged.endswith("\n") else ""
-    managed = f"{BEGIN}\n{separator_note}Host *\n    Include {include}\n{END}\n"
-    updated = unmanaged + ("" if not unmanaged or unmanaged.endswith("\n") else "\n") + managed
-    # Validate the staged configuration and its effective control settings before
-    # touching the live config. Earlier user settings retain SSH precedence.
-    with tempfile.TemporaryDirectory(prefix="intent-ssh-config-") as scratch:
-        stage = Path(scratch)
-        staged_snippet = stage / "intent.conf"
-        staged_snippet.write_text(rendered)
-        staged_config = stage / "config"
-        staged_config.write_text(validation_config(updated, ssh_dir, legacy_snippet, snippet, staged_snippet))
-        result = subprocess.run([ssh, "-G", "-F", str(staged_config), "intent-config-check.invalid"], capture_output=True, text=True, check=True)
-        effective = dict(line.split(" ", 1) for line in result.stdout.splitlines() if " " in line)
-        if effective.get("controlmaster") not in ("auto", "true", "yes") or effective.get("permitlocalcommand") != "yes" or str(control) not in effective.get("controlpath", "") or str(binary) not in effective.get("localcommand", ""):
-            raise ValueError("Existing SSH settings override automatic approval; reconcile ControlMaster, ControlPath, PermitLocalCommand or LocalCommand before enabling")
-    ssh_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-    control.mkdir(mode=0o700, exist_ok=True)
-    os.chmod(control, 0o700)
-    if original != updated and target.exists():
-        backup = target.with_name(target.name + ".before-intent")
-        if not backup.exists():
-            atomic_write(backup, original)
-    atomic_write(snippet, rendered)
-    if original != updated:
-        atomic_write(target, updated)
+    if original != unmanaged:
+        atomic_write(target, unmanaged)
+    snippet.unlink(missing_ok=True)
     legacy_snippet.unlink(missing_ok=True)
-    print(f"Configured Intent approval for new SSH connections in {config}.")
-    print("Remote hosts need the updated Intent binary on their noninteractive SSH PATH.")
+    print("Removed obsolete SSH approval hooks; Intent and Keylease installations and active sessions are preserved.")
 
 
 if __name__ == "__main__":
     try:
         main()
-    except (OSError, ValueError, subprocess.CalledProcessError) as error:
+    except (OSError, ValueError) as error:
         raise SystemExit(f"intent-ssh: {error}")

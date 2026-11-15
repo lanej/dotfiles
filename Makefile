@@ -625,12 +625,13 @@ octo-manager-install octo-manager-reinstall octo-manager-pull-latest octo-manage
 
 octo-manager-pull: octo-manager-pull-latest
 
-# Explicit SSH integration configures an installed Intent; it does not install
-# software or start services during ordinary shell/default configuration.
-INTENT_BINARY ?= $(HOME)/.local/bin/intent
-.PHONY: intent-ssh intent-ssh-remove test-intent-ssh
+# SSH transport activation awaits the stable-socket production integration.
+.PHONY: intent-install keylease-install intent-ssh intent-ssh-remove keylease-ssh-remove test-intent-ssh
+intent-install keylease-install:
+	@"$(UV)" run --no-project --python ">=3.11" python "$(DOTFILES)/scripts/install-approval-cli.py" "$(patsubst %-install,%,$@)"
 intent-ssh:
-	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/setup-intent-ssh.py" --intent "$(INTENT_BINARY)"
+	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/setup-intent-ssh.py"
+keylease-ssh-remove: intent-ssh-remove
 intent-ssh-remove:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/setup-intent-ssh.py" --remove
 test-intent-ssh:

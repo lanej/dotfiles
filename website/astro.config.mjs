@@ -39,6 +39,7 @@ export default defineConfig({
       { label: 'Daily workflows', items: [
         { label: 'Terminal & copying', slug: 'terminal' },
         { label: 'Mac approval over SSH', slug: 'reference/intent-ssh' },
+        { label: 'Keylease', slug: 'reference/keylease-ssh' },
         { label: 'tmux sessions', slug: 'reference/tmux' },
         { label: 'Worktrees', items: [
           { label: 'Treehouse agent worktrees', slug: 'reference/treehouse' },

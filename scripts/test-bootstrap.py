@@ -170,6 +170,7 @@ def main():
         shutil.copytree(root / "bootstrap", checkout / "bootstrap")
         (checkout / "scripts").mkdir()
         shutil.copyfile(root / "scripts/dotfiles-config.py", checkout / "scripts/dotfiles-config.py")
+        (checkout / "scripts/install-approval-cli.py").write_text("from pathlib import Path\nimport os, sys\nPath(os.environ['HOME'], sys.argv[1] + '-installed').touch()\n")
         shutil.copyfile(root / "scripts/install-treehouse", checkout / "scripts/install-treehouse")
         (checkout / "scripts/install-worktree-policy").write_text('#!/bin/sh\n[ "$1" = 0.1.1 ] || exit 1\ntouch "$HOME/native-policy-installed"\n')
         manager_version = tomllib.loads((root / "bootstrap/tools.toml").read_text())["tools"]["worktree-manager"]["version"]
@@ -753,6 +754,8 @@ else:
         assert not (home / ".local/bin/nvim").exists()
         assert (home / "patched-git-installed").is_file()
         assert (home / "native-policy-installed").is_file()
+        assert (home / "intent-installed").is_file()
+        assert (home / "keylease-installed").is_file()
         assert (home / "worktree-manager-installed").is_file()
         print("PASS: minimal bootstrap provides the native baseline and runtime; explicit installation adds selected tools and private Bedrock credentials.")
 

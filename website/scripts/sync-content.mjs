@@ -24,6 +24,7 @@ const pages = [
   { file: 'docs/design-system/nord.mdx', slug: 'design-system/nord' },
   { file: 'docs/terminal-workflows.mdx', slug: 'terminal' },
   { file: 'docs/intent-ssh.md', slug: 'reference/intent-ssh', title: 'Mac approval over SSH' },
+  { file: 'docs/keylease-ssh.md', slug: 'reference/keylease-ssh', title: 'Keylease and SSH approval' },
   { file: 'docs/directory-picker.md', slug: 'reference/directory-picker', title: 'Directory and worktree jumps' },
   { file: 'docs/radar.md', slug: 'reference/radar', title: 'Tech Radar', radar: true },
   { file: 'docs/builder.mdx', slug: 'reference/builder' },

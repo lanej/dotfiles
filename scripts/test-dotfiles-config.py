@@ -60,6 +60,20 @@ def main():
         config.write_text('sets = ["octo-manager"]\n[tools]\nocto-manager = false\n')
         disabled = json.loads(run(*command, "--platform", "macos", "--format", "json").stdout)
         assert "octo-manager" not in {tool["name"] for tool in disabled["tools"]}
+        config.write_text('sets = ["workstation"]\n')
+        workstation = json.loads(run(*command, "--format", "json").stdout)
+        names = [tool["name"] for tool in workstation["tools"]]
+        assert {"intent", "keylease"} <= set(names)
+        assert names.index("go") < names.index("intent") and names.index("go") < names.index("keylease")
+        config.write_text('sets = ["workstation"]\n[tools]\nkeylease = false\n')
+        selected = json.loads(run(*command, "--format", "json").stdout)
+        assert "keylease" not in {tool["name"] for tool in selected["tools"]}
+        assert "intent" in {tool["name"] for tool in selected["tools"]}
+        config.write_text('[tools]\nkeylease = true\n')
+        minimal = json.loads(run(*command, "--format", "json").stdout)
+        names = [tool["name"] for tool in minimal["tools"]]
+        assert names.index("build") < names.index("keylease")
+        assert "intent" not in names
         config.write_text('sets = ["worktrees"]\n')
         worktrees = json.loads(run(*command,"--format","json").stdout)
         selected = {tool["name"] for tool in worktrees["tools"]}
