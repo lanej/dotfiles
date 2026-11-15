@@ -66,6 +66,14 @@ def main():
         assert {"worktree-manager","git","lsof"} <= selected
         assert "worktree-policy" not in selected
         assert "treehouse" not in selected
+        config.write_text('sets = ["ai"]\n')
+        agents = json.loads(run(*command, "--format", "json").stdout)
+        selected = {tool["name"] for tool in agents["tools"]}
+        assert "worktree-manager" in selected and "treehouse" not in selected
+        assert "worktree-policy" not in selected
+        config.write_text('sets = ["ai"]\n[tools]\ntreehouse = true\n')
+        legacy = json.loads(run(*command, "--format", "json").stdout)
+        assert "treehouse" in {tool["name"] for tool in legacy["tools"]}
         config.write_text("[tools]\ntmux = false\ngit-worktree-hooks = false\nmergiraf = false\n")
         reduced = json.loads(run(*command, "--format", "json").stdout)
         assert "tmux" not in {tool["name"] for tool in reduced["tools"]}
@@ -86,7 +94,7 @@ def main():
         assert "source-code" in {tool["name"] for tool in selected["tools"]}
         assert "source-code-config" in selected["setup"]
         assert selected["sets"] == ["base", platform_set, "shell", "terminal", "editor", "development", "ai", "workstation", "easypost", "my-workstation"]
-        assert {tool["name"] for tool in selected["baseline"]["tools"]} == native_tools - {disabled_native}
+        assert {tool["name"] for tool in selected["baseline"]["tools"]} == native_tools - {disabled_native, "worktree-policy"}
         assert selected["settings"]["tools.mermaid"] is False
         assert selected["settings"]["codex.easypost"] is True
         assert {"neovim", "codex", "zellij", "ep-direnv", "bedrock"} <= {tool["name"] for tool in selected["tools"]}

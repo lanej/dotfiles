@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 
 
 def test_compatibility(root):
@@ -171,7 +172,8 @@ def main():
         shutil.copyfile(root / "scripts/dotfiles-config.py", checkout / "scripts/dotfiles-config.py")
         shutil.copyfile(root / "scripts/install-treehouse", checkout / "scripts/install-treehouse")
         (checkout / "scripts/install-worktree-policy").write_text('#!/bin/sh\n[ "$1" = 0.1.1 ] || exit 1\ntouch "$HOME/native-policy-installed"\n')
-        (checkout / "scripts/install-worktree-manager").write_text('#!/bin/sh\n[ "$1" = 0.1.0 ] || exit 1\ntouch "$HOME/worktree-manager-installed"\n')
+        manager_version = tomllib.loads((root / "bootstrap/tools.toml").read_text())["tools"]["worktree-manager"]["version"]
+        (checkout / "scripts/install-worktree-manager").write_text('#!/bin/sh\n[ "$1" = ' + manager_version + ' ] || exit 1\ntouch "$HOME/worktree-manager-installed"\n')
         (checkout / "scripts/install-git-worktree-hooks.py").write_text(
             "from pathlib import Path\nimport os\n"
             "home = Path(os.environ['HOME'])\n"
@@ -577,7 +579,7 @@ else:
 
         # Stage two installs the configured workstation on ARM Linux, including
         # an older Neovim that needs a source build and missing eza/yq/btop.
-        machine_config.write_text('sets = ["workstation", "easypost"]\n[tools]\nmermaid = false\npi = true\nworktree-manager = true\n')
+        machine_config.write_text('sets = ["workstation", "easypost"]\n[tools]\nmermaid = false\npi = true\nworktree-manager = true\nworktree-policy = true\ntreehouse = true\n')
         plan = subprocess.run(
             ["/usr/bin/make", "--no-print-directory", "plan"],
             cwd=checkout, env=env, capture_output=True, text=True,

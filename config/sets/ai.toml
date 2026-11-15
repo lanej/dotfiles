@@ -1,5 +1,7 @@
 [tools]
 claude-code = true
 codex = true
-treehouse = true
+worktree-manager = true
+worktree-policy = false
+treehouse = false
 agent-status-broker = true

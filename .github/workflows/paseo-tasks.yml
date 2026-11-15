@@ -3,10 +3,10 @@ name: Paseo tasks
 on:
   workflow_dispatch:
   pull_request:
-    paths: ['paseo-tasks/**', 'pi/extensions/paseo-questions.mjs', 'pi/extensions/firstmate-questions.mjs', 'pi/extensions/paseo-router.mjs', 'pi/paseo-tasks.models.json', 'scripts/paseo-tasks-config.mjs', '.github/workflows/paseo-tasks.yml']
+    paths: ['paseo-tasks/**', 'scripts/install-worktree-manager', 'bootstrap/tools.toml', 'pi/extensions/paseo-questions.mjs', 'pi/extensions/firstmate-questions.mjs', 'pi/extensions/paseo-router.mjs', 'pi/paseo-tasks.models.json', 'scripts/paseo-tasks-config.mjs', '.github/workflows/paseo-tasks.yml']
   push:
     branches: [master]
-    paths: ['paseo-tasks/**', 'pi/extensions/paseo-questions.mjs', 'pi/extensions/firstmate-questions.mjs', 'pi/extensions/paseo-router.mjs', 'pi/paseo-tasks.models.json', 'scripts/paseo-tasks-config.mjs', '.github/workflows/paseo-tasks.yml']
+    paths: ['paseo-tasks/**', 'scripts/install-worktree-manager', 'bootstrap/tools.toml', 'pi/extensions/paseo-questions.mjs', 'pi/extensions/firstmate-questions.mjs', 'pi/extensions/paseo-router.mjs', 'pi/paseo-tasks.models.json', 'scripts/paseo-tasks-config.mjs', '.github/workflows/paseo-tasks.yml']
 
 permissions:
   contents: read
@@ -32,6 +32,11 @@ jobs:
           printf '%s  %s\n' fc77469be936b02ab9021b984a3aebc9250a21ae3d264f2ef2198eb8b31b2a7b "$RUNNER_TEMP/mergiraf/archive.tar.gz" | sha256sum --check
           tar -xzf "$RUNNER_TEMP/mergiraf/archive.tar.gz" -C "$RUNNER_TEMP/mergiraf"
           printf '%s\n' "$RUNNER_TEMP/mergiraf" >> "$GITHUB_PATH"
+      - name: Install pinned worktree manager for allocation acceptance
+        run: |
+          version=$(python3 -c 'import tomllib; print(tomllib.load(open("bootstrap/tools.toml", "rb"))["tools"]["worktree-manager"]["version"])')
+          sh scripts/install-worktree-manager "$version"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - run: npm run check
         working-directory: paseo-tasks
       - run: make test-paseo-tasks

@@ -60,6 +60,31 @@ export const treehouseLease = z
     root: z.string(),
   })
   .strict();
+export const worktreeReservation = z
+  .object({
+    primary: z.string(),
+    root: z.string(),
+    holder: z.string(),
+    agent: z.string(),
+    branch: z.string(),
+    baseRef: z.string(),
+    baseCommit: z.string(),
+    attempted: z.boolean(),
+  })
+  .strict();
+export const worktreeAllocation = z
+  .object({
+    primary: z.string(),
+    root: z.string(),
+    path: z.string(),
+    task_id: z.string(),
+    owner_id: z.string(),
+    agent: z.string(),
+    branch: z.string(),
+    created_at: z.string(),
+    base_ref: z.string(),
+  })
+  .strict();
 export const prWatch = z.object({
   url: z.string(),
   head: z.string(),
@@ -94,6 +119,8 @@ export const task = brief
       })
       .nullable()
       .default(null),
+    worktreeReservation: worktreeReservation.nullable().default(null),
+    worktreeAllocation: worktreeAllocation.nullable().default(null),
     treehouseReservation: treehouseReservation.nullable().default(null),
     treehouseLease: treehouseLease.nullable().default(null),
     prWatches: z.array(prWatch).default([]),
