@@ -6,6 +6,7 @@ import {
   writeFile,
   readFile,
   realpath,
+  rename,
   rm,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -56,6 +57,10 @@ await test("native manager allocations preserve base, ownership and lost-respons
     await git("add", ".gitignore");
     await git("commit", "-qm", "initial");
     const initial = await git("rev-parse", "HEAD");
+    const stale = join(root, "stale");
+    await git("clone", "-q", repo, stale);
+    await execute(binary, ["backfill", stale, "--json"]);
+    await rm(stale, { recursive: true });
     // Historical tasks can have no agent metadata; owner reconciliation ignores them.
     const manual = JSON.parse(
       (await execute(binary, ["create", "--repo", repo, "--json"])).stdout,
@@ -96,6 +101,17 @@ await test("native manager allocations preserve base, ownership and lost-respons
       1,
       "lost-response reconciliation must not allocate twice",
     );
+    const displaced = join(root, "displaced");
+    await rename(allocated.path, displaced);
+    try {
+      await assert.rejects(
+        () => manager.acquire(reserved, attempting),
+        /unavailable or moved/,
+      );
+      assert.equal(attempts, 1);
+    } finally {
+      await rename(displaced, allocated.path);
+    }
     const before = await git("worktree", "list", "--porcelain");
     await assert.rejects(
       () =>
@@ -132,7 +148,13 @@ await test("native manager allocations preserve base, ownership and lost-respons
     );
     assert.equal(recovered.owner_id, partial.holder);
     const status = JSON.parse(
-      (await execute(binary, ["status", "--json"])).stdout,
+      await execute(binary, ["status", "--json"]).then(
+        (result) => result.stdout,
+        (error: { code: number; stdout: string }) => {
+          assert.equal(error.code, 1);
+          return error.stdout;
+        },
+      ),
     ).result;
     assert.equal(
       status.tasks.filter(

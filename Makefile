@@ -390,7 +390,8 @@ test-codex-worktree-exit:
 test-agent-worktree:
 	@"$(UV)" run --script "$(DOTFILES)/scripts/test-agent-worktree.py"
 
-test-agent-treehouse: test-agent-worktree
+test-agent-treehouse:
+	@AGENT_WORKTREE_TEST_LEGACY=1 "$(UV)" run --script "$(DOTFILES)/scripts/test-agent-worktree.py"
 
 audit-skills:
 	@"$(DOTFILES)/bin/claude-skill-audit"

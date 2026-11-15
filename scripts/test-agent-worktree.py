@@ -166,6 +166,11 @@ sys.exit(7)
         (project / "subdirectory/file.txt").write_text("Subdirectory work root.\n")
         git("add", ".")
         git("commit", "-qm", "Initialize fixture")
+        stale = folder / "stale-repository"
+        git("clone", "-q", str(project), str(stale))
+        subprocess.run([manager, "backfill", str(stale), "--json"], env=env,
+                       check=True, capture_output=True, text=True)
+        shutil.rmtree(stale)
         socket = home / ".codex/app-server-control/app-server-control.sock"
         socket.parent.mkdir(parents=True)
         sessions = {}
@@ -402,7 +407,8 @@ def lost_response_workflow(uncertain=False):
         record = json.loads((Path(env["XDG_STATE_HOME"]) / "agent-treehouse" / (token + ".json")).read_text())
         assert len(record["pending"]) == 1 and record["pending"][0]["owner_id"]
         status = subprocess.run([env["WORKTREE_TEST_REAL"], "status", "--json"], env=env,
-                                text=True, capture_output=True, check=True)
+                                text=True, capture_output=True)
+        assert status.returncode == 1 and not json.loads(status.stdout)["result"]["complete"]
         tasks = json.loads(status.stdout)["result"]["tasks"]
         assert len(tasks) == 1 and tasks[0]["owner_id"] == record["pending"][0]["owner_id"]
         if uncertain:
@@ -440,6 +446,7 @@ def legacy_workflow():
 if __name__ == "__main__":
     codex_workflow()
     claude_workflow()
-    legacy_workflow()
+    if os.environ.get("AGENT_WORKTREE_TEST_LEGACY") == "1":
+        legacy_workflow()
     lost_response_workflow()
     lost_response_workflow(uncertain=True)
