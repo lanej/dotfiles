@@ -1,6 +1,6 @@
 # Octo Manager
 
-Octo publishes GitHub PRs through a recorded writer and publication checks, monitors enrolled PRs, and returns actionable checks and review feedback to the owning Codex session. Install it explicitly before using [the required PR publication command](octo-pr-submission.md). Neither the default configuration nor the `ai` and `workstation` sets enable Octo's local service or native hooks; configuration does not install software automatically.
+Octo publishes caller-written GitHub PRs through local format validation and a durable pending receipt, without requiring the daemon. Its optional daemon monitors enrolled PRs and returns actionable checks and review feedback to the owning session. Install it explicitly before using [the required PR publication command](octo-pr-submission.md). Neither the default configuration nor the `ai` and `workstation` sets enable Octo's local service or native hooks; configuration does not install software automatically.
 
 ## Enable
 

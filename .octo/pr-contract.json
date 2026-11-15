@@ -1,0 +1,4 @@
+{
+  "schemaVersion": 1,
+  "template": ".github/pull_request_template.md"
+}

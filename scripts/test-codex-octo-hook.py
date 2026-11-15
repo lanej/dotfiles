@@ -58,7 +58,8 @@ def main():
         assert response("gh pr create --fill")["permissionDecision"] == "deny"
         assert response("cd repo && gh pr create --title a --body b")["permissionDecision"] == "deny"
         assert response("gh pr create --title '$TITLE' --body body")["permissionDecision"] == "deny"
-        assert response("octo-manager submit-pr --intent-file intent.json --thread-id stale --cwd /stale")["permissionDecision"] == "allow"
+        assert response("octo-manager submit-pr --intent-file intent.json --thread-id stale --cwd /stale")["permissionDecision"] == "deny"
+        assert response("octo-manager submit-pr --title done --body body --thread-id stale --cwd /stale")["permissionDecision"] == "allow"
         retired = response("gh-pr-create-from description.md --base main")
         assert retired["permissionDecision"] == "deny"
         assert "octo-manager submit-pr" in retired["permissionDecisionReason"]

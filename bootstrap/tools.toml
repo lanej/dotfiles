@@ -280,7 +280,7 @@ version = "0.164.0"
 description = "Opt-in Octo service with Codex session, PR tracking and receipt hooks on macOS and Linux."
 installer = "octo-manager"
 requires = ["git", "gh", "go"]
-revision = "37322f858055cddd5a2686394cff3ff1f9fbc8e0"
+revision = "f2dffaef958d2457a4facf9598332c6a905fd852"
 
 [tools.treehouse]
 installer = "treehouse"
