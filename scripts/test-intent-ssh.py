@@ -62,6 +62,13 @@ def main():
         source.write_text(user + "\n# BEGIN dotfiles intent SSH approval\n")
         make("intent-ssh-remove", ok=False)
         assert source.read_text() == user + "\n# BEGIN dotfiles intent SSH approval\n"
+        for ambiguous in (
+            "# BEGIN dotfiles intent SSH approval\n# BEGIN dotfiles intent SSH approval\nHost valuable\n# END dotfiles intent SSH approval\n",
+            "# BEGIN dotfiles intent SSH approval\n# BEGIN dotfiles keylease SSH approval\nHost valuable\n# END dotfiles keylease SSH approval\n# END dotfiles intent SSH approval\n",
+        ):
+            source.write_text(user + ambiguous)
+            make("intent-ssh-remove", ok=False)
+            assert source.read_text() == user + ambiguous, "nested managed blocks were modified"
         print("PASS: retirement preserves both binaries, user settings, symlinks, backups and final newlines; unsupported activation has no effects.")
 
 

@@ -44,6 +44,21 @@ def main():
     legacy_begin = "# BEGIN dotfiles keylease SSH approval"
     legacy_end = "# END dotfiles keylease SSH approval"
     legacy_block = re.compile(r"(?m)^" + re.escape(legacy_begin) + r"\n.*?^" + re.escape(legacy_end) + r"\n?", re.S)
+    markers = {BEGIN: END, legacy_begin: legacy_end}
+    active = None
+    seen = set()
+    for line in original.splitlines():
+        if line in markers:
+            if active is not None or line in seen:
+                raise ValueError("Malformed managed SSH blocks; preserve config and repair them manually")
+            active = line
+            seen.add(line)
+        elif line in markers.values():
+            if active is None or markers[active] != line:
+                raise ValueError("Malformed managed SSH blocks; preserve config and repair them manually")
+            active = None
+    if active is not None:
+        raise ValueError("Malformed managed SSH blocks; preserve config and repair them manually")
     for begin, end, block in ((BEGIN, END, BLOCK), (legacy_begin, legacy_end, legacy_block)):
         if (begin in unmanaged or end in unmanaged) and len(block.findall(unmanaged)) != 1:
             raise ValueError("Malformed managed SSH block; preserve config and repair it manually")
