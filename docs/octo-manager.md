@@ -54,7 +54,7 @@ The launcher is `~/.local/bin/octo-manager`, state is `~/.local/state/octo-manag
 
 ```sh
 octo-manager pr list --json
-octo-manager inbox --agent-id AGENT_ID --applicable-only
+octo-manager agent inbox --agent-id AGENT_ID --applicable-only
 ```
 
 PR attachment is the automatic enrollment path. CLI-only sessions or unattached PRs can enroll explicitly with `octo-manager pr track --url URL --thread-id THREAD_ID`. Receipt means the host received context; it does not accept or resolve actions or authorize repairs or merges.
