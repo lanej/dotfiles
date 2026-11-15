@@ -414,6 +414,10 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     assert not nested.exists()
     assert (project / ".github/pull_request_template.md").is_file()
     assert (project / ".agents/skills/architecture/SKILL.md").is_file()
+    assert (project / ".agents/skills/octo-manager/SKILL.md").is_file()
+    assert not (project / ".agents/skills/pr-writer").exists()
+    assert (project / ".claude/skills/octo-manager/SKILL.md").is_file()
+    assert (project / ".agents/skills/octo-manager/references/submission.md").is_file()
     assert (project / ".claude/skills/builder").resolve() == project / ".agents/skills/builder"
     before = tree(project)
     assert "already current" in owned_install(project)

@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import shlex
+import subprocess
 import sys
 import tempfile
 
@@ -72,6 +73,15 @@ def publication(tokens):
 def translate(event):
     if event.get("hook_event_name") != "PreToolUse":
         return None
+    cwd = event.get("cwd")
+    if not isinstance(cwd, str) or not Path(cwd).is_absolute():
+        return None
+    try:
+        repository = subprocess.run(["git", "-C", cwd, "rev-parse", "--show-toplevel"], capture_output=True, text=True, check=False)
+    except OSError:
+        return None
+    if repository.returncode or not (Path(repository.stdout.strip()) / ".octo/pr-contract.json").is_file():
+        return None
     tool = event.get("tool_input", {})
     command = tool.get("command")
     if not isinstance(command, str):
@@ -91,7 +101,7 @@ def translate(event):
         return None
     index, kind = found
     if kind == "retired":
-        raise ValueError("gh-pr-create-from has been replaced by octo-manager submit-pr. Supply purpose and validation facts; Octo owns the dedicated writer, publication checks, and tracking.")
+        raise ValueError("gh-pr-create-from has been replaced by octo-manager submit-pr. Write the final title/body using the local pr-description skill, run pr validate, then submit the completed draft.")
     if index != 0 or any(token and all(char in ";&|<>()\n" for char in token) for token in tokens) or "$" in command or "`" in command or "\n" in command:
         raise ValueError("Run PR submission as a standalone octo-manager submit-pr command; shell composition and expansion are not translated.")
     session, cwd = event.get("session_id"), event.get("cwd")
@@ -100,6 +110,8 @@ def translate(event):
     args = tokens[2:] if kind == "octo" else tokens[3:]
     converted = []
     if kind == "octo":
+        if any(arg.split("=", 1)[0] in {"--purpose", "--intent-file"} for arg in args):
+            raise ValueError("Octo no longer generates PR content. Read the local pr-description skill and use pr validate, then submit-pr --title TITLE --body-file FILE.")
         # rationale: Caller identity comes from the hook event, never stale command flags.
         index = 0
         while index < len(args):
@@ -124,7 +136,7 @@ def translate(event):
                     value = args[index]
                 converted += [names[flag], value]
             else:
-                raise ValueError(f"Unsupported publication option {flag}; use octo-manager submit-pr --intent-file FILE.")
+                raise ValueError(f"Unsupported publication option {flag}; use octo-manager pr instructions, then submit-pr --title TITLE --body-file FILE.")
             index += 1
     converted += ["--thread-id", session, "--cwd", cwd, "--endpoint", "local"]
     if "--request-id" not in converted and not any(arg.startswith("--request-id=") for arg in converted):

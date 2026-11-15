@@ -1,37 +1,44 @@
 # PR publication through Octo
 
-Use `octo-manager submit-pr` to create GitHub PRs. It replaces `gh-pr-create-from`: callers supply purpose and validation facts, and Octo owns the dedicated writer, publication checks, creation, and tracking. Do not fall back to direct publication when Octo is unavailable or a requirement is unmet; report the limitation and preserve the submission for recovery. Tracking an existing PR remains independently available and does not establish publication compliance.
+This workflow applies only to repositories that select it. `source-code setup` installs the project-only `octo-manager` skill for new default profiles. Curated selections and saved profiles retain their choices. The project skill initializes the local Octo contract and drafting instructions when needed. Generic workstation Git and PR instructions do not require Octo; the optional submission hook acts only in repositories containing `.octo/pr-contract.json`.
 
-Commit and push the change, then hand Octo facts about its purpose and validation. Octo reads the frozen GitHub diff and contribution guidance, runs a dedicated PR writer, publishes, and enrolls the PR to the calling session. Agents can continue working while Octo watches checks and actionable reviews. Public and private repositories require no allowlists.
+The calling agent writes the title and description. Octo installs local writing guidance, validates declared format rules, accepts a durable request, and publishes the submitted draft. It does not generate, rewrite, or semantically judge the description. Publication does not require the Octo daemon; tracking is separate and opt-in.
 
-The submission record binds the request to a repository, head SHA, resolved base SHA, policy version, recorded writer stage, structured draft, and requirement results. Octo checks publication blockers and rechecks the Git revision before publishing. Missing required content and unresolved blockers prevent publication. Mechanical checks enforce supported title and body rules; semantic requirement results remain model assessments, and caller-reported validation is not independently observed evidence. This is a publication workflow contract, not a claim that prose correctness can be proven by a schema.
+## Prepare and validate
 
-Use `octo-manager submit-pr --intent-file FILE --thread-id SESSION --cwd DIRECTORY`. The Codex hook supplies session identity from its event; outside a hook, pass it explicitly. An example intent follows; use the actual pushed revision and a stable request ID. The installed Octo schema is the authoritative contract.
+Run `octo-manager pr init` in the repository. Octo preserves existing templates and authored instructions, installs `.agents/skills/pr-description/SKILL.md`, and records the selected template and mechanical rules in `.octo/pr-contract.json`. If several templates exist, choose one with `--template PATH`. Read that skill, the selected template, and the applicable repository contribution/development guidance before drafting.
 
-```json
-{
-  "requestId": "my-task-submit-v1",
-  "repository": "owner/repository",
-  "headRef": "fix/example",
-  "headSha": "0123456789abcdef0123456789abcdef01234567",
-  "baseRef": "main",
-  "purpose": "Explain the observed problem and intended behavior.",
-  "validation": [
-    {"command": "make check", "result": "passed", "note": "Caller observed the command complete locally."}
-  ],
-  "draft": false,
-  "owner": {"harness": "codex", "endpoint": "local", "sessionId": "CALLER_SESSION", "label": "/path/to/repository"}
-}
+Optionally run `octo-manager pr init --derive` or `octo-manager pr refresh` to derive concise advisory guidance from bounded repository signal files and recent merged PRs. Choose `--sample-remote origin|upstream` and at most 20 samples with `--sample-count N`. Derivation may invoke one model; validation and submission never do. Historical medians and proposed rules remain advisory in `.octo/pr-style.json`; only rules explicitly configured in the active format contract block publication.
+
+Assess complexity from the actual diff and use only the detail a reviewer needs. PR Flow can provide evidence for an existing PR or revision; its current analysis interface requires a PR URL, so it is not a prerequisite for creating one. Do not turn a complexity assessment into a mandatory schema or word-count gate.
+
+Write a finished description file, then run:
+
+```sh
+octo-manager pr validate --title 'feat: explain the outcome' --body-file description.md
 ```
 
-Alternatively, use `octo-manager submit-pr --purpose 'Problem and intended outcome' --thread-id SESSION --cwd DIRECTORY` from the pushed branch. This derives the repository, base branch, and head revision. Use an intent file when supplying validation or precise branch facts. Title/body arguments are drafting context for Octo's writer, not approved publication artifacts. The retired `gh-pr-create-from` command, including its former `--check` mode, is rejected by the hooks with migration guidance.
+Validation is offline: it does not contact GitHub, create a receipt, or start a worker. Empty drafts, invalid title lines, unfilled Octo template prompts, and violations of explicitly declared mechanical rules fail immediately with a short fix list. The agent owns factual accuracy, evidence, authorization, and semantic compliance with repository instructions. No separate drafting agent or process attestation is required.
 
-The current Octo submission schema supports `owner.harness = "codex"` only. Use the actual calling session identity; do not submit from Claude or another harness using an invented Codex owner. Do not treat this command as an update operation: existing PR title/body revisions still require a separate `github-pr-writer`, resolution of its blockers, and verification of the saved revision; they do not acquire Octo publication provenance retroactively.
+## Submit and inspect
 
-`octo-manager submission ID` shows the durable record, worker results, pinned policy, draft, and published URL. Retry a failed or uncertain operation with `retry-submission ID`; reuse the same request when retrying a timed-out initial call. Use a new request ID when facts change. A `needs_input` result requires corrected facts in a new request. `cancel-submission ID` cancels work before publication; after publication begins, reconcile with retry. Success means both publication and enrollment completed. Receipt of a notification is separate from completing its requested action.
+Commit and push the intended branch, then submit the exact finished draft when the user has authorized publication:
 
-Inspect policy using `repo-policy get --repo owner/repository`, render its template with `repo-policy template --repo owner/repository --tier routine`, or request `repo-policy refresh` from a pushed change branch. Repository policies are immutable versions keyed by relevant source hashes and contract versions. Routine commits reuse the policy; contribution/template changes trigger analysis. Description ranges are advisory: routine 20–100 words, standard 100–250, complex 250–600. Risk and semantic scope matter alongside size; include necessary context without padding. Explicit repository requirements and writer blockers gate publication.
+```sh
+octo-manager submit-pr --title 'feat: explain the outcome' --body-file description.md
+octo-manager submission REQUEST_ID
+```
 
-The Codex submission hook is not installed by default. Enable it with `make codex-octo-hook`, then review/trust the changed definition through Codex's native Hooks interface. It translates supported standalone `gh pr create` commands into Octo submissions and supplies the actual calling session identity for explicit submissions. Run publication separately from shell pipelines, redirections, variable expansion, or compound commands. Unrelated shell commands pass through. Installation appends to existing configuration without reordering hooks or changing trust. Reload global instructions using `make codex-guidance`. Existing sessions may require hook review or reload before the adapter runs. The required publication command applies without the hook; enforcement by a hook requires installation and host trust. These hooks inspect supported tool commands, not arbitrary shell execution or use of GitHub credentials outside that boundary.
+Invalid drafts exit nonzero before acceptance. A valid request is saved before Octo returns a small pending receipt. Pending means accepted locally for publication; it does not mean GitHub accepted the PR. The short-lived publisher revalidates the contract and pushed revision, then records `published` with a URL, a known `failed` result, or `uncertain` when a remote effect cannot be confirmed.
 
-To stop automatic translation, run `python3 bin/codex-octo-submit --uninstall`. This removes only the submission hook, preserves other hooks and native trust, and leaves explicit `octo-manager submit-pr` commands available.
+Use `retry-submission REQUEST_ID` to retry pre-publication failures or reconcile an uncertain create. Reuse the existing receipt after a timeout rather than submitting another request. A hidden marker binds recovery to the frozen title, body, repository, head, and base; Octo refuses to overwrite an unrelated PR. Purpose-only requests and legacy intent files receive migration guidance instead of starting analysis/writer jobs. Historical records remain inspectable.
+
+Use `--track --thread-id SESSION` only when daemon-backed tracking is wanted. Use the actual calling session identity; do not invent an owner for an unsupported harness. A tracking failure is reported separately and does not undo publication. Existing PR title/body revisions use the same local drafting and validation guidance, followed by the review platform's update command and verification of the saved result.
+
+Inspect the published title, rendered body, head/base, links, and any included images before reporting publication as verified. Creating a PR does not authorize merging it.
+
+## Hook integration
+
+The optional Codex submission hook translates supported standalone `gh pr create` commands to `octo-manager submit-pr`, preserving the caller's completed title and body. It supplies actual session context for optional tracking and never treats the draft as input to a separate writer. Unsupported flags and retired `gh-pr-create-from` calls return concise migration instructions.
+
+Enable the hook with `make codex-octo-hook`, then review/trust it through the host's native Hooks interface. Run publication separately from pipelines, redirections, variable expansion, or compound commands. Installation preserves other hooks and native trust; it does not grant publication authority or contain arbitrary shell execution. Remove only this adapter with `python3 bin/codex-octo-submit --uninstall`.
