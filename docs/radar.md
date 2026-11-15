@@ -119,6 +119,10 @@ The [project tool-choice policy](../ai/skills/source-code-lifecycle/references/t
 
 [Connect](https://connectrpc.com/docs/introduction/) is the selected protocol for new application APIs we control under the [source-code adoption policy](repository-bootstrap.md#authority-and-tool-adoption), using Protobuf, Buf, generated clients/servers, and Protovalidate where supported. External services retain their protocols, and existing APIs migrate only within an explicitly agreed scope.
 
+### Buf
+
+Strict Protobuf compilation, lint, formatting, and compatibility checks through the reusable [source-code profile](repository-bootstrap.md#protobuf-correctness-profile), with a small native Buf check plugin rejecting string fields ending in `_json`.
+
 ***
 
 ## Trial

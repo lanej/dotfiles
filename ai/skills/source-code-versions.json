@@ -16,9 +16,10 @@
     "pr-writer": "1.0.2",
     "python": "1.1.0",
     "rust": "1.1.0",
-    "source-code-lifecycle": "1.1.1",
+    "source-code-lifecycle": "1.2.0",
     "testing": "1.0.0",
     "typescript": "1.1.0",
-    "octo-manager": "1.0.0"
+    "octo-manager": "1.0.0",
+    "protobuf": "1.0.0"
   }
 }

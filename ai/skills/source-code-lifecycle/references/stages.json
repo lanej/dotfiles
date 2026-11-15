@@ -23,6 +23,13 @@
           "scripts/check-python.py",
           "typecheck"
         ]
+      ],
+      "protobuf": [
+        [
+          "python3",
+          "scripts/check-protobuf.py",
+          "build"
+        ]
       ]
     },
     "alpha": {
@@ -44,6 +51,13 @@
         [
           "python3",
           "scripts/check-python.py",
+          "alpha"
+        ]
+      ],
+      "protobuf": [
+        [
+          "python3",
+          "scripts/check-protobuf.py",
           "alpha"
         ]
       ]
@@ -69,6 +83,13 @@
           "scripts/check-python.py",
           "all"
         ]
+      ],
+      "protobuf": [
+        [
+          "python3",
+          "scripts/check-protobuf.py",
+          "all"
+        ]
       ]
     },
     "production": {
@@ -90,6 +111,13 @@
         [
           "python3",
           "scripts/check-python.py",
+          "all"
+        ]
+      ],
+      "protobuf": [
+        [
+          "python3",
+          "scripts/check-protobuf.py",
           "all"
         ]
       ]

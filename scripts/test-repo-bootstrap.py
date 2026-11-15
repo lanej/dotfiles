@@ -368,6 +368,94 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     owned_install(local_python, "--init", "--python", "--mode", "shadow", "--pr-template", "none")
     assert not git(local_python, "status", "--porcelain", "--untracked-files=all")
 
+    # Protobuf schemas select the profile automatically; explicit opt-outs remain authoritative.
+    proto_project = workspace / "strict Protobuf project"
+    proto_project.mkdir()
+    git(proto_project, "init", "--quiet")
+    (proto_project / "example.proto").write_text('syntax = "proto3";\npackage example.v1;\n')
+    install(proto_project, "--authority", "owned", "--adoption", "new", "--pr-template", "none")
+    assert "protobuf" in json.loads((proto_project / ".source-code.json").read_text())["skills"]
+    assert (proto_project / "scripts/check-protobuf.py").is_file()
+    assert json.loads((proto_project / ".source-code.json").read_text())["languages"] == ["protobuf"]
+    intent = proto_project / "source-code.toml"
+    intent.write_text('schema_version = 1\n[checks.protobuf]\nenabled = true\n')
+    before = tree(proto_project)
+    inspected = json.loads(run([str(cli), "explain", "--repo", str(proto_project), "--json"]))
+    assert inspected["desired"]["checks"]["protobuf"]["action"] == "update"
+    assert tree(proto_project) == before
+    install(proto_project, "--dry-run")
+    assert tree(proto_project) == before
+    install(proto_project)
+    assert json.loads((proto_project / ".source-code.json").read_text())["languages"] == ["protobuf"]
+    run([str(cli), "validate", "--repo", str(proto_project), "--strict"])
+    for stage, mode in (("research", "build"), ("alpha", "alpha"), ("beta", "all"), ("production", "all")):
+        install(proto_project, "--stage", stage)
+        plan = run(["python3", str(proto_project / "scripts/check-source-code.py"), "protobuf", "--dry-run"])
+        assert json.dumps(["python3", "scripts/check-protobuf.py", mode]) in plan
+    settings = proto_project / ".protobuf-quality.json"
+    settings.write_text(json.dumps({"version": 1, "against": ".git#ref=origin/main"}))
+    original = settings.read_bytes()
+    run([str(cli), "upgrade", "--repo", str(proto_project)])
+    assert settings.read_bytes() == original
+    retained = json.loads(run([str(cli), "explain", "--repo", str(proto_project), "--no-protobuf", "--json"]))
+    assert retained["desired"]["checks"]["protobuf"]["action"] == "retain"
+    private_proto = workspace / "private Protobuf profile"
+    install(private_proto, "--init", "--authority", "owned", "--adoption", "new", "--skills", "protobuf", "--protobuf", "--mode", "shadow", "--pr-template", "none")
+    assert not git(private_proto, "status", "--porcelain", "--untracked-files=all")
+    git(proto_project, "add", ".")
+    git(proto_project, "commit", "--quiet", "-m", "Install portable Protobuf policy")
+    proto_clone = workspace / "portable Protobuf clone"
+    run(["git", "clone", "--quiet", str(proto_project), str(proto_clone)])
+    run([str(cli), "validate", "--repo", str(proto_clone), "--strict"])
+
+    # Nested Buf workspaces also select checks; ignored/vendor schemas do not classify the project.
+    auto_proto = workspace / "nested Buf workspace"
+    auto_proto.mkdir()
+    git(auto_proto, "init", "--quiet")
+    (auto_proto / "api").mkdir()
+    (auto_proto / "api/buf.yaml").write_text("version: v2\n")
+    before = tree(auto_proto)
+    view = json.loads(run([str(cli), "explain", "--repo", str(auto_proto), "--json"]))
+    assert view["desired"]["checks"]["protobuf"]["selected"]
+    assert view["origins"]["checks.protobuf.selected"]["source"] == "detection"
+    assert view["origins"]["checks.protobuf.selected"]["evidence"] == ["api/buf.yaml"]
+    assert tree(auto_proto) == before
+    for number in range(6):
+        folder = auto_proto / f"workspace{number}"
+        folder.mkdir()
+        (folder / "buf.yaml").write_text("version: v2\n")
+    install(auto_proto, "--authority", "owned", "--adoption", "new", "--no-protobuf", "--pr-template", "none")
+    assert not (auto_proto / "scripts/check-protobuf.py").exists()
+    install(auto_proto)
+    run([str(cli), "upgrade", "--repo", str(auto_proto)])
+    assert not (auto_proto / "scripts/check-protobuf.py").exists(), "saved explicit opt-out was lost"
+    install(auto_proto, "--protobuf")
+    assert (auto_proto / "scripts/check-protobuf.py").is_file()
+    roots = json.loads((auto_proto / ".source-code.json").read_text())["detection"]["protobuf_roots"]
+    assert roots == ["api", *[f"workspace{number}" for number in range(6)]]
+    install(auto_proto, "--no-detect-languages")
+    assert json.loads((auto_proto / ".source-code.json").read_text())["detection"]["protobuf_roots"] == roots
+    no_detection = workspace / "disabled schema detection"
+    no_detection.mkdir()
+    git(no_detection, "init", "--quiet")
+    (no_detection / "example.proto").write_text('syntax = "proto3";\n')
+    install(no_detection, "--authority", "owned", "--adoption", "new", "--no-detect-languages", "--pr-template", "none")
+    assert not (no_detection / "scripts/check-protobuf.py").exists()
+    install(no_detection, "--protobuf")
+    assert (no_detection / "scripts/check-protobuf.py").is_file()
+    late_proto = workspace / "schemas added after initial setup"
+    install(late_proto, "--init", "--authority", "owned", "--adoption", "new", "--pr-template", "none")
+    (late_proto / "vendor").mkdir()
+    (late_proto / "vendor/external.proto").write_text('syntax = "proto3";\n')
+    (late_proto / ".gitignore").write_text("ignored.proto\n")
+    (late_proto / "ignored.proto").write_text('syntax = "proto3";\n')
+    install(late_proto)
+    assert not (late_proto / "scripts/check-protobuf.py").exists()
+    (late_proto / "api").mkdir()
+    (late_proto / "api/owned.proto").write_text('syntax = "proto3";\n')
+    run([str(cli), "upgrade", "--repo", str(late_proto)])
+    assert (late_proto / "scripts/check-protobuf.py").is_file(), "upgrade missed newly added schemas"
+
     # Kind selects usage guidance independently from lifecycle and language gates.
     for kind in ("service", "library", "tool"):
         target = workspace / ("kind-" + kind)
@@ -747,7 +835,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     assert tree(shared) == before, "invalid source instructions partially upgraded the project"
     testing_guide.write_bytes(testing_bytes)
     versions = json.loads(registry_bytes)
-    versions["skills"].update({"source-code-lifecycle": "1.2.0", "pr-writer": "1.1.0"})
+    versions["skills"].update({"source-code-lifecycle": "1.3.0", "pr-writer": "1.1.0"})
     registry.write_text(json.dumps(versions))
     runner_asset = source / "ai/skills/source-code-lifecycle/assets/check-source-code.py"
     runner_bytes = runner_asset.read_bytes()
