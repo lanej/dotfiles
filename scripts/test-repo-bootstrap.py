@@ -2,6 +2,10 @@
 """One acceptance workflow: share a bootstrap, then retrofit and upgrade locally."""
 
 import json
+import importlib.util
+import importlib.machinery
+import sys
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import os
 from pathlib import Path
@@ -140,6 +144,48 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
 
     def owned_install(target, *args, expected=0):
         return install(target, "--authority", "owned", "--adoption", "new", *args, expected=expected)
+
+    # Two concurrent seed publishers retain one complete winner and never replace it.
+    loader = importlib.machinery.SourceFileLoader("source_code_seed_test", str(cli))
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[loader.name] = module
+    loader.exec_module(module)
+    seed = workspace / "concurrent-octo.toml"
+    candidates = [b"first complete seed\n", b"second complete seed\n"]
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        list(pool.map(lambda data: module.seed_file(seed, data), candidates))
+    winner = seed.read_bytes()
+    assert winner in candidates
+    module.seed_file(seed, b"replacement")
+    assert seed.read_bytes() == winner
+
+    # Repository automation is seeded only for selected Octo projects and remains authored.
+    for mode in ("tracked", "shadow"):
+        target = workspace / ("octo-" + mode)
+        flags = ("--skills", "octo-manager", "--no-go", "--no-typescript", "--no-detect-languages", "--pr-template", "none")
+        owned_install(target, "--init", "--stage", "research", "--mode", mode, *flags)
+        config = target / "octo-manager.toml"
+        assert 'auto_merge = "project_stage"' in config.read_text()
+        authored = config.read_bytes() + b"\n# Keep this repository's follow-up.\n"
+        config.write_bytes(authored)
+        owned_install(target, "--stage", "beta", *flags)
+        assert config.read_bytes() == authored
+        state = json.loads((target / ".source-code.json").read_text())
+        assert state["stage"] == "beta"
+        manifest = json.loads((target / ".agents/repo-bootstrap.json").read_text())
+        assert "octo-manager.toml" not in manifest["files"]
+        if mode == "shadow":
+            assert "octo-manager.toml" in git(target, "check-ignore", "octo-manager.toml")
+            git(target, "add", "-f", "octo-manager.toml")
+            owned_install(target, *flags)
+            assert config.read_bytes() == authored
+        before = tree(target)
+        run([str(cli), "upgrade", "--repo", str(target), "--dry-run"])
+        assert tree(target) == before
+    unrelated = workspace / "without-octo"
+    owned_install(unrelated, "--init", "--skills", "builder", "--no-go", "--no-typescript", "--no-detect-languages", "--pr-template", "none")
+    assert not (unrelated / "octo-manager.toml").exists()
 
     # Missing policy choices fail before Git initialization or installation writes.
     authority_project = workspace / "explicit authority"

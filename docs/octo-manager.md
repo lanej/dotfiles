@@ -64,3 +64,9 @@ PR attachment is the automatic enrollment path. CLI-only sessions or unattached 
 ## Disable future installation
 
 Set `tools.octo-manager = false` or remove the optional set. This prevents future installation; it does not uninstall an existing release or stop its service. Stop a running macOS service with `launchctl bootout gui/$(id -u)/com.lanej.octo-manager`, or a Linux service with `systemctl --user disable --now octo-manager.service`. Remove only the three Octo commands from the configured Codex hooks file when retiring that integration; preserve unrelated commands and retained Octo state.
+
+## Repository notification policy
+
+When the source-code project profile selects Octo, setup seeds `octo-manager.toml` without overwriting an existing file. Its state-specific instructions refer to installed project guidance. `merging.auto_merge = "project_stage"` follows the effective stage in `.source-code.json`: research and alpha enable inherited auto-merge; beta, production, and unknown stages disable it. Literal `true` or `false` selects a repository-wide default. Per-PR `--on` and `--off` override inheritance; `pr auto-merge PR --inherit --agent-id AGENT` resumes it. Promotion updates inherited PRs and invalidates readiness when the effective switch changes.
+
+The coordinator reloads local policy on its scheduler cadence without GitHub requests. Enrollment binds a verified checkout to the PR’s repository. Invalid or unavailable policy suspends inherited automatic merging and retains last-valid instructions; explicit switches and already-submitted operations retain their separate authority and reconciliation. Authored policy is preserved by source-code upgrades, and shadow setup excludes the seeded file locally.
