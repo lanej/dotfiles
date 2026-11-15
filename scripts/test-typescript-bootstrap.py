@@ -82,6 +82,17 @@ class TypeScriptBootstrap(unittest.TestCase):
         self.assertFalse((self.root / "package-lock.json").exists())
         self.assertIn("already current", self.install().stdout)
 
+    def test_go_profile_provisions_bun_for_mixed_runtime_tests(self):
+        package = {"packageManager": "bun@1.4.4", "scripts": {"test": "bun test", "lint": "echo project lint"}}
+        (self.root / "package.json").write_text(json.dumps(package))
+        (self.root / "go.mod").write_text("module example.invalid/mixed\n\ngo 1.26.0\n")
+        self.install("--go", "--go-rollout", "strict")
+        workflow = (self.root / ".github/workflows/go-quality.yml").read_text()
+        steps = re.findall(r"^      - run: (.+)$", workflow, re.MULTILINE)
+        install = next(shlex.split(step) for step in steps if shlex.split(step)[0] == "bun")
+        self.assertEqual(install, ["bun", "install", "--frozen-lockfile", "--ignore-scripts"])
+        self.assertIn("already current", self.install("--go").stdout)
+
     def test_local_install_hides_generated_baseline_and_lock(self):
         self.install("--mode", "local")
         for name in (".typescript-quality-baseline.json", ".typescript-quality/package-lock.json"):
