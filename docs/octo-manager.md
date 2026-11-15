@@ -52,6 +52,8 @@ macOS uses launchd; Linux uses `octo-manager.service` under the selected configu
 
 The launcher is `~/.local/bin/octo-manager`, state is `~/.local/state/octo-manager`, installed releases are under `~/.local/share/octo-manager/releases`, and the macOS service is `com.lanej.octo-manager`. Hook/config installation backups remain under Octo's state directory. Platform-specific source/dependencies live under `$XDG_CACHE_HOME/dotfiles/octo-manager` (default `~/.cache/dotfiles/octo-manager`). An existing different-owner PR remains assigned to that owner.
 
+Persist the default worker model in `workerModel` under `~/.config/octo-manager/config.json`; `serve --model` overrides it. These settings survive reinstalling Octo. Provider-qualified selections such as `amazon-bedrock/us.anthropic.claude-sonnet-5-5` use native Bedrock authentication without copying credentials or requiring a Codex login. Supply the service's existing AWS environment separately; on Linux, keep custom environment setup in a user-owned systemd drop-in so regeneration of the managed unit preserves it.
+
 ```sh
 octo-manager tracked --json
 octo-manager inbox --agent-id AGENT_ID --applicable-only
