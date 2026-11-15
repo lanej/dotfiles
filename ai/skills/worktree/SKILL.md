@@ -9,7 +9,7 @@ Use the native `worktree` manager for agent-created checkouts. New allocations l
 
 ## Reuse assigned checkouts
 
-Keep explicit user-selected, host-managed and preassigned checkouts, including Codex App, Codex CLI, Claude and Firstmate assignments. Continue there without nesting another checkout or claiming its task/lease ownership. An explicitly requested independent task may allocate from the primary repository.
+Keep explicit user-selected, host-managed and preassigned checkouts, including Codex App, Codex CLI and Claude assignments. Continue there without nesting another checkout or claiming its task/lease ownership. An explicitly requested independent task may allocate from the primary repository.
 
 ## Create
 

@@ -68,7 +68,7 @@ The reporter must not invoke further writers or reviewers. If named selection is
 
 Use the `worktree` skill at `~/.agents/skills/dotfiles/worktree/SKILL.md` for task isolation and agent-created checkouts. The native manager creates `<primary-repository>/.worktrees/<agent>-<8-hex>/`; do not fall back to temporary paths or new Treehouse leases.
 
-Reuse explicit user-selected, host-managed, and preassigned Firstmate checkouts. Do not nest worktrees or claim their leases.
+Reuse explicit user-selected, host-managed, and preassigned task checkouts. Do not nest worktrees or claim their leases.
 
 # Git worktree cleanup
 

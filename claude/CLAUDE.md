@@ -18,8 +18,6 @@ The claude-mem startup-hook timeline fires only for the primary agent — sub-ag
 ## Execution & Delegation
 
 Delegate self-contained work when isolation, independent judgment, or parallelism helps. Keep bounded lookups and routine edits inline; file and tool counts don't require delegation. Honor task scope and session constraints; announce delegations. Use native agent tools; never use Paseo for Claude or Codex coordination. Paseo is for Pi.
-Bug or small feature needed in one of Josh's `easypost-sandbox` tool/MCP-server repos, and not your job right now: use the `report-tool-work` skill; don't work around it silently.
-Infra change needed in `platform-infra` (github.com/easypost/platform-infra) — Josh's current, actively-chosen primary repo for this category, per his 2026-09-24 decision to migrate off the legacy repos below (migration in progress, not yet complete) — or in the legacy `easypost-enterprise-platform-infra` / `enterprise-platform-bootstrap` (secondary during the transition) (GCP resource, IAM, DNS, GitHub org/repo setting, Jira config): use the `report-infra-work` skill and message the `infra-dispatcher` session; never mutate any of the three directly.
 `Workflow` tool: explicit user opt-in only. For ad hoc fan-out, write a bespoke `Workflow` script; for independent tasks from a written plan, dispatch each via `Agent` per the `/delegate` routing table.
 Every `Agent` brief states: Context, Domain, Sub-problem, Success (implementation: the task's own acceptance check, never "all tests pass"), Constraints, Output format. Provide relevant task-local instructions and constraints. A worktree target's absolute path goes in Context; never pass `isolation: "worktree"` to sequential tasks sharing one existing worktree. (detail: memory "feedback_worktree_briefing_ambiguity"; more gotchas in `operating-lessons`)
 "Work in a worktree" from Josh is resolved by you before any implementation dispatch (reuse its assigned checkout or use the native `worktree create` manager, asking only when the intended scope is ambiguous) — never delegated away or replaced by a `git status` check. (detail: memory "feedback_explicit_worktree_instruction_overridden")
@@ -54,7 +52,7 @@ Before applying a new threshold or classification bar to a batch, confirm its ex
 
 Use the `worktree` skill at `~/.claude/skills/worktree/SKILL.md` for task isolation and new agent-created checkouts at `<primary-repository>/.worktrees/<agent>-<8-hex>/`. Existing Treehouse leases retain their legacy return procedure.
 
-Reuse explicit user-selected, host-managed, and preassigned Firstmate checkouts.
+Reuse explicit user-selected, host-managed, and preassigned task checkouts.
 Do not nest worktrees or claim their leases.
 
 ## Tool Preferences
