@@ -25,6 +25,8 @@ Use authored TOML for reviewable project configuration. It requires `schema_vers
 
 Use `kind = "service"`, `"library"`, or `"tool"` in TOML, or `--kind KIND`, to select usage-specific obligations. Kind is optional, never inferred, and saved independently of lifecycle stage. Omission retains an installed kind; library kind selects caller documentation guidance.
 
+New profiles install repository-only publication guidance with the core skills. It is selected through `skills` like other packages; curated subsets can omit it. Existing saved selections are retained. Setup installs that guidance into the target repository, never the workstation skill tree, and does not start a service or modify user-level hooks.
+
 Use the requested stage and visibility; preserve saved selections on an existing installation. New installations default to beta and full generated checks. The available stages are research, alpha, beta, and production; lowering a stage relaxes introduced checks and requires reviewing the preview. A stage does not waive repository gates or certify readiness.
 
 Choose tracked mode to share project policy, or `--mode shadow` to exclude managed files through Git’s local exclusions while leaving shared instructions unchanged. Shadow mode is local Git visibility, not secret storage or a guarantee that other tools cannot see the files. Use `--skills` for a curated subset, `--agents codex` for Codex discovery only, and `--pr-template none` to omit a template when requested. Check subcommand help for strict/ratchet adoption of existing Go or TypeScript code.

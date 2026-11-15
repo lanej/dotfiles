@@ -38,7 +38,7 @@ Default local pages and UI validation to headless Playwright MCP. Headless brows
 
 # Automatic PR writing and code review
 
-Create GitHub PRs through the [Octo submission contract](octo-pr-submission.md) using `octo-manager submit-pr`. The calling agent writes the finished title/body using the repository-local pr-description skill, then runs `octo-manager pr validate`. Octo enforces declared format rules and publishes without generating content. Invalid drafts fail before acceptance; a pending receipt means local acceptance, not GitHub success. Inspect the receipt for completion. Publication works without the daemon; tracking requires explicit `--track` and the actual session identity. Report unavailable submission rather than bypassing publication checks.
+Follow the target repository's installed PR drafting, validation, and publication instructions. The calling agent owns factual accuracy, publication within the user's authorization, and verification of the saved title, rendered body, and target branch. A workstation-wide tool installation does not select a repository's publication workflow.
 
 For existing PR title/body revisions, use the same local drafting and validation guidance before updating and verifying the saved result. Separate PR drafting agents are optional, not required. Use shared pull-request writing guidance for other review platforms.
 

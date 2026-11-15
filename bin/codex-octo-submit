@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import shlex
+import subprocess
 import sys
 import tempfile
 
@@ -71,6 +72,15 @@ def publication(tokens):
 
 def translate(event):
     if event.get("hook_event_name") != "PreToolUse":
+        return None
+    cwd = event.get("cwd")
+    if not isinstance(cwd, str) or not Path(cwd).is_absolute():
+        return None
+    try:
+        repository = subprocess.run(["git", "-C", cwd, "rev-parse", "--show-toplevel"], capture_output=True, text=True, check=False)
+    except OSError:
+        return None
+    if repository.returncode or not (Path(repository.stdout.strip()) / ".octo/pr-contract.json").is_file():
         return None
     tool = event.get("tool_input", {})
     command = tool.get("command")

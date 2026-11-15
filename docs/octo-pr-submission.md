@@ -1,5 +1,7 @@
 # PR publication through Octo
 
+This workflow applies only to repositories that select it. `source-code setup` installs the project-only `octo-manager` skill for new default profiles. Curated selections and saved profiles retain their choices. The project skill initializes the local Octo contract and drafting instructions when needed. Generic workstation Git and PR instructions do not require Octo; the optional submission hook acts only in repositories containing `.octo/pr-contract.json`.
+
 The calling agent writes the title and description. Octo installs local writing guidance, validates declared format rules, accepts a durable request, and publishes the submitted draft. It does not generate, rewrite, or semantically judge the description. Publication does not require the Octo daemon; tracking is separate and opt-in.
 
 ## Prepare and validate

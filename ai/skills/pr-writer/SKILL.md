@@ -5,7 +5,7 @@ description: "Use when drafting or revising a pull request title and description
 
 # PR Writer
 
-The calling agent may use this drafting guidance directly for PR creation or title/body revisions. A separate writer is optional, not a publication prerequisite. When the repository has Octo's pr-description skill, follow it and run `octo-manager pr validate` on the finished draft. The caller owns factual accuracy, authorized publication, and verification of the saved result. Other review platforms use the shared pull-request writer. Delegated writers must not recurse.
+The calling agent may use this drafting guidance directly for PR creation or title/body revisions. A separate writer is optional, not a publication prerequisite. Follow the target repository’s installed drafting and publication guidance. The caller owns factual accuracy, authorized publication, and verification of the saved result. Other review platforms use the shared pull-request writer. Delegated writers must not recurse.
 
 Read [the shared PR writer](../../agents/pull-request-writer.md) and the writing
 references it requires. For a GitHub pull request, also read

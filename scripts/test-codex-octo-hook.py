@@ -36,6 +36,12 @@ def main():
         assert document["hooks"]["PreToolUse"][0] == existing
         assert document["custom"] == {"preserve": True}
         event = {"hook_event_name": "PreToolUse", "session_id": "session-123", "cwd": str(home), "tool_use_id": "call-456", "tool_input": {"command": "gh pr create --title 'fix: preserve spaces' --body 'Observed outcome.' --draft", "timeout_ms": 1000}}
+        # Global hooks leave unconfigured repositories alone, including malformed publication commands.
+        assert run([], event) == ""
+        subprocess.run(["git", "init", "-q", str(home)], check=True)
+        assert run([], event) == ""
+        (home / ".octo").mkdir()
+        (home / ".octo/pr-contract.json").write_text('{"schemaVersion":1,"template":".github/pull_request_template.md"}')
         output = json.loads(run([], event))["hookSpecificOutput"]
         assert output["permissionDecision"] == "allow"
         changed = output["updatedInput"]

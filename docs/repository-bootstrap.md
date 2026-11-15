@@ -34,11 +34,14 @@ Existing `AGENTS.md`, `CLAUDE.md`, `.gitignore`, unrelated skills, and project P
 
 ## Installed content
 
+New default profiles include the repository-only `octo-manager` skill instead of PR Writer. This package installs into the target repository, not the user skill tree, and directs PR preparation through local initialization, drafting, and validation. Curated `skills` selections can omit it; upgrades preserve saved choices. Setup does not start Octo or install workstation hooks.
+
 | Path | Purpose |
 | --- | --- |
 | `.agents/skills/builder/` | Existing Builder skill, architecture/construction references, and runnable examples |
 | `.agents/skills/architecture/` | Architecture design/review entrypoint using Builder's canonical standard |
-| `.agents/skills/pr-writer/` | PR drafting entrypoint, shared/GitHub writer instructions, and their writing references |
+| `.agents/skills/octo-manager/` | Repository-only PR initialization, drafting, validation, and publication guidance |
+| `.agents/skills/pr-writer/` | Optional PR drafting entrypoint and shared/GitHub writing references |
 | `.agents/skills/testing/` | Stage-specific verification and retained-behavior guidance |
 | `.agents/skills/source-code-lifecycle/` | Versioned lifecycle contract and command plans |
 | `.source-code.json` | Schema version, policy version, stage, and installed languages |
@@ -53,7 +56,7 @@ Existing `AGENTS.md`, `CLAUDE.md`, `.gitignore`, unrelated skills, and project P
 
 Codex uses `.agents/skills`. Claude Code uses the individual `.claude/skills` links; existing directories and unrelated entries are preserved. Pass `--agents codex` to omit new Claude links. Other agents can read these Markdown packages explicitly, but the installer does not claim to configure their native discovery or tool permissions.
 
-The architecture skill automatically includes Builder because it shares the standard. PR writer retains the existing draft-only boundary: installation does not authorize creating, updating, or merging a PR. It respects the target repository's required title and template fields.
+The architecture skill automatically includes Builder because it shares the standard. Separately delegated PR writers retain the draft-only boundary: installation does not authorize creating, updating, or merging a PR. It respects the target repository's required title and template fields.
 
 Choose a subset or template independently:
 

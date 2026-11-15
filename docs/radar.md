@@ -85,7 +85,7 @@ Coding agent used with shared skills, role instructions, and repository guidance
 
 ### Codex
 
-Coding agent used with shared skills, role instructions, and repository guidance. GitHub PR descriptions are written by the calling agent using repository-local guidance; [Octo validates format and publishes through pending receipts](octo-pr-submission.md), with daemon-backed tracking opt-in. Shared specification, writing, learning-capture, and handoff workflows use portable skill packages and the repository-owned [skill-authoring workflow](skill-maintenance.md).
+Coding agent used with shared skills, role instructions, and repository guidance. Source-code setup installs repository-only publication guidance for projects that select Octo; the caller writes descriptions and [Octo validates format and publishes through pending receipts](octo-pr-submission.md), with daemon-backed tracking opt-in. Global Git and PR skills remain tool-neutral. Shared specification, writing, learning-capture, and handoff workflows use portable skill packages and the repository-owned [skill-authoring workflow](skill-maintenance.md).
 
 ### fzf
 
