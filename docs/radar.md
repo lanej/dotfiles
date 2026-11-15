@@ -107,6 +107,10 @@ Tiling window manager via the macOS Accessibility API. Manages all windows at th
 
 Required correctness lint in the reusable [TypeScript profile](typescript-style.md), alongside typed ESLint and Prettier. Biome findings cannot be added to retrofit baselines.
 
+### worktree manager
+
+[worktree](worktree-manager.md) creates identifiable repository-local agent checkouts, tracks full ownership and protects active tasks. Finishing protection and explicit safe pruning replace reusable Treehouse allocation for new agent work.
+
 ***
 
 ## Trial
