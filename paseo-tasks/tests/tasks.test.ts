@@ -22,7 +22,7 @@ import { Reports } from "../server/reports";
 import { type Router, TaskService, taskWorkspaceId } from "../server/service";
 import { Store } from "../server/store";
 import { managerTools, workerTools } from "../server/tools";
-import type { Worktrees } from "../server/treehouse";
+import type { Worktrees } from "../server/worktrees";
 import type {
   ConversationAddress,
   CoordinatorReport,
@@ -235,14 +235,14 @@ function fixture(serverId = "mac") {
   let acquisitions = 0;
   const leases = new Map<string, any>();
   const worktrees: Worktrees = {
-    prepare: async (primary, holder, branch, baseRef) => ({
+    prepare: async (primary, holder, branch, baseRef, agent = "paseo") => ({
       primary,
       root: `${primary}/.worktrees`,
       holder,
       branch,
       baseRef,
       baseCommit: "a".repeat(40),
-      treehouseBase: branch.replace(/^task\//, "task-base/"),
+      agent,
       attempted: false,
     }),
     acquire: async (reserved, attempting) => {
@@ -251,10 +251,11 @@ function fixture(serverId = "mac") {
         acquisitions++;
         leases.set(reserved.holder, {
           path: `/isolated/${reserved.branch}`,
-          lease_id: randomUUID(),
-          lease_holder: reserved.holder,
-          leased_at: "2026-11-06T00:00:00Z",
-          base_branch: reserved.baseRef,
+          task_id: randomUUID(),
+          owner_id: reserved.holder,
+          agent: reserved.agent,
+          created_at: "2026-11-06T00:00:00Z",
+          base_ref: reserved.baseRef,
           primary: reserved.primary,
           root: reserved.root,
           branch: reserved.branch,
@@ -919,11 +920,11 @@ await test("typed task creation retains drafts, isolates coding work, and starts
     assert.equal(f.paseo.creates, 1);
     assert.ok(coding.worker?.cwd.startsWith("/isolated/"));
     assert.equal(f.paseo.sources[0].kind, "directory");
-    assert.equal(f.paseo.sources[0].path, coding.treehouseLease!.path);
-    assert.equal(coding.treehouseLease!.base_branch, "origin/main");
-    assert.equal(coding.treehouseLease!.branch, `task/${coding.taskId}`);
+    assert.equal(f.paseo.sources[0].path, coding.worktreeAllocation!.path);
+    assert.equal(coding.worktreeAllocation!.base_ref, "origin/main");
+    assert.equal(coding.worktreeAllocation!.branch, `task/${coding.taskId}`);
     assert.equal(
-      coding.treehouseLease!.lease_holder,
+      coding.worktreeAllocation!.owner_id,
       `paseo-task:mac:${coding.taskId}`,
     );
     assert.equal(f.acquisitions(), 1);
@@ -950,7 +951,7 @@ await test("typed task creation retains drafts, isolates coding work, and starts
   }
 });
 
-await test("lost Treehouse allocation replies recover the owned lease before workspace creation without allocating twice", async () => {
+await test("lost worktree allocation replies recover the owned lease before workspace creation without allocating twice", async () => {
   const f = fixture();
   try {
     const acquire = f.worktrees.acquire;
@@ -965,7 +966,7 @@ await test("lost Treehouse allocation replies recover the owned lease before wor
     };
     const value = await create(f, { kind: "coding", baseRef: "origin/main" });
     assert.equal(value.worker, null);
-    assert.equal(value.treehouseReservation!.attempted, true);
+    assert.equal(value.worktreeReservation!.attempted, true);
     assert.equal(f.paseo.sources.length, 0);
     assert.match(value.error!, /Lease reply lost/);
     const recovered = new TaskService(
@@ -984,15 +985,15 @@ await test("lost Treehouse allocation replies recover the owned lease before wor
       [...f.leases.values()][0].path,
     );
     assert.equal(
-      f.store.get(value.taskId).treehouseLease!.lease_id,
-      [...f.leases.values()][0].lease_id,
+      f.store.get(value.taskId).worktreeAllocation!.task_id,
+      [...f.leases.values()][0].task_id,
     );
     assert.equal(f.paseo.sources[0].kind, "directory");
     await recovered.bulk({ tasks: [value], action: "archive" });
     assert.equal(
-      f.store.get(value.taskId).treehouseLease!.lease_id,
-      [...f.leases.values()][0].lease_id,
-      "A retained conversation keeps its lease; archive does not return the checkout",
+      f.store.get(value.taskId).worktreeAllocation!.task_id,
+      [...f.leases.values()][0].task_id,
+      "A retained conversation keeps task protection; archive does not finish or delete the checkout",
     );
   } finally {
     f.cleanup();

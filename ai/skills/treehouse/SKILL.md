@@ -1,41 +1,11 @@
 ---
 name: treehouse
-description: Use when isolating a coding task, creating agent Git worktrees, or using Treehouse. Acquire and return leased task worktrees for Codex and Claude through the native Treehouse CLI.
+description: Use when inspecting or returning an existing Treehouse pool lease. New agent worktrees use the worktree manager and its canonical worktree skill.
 ---
 
-# Treehouse task worktrees
+# Legacy Treehouse leases
 
-Use Treehouse for task worktrees the agent creates.
-
-## Reuse assigned checkouts
-
-Keep explicit user-selected, host-managed, and preassigned Firstmate worktrees.
-This includes Codex App/`codex --worktree` and Claude `--worktree`/`EnterWorktree` checkouts.
-Continue there; do not nest worktrees, reacquire them, or claim their leases.
-
-## Acquire
-
-Read repository instructions for location constraints.
-Resolve the primary checkout with `git worktree list --porcelain`.
-The dotfiles default places the pool under `<primary-checkout>/.worktrees/.treehouse/`.
-Verify `git check-ignore` excludes that destination before allocation.
-Stop and report any conflict between the configured pool root and repository constraints.
-
-If Treehouse is missing, stop allocation and identify dotfiles `bootstrap.sh` as its installer.
-Keep the native CLI available for standalone use.
-
-Choose a unique task label and named task branch.
-Run from the primary checkout:
-
-```sh
-treehouse get --lease --json \
-  --lease-holder "<unique-task-label>" \
-  --branch "<named-task-branch>"
-```
-
-Keep returned `path`, `lease_id`, `lease_holder`, `leased_at`, and `base_branch` in task context.
-Record the requested branch too, and preserve these details through handoffs.
-Work at the returned `path`.
+For new agent-created checkouts, read `../worktree/SKILL.md` and use the native `worktree` manager. Do not acquire another Treehouse lease. Preserve outstanding pool directories and their original lease identities while the tools coexist.
 
 ## Return
 

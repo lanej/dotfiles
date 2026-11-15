@@ -1,3 +1,4 @@
 [tools]
 worktree-manager = true
 worktree-policy = false
+treehouse = false

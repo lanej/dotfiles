@@ -19,6 +19,7 @@ bin/*
 !bin/epenv_test.py
 !bin/git-worktree-policy
 !bin/zellij-image-hints
+!bin/agent-worktree
 vim/spell
 vim/plugged
 vim/session

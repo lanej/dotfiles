@@ -94,7 +94,7 @@
         },
         "worktree-manager": {
           "type": "boolean",
-          "description": "Opt-in standalone worktree CLI with task protection, global tracking and safe pruning."
+          "description": "Repository-local agent worktrees with task protection, global tracking and safe pruning."
         },
         "lsof": {
           "type": "boolean",
