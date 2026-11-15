@@ -314,7 +314,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         policy = json.loads((target / ".source-code.json").read_text())
         assert policy["kind"] == kind and policy["stage"] == "research" and policy["languages"] == []
         assert ("library-code-comments" in policy["skills"]) == (kind == "library")
-        assert f"Project kind: **{kind}**" in (target / "AGENTS.override.md").read_text()
+        assert f"Project kind: **{kind}**" in (target / ".agents/source-code.md").read_text()
         assert (target / ".agents/skills/source-code-lifecycle/references/kinds.md").is_file()
         run([str(cli), "validate", "--repo", str(target), "--strict"])
         run([str(cli), "upgrade", "--repo", str(target)])
@@ -352,6 +352,28 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     assert not nested.exists()
     assert (project / ".github/pull_request_template.md").is_file()
     assert (project / ".agents/skills/architecture/SKILL.md").is_file()
+    assert not (project / ".agents/skills/pr-writer").exists()
+    default_policy = json.loads((project / ".source-code.json").read_text())
+    assert "git" in default_policy["skills"] and "pr-writer" not in default_policy["skills"]
+    router = project / "AGENTS.override.md"
+    generated_guide = project / ".agents/source-code.md"
+    router_text = router.read_text()
+    assert "`AGENTS.md`" in router_text
+    assert re.findall(r"\]\(([^)]+)\)", router_text) == [".agents/source-code.md"]
+    assert generated_guide.is_file()
+    authored = project / "AGENTS.md"
+    authored_text = "# Project instructions\n\nPreserve the public CLI contract.\n"
+    authored.write_text(authored_text)
+    saved_router = router.read_bytes()
+    install(project, "--stage", "research")
+    assert authored.read_text() == authored_text and router.read_bytes() == saved_router
+    assert "Lifecycle stage: **research**" in generated_guide.read_text()
+    install(project, "--stage", "beta")
+    assert authored.read_text() == authored_text and router.read_bytes() == saved_router
+    assert "Lifecycle stage: **beta**" in generated_guide.read_text()
+    run([str(cli), "validate", "--repo", str(project), "--strict"])
+    # The default Git package must resolve its references without an optional writer skill.
+    run(["python3", str(VALIDATOR), str(project / ".agents/skills/git")])
     assert (project / ".claude/skills/builder").resolve() == project / ".agents/skills/builder"
     before = tree(project)
     assert "already current" in install(project)
@@ -429,6 +451,14 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     run([str(cli), "upgrade", "--repo", str(library), "--conflict", "skip"], expected=1)
     assert tree(library) == before, "conflicting override partially upgraded the project"
     override.write_bytes(saved_override)
+    generated = library / ".agents/source-code.md"
+    saved_generated = generated.read_bytes()
+    generated.write_bytes(saved_generated + b"\nLocally edited generated policy.\n")
+    before = tree(library)
+    run([str(cli), "validate", "--repo", str(library)], expected=1)
+    run([str(cli), "upgrade", "--repo", str(library), "--conflict", "skip"], expected=1)
+    assert tree(library) == before, "customized generated policy was overwritten"
+    generated.write_bytes(saved_generated)
     registry.write_bytes(registry_bytes)
 
     detected = workspace / "detected project"
@@ -663,11 +693,11 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
             (target / "source-code.toml").write_text('schema_version = 1\nstage = "research"\nkind = "' + saved_kind + '"\n')
         installed_runner = (target / "scripts/check-source-code.py").read_bytes()
         subset_view = json.loads(run([str(cli), "explain", "--repo", str(target), "--skills", "pr-writer", "--json"]))
-        assert subset_view["desired"]["skill_versions"]["source-code-lifecycle"] == "1.0.0"
+        assert subset_view["desired"]["skill_versions"]["source-code-lifecycle"] == json.loads(registry_bytes)["skills"]["source-code-lifecycle"]
         assert subset_view["desired"]["skill_versions"]["pr-writer"] == "1.1.0"
         run([str(cli), "upgrade", "--repo", str(target), "--skills", "pr-writer"])
         pins = json.loads((target / ".source-code.json").read_text())["skills"]
-        assert pins["pr-writer"] == "1.1.0" and pins["source-code-lifecycle"] == "1.0.0"
+        assert pins["pr-writer"] == "1.1.0" and pins["source-code-lifecycle"] == json.loads(registry_bytes)["skills"]["source-code-lifecycle"]
         assert (target / "scripts/check-source-code.py").read_bytes() == installed_runner
         run([str(cli), "validate", "--repo", str(target), "--strict"])
     runner_asset.write_bytes(runner_bytes)

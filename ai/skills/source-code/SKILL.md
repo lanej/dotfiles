@@ -11,7 +11,7 @@ Manage the `source-code` CLI and its project installations. This workstation ski
 
 ## Inspect the target
 
-Resolve the intended checkout and inspect existing repository instructions, `.source-code.json`, and `AGENTS.override.md` when present. Reuse an assigned worktree; setup operates on that checkout and does not allocate worktrees. Existing policy records the installed lifecycle stage, skill pins, check profiles, and detection evidence. Read authored `source-code.toml` at the target Git root when present; it expresses desired policy separately from generated state.
+Resolve the intended checkout and inspect existing repository instructions, `.source-code.json`, the `AGENTS.override.md` router, and generated `.agents/source-code.md` when present. Reuse an assigned worktree; setup operates on that checkout and does not allocate worktrees. Existing policy records the installed lifecycle stage, skill pins, check profiles, and detection evidence. Read authored `source-code.toml` at the target Git root when present; it expresses desired policy separately from generated state.
 
 Use `source-code --help` and the chosen subcommand’s `--help` for the installed version’s supported options. If the command is missing, the dotfiles workstation set supplies it; `make source-code-config` from the owning dotfiles checkout links it explicitly. Do not apply unrelated workstation configuration or assume a newer release is installed.
 
@@ -26,6 +26,8 @@ Use authored TOML for reviewable project configuration. It requires `schema_vers
 Use `kind = "service"`, `"library"`, or `"tool"` in TOML, or `--kind KIND`, to select usage-specific obligations. Kind is optional, never inferred, and saved independently of lifecycle stage. Omission retains an installed kind; library kind selects caller documentation guidance.
 
 Use the requested stage and visibility; preserve saved selections on an existing installation. New installations default to beta and full generated checks. The available stages are research, alpha, beta, and production; lowering a stage relaxes introduced checks and requires reviewing the preview. A stage does not waive repository gates or certify readiness.
+
+Octo Manager installation remains opt-in while its PR submission path requires a running daemon. Project setup does not install it or enable hooks; preserve existing repository publication requirements. PR Writer is an explicit `--skills pr-writer` option for drafting and revisions, rather than a default dependency. Existing installed skills are retained on upgrades.
 
 Choose tracked mode to share project policy, or `--mode shadow` to exclude managed files through Git’s local exclusions while leaving shared instructions unchanged. Shadow mode is local Git visibility, not secret storage or a guarantee that other tools cannot see the files. Use `--skills` for a curated subset, `--agents codex` for Codex discovery only, and `--pr-template none` to omit a template when requested. Check subcommand help for strict/ratchet adoption of existing Go or TypeScript code.
 

@@ -60,6 +60,15 @@ def main():
         config.write_text('sets = ["octo-manager"]\n[tools]\nocto-manager = false\n')
         disabled = json.loads(run(*command, "--platform", "macos", "--format", "json").stdout)
         assert "octo-manager" not in {tool["name"] for tool in disabled["tools"]}
+        config.write_text('[tools]\nsource-code = true\n')
+        for host in ("macos", "linux"):
+            profile = json.loads(run(*command, "--platform", host, "--format", "json").stdout)
+            names = [tool["name"] for tool in profile["tools"]]
+            assert "source-code" in names and "octo-manager" not in names
+            assert not any("octo" in target for target in profile["setup"])
+        config.write_text('[tools]\nsource-code = true\nocto-manager = false\n')
+        without_octo = json.loads(run(*command, "--format", "json").stdout)
+        assert "source-code" in {tool["name"] for tool in without_octo["tools"]}
         config.write_text('sets = ["worktrees"]\n')
         worktrees = json.loads(run(*command,"--format","json").stdout)
         selected = {tool["name"] for tool in worktrees["tools"]}
