@@ -255,3 +255,8 @@ entries:
     ring: trial
     rationale: |-
       [Commander](https://github.com/tj/commander.js): capability-grouped TypeScript CLI parsing, validation, and generated help in Octo Manager. Evaluate command discovery and agent-friendly usage during normal operation.
+  - id: project-engineering-guidance
+    name: Project-scoped engineering guidance
+    ring: adopt
+    rationale: |-
+      [Source-code profiles](repository-bootstrap.md#optional-project-capabilities) own PR review and merge assessment, optional data-pipeline architecture, and optional UI acceptance. User-level guidance retains authorization, tool operation, and personal feedback. Viewrule installation does not impose application design policy or gates; project profiles preserve their selected lifecycle, authority, adoption, and existing conventions.

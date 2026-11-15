@@ -20,6 +20,8 @@ the failure modes on this machine that have actually cost time.
 
 ## Pull requests
 
+Before preparing a change for review or assessing merge readiness, read [the project review procedure](references/review.md). It governs independent review, scoped repair, and exact-head validation for this installed profile; repository-specific instructions and publication authority remain binding.
+
 Follow [the shared PR guidance](../../../docs/pull-requests.md) when creating or updating a PR. The calling agent owns GitHub descriptions and revisions; follow the target repository’s installed drafting and publication guidance. Separate drafting agents are optional when explicitly useful, not publication prerequisites. Use `pull-request-writer` guidance for other review platforms. Lead with the outcome and why, include screenshots when useful, and add context only when the diff and checks do not supply it. Do not reproduce automated test results. Use `--body-file` for multiline updates and verify the rendered result.
 
 ## Branch naming

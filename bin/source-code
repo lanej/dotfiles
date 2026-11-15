@@ -196,6 +196,8 @@ SKILLS = DEFAULT_SKILLS + (
     "python",
     "rust",
     "protobuf",
+    "data-pipeline",
+    "ui-acceptance",
 )
 STAGES = ("research", "alpha", "beta", "production")
 KINDS = ("service", "library", "tool")
@@ -730,6 +732,8 @@ def project_guidance(policy: Policy) -> str:
 
 def complete_skills(skills: Iterable[str], explicit_stage: bool = False, kind: str | None = None) -> set[str]:
     skills = set(skills)
+    if skills & {"data-pipeline", "ui-acceptance"}:
+        skills.add("architecture")
     if kind == "library":
         skills.add("library-code-comments")
     if "typescript" in skills:
@@ -840,6 +844,8 @@ def package(
                     ("../../../docs/verification.md", "references/verification.md"),
                     ("../../../docs/pull-requests.md", "references/pull-requests.md"),
                 ]
+            if skill == "git" and str(relative) == "references/review.md":
+                replacements = [("../../../../docs/pull-requests.md", "pull-requests.md")]
             if skill == "builder" and str(relative) == "references/instructions.md":
                 replacements = [
                     ("~/.local/share/software-standards/builder/SKILL.md", "../SKILL.md"),
