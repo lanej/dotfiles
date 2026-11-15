@@ -19,7 +19,7 @@
     "source-code-lifecycle": "1.2.0",
     "testing": "1.0.0",
     "typescript": "1.1.0",
-    "octo-manager": "1.0.0",
+    "octo-manager": "1.0.1",
     "protobuf": "1.0.0"
   }
 }
