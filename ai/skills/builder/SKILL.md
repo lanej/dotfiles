@@ -5,6 +5,8 @@ description: Use when designing, implementing, modifying, debugging or reviewing
 
 # Builder
 
+Before selecting application tools or an API protocol, read [the project tool-choice policy](../source-code-lifecycle/references/tool-choices.md). Apply the declared authority and adoption at every lifecycle stage, including research; preserve external providers’ protocols and established stacks according to that policy.
+
 Read the project's installed `source-code-lifecycle` skill and apply its construction expectations. If no project lifecycle policy is installed, preserve existing project requirements and the core's safeguards. This core applies to software produced by humans or agents. `MUST` properties are required; `SHOULD` techniques are defaults whose departures need concrete justification. Apply it within the changed capability, preserving project constraints and instruction precedence. Passing checks, instruction following, directory layout and written explanations cannot establish software compliance.
 
 ## Required properties

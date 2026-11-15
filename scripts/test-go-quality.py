@@ -125,7 +125,7 @@ def run(command, cwd, success=True):
 
 with tempfile.TemporaryDirectory(prefix="go-quality-acceptance-") as temporary:
     project = Path(temporary) / "Go project"
-    run([str(SOURCE / "bin/repo-bootstrap"), "--repo", str(project), "--init", "--go",
+    run([str(SOURCE / "bin/repo-bootstrap"), "--repo", str(project), "--authority", "owned", "--adoption", "new", "--init", "--go",
          "--skills", "go", "--agents", "codex", "--pr-template", "none"], SOURCE)
     (project / "go.mod").write_text("module example.invalid/quality\n\ngo 1.26.11\n")
     (project / "state.go").write_text(CODE + "\nfunc Extra()int{return 1}\n")
