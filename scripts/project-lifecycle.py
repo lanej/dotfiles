@@ -83,8 +83,8 @@ def approval_cli(project, action):
         installed_revision = record["revision"]
     activation = ("Start new Keylease sessions; existing brokers and leases are preserved"
                   if project == "keylease" else
-                  "Configure SSH to invoke Intent; let existing SSH masters exit naturally, "
-                  "then establish a new underlying connection. Do not terminate active shared sessions")
+                  "Automatic SSH approval awaits production stable-socket integration; "
+                  "installation does not activate transport. Existing sessions are preserved")
     if action == "status":
         print(json.dumps({"installed_binary": str(installed) if installed.is_file() else None,
                           "installed_revision": installed_revision, "running_revision": None,
@@ -99,6 +99,8 @@ def approval_cli(project, action):
             raise ValueError(f"Build and install this {project} revision before restarting")
         print(activation + "; active process revisions are unknown", file=sys.stderr)
         return 3
+    if project == "keylease" and run(["go", "env", "CGO_ENABLED"], capture=True) != "1":
+        raise ValueError("Keylease desktop authentication requires CGO_ENABLED=1 and a native C compiler")
     run(["make", "install", f"PREFIX={prefix}"])
     built = Path.cwd() / "bin" / project
     built_digest = binary_digest(built) if built.is_file() else None

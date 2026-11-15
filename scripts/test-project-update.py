@@ -26,6 +26,15 @@ class LifecycleTests(unittest.TestCase):
                     "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
                     "GIT_AUTHOR_NAME": "Fixture", "GIT_AUTHOR_EMAIL": "fixture@example.test",
                     "GIT_COMMITTER_NAME": "Fixture", "GIT_COMMITTER_EMAIL": "fixture@example.test"}
+        tools = self.base / "fixture-bin"
+        tools.mkdir()
+        go = tools / "go"
+        go.write_text(f"#!{sys.executable}\n"
+                      "import os, sys\n"
+                      "if sys.argv[1:] != ['env', 'CGO_ENABLED']: sys.exit('unexpected Go invocation')\n"
+                      "print(os.environ.get('CGO_ENABLED', '1'))\n")
+        go.chmod(0o755)
+        self.env["PATH"] = str(tools) + os.pathsep + self.env["PATH"]
         self.origin, self.source, self.checkout = [self.base / name for name in ("remote.git", "source", "checkout with spaces")]
         self.git(self.base, "init", "--bare", str(self.origin))
         self.git(self.base, "init", "--initial-branch=trunk", str(self.source))
@@ -205,6 +214,42 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual({row["project"] for row in json.loads(result.stdout)},
                          {"octo-manager", "zellij", "bedrock-router", "intent", "keylease"})
+
+    def test_dotfiles_install_clones_and_preserves_both_tools(self):
+        for project, directory in (("intent", "intent"), ("keylease", "1password-agent")):
+            with self.subTest(project=project):
+                (self.source / "payload").write_text("installed " + project)
+                (self.source / ".gitignore").write_text("bin/\n")
+                (self.source / "Makefile").write_text(
+                    "install:\n\tmkdir -p bin $(PREFIX)/bin\n"
+                    f"\tcp payload bin/{project}\n\tcp bin/{project} $(PREFIX)/bin/{project}\n")
+                self.git(self.source, "add", ".")
+                self.git(self.source, "commit", "-m", project)
+                self.git(self.source, "push")
+                env = {**self.env, "GIT_CONFIG_COUNT": "1",
+                       "GIT_CONFIG_KEY_0": f"url.{self.origin}.insteadOf",
+                       "GIT_CONFIG_VALUE_0": f"https://github.com/lanej/{project}.git"}
+                def install():
+                    return subprocess.run([sys.executable, str(ROOT / "scripts/install-approval-cli.py"), project],
+                                          env=env, text=True, capture_output=True)
+                result = install()
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                checkout = self.base / "src" / directory
+                head = self.git(checkout, "rev-parse", "HEAD")
+                self.git(self.source, "commit", "--allow-empty", "-m", "new remote source")
+                self.git(self.source, "push")
+                self.assertEqual(install().returncode, 0)
+                self.assertEqual(self.git(checkout, "rev-parse", "HEAD"), head)
+                if project == "keylease":
+                    disabled = subprocess.run([sys.executable, str(ROOT / "scripts/install-approval-cli.py"), project],
+                                              env={**env, "CGO_ENABLED": "0"}, text=True, capture_output=True)
+                    self.assertNotEqual(disabled.returncode, 0)
+                    self.assertIn("CGO_ENABLED=1", disabled.stdout + disabled.stderr)
+                valuable = checkout / "active-state"
+                valuable.write_text("preserve")
+                self.assertNotEqual(install().returncode, 0)
+                self.assertEqual(valuable.read_text(), "preserve")
+                self.assertEqual((self.base / ".local/bin" / project).read_text(), "installed " + project)
 
     def test_approval_projects_install_and_preserve_active_sessions(self):
         make = self.base / "tools/make"

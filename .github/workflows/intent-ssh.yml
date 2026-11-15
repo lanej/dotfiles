@@ -1,0 +1,27 @@
+name: Intent SSH configuration
+on:
+  pull_request:
+    paths:
+      - 'scripts/setup-intent-ssh.py'
+      - 'scripts/test-intent-ssh.py'
+      - '.github/workflows/intent-ssh.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'scripts/setup-intent-ssh.py'
+      - 'scripts/test-intent-ssh.py'
+      - '.github/workflows/intent-ssh.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  config:
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v6
+      - run: make test-intent-ssh

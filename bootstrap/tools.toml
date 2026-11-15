@@ -359,3 +359,13 @@ setup = ["bspwm"]
 
 [tools.unzip]
 installer = "system"
+
+[tools.intent]
+description = "Install Intent approval CLI and its embedded Mac helper without activating SSH transport."
+installer = "approval-cli"
+requires = ["git", "go"]
+
+[tools.keylease]
+description = "Install the Keylease credential broker; preserve active brokers and leases."
+installer = "approval-cli"
+requires = ["git", "go", "build"]
