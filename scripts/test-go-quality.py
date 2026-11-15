@@ -215,7 +215,7 @@ func Shadow(values []int) int {
     run(["git", "-c", "user.name=Go acceptance", "-c", "user.email=go@example.invalid",
          "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null",
          "commit", "-qm", "Existing source and policy"], legacy)
-    run([str(SOURCE / "bin/repo-bootstrap"), "--repo", str(legacy), "--go",
+    run([str(SOURCE / "bin/repo-bootstrap"), "--repo", str(legacy), "--authority", "shared", "--adoption", "hold", "--go",
          "--skills", "go", "--pr-template", "none"], SOURCE)
     assert (legacy / ".golangci.yaml").read_text() == original_config
     before_source = (legacy / "state.go").read_bytes()
@@ -281,7 +281,7 @@ func Shadow(values []int) int {
     # Changed team policy requires regenerating its merged layer explicitly.
     (legacy / ".golangci.yaml").write_text(original_config + "\n# Policy revision.\n")
     assert "existing lint policy changed" in run([*check, "lint"], legacy, success=False)
-    run([str(SOURCE / "bin/repo-bootstrap"), "--repo", str(legacy), "--go",
+    run([str(SOURCE / "bin/repo-bootstrap"), "--repo", str(legacy), "--authority", "shared", "--adoption", "hold", "--go",
          "--skills", "go", "--pr-template", "none"], SOURCE)
     run([*check, "lint"], legacy)
 
