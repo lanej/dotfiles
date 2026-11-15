@@ -36,6 +36,12 @@ def main():
         assert document["hooks"]["PreToolUse"][0] == existing
         assert document["custom"] == {"preserve": True}
         event = {"hook_event_name": "PreToolUse", "session_id": "session-123", "cwd": str(home), "tool_use_id": "call-456", "tool_input": {"command": "gh pr create --title 'fix: preserve spaces' --body 'Observed outcome.' --draft", "timeout_ms": 1000}}
+        # Global hooks leave unconfigured repositories alone, including malformed publication commands.
+        assert run([], event) == ""
+        subprocess.run(["git", "init", "-q", str(home)], check=True)
+        assert run([], event) == ""
+        (home / ".octo").mkdir()
+        (home / ".octo/pr-contract.json").write_text('{"schemaVersion":1,"template":".github/pull_request_template.md"}')
         output = json.loads(run([], event))["hookSpecificOutput"]
         assert output["permissionDecision"] == "allow"
         changed = output["updatedInput"]
@@ -58,7 +64,8 @@ def main():
         assert response("gh pr create --fill")["permissionDecision"] == "deny"
         assert response("cd repo && gh pr create --title a --body b")["permissionDecision"] == "deny"
         assert response("gh pr create --title '$TITLE' --body body")["permissionDecision"] == "deny"
-        assert response("octo-manager submit-pr --intent-file intent.json --thread-id stale --cwd /stale")["permissionDecision"] == "allow"
+        assert response("octo-manager submit-pr --intent-file intent.json --thread-id stale --cwd /stale")["permissionDecision"] == "deny"
+        assert response("octo-manager submit-pr --title done --body body --thread-id stale --cwd /stale")["permissionDecision"] == "allow"
         retired = response("gh-pr-create-from description.md --base main")
         assert retired["permissionDecision"] == "deny"
         assert "octo-manager submit-pr" in retired["permissionDecisionReason"]

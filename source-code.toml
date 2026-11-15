@@ -1,6 +1,8 @@
 schema_version = 1
 stage = "beta"
 kind = "tool"
+authority = "owned"
+adoption = "new"
 
 [checks.python]
 enabled = true

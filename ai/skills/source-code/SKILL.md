@@ -21,20 +21,23 @@ Run `source-code detect --repo PATH --json` to inspect language evidence without
 
 ## Set up or change a profile
 
-Use authored TOML for reviewable project configuration. It requires `schema_version = 1`; top-level stage, kind, mode, skills, agents, pr_template, detect_languages, and policy_version map to the CLI selections. Nested `[checks.go]` and `[checks.typescript]` tables select enabled/rollout, with projects for TypeScript. `[checks.python]` selects enabled and paths for an opt-in strict Python profile; no ratchet baseline is introduced. Read subcommand help and the owning setup guide for the full contract. Explicit CLI values override TOML, then saved selections and defaults apply. `--config PATH` selects an alternate file relative to the invocation directory; supply that explicit path again on later commands. Ordinary setup and upgrades never rewrite the authored file.
+Use authored TOML for reviewable project configuration. It requires `schema_version = 1`; top-level stage, kind, authority, adoption, mode, skills, agents, pr_template, detect_languages, and policy_version map to the CLI selections. Nested `[checks.go]` and `[checks.typescript]` tables select enabled/rollout, with projects for TypeScript. `[checks.python]` selects enabled and paths for an opt-in strict Python profile; no ratchet baseline is introduced. Read subcommand help and the owning setup guide for the full contract. Explicit CLI values override TOML, then saved selections and defaults apply. `--config PATH` selects an alternate file relative to the invocation directory; supply that explicit path again on later commands. Ordinary setup and upgrades never rewrite the authored file.
 
 Use `kind = "service"`, `"library"`, or `"tool"` in TOML, or `--kind KIND`, to select usage-specific obligations. Kind is optional, never inferred, and saved independently of lifecycle stage. Omission retains an installed kind; library kind selects caller documentation guidance.
 
-Use the requested stage and visibility; preserve saved selections on an existing installation. New installations default to beta and full generated checks. The available stages are research, alpha, beta, and production; lowering a stage relaxes introduced checks and requires reviewing the preview. A stage does not waive repository gates or certify readiness.
+New profiles install repository-only publication guidance with the core skills. It is selected through `skills` like other packages; curated subsets can omit it. Existing saved selections are retained. Setup installs that guidance into the target repository, never the workstation skill tree, and does not start a service or modify user-level hooks.
 
-Octo Manager installation remains opt-in while its PR submission path requires a running daemon. Project setup does not install it or enable hooks; preserve existing repository publication requirements. PR Writer is an explicit `--skills pr-writer` option for drafting and revisions, rather than a default dependency. Existing installed skills are retained on upgrades.
+Select `authority = "owned" | "shared" | "upstream"` and `adoption = "hold" | "new" | "backfill"` in TOML, or pass `--authority` and `--adoption`. Setup and upgrade require both choices unless already configured or saved; never infer them from hosting or public visibility. Owned projects control their stack, shared projects need project agreement, and upstream contributions follow maintainer conventions. Hold preserves the stack, new applies the catalog to new independent surfaces, and backfill records migration direction but requires explicitly scoped migration work. Explain remains read-only with unset choices; legacy installs remain usable until their next setup/upgrade.
+
+Use the requested stage and visibility; preserve saved selections on an existing installation. New installations default to beta and full generated checks. Research includes proofs of concept. The available stages are research, alpha, beta, and production; lowering a stage relaxes introduced checks and requires reviewing the preview. A stage does not waive repository gates or certify readiness.
+
 
 Choose tracked mode to share project policy, or `--mode shadow` to exclude managed files through Git’s local exclusions while leaving shared instructions unchanged. Shadow mode is local Git visibility, not secret storage or a guarantee that other tools cannot see the files. Use `--skills` for a curated subset, `--agents codex` for Codex discovery only, and `--pr-template none` to omit a template when requested. Check subcommand help for strict/ratchet adoption of existing Go or TypeScript code.
 
 Preview the actual requested arguments before applying them. For example, private research guidance in an existing repository without generated language checks or a PR template:
 
 ```sh
-source-code setup --repo PATH --stage research --mode shadow --no-go --no-typescript --no-python --pr-template none --dry-run
+source-code setup --repo PATH --stage research --authority upstream --adoption hold --mode shadow --no-go --no-typescript --no-python --pr-template none --dry-run
 ```
 
 Review affected paths, conflicts, selected skills, and checks; then apply the same arguments without `--dry-run` within the user’s authorized setup scope. Do not replace existing instructions, customized files, or linked sources to make installation pass. The default conflict policy fails; inspect the reported files before choosing a supported resolution. Setup does not stage, commit, push, or publish repository changes.

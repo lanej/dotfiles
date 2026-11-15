@@ -34,6 +34,7 @@ class TypeScriptBootstrap(unittest.TestCase):
 
     def install(self, *args, ok=True):
         return command(self.root, "python3", str(SOURCE / "bin/source-code"), "setup", "--repo", str(self.root),
+                       "--authority", "owned", "--adoption", "new",
                        "--skills", "typescript", "--no-go", "--agents", "codex", "--pr-template", "none",
                        "--typescript", *args, ok=ok)
 

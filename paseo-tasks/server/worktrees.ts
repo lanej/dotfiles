@@ -30,6 +30,34 @@ const command = async (cwd: string, executable: string, args: string[]) =>
       maxBuffer: 2 * 1024 * 1024,
     })
   ).stdout.trim();
+const inspectTasks = async (cwd: string, executable: string) => {
+  let output: string;
+  try {
+    output = await command(cwd, executable, ["status", "--json"]);
+  } catch (error) {
+    // Status exits 1 for incomplete inventory, including unrelated missing repositories.
+    if (
+      !(error instanceof Error) ||
+      !("code" in error) ||
+      error.code !== 1 ||
+      !("stdout" in error) ||
+      typeof error.stdout !== "string"
+    )
+      throw error;
+    output = error.stdout;
+  }
+  return z
+    .object({
+      schema_version: z.literal(1),
+      command: z.literal("status"),
+      result: z.object({
+        tasks: z.array(
+          z.object({ owner_id: z.string().optional() }).passthrough(),
+        ),
+      }),
+    })
+    .parse(JSON.parse(output)).result.tasks;
+};
 const managedTask = z.object({
   id: z.string().regex(/^[a-f0-9]{32}$/),
   path: z.string(),
@@ -112,12 +140,7 @@ export class WorktreeManager implements Worktrees {
     attempting: () => void,
   ): Promise<Allocation> {
     const { primary, root, holder, branch, baseCommit, agent } = reservation;
-    const status = JSON.parse(
-      await command(primary, this.executable, ["status", "--json"]),
-    );
-    const rows = z
-      .array(z.object({ owner_id: z.string().optional() }).passthrough())
-      .parse(status.result.tasks);
+    const rows = await inspectTasks(primary, this.executable);
     const owned = rows
       .filter((row) => row.owner_id === holder)
       .map((row) => managedTask.parse(row));
