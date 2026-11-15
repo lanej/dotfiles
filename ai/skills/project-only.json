@@ -12,6 +12,7 @@
   "library-code-comments",
   "octo-manager",
   "pr-writer",
+  "protobuf",
   "python",
   "rust",
   "source-code-lifecycle",

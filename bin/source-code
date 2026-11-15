@@ -52,6 +52,7 @@ class Manifest(TypedDict, total=False):
     go_profile: bool
     typescript_profile: bool
     python_profile: bool
+    protobuf_profile: bool
     go_rollout: str
     go_legacy: str | None
 
@@ -90,6 +91,7 @@ class PolicySelection(TypedDict):
     go_profile: bool
     typescript_profile: bool
     python_profile: bool
+    protobuf_profile: bool
     detect_enabled: bool
     agent_selection: str
     agents: NotRequired[set[str]]
@@ -149,6 +151,7 @@ class Arguments(argparse.Namespace):
     typescript_rollout: str | None = None
     typescript_project: list[str] | None = None
     python: bool | None = None
+    protobuf: bool | None = None
     python_path: list[str] | None = None
     agents: str | None = None
     pr_template: str | None = None
@@ -191,6 +194,7 @@ SKILLS = DEFAULT_SKILLS + (
     "just",
     "python",
     "rust",
+    "protobuf",
 )
 STAGES = ("research", "alpha", "beta", "production")
 KINDS = ("service", "library", "tool")
@@ -229,6 +233,15 @@ PY_FILES = {
     ".python-quality/ty.toml": "ty.toml",
     ".python-quality/.gitignore": "gitignore",
     ".github/workflows/python-quality.yml": "python-quality.yml",
+}
+PROTO_FILES = {
+    "scripts/check-protobuf.py": "check-protobuf.py",
+    ".protobuf-quality.json": "protobuf-quality.json",
+    ".protobuf-quality/main.go": "main.go",
+    ".protobuf-quality/go.mod": "go.mod",
+    ".protobuf-quality/go.sum": "go.sum",
+    ".protobuf-quality/.gitignore": "gitignore",
+    ".github/workflows/protobuf-quality.yml": "protobuf-quality.yml",
 }
 TS_BASELINE = ".typescript-quality-baseline.json"
 TS_LOCK = ".typescript-quality/package-lock.json"
@@ -316,6 +329,7 @@ def allowed_path(relative: str) -> bool:
         HOST_RULE,
         *TS_FILES,
         *PY_FILES,
+        *PROTO_FILES,
     ):
         return True
     return any(
@@ -337,7 +351,7 @@ def read_state(root: Path) -> tuple[Manifest, Snapshot | None]:
         or not isinstance(state.get("files"), dict)
     ):
         raise ValueError(f"unrecognized manifest: {root / STATE}")
-    for profile in ("go_profile", "typescript_profile", "python_profile"):
+    for profile in ("go_profile", "typescript_profile", "python_profile", "protobuf_profile"):
         if profile in state and type(state[profile]) is not bool:
             raise ValueError(f"invalid manifest {profile}")
     if "mode" in state and state["mode"] not in ("tracked", "local"):
@@ -416,6 +430,7 @@ def load_configuration(args: Arguments) -> None:
             "typescript_rollout",
             "typescript_project",
             "python",
+            "protobuf",
             "python_path",
             "agents",
             "pr_template",
@@ -488,13 +503,17 @@ def load_configuration(args: Arguments) -> None:
             raise ValueError("configuration skills must be a nonempty array of unique supported skill names")
         values["skills"] = ",".join(skills)
     checks = data.get("checks", {})
-    if not isinstance(checks, dict) or set(checks) - {"go", "typescript", "python"}:
-        raise ValueError("configuration checks accepts only go, typescript, and python tables")
+    if not isinstance(checks, dict) or set(checks) - {"go", "typescript", "python", "protobuf"}:
+        raise ValueError("configuration checks accepts only go, typescript, python, and protobuf tables")
     for language, fields in checks.items():
         allowed_fields = (
-            {"enabled", "paths"}
-            if language == "python"
-            else {"enabled", "rollout"} | ({"projects"} if language == "typescript" else set())
+            {"enabled"}
+            if language == "protobuf"
+            else (
+                {"enabled", "paths"}
+                if language == "python"
+                else {"enabled", "rollout"} | ({"projects"} if language == "typescript" else set())
+            )
         )
         if not isinstance(fields, dict) or set(fields) - allowed_fields:
             raise ValueError(f"invalid checks.{language} keys")
@@ -542,14 +561,16 @@ def load_configuration(args: Arguments) -> None:
             raise ValueError(f"checks.{language} cannot disable checks while selecting rollout or projects")
     args.config_path, args.config_values = path, values
     if args.command != "validate":
-        disabled_cli = {language for language in ("go", "typescript", "python") if getattr(args, language) is False}
+        disabled_cli = {
+            language for language in ("go", "typescript", "python", "protobuf") if getattr(args, language) is False
+        }
         for key, value in values.items():
             if any(key.startswith(language + "_") for language in disabled_cli):
                 continue
             if getattr(args, key) is None:
                 setattr(args, key, value)
                 args.config_applied.add(key)
-        for language in ("go", "typescript", "python"):
+        for language in ("go", "typescript", "python", "protobuf"):
             if getattr(args, language) is False and (
                 getattr(args, f"{language}_rollout", None)
                 or language == "typescript"
@@ -589,7 +610,7 @@ def config_exclude_text(original: str, relative: str | None, private: bool) -> s
 
 def configuration_drift(args: Arguments, state: Manifest, root: Path) -> list[str]:
     warnings = []
-    mapping = {"go": "go_profile", "typescript": "typescript_profile", "python": "python_profile"}
+    mapping = {name: name + "_profile" for name in ("go", "typescript", "python", "protobuf")}
     for key, desired in args.config_values.items():
         if key == "skills":
             expected = complete_skills(
@@ -711,7 +732,7 @@ def complete_skills(skills: Iterable[str], explicit_stage: bool = False, kind: s
         skills.add("library-code-comments")
     if "typescript" in skills:
         skills.add("javascript")
-    if skills & {"go", "typescript", "javascript", "python", "rust"}:
+    if skills & {"go", "typescript", "javascript", "python", "rust", "protobuf"}:
         skills.add("library-code-comments")
     if "library-code-comments" in skills:
         skills.add("code-comments")
@@ -749,6 +770,8 @@ def artifact_owner(path: str) -> str | None:
         return "typescript"
     if path in PY_FILES:
         return "python"
+    if path in PROTO_FILES:
+        return "protobuf"
     if path in {POLICY, VERSIONS, GUIDANCE, PROJECT_GUIDANCE, HOST_RULE, LIFECYCLE_RUNNER}:
         return "source-code-lifecycle"
     if path in {".github/pull_request_template.md", ".agents/templates/pull_request_template.md"}:
@@ -763,6 +786,7 @@ def package(
     go_profile: bool = False,
     typescript_profile: bool = False,
     python_profile: bool = False,
+    protobuf_profile: bool = False,
 ) -> tuple[dict[str, Snapshot], dict[str, bytes]]:
     """Assemble from canonical sources; only installation paths are adapted."""
     files: dict[str, Snapshot] = {}
@@ -874,6 +898,9 @@ def package(
     if python_profile:
         for destination, name in PY_FILES.items():
             add(destination, SOURCE / "ai/skills/python/assets" / name)
+    if protobuf_profile:
+        for destination, name in PROTO_FILES.items():
+            add(destination, SOURCE / "ai/skills/protobuf/assets" / name)
     return files, payloads
 
 
@@ -1090,6 +1117,28 @@ def python_configuration(root: Path, args: Arguments, desired: dict[str, Snapsho
     desired[path] = file_entry(data)
 
 
+def protobuf_configuration(root: Path, desired: dict[str, Snapshot], payloads: dict[str, bytes]) -> None:
+    path = ".protobuf-quality.json"
+    current = inspect(root, path)
+    if current is None:
+        return
+    if current["kind"] != "file":
+        raise ValueError("preserving linked Protobuf quality policy")
+    data = (root / path).read_bytes()
+    settings = json.loads(data)
+    if (
+        not isinstance(settings, dict)
+        or set(settings) != {"version", "against"}
+        or type(settings["version"]) is not int
+        or settings["version"] != 1
+        or settings["against"] is not None
+        and (not isinstance(settings["against"], str) or not settings["against"].strip())
+    ):
+        raise ValueError("invalid Protobuf quality policy")
+    payloads[path] = data
+    desired[path] = file_entry(data)
+
+
 def exclude_text(original: str, paths: set[str]) -> str:
     """Replace only our block, preserving all unrelated ignore rules."""
     if (
@@ -1220,6 +1269,9 @@ def resolve_policy(root: Path, args: Arguments, state: Manifest) -> ResolvedPoli
     )
     if python_profile:
         skills.add("python")
+    protobuf_profile = args.protobuf if args.protobuf is not None else state.get("protobuf_profile", False)
+    if protobuf_profile:
+        skills.add("protobuf")
     kind = args.kind or state.get("kind")
     authority = args.authority or state.get("authority")
     adoption = args.adoption or state.get("adoption")
@@ -1275,6 +1327,8 @@ def resolve_policy(root: Path, args: Arguments, state: Manifest) -> ResolvedPoli
             and typescript_profile
             or name == "python"
             and python_profile
+            or name == "protobuf"
+            and protobuf_profile
         ):
             sources.append({"source": "dependency", "detail": name + " check profile"})
         if not sources:
@@ -1284,6 +1338,7 @@ def resolve_policy(root: Path, args: Arguments, state: Manifest) -> ResolvedPoli
         ("go", "go_rollout", "go_profile", "root go.mod"),
         ("typescript", "typescript_rollout", "typescript_profile", "explicit TypeScript adoption"),
         ("python", "python_path", "python_profile", "explicit Python adoption"),
+        ("protobuf", "protobuf", "protobuf_profile", "explicit Protobuf adoption"),
     ):
         flag_origin = origin(name, saved_key)
         if getattr(args, name) is None and (
@@ -1307,6 +1362,7 @@ def resolve_policy(root: Path, args: Arguments, state: Manifest) -> ResolvedPoli
         "go_profile": go_profile,
         "typescript_profile": typescript_profile,
         "python_profile": python_profile,
+        "protobuf_profile": protobuf_profile,
         "detect_enabled": detect_enabled,
         "detection": detection,
         "agent_selection": agent_selection,
@@ -1372,7 +1428,10 @@ def install(args: Arguments) -> None:
     )
     detect_enabled, detection = resolved["detect_enabled"], resolved["detection"]
     agent_selection, agents, template = resolved["agent_selection"], resolved["agents"], resolved["template"]
-    desired, payloads = package(sorted(skills), agents, template, go_profile, typescript_profile, python_profile)
+    protobuf_profile = resolved["protobuf_profile"]
+    desired, payloads = package(
+        sorted(skills), agents, template, go_profile, typescript_profile, python_profile, protobuf_profile
+    )
     versions = read_versions(SOURCE / "ai/skills/source-code-versions.json")
     pins: dict[str, str] = {}
     languages: list[str] = []
@@ -1390,6 +1449,7 @@ def install(args: Arguments) -> None:
                 ("go", go_profile, "scripts/check-go.sh"),
                 ("typescript", typescript_profile, "scripts/check-typescript.mjs"),
                 ("python", python_profile, "scripts/check-python.py"),
+                ("protobuf", protobuf_profile, "scripts/check-protobuf.py"),
             )
             if active or entry in state["files"]
         ]
@@ -1428,6 +1488,7 @@ def install(args: Arguments) -> None:
             ("go", go_profile, "scripts/check-go.sh"),
             ("typescript", typescript_profile, "scripts/check-typescript.mjs"),
             ("python", python_profile, "scripts/check-python.py"),
+            ("protobuf", protobuf_profile, "scripts/check-protobuf.py"),
         ]
         if policy_changed and (
             not retained_skills <= skills
@@ -1506,6 +1567,8 @@ def install(args: Arguments) -> None:
         rollout, legacy, legacy_snapshot = go_configuration(root, state, args.go_rollout, desired, payloads)
     if python_profile:
         python_configuration(root, args, desired, payloads)
+    if protobuf_profile:
+        protobuf_configuration(root, desired, payloads)
     if template == "github":
         conflicts = template_conflicts(root)
         if conflicts:
@@ -1641,6 +1704,8 @@ def install(args: Arguments) -> None:
         new_state["typescript_profile"] = typescript_profile
     if python_profile or "python_profile" in state:
         new_state["python_profile"] = python_profile
+    if protobuf_profile or "protobuf_profile" in state:
+        new_state["protobuf_profile"] = protobuf_profile
     state_data = (json.dumps(new_state, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode()
     state_changed = state_before != file_entry(state_data)
 
@@ -1767,6 +1832,8 @@ def prepare_upgrade(args: Arguments) -> None:
         args.typescript = bool(args.typescript_rollout or args.typescript_project) or state.get(
             "typescript_profile", False
         )
+    if args.protobuf is None:
+        args.protobuf = state.get("protobuf_profile", False)
     if args.python is None:
         args.python = bool(args.python_path) or state.get("python_profile", False)
     resolved = resolve_policy(root, args, state)
@@ -1915,6 +1982,7 @@ def validate_project(args: Arguments) -> int:
                         ("go", "scripts/check-go.sh"),
                         ("typescript", "scripts/check-typescript.mjs"),
                         ("python", "scripts/check-python.py"),
+                        ("protobuf", "scripts/check-protobuf.py"),
                     )
                     if path in state["files"]
                 }
@@ -1978,11 +2046,13 @@ def policy_view(
         ("go", "scripts/check-go.sh", go_rollout, ".go-quality.json"),
         ("typescript", "scripts/check-typescript.mjs", ts_rollout, ".typescript-quality.json"),
         ("python", "scripts/check-python.py", None, ".python-quality.json"),
+        ("protobuf", "scripts/check-protobuf.py", None, ".protobuf-quality.json"),
     ):
         selected = {
             "go": resolved["go_profile"],
             "typescript": resolved["typescript_profile"],
             "python": resolved["python_profile"],
+            "protobuf": resolved["protobuf_profile"],
         }[language]
         recorded = runner in state["files"]
         settings = {}
@@ -2037,6 +2107,7 @@ def recorded_policy(root: Path, state: Manifest, snapshot: Snapshot | None) -> P
         "go_profile": state.get("go_profile", False),
         "typescript_profile": state.get("typescript_profile", False),
         "python_profile": state.get("python_profile", False),
+        "protobuf_profile": state.get("protobuf_profile", False),
     }
     pins = policy.get("skills", state.get("skill_versions", {}))
     if not isinstance(pins, dict) or any(
@@ -2071,6 +2142,7 @@ def explain_policy(args: Arguments) -> int:
         resolved["go_profile"],
         resolved["typescript_profile"],
         resolved["python_profile"],
+        resolved["protobuf_profile"],
     )
     go_rollout, ts_rollout = None, None
     if resolved["go_profile"]:
@@ -2079,6 +2151,8 @@ def explain_policy(args: Arguments) -> int:
         ts_rollout, _ = typescript_configuration(root, args, desired, payloads)
     if resolved["python_profile"]:
         python_configuration(root, args, desired, payloads)
+    if resolved["protobuf_profile"]:
+        protobuf_configuration(root, desired, payloads)
     installed_pins = installed["skill_versions"] if installed is not None else {}
     pins = {
         name: versions["skills"][name] if name in resolved["skills"] else installed_pins.get(name)
@@ -2366,6 +2440,12 @@ def add_install_arguments(parser: argparse.ArgumentParser, inspection: bool = Fa
             help="existing/edited file policy; replace saves backups, never replaces symlinks",
         )
         parser.add_argument("--dry-run", action="store_true", help="show the complete plan without writes")
+    parser.add_argument(
+        "--protobuf",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="install strict Protobuf checks (opt-in; --no-protobuf retains existing files)",
+    )
     parser.add_argument(
         "--python",
         action=argparse.BooleanOptionalAction,

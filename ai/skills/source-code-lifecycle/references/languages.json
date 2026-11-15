@@ -3,5 +3,6 @@
   "typescript": {"skill": "typescript", "extensions": [".ts", ".tsx", ".mts", ".cts"], "manifests": ["tsconfig.json"]},
   "javascript": {"skill": "javascript", "extensions": [".js", ".jsx", ".mjs", ".cjs"], "manifests": ["package.json"]},
   "python": {"skill": "python", "extensions": [".py", ".pyi"], "manifests": ["pyproject.toml", "requirements.txt", "Pipfile", "setup.py"]},
-  "rust": {"skill": "rust", "extensions": [".rs"], "manifests": ["Cargo.toml"]}
+  "rust": {"skill": "rust", "extensions": [".rs"], "manifests": ["Cargo.toml"]},
+  "protobuf": {"skill": "protobuf", "extensions": [".proto"], "manifests": ["buf.yaml", "buf.work.yaml"]}
 }

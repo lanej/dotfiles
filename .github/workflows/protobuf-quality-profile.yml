@@ -1,0 +1,50 @@
+name: Protobuf correctness profile
+on:
+  pull_request:
+    paths:
+      - 'ai/skills/protobuf/assets/check-protobuf.py'
+      - 'ai/skills/protobuf/assets/protobuf-quality.json'
+      - 'ai/skills/protobuf/assets/main.go'
+      - 'ai/skills/protobuf/assets/go.mod'
+      - 'ai/skills/protobuf/assets/go.sum'
+      - 'ai/skills/protobuf/assets/gitignore'
+      - 'scripts/test-protobuf-quality.py'
+      - '.github/workflows/protobuf-quality-profile.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'ai/skills/protobuf/assets/check-protobuf.py'
+      - 'ai/skills/protobuf/assets/protobuf-quality.json'
+      - 'ai/skills/protobuf/assets/main.go'
+      - 'ai/skills/protobuf/assets/go.mod'
+      - 'ai/skills/protobuf/assets/go.sum'
+      - 'ai/skills/protobuf/assets/gitignore'
+      - 'scripts/test-protobuf-quality.py'
+      - '.github/workflows/protobuf-quality-profile.yml'
+permissions:
+  contents: read
+jobs:
+  profile:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: 'ai/skills/protobuf/assets/go.mod'
+          cache-dependency-path: 'ai/skills/protobuf/assets/go.sum'
+      - uses: bufbuild/buf-action@v1
+        with:
+          version: '1.75.0'
+          setup_only: true
+      - run: go vet ./...
+        working-directory: ai/skills/protobuf/assets
+      - run: test -z "$(gofmt -l main.go)"
+        working-directory: ai/skills/protobuf/assets
+      - run: python3 scripts/test-protobuf-quality.py

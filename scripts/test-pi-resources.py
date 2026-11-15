@@ -76,7 +76,8 @@ class SharedResourceWorkflow(unittest.TestCase):
                 target = checkout / relative
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(ROOT / relative, target)
-            shutil.copytree(ROOT / "ai/skills/builder", checkout / "ai/skills/builder")
+            for name in ("builder", "protobuf"):
+                shutil.copytree(ROOT / "ai/skills" / name, checkout / "ai/skills" / name)
             shutil.copyfile(ROOT / "ai/skills/project-only.json", checkout / "ai/skills/project-only.json")
             agent = home / ".pi/agent"
             prompts = agent / "prompts"
@@ -97,6 +98,7 @@ class SharedResourceWorkflow(unittest.TestCase):
             install()
             shared = home / ".agents/skills/dotfiles/builder/SKILL.md"
             self.assertFalse(shared.exists())
+            self.assertFalse((home / ".agents/skills/dotfiles/protobuf/SKILL.md").exists())
             role = prompts / "dotfiles-code-reviewer.md"
             self.assertIn(str(checkout / "ai/agents/code-reviewer.md"), role.read_text())
             self.assertIn("$ARGUMENTS", role.read_text())

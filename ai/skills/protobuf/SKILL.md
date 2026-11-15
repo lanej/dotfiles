@@ -1,0 +1,14 @@
+---
+name: protobuf
+description: Use when creating, modifying, reviewing, or validating Protobuf schemas. Apply strict Buf lint, formatting, compilation, and compatibility checks, including a native rule rejecting string fields named with a _json suffix.
+---
+
+# Protobuf
+
+Read the project's [source-code lifecycle](../source-code-lifecycle/SKILL.md). When `protobuf` is listed in `.source-code.json` languages, run `python3 scripts/check-source-code.py protobuf` for its generated gate. Detection installs guidance only; opt into checks with `source-code setup --protobuf`. Preserve existing project gates and Buf workspace, dependency, and generation configuration. Read [the profile guide](references/correctness.md) before adoption or configuration changes.
+
+Model structured data with explicit messages, enums, repeated fields, typed maps, and `oneof` variants. Do not serialize JSON into string fields in place of a typed contract. The native `FIELD_NO_JSON_STRING` Buf plugin rejects fields whose declared type is `string` and whose name ends in `_json`, including nested, repeated, and oneof fields. Generic names, bytes, wrappers, maps, and dynamic well-known types are outside this rule; review their intended contracts rather than claiming they have been analyzed. Application code can still hide JSON in innocently named strings.
+
+Run `python3 scripts/check-protobuf.py tools` explicitly to provision pinned Buf if absent and build the native plugin with Go. Rebuild after plugin source or module changes. CI uses the official Buf Action to install Buf and the same tools command to build the plugin. Setup and check modes do not provision tools. Use `lint` during implementation, `format` to check, and `fmt` to apply formatting. Research compiles and runs the JSON string rule; alpha adds strict lint and format checking; beta/production also require an explicit compatibility baseline. Supply `--against` to the standalone runner or set `PROTOBUF_AGAINST` for the lifecycle gate. CI compares against the PR base or previous push commit.
+
+Fix findings at their cause. Inline Buf lint ignores are disabled in the generated gate. For published schemas, introduce compatible fields or a versioned migration; never rename published fields, recycle field numbers, loosen policy, or select a newer baseline merely to pass checks. Preserve deleted field names and numbers as reserved where appropriate. Buf checks schema structure and compatibility; use runtime validation and focused application tests for value constraints and actual serialization behavior.
