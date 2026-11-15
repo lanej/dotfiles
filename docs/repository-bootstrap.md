@@ -1,6 +1,6 @@
 # Source-code setup
 
-Use `source-code setup` to bring the shared Builder, architecture, and PR-writing guidance into a new or existing Git repository. It copies portable files rather than linking to a particular machine's dotfiles checkout. It preserves existing shared instructions and installs a project override that routes to the selected policy. It does not install software, modify global agent settings, stage files, or publish changes.
+Use `source-code setup` to bring the shared Builder, architecture, and Git/PR workflow guidance into a new or existing Git repository. It copies portable files rather than linking to a particular machine's dotfiles checkout. It preserves existing shared instructions and installs a project override that routes to the selected policy. It does not install software, modify global agent settings, stage files, or publish changes.
 
 The command needs Python 3.11+ and Git 2.31+ on macOS or Linux. Run `~/.files/bin/source-code setup` directly, or use `source-code setup` after `make source-code-config` has linked the commands into `~/.local/bin`.
 
@@ -30,7 +30,7 @@ The default is **tracked mode**: files are available for normal review and commi
 
 Linked worktrees are supported. Git shares `info/exclude` between worktrees: the same exact paths are excluded in sibling worktrees too. The installer does not untrack anything or change Git configuration. Worktrees requiring different tracking policies should not mix local and tracked installations at the same paths.
 
-Existing `AGENTS.md`, `CLAUDE.md`, `.gitignore`, unrelated skills, and project PR templates are retained. The generated `AGENTS.override.md` records the chosen stage and pinned versions and directs the agent to read the existing `AGENTS.md` first. Codex loads the override instead of the same-directory `AGENTS.md`; this first-read instruction preserves the shared context. Claude installations add `.claude/rules/source-code.md` to route to the same override. Existing overrides and rules retain normal conflict protection. Start a new session or reload the client's skill catalog after installation.
+Existing `AGENTS.md`, `CLAUDE.md`, `.gitignore`, unrelated skills, and project PR templates are retained. The generated `AGENTS.override.md` is a small router: it directs the agent to read the authored `AGENTS.md` first, when present, then the generated `.agents/source-code.md`. That policy renders the resolved configuration: lifecycle stage, project kind, pinned skills, and selected language gates. Change authored configuration and rerun setup or upgrade to regenerate it; validation checks both the router and generated policy against installed state. Codex loads the override instead of the same-directory `AGENTS.md`; this first-read instruction preserves the shared context. Claude installations add `.claude/rules/source-code.md` to route to the same override. Existing overrides and rules retain normal conflict protection. Start a new session or reload the client's skill catalog after installation.
 
 ## Installed content
 
@@ -40,12 +40,14 @@ New default profiles include the repository-only `octo-manager` skill instead of
 | --- | --- |
 | `.agents/skills/builder/` | Existing Builder skill, architecture/construction references, and runnable examples |
 | `.agents/skills/architecture/` | Architecture design/review entrypoint using Builder's canonical standard |
+| `.agents/skills/git/` | Git workflow and portable PR references |
 | `.agents/skills/octo-manager/` | Repository-only PR initialization, drafting, validation, and publication guidance |
 | `.agents/skills/pr-writer/` | Optional PR drafting entrypoint and shared/GitHub writing references |
 | `.agents/skills/testing/` | Stage-specific verification and retained-behavior guidance |
 | `.agents/skills/source-code-lifecycle/` | Versioned lifecycle contract and command plans |
 | `.source-code.json` | Schema version, policy version, stage, and installed languages |
-| `AGENTS.override.md` | Generated project instructions and readable skill-version summary |
+| `AGENTS.override.md` | Generated router to authored project instructions and generated policy |
+| `.agents/source-code.md` | Generated lifecycle, kind, pinned skills, and language gate instructions |
 | `.agents/source-code-versions.json` | Installed skill-release registry matching the project pins |
 | `.claude/rules/source-code.md` | Claude's project-local route to the generated guidance, when selected |
 | `scripts/check-source-code.py` | Selected lifecycle gate, shared by local execution and generated CI |
@@ -96,7 +98,7 @@ adoption = "new"
 stage = "alpha"
 kind = "library"
 mode = "shadow"
-skills = ["builder", "architecture", "pr-writer"]
+skills = ["builder", "architecture"]
 agents = "both"
 pr_template = "none"
 detect_languages = true
@@ -145,7 +147,7 @@ The source-code implementation itself uses this profile: `make source-code-pytho
 
 The user-level `source-code` skill explains installation, detection, validation, and upgrades without loading project engineering policy. Agents can retrieve the exact skill with `source-code skill`, including outside a Git repository; the command prints only Markdown and never reads project configuration. Coding skills remain project-only.
 
-The `workstation` set selects `tools.source-code`, whose setup target links `source-code` and the `repo-bootstrap` compatibility command. Basic shell/terminal setup does not install those commands. Select `[tools] source-code = true` independently or use `false` to opt out. This installs commands only; project policies are still selected explicitly.
+The `workstation` set selects `tools.source-code`, whose setup target links `source-code` and the `repo-bootstrap` compatibility command. Basic shell/terminal setup does not install those commands. Select `[tools] source-code = true` independently or use `false` to opt out. The Octo executable remains a separately selected tool; linking source-code does not install it or start its daemon. Repository profiles select publication guidance independently. Configuration only links commands. Project policies are selected explicitly.
 
 ```sh
 source-code detect --repo ~/src/project --json
@@ -254,7 +256,7 @@ Reruns reuse the saved mode unless `--mode` is supplied. Unchanged managed files
 
 The canonical `ai/skills/source-code-versions.json` owns skill-release versions. `.source-code.json` pins the installed versions; the installed registry and generated override agree with those pins. Skill versions, lifecycle stage, policy version, source revision, and file fingerprints remain distinct. Updating a subset preserves the pins of retained skills. A version-changing update cannot skip locally customized skill content and still claim the newer release.
 
-`setup` remains the installation and reconfiguration command; it can also update installed files. Older installations can use `upgrade` to add pins and generated guidance. Existing `AGENTS.override.md` files require reconciliation or explicit `--conflict replace`, which saves the original in the installer's backup directory. Shadow mode excludes the override, registry, and Claude rule along with all other managed artifacts.
+`setup` remains the installation and reconfiguration command; it can also update installed files. Older installations can use `upgrade` to add pins and generated guidance. Existing `AGENTS.override.md` files require reconciliation or explicit `--conflict replace`, which saves the original in the installer's backup directory. Shadow mode excludes the router, generated policy, registry, and Claude rule along with all other managed artifacts.
 
 ## Validate skill packages
 

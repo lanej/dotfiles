@@ -11,7 +11,7 @@ Manage the `source-code` CLI and its project installations. This workstation ski
 
 ## Inspect the target
 
-Resolve the intended checkout and inspect existing repository instructions, `.source-code.json`, and `AGENTS.override.md` when present. Reuse an assigned worktree; setup operates on that checkout and does not allocate worktrees. Existing policy records the installed lifecycle stage, skill pins, check profiles, and detection evidence. Read authored `source-code.toml` at the target Git root when present; it expresses desired policy separately from generated state.
+Resolve the intended checkout and inspect existing repository instructions, `.source-code.json`, the `AGENTS.override.md` router, and generated `.agents/source-code.md` when present. Reuse an assigned worktree; setup operates on that checkout and does not allocate worktrees. Existing policy records the installed lifecycle stage, skill pins, check profiles, and detection evidence. Read authored `source-code.toml` at the target Git root when present; it expresses desired policy separately from generated state.
 
 Use `source-code --help` and the chosen subcommand’s `--help` for the installed version’s supported options. If the command is missing, the dotfiles workstation set supplies it; `make source-code-config` from the owning dotfiles checkout links it explicitly. Do not apply unrelated workstation configuration or assume a newer release is installed.
 
@@ -30,6 +30,7 @@ New profiles install repository-only publication guidance with the core skills. 
 Select `authority = "owned" | "shared" | "upstream"` and `adoption = "hold" | "new" | "backfill"` in TOML, or pass `--authority` and `--adoption`. Setup and upgrade require both choices unless already configured or saved; never infer them from hosting or public visibility. Owned projects control their stack, shared projects need project agreement, and upstream contributions follow maintainer conventions. Hold preserves the stack, new applies the catalog to new independent surfaces, and backfill records migration direction but requires explicitly scoped migration work. Explain remains read-only with unset choices; legacy installs remain usable until their next setup/upgrade.
 
 Use the requested stage and visibility; preserve saved selections on an existing installation. New installations default to beta and full generated checks. Research includes proofs of concept. The available stages are research, alpha, beta, and production; lowering a stage relaxes introduced checks and requires reviewing the preview. A stage does not waive repository gates or certify readiness.
+
 
 Choose tracked mode to share project policy, or `--mode shadow` to exclude managed files through Git’s local exclusions while leaving shared instructions unchanged. Shadow mode is local Git visibility, not secret storage or a guarantee that other tools cannot see the files. Use `--skills` for a curated subset, `--agents codex` for Codex discovery only, and `--pr-template none` to omit a template when requested. Check subcommand help for strict/ratchet adoption of existing Go or TypeScript code.
 
