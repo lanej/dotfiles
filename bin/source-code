@@ -800,8 +800,14 @@ def package(
                 ".agents/skills/git/references/pull-requests.md",
                 SOURCE / "docs/pull-requests.md",
                 [
-                    ("conventional-pull-requests.md", "https://github.com/lanej/dotfiles/blob/master/docs/conventional-pull-requests.md"),
-                    ("../ai/agents/github-pr-writer.md", "https://github.com/lanej/dotfiles/blob/master/ai/agents/github-pr-writer.md"),
+                    (
+                        "conventional-pull-requests.md",
+                        "https://github.com/lanej/dotfiles/blob/master/docs/conventional-pull-requests.md",
+                    ),
+                    (
+                        "../ai/agents/github-pr-writer.md",
+                        "https://github.com/lanej/dotfiles/blob/master/ai/agents/github-pr-writer.md",
+                    ),
                 ],
             )
         if skill == "octo-manager":
@@ -2203,7 +2209,8 @@ def add_install_arguments(parser: argparse.ArgumentParser, inspection: bool = Fa
     )
     parser.add_argument(
         "--skills",
-        help="comma-separated skill names (default: saved selection, else core and repository publication guidance): " + ", ".join(SKILLS),
+        help="comma-separated skill names (default: saved selection, else core and repository publication guidance): "
+        + ", ".join(SKILLS),
     )
     parser.add_argument(
         "--go",
