@@ -77,11 +77,43 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(self.git(self.checkout, "rev-parse", "HEAD"), self.git(self.source, "rev-parse", "HEAD"))
         self.assertEqual([json.loads(line) for line in self.log.read_text().splitlines()], [["build"], ["restart"]])
 
-    def test_dirty_and_ahead_checkouts_are_preserved(self):
+    def test_nonconflicting_local_changes_survive_update(self):
+        (self.checkout / "content").write_text("local edit")
         (self.checkout / "valuable").write_text("keep")
+        (self.source / "new-file").write_text("upstream addition")
+        self.git(self.source, "add", "new-file")
+        self.git(self.source, "commit", "-m", "unrelated upstream change")
+        self.git(self.source, "push")
+        rows = self.invoke("update", "fixture")
+        self.assertEqual(rows[0]["completed"], ["pull", "build", "restart"])
+        self.assertEqual((self.checkout / "content").read_text(), "local edit")
+        self.assertEqual((self.checkout / "valuable").read_text(), "keep")
+        self.assertEqual((self.checkout / "new-file").read_text(), "upstream addition")
+        self.assertEqual(self.git(self.checkout, "rev-parse", "HEAD"), self.git(self.source, "rev-parse", "HEAD"))
+
+    def test_conflicting_local_edit_blocks_update(self):
+        (self.checkout / "content").write_text("local edit")
+        head = self.git(self.checkout, "rev-parse", "HEAD")
+        self.commit("upstream edit")
+        self.git(self.source, "push")
         self.invoke("update", "fixture", code=1)
+        self.assertEqual((self.checkout / "content").read_text(), "local edit")
+        self.assertEqual(self.git(self.checkout, "rev-parse", "HEAD"), head)
         self.assertFalse(self.log.exists())
-        (self.checkout / "valuable").unlink()
+
+    def test_conflicting_untracked_file_blocks_update(self):
+        (self.checkout / "valuable").write_text("keep")
+        head = self.git(self.checkout, "rev-parse", "HEAD")
+        (self.source / "valuable").write_text("upstream addition")
+        self.git(self.source, "add", "valuable")
+        self.git(self.source, "commit", "-m", "add valuable")
+        self.git(self.source, "push")
+        self.invoke("update", "fixture", code=1)
+        self.assertEqual((self.checkout / "valuable").read_text(), "keep")
+        self.assertEqual(self.git(self.checkout, "rev-parse", "HEAD"), head)
+        self.assertFalse(self.log.exists())
+
+    def test_ahead_checkout_is_preserved(self):
         self.git(self.checkout, "commit", "--allow-empty", "-m", "local work")
         head = self.git(self.checkout, "rev-parse", "HEAD")
         self.invoke("update", "fixture", code=1)
