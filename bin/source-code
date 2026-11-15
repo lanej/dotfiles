@@ -67,6 +67,7 @@ class Detection(TypedDict):
     languages: list[str]
     skills: list[str]
     evidence: dict[str, list[str]]
+    protobuf_roots: NotRequired[list[str]]
 
 
 class Policy(TypedDict):
@@ -1249,6 +1250,14 @@ def resolve_policy(root: Path, args: Arguments, state: Manifest) -> ResolvedPoli
         raise ValueError("unknown skills: " + ", ".join(sorted(unknown)))
     detect_enabled = args.detect_languages if args.detect_languages is not None else state.get("detect_languages", True)
     detection = detect_languages(root, state) if detect_enabled else {"languages": [], "skills": [], "evidence": {}}
+    if not detect_enabled and (root / POLICY).is_file():
+        previous = json.loads((root / POLICY).read_text())
+        previous_detection = previous.get("detection", {}) if isinstance(previous, dict) else {}
+        roots = previous_detection.get("protobuf_roots") if isinstance(previous_detection, dict) else None
+        if roots is not None:
+            if not isinstance(roots, list) or not all(isinstance(name, str) for name in roots):
+                raise ValueError("invalid recorded Protobuf roots")
+            detection["protobuf_roots"] = roots
     skills.update(detection["skills"])
     go_profile = (
         args.go
@@ -1269,7 +1278,11 @@ def resolve_policy(root: Path, args: Arguments, state: Manifest) -> ResolvedPoli
     )
     if python_profile:
         skills.add("python")
-    protobuf_profile = args.protobuf if args.protobuf is not None else state.get("protobuf_profile", False)
+    protobuf_profile = (
+        args.protobuf
+        if args.protobuf is not None
+        else state.get("protobuf_profile", "protobuf" in detection["languages"])
+    )
     if protobuf_profile:
         skills.add("protobuf")
     kind = args.kind or state.get("kind")
@@ -1347,6 +1360,8 @@ def resolve_policy(root: Path, args: Arguments, state: Manifest) -> ResolvedPoli
             flag_origin = {"source": "dependency", "detail": "requested rollout or project selection"}
         elif getattr(args, name) is None and name == "go" and not state.get(saved_key) and (root / "go.mod").is_file():
             flag_origin = {"source": "detection", "detail": evidence}
+        if name == "protobuf" and args.protobuf is None and saved_key not in state and protobuf_profile:
+            flag_origin = {"source": "detection", "evidence": detection["evidence"]["protobuf"]}
         origins[f"checks.{name}.selected"] = flag_origin
     if args.pr_template is None and (
         go_profile and args.go_rollout == "ratchet" or typescript_profile and args.typescript_rollout == "ratchet"
@@ -1704,7 +1719,7 @@ def install(args: Arguments) -> None:
         new_state["typescript_profile"] = typescript_profile
     if python_profile or "python_profile" in state:
         new_state["python_profile"] = python_profile
-    if protobuf_profile or "protobuf_profile" in state:
+    if args.protobuf is not None or protobuf_profile or "protobuf_profile" in state:
         new_state["protobuf_profile"] = protobuf_profile
     state_data = (json.dumps(new_state, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode()
     state_changed = state_before != file_entry(state_data)
@@ -1832,8 +1847,6 @@ def prepare_upgrade(args: Arguments) -> None:
         args.typescript = bool(args.typescript_rollout or args.typescript_project) or state.get(
             "typescript_profile", False
         )
-    if args.protobuf is None:
-        args.protobuf = state.get("protobuf_profile", False)
     if args.python is None:
         args.python = bool(args.python_path) or state.get("python_profile", False)
     resolved = resolve_policy(root, args, state)
@@ -2444,7 +2457,7 @@ def add_install_arguments(parser: argparse.ArgumentParser, inspection: bool = Fa
         "--protobuf",
         action=argparse.BooleanOptionalAction,
         default=None,
-        help="install strict Protobuf checks (opt-in; --no-protobuf retains existing files)",
+        help="install strict Protobuf checks (default: detected schemas or saved selection; --no-protobuf retains existing files)",
     )
     parser.add_argument(
         "--python",

@@ -120,6 +120,64 @@ message Example {
     schema.write_text(good)
     settings.write_text(json.dumps({"version": 1, "against": str(image)}))
     run(root, "all")
+    # Detected standalone Buf workspaces keep their own schema roots, including Git baselines.
+    (root / "buf.yaml").unlink()
+    (root / "proto").rename(root / "api")
+    (root / "api/buf.yaml").write_text("version: v2\n")
+    other = root / "other/acme/v2"
+    other.mkdir(parents=True)
+    (root / "other/buf.yaml").write_text("version: v2\n")
+    other_schema = other / "example.proto"
+    other_good = good.replace("acme.v1", "acme.v2")
+    other_schema.write_text(other_good)
+    detected = subprocess.run(  # noqa: S603 -- real read-only project detection
+        [sys.executable, str(SOURCE / "bin/source-code"), "detect", "--repo", str(root), "--json"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    detection = json.loads(detected.stdout)
+    assert detection["protobuf_roots"] == ["api", "other"], detection
+    (root / ".source-code.json").write_text(json.dumps({"detection": detection}))
+    run(root, "fmt")
+    for args in (
+        ("add", "."),
+        (
+            "-c",
+            "user.name=Profile test",
+            "-c",
+            "user.email=profile@example.invalid",
+            "-c",
+            "core.hooksPath=/dev/null",
+            "commit",
+            "--quiet",
+            "-m",
+            "Nested workspaces",
+        ),
+    ):
+        subprocess.run([git, *args], cwd=root, check=True)  # noqa: S603 -- constructed fixture Git argv
+    run(root, "all", "--against", ".git#ref=HEAD")
+    other_schema.write_text(other_good.replace("display_name", "request_json"))
+    assert "request_json" in run(root, "build", success=False)
+    other_schema.write_text(other_good.replace("string display_name", "int32 display_name"))
+    run(root, "fmt")
+    run(root, "alpha")
+    run(root, "all", "--against", ".git#ref=HEAD", success=False)
+    # A root workspace can omit independently declared child workspaces; ancestry is not coverage.
+    other_schema.write_text(other_good)
+    (root / "buf.yaml").write_text("version: v2\nmodules:\n  - path: api\n")
+    detected = subprocess.run(  # noqa: S603 -- real read-only project detection
+        [sys.executable, str(SOURCE / "bin/source-code"), "detect", "--repo", str(root), "--json"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    detection = json.loads(detected.stdout)
+    assert detection["protobuf_roots"] == [".", "api", "other"], detection
+    (root / ".source-code.json").write_text(json.dumps({"detection": detection}))
+    run(root, "alpha")
+    other_schema.write_text(other_good.replace("display_name", "request_json"))
+    assert "request_json" in run(root, "build", success=False)
     settings.write_text('{"version": 999}')
     run(root, "build", success=False)
 

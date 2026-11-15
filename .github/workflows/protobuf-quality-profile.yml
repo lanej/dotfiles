@@ -9,6 +9,9 @@ on:
       - 'ai/skills/protobuf/assets/go.sum'
       - 'ai/skills/protobuf/assets/gitignore'
       - 'scripts/test-protobuf-quality.py'
+      - 'bin/source-code'
+      - 'scripts/source_code_languages.py'
+      - 'ai/skills/source-code-lifecycle/references/languages.json'
       - '.github/workflows/protobuf-quality-profile.yml'
   push:
     branches: [master]
@@ -20,6 +23,9 @@ on:
       - 'ai/skills/protobuf/assets/go.sum'
       - 'ai/skills/protobuf/assets/gitignore'
       - 'scripts/test-protobuf-quality.py'
+      - 'bin/source-code'
+      - 'scripts/source_code_languages.py'
+      - 'ai/skills/source-code-lifecycle/references/languages.json'
       - '.github/workflows/protobuf-quality-profile.yml'
 permissions:
   contents: read

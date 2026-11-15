@@ -10,7 +10,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import TypedDict, cast
 
 
@@ -76,6 +76,41 @@ def settings(root: Path) -> Settings:
     return cast(Settings, value)
 
 
+def schema_inputs(root: Path) -> list[str]:
+    policy = root / ".source-code.json"
+    inputs = (
+        json.loads(policy.read_text()).get("detection", {}).get("protobuf_roots", ["."]) if policy.is_file() else ["."]
+    )
+    if (
+        not isinstance(inputs, list)
+        or not inputs
+        or not all(
+            isinstance(name, str)
+            and name
+            and not PurePosixPath(name).is_absolute()
+            and ".." not in PurePosixPath(name).parts
+            and "," not in name
+            and "#" not in name
+            and (root / name).is_dir()
+            and (root / name).resolve().is_relative_to(root)
+            for name in inputs
+        )
+    ):
+        raise ValueError("invalid detected Protobuf roots; rerun source-code setup")
+    return cast(list[str], inputs)
+
+
+def baseline_input(against: str, source: str) -> str:
+    location, separator, options = against.partition("#")
+    if (
+        source != "."
+        and location.endswith(".git")
+        and not any(option.startswith("subdir=") for option in options.split(","))
+    ):
+        return location + "#" + (options + "," if separator and options else "") + "subdir=" + source
+    return against
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -93,8 +128,15 @@ def main() -> int:
             return 0
         config = settings(root)
         buf = buf_binary(root)
+        inputs = schema_inputs(root)
         if args.mode in {"fmt", "format", "alpha", "all"}:
-            run([buf, "format", "-w"] if args.mode == "fmt" else [buf, "format", "--diff", "--exit-code"], root)
+            for source in inputs:
+                run(
+                    [buf, "format", source, "-w"]
+                    if args.mode == "fmt"
+                    else [buf, "format", source, "--diff", "--exit-code"],
+                    root,
+                )
         if args.mode in {"fmt", "format"}:
             return 0
         if not (root / PLUGIN).is_file():
@@ -104,27 +146,43 @@ def main() -> int:
             raise ValueError(
                 "set an explicit compatibility baseline with --against, PROTOBUF_AGAINST, or saved against"
             )
-        with tempfile.TemporaryDirectory(prefix="protobuf-quality-") as temporary:
-            image = Path(temporary) / "image.binpb"
-            # Retain workspace/import resolution while enforcing the profile's lint policy on the compiled image.
-            run([buf, "build", "--output", str(image)], root)
-            policy = (
-                STRICT
-                if args.mode in {"lint", "alpha", "all"}
-                else {
-                    **STRICT,
-                    "lint": {"use": ["FIELD_NO_JSON_STRING"], "disallow_comment_ignores": True},
-                }
-            )
-            run([buf, "lint", str(image), "--config", json.dumps(policy)], root)
-            if args.mode in {"breaking", "all"}:
-                run([buf, "breaking", str(image), "--config", json.dumps(STRICT), "--against", against], root)
+        for source in inputs:
+            check_schema(buf, root, args.mode, against, source)
     except subprocess.CalledProcessError as error:
         return error.returncode if error.returncode > 0 else 1
     except (OSError, ValueError) as error:
         print(f"Protobuf quality: {error}", file=sys.stderr)
         return 1
     return 0
+
+
+def check_schema(buf: str, root: Path, mode: str, against: str, source: str) -> None:
+    with tempfile.TemporaryDirectory(prefix="protobuf-quality-") as temporary:
+        image = Path(temporary) / "image.binpb"
+        # Retain workspace/import resolution while enforcing the profile's lint policy on the compiled image.
+        run([buf, "build", source, "--output", str(image)], root)
+        policy = (
+            STRICT
+            if mode in {"lint", "alpha", "all"}
+            else {
+                **STRICT,
+                "lint": {"use": ["FIELD_NO_JSON_STRING"], "disallow_comment_ignores": True},
+            }
+        )
+        run([buf, "lint", str(image), "--config", json.dumps(policy)], root)
+        if mode in {"breaking", "all"}:
+            run(
+                [
+                    buf,
+                    "breaking",
+                    str(image),
+                    "--config",
+                    json.dumps(STRICT),
+                    "--against",
+                    baseline_input(against, source),
+                ],
+                root,
+            )
 
 
 if __name__ == "__main__":

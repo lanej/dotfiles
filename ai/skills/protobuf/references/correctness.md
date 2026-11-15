@@ -2,6 +2,8 @@
 
 The profile uses [Buf](https://buf.build/docs/) 1.75.0 for compilation, formatting, `STANDARD` lint plus message/service/RPC comments, and `FILE` compatibility checking. A native [Buf check plugin](https://github.com/bufbuild/bufplugin-go) adds one rule: `FIELD_NO_JSON_STRING`. Inline lint ignores are disabled. The runner compiles using the project's Buf configuration and dependency lock, then applies the profile's lint and breaking policy to the compiled image. Existing workspace, dependency, and generation configuration is preserved.
 
+Setup and upgrades automatically select this profile for detected project `.proto` files, `buf.yaml`, or `buf.work.yaml`, including nested directories. Vendor/build directories and Git-ignored files are excluded. An explicit saved `--no-protobuf` or `[checks.protobuf] enabled = false` overrides detection; `--protobuf` re-enables the profile. `--no-detect-languages` prevents automatic selection. Declared Buf workspace roots are recorded in the project policy and used for format/build/lint and matching Git baselines; rerun setup when adding workspaces. Disabling detection retains previously selected roots. Projects without a Buf config use the repository root. This installs configuration and project guidance, not software.
+
 These commands assume the project has selected authority and adoption through authored TOML or a previous installation. For a new installation, select `--authority` and `--adoption` explicitly according to project governance.
 
 ```sh
