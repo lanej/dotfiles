@@ -12,6 +12,10 @@ require("fzf-lua").setup({
 	},
 	defaults = {
 		compat_warn = false,
+		fzf_opts = {
+			-- Prefer shorter paths when fuzzy match scores are equal.
+			["--tiebreak"] = "length,pathname",
+		},
 	},
 	keymap = {
 		builtin = {
