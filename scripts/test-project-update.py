@@ -26,6 +26,15 @@ class LifecycleTests(unittest.TestCase):
                     "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
                     "GIT_AUTHOR_NAME": "Fixture", "GIT_AUTHOR_EMAIL": "fixture@example.test",
                     "GIT_COMMITTER_NAME": "Fixture", "GIT_COMMITTER_EMAIL": "fixture@example.test"}
+        tools = self.base / "fixture-bin"
+        tools.mkdir()
+        go = tools / "go"
+        go.write_text(f"#!{sys.executable}\n"
+                      "import os, sys\n"
+                      "if sys.argv[1:] != ['env', 'CGO_ENABLED']: sys.exit('unexpected Go invocation')\n"
+                      "print(os.environ.get('CGO_ENABLED', '1'))\n")
+        go.chmod(0o755)
+        self.env["PATH"] = str(tools) + os.pathsep + self.env["PATH"]
         self.origin, self.source, self.checkout = [self.base / name for name in ("remote.git", "source", "checkout with spaces")]
         self.git(self.base, "init", "--bare", str(self.origin))
         self.git(self.base, "init", "--initial-branch=trunk", str(self.source))
