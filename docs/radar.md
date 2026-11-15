@@ -147,6 +147,10 @@ Strict Protobuf compilation, lint, formatting, and compatibility checks through 
 
 [Viewrule](ui-review.md): my tool for rendered UI checks, screenshot references, and a feedback-to-rule workflow. Trial task-specific density rules against actual rejected and accepted screens before promoting them globally.
 
+### Commander
+
+[Commander](https://github.com/tj/commander.js): capability-grouped TypeScript CLI parsing, validation, and generated help in Octo Manager. Evaluate command discovery and agent-friendly usage during normal operation.
+
 ***
 
 ## Assess

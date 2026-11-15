@@ -55,11 +55,11 @@ The launcher is `~/.local/bin/octo-manager`, state is `~/.local/state/octo-manag
 Persist the default worker model in `workerModel` under `~/.config/octo-manager/config.json`; `serve --model` overrides it. These settings survive reinstalling Octo. Provider-qualified selections such as `amazon-bedrock/us.anthropic.claude-sonnet-5-5` use native Bedrock authentication without copying credentials or requiring a Codex login. Supply the service's existing AWS environment separately; on Linux, keep custom environment setup in a user-owned systemd drop-in so regeneration of the managed unit preserves it.
 
 ```sh
-octo-manager tracked --json
-octo-manager inbox --agent-id AGENT_ID --applicable-only
+octo-manager pr list --json
+octo-manager agent inbox --agent-id AGENT_ID --applicable-only
 ```
 
-PR attachment is the automatic enrollment path. CLI-only sessions or unattached PRs can enroll explicitly with `octo-manager track --url URL --thread-id THREAD_ID`. Receipt means the host received context; it does not accept or resolve actions or authorize repairs or merges.
+PR attachment is the automatic enrollment path. CLI-only sessions or unattached PRs can enroll explicitly with `octo-manager pr track --url URL --thread-id THREAD_ID`. Receipt means the host received context; it does not accept or resolve actions or authorize repairs or merges.
 
 ## Disable future installation
 

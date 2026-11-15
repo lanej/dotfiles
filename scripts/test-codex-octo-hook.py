@@ -48,7 +48,7 @@ def main():
         assert changed["timeout_ms"] == 1000
         command = shlex.split(changed["command"])
         received = subprocess.check_output(command, text=True).splitlines()
-        assert received == ["submit-pr", "--title", "fix: preserve spaces", "--body", "Observed outcome.", "--draft", "--thread-id", "session-123", "--cwd", str(home), "--endpoint", "local", "--request-id", "session-123:call-456"]
+        assert received == ["pr", "publish", "--title", "fix: preserve spaces", "--body", "Observed outcome.", "--draft", "--thread-id", "session-123", "--cwd", str(home), "--endpoint", "local", "--request-id", "session-123:call-456"]
         def response(command):
             event["tool_input"]["command"] = command
             text = run([],event)
@@ -66,9 +66,13 @@ def main():
         assert response("gh pr create --title '$TITLE' --body body")["permissionDecision"] == "deny"
         assert response("octo-manager submit-pr --intent-file intent.json --thread-id stale --cwd /stale")["permissionDecision"] == "deny"
         assert response("octo-manager submit-pr --title done --body body --thread-id stale --cwd /stale")["permissionDecision"] == "allow"
+        grouped = response("octo-manager pr publish --title done --body body --track --thread-id stale --cwd /stale")
+        forwarded = shlex.split(grouped["updatedInput"]["command"])
+        assert forwarded[1:3] == ["pr", "publish"]
+        assert "--track" in forwarded and "stale" not in forwarded and "/stale" not in forwarded
         retired = response("gh-pr-create-from description.md --base main")
         assert retired["permissionDecision"] == "deny"
-        assert "octo-manager submit-pr" in retired["permissionDecisionReason"]
+        assert "octo-manager pr publish" in retired["permissionDecisionReason"]
         assert response("/old/bin/gh-pr-create-from description.md")["permissionDecision"] == "deny"
         assert response("echo gh-pr-create-from") is None
         run(["--uninstall"])

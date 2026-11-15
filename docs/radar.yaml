@@ -249,3 +249,9 @@ entries:
     ring: adopt
     rationale: |-
       Strict Protobuf compilation, lint, formatting, and compatibility checks through the reusable [source-code profile](repository-bootstrap.md#protobuf-correctness-profile), with a small native Buf check plugin rejecting string fields ending in `_json`.
+
+  - id: commander
+    name: Commander
+    ring: trial
+    rationale: |-
+      [Commander](https://github.com/tj/commander.js): capability-grouped TypeScript CLI parsing, validation, and generated help in Octo Manager. Evaluate command discovery and agent-friendly usage during normal operation.
