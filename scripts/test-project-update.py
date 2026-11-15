@@ -78,6 +78,7 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual([json.loads(line) for line in self.log.read_text().splitlines()], [["build"], ["restart"]])
 
     def test_nonconflicting_local_changes_survive_update(self):
+        self.git(self.checkout, "config", "merge.autoStash", "true")
         (self.checkout / "content").write_text("local edit")
         (self.checkout / "valuable").write_text("keep")
         (self.source / "new-file").write_text("upstream addition")
@@ -92,6 +93,7 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(self.git(self.checkout, "rev-parse", "HEAD"), self.git(self.source, "rev-parse", "HEAD"))
 
     def test_conflicting_local_edit_blocks_update(self):
+        self.git(self.checkout, "config", "merge.autoStash", "true")
         (self.checkout / "content").write_text("local edit")
         head = self.git(self.checkout, "rev-parse", "HEAD")
         self.commit("upstream edit")
@@ -99,6 +101,7 @@ class LifecycleTests(unittest.TestCase):
         self.invoke("update", "fixture", code=1)
         self.assertEqual((self.checkout / "content").read_text(), "local edit")
         self.assertEqual(self.git(self.checkout, "rev-parse", "HEAD"), head)
+        self.assertEqual(self.git(self.checkout, "stash", "list"), "")
         self.assertFalse(self.log.exists())
 
     def test_conflicting_untracked_file_blocks_update(self):

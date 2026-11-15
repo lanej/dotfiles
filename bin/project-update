@@ -83,7 +83,7 @@ def pull(path, project):
     ancestor = subprocess.run(["git", "-C", str(path), "merge-base", "--is-ancestor", "HEAD", target])
     if ancestor.returncode:
         raise ValueError(f"{path}: local commits or diverged history; reconcile manually")
-    git(path, "merge", "--ff-only", target)
+    git(path, "merge", "--ff-only", "--no-autostash", target)
 
 
 def status(path, project, fetch):
