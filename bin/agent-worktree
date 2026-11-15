@@ -137,9 +137,14 @@ def new_session(client, primary, manager, real):
 
 def manager_task(lease):
     result = run([lease["manager"], "status", "--json"], lease["primary"], timeout=60)
-    if result.returncode:
+    if result.returncode not in (0, 1):
         raise ValueError("worktree ownership inspection unavailable: " + result.stderr.strip())
     payload = json.loads(result.stdout)
+    if (payload.get("schema_version") != 1 or payload.get("command") != "status"
+            or not isinstance(payload.get("result"), dict)
+            or not isinstance(payload["result"].get("tasks"), list)):
+        raise ValueError("invalid worktree status response")
+    # An unrelated repository can make the inventory incomplete; this task still needs a fresh observation.
     rows = [row for row in payload["result"]["tasks"] if row["id"] == lease["task_id"]]
     if len(rows) != 1:
         raise ValueError("managed task identity unavailable")
