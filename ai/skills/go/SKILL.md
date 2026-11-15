@@ -5,6 +5,8 @@ description: Use when creating, modifying, testing, or reviewing Go code. Apply 
 
 # Go
 
+Before selecting application tools or an API protocol, read [the project tool-choice policy](../source-code-lifecycle/references/tool-choices.md). Apply the declared authority and adoption at every lifecycle stage, including research; preserve external providers’ protocols and established stacks according to that policy.
+
 Read the project’s stage through [source-code lifecycle](../source-code-lifecycle/SKILL.md). When `go` is listed in the project policy’s `languages`, run `python3 scripts/check-source-code.py go` for its generated gate. Otherwise follow existing repository checks; detected language guidance alone does not install a check profile. Full profile commands below remain available when that profile is installed. Research and alpha use the selected stage’s checks while preserving existing repository gates.
 
 For comment decisions, read the [shared comment guidance](../code-comments/SKILL.md). For public library APIs, also read the [library comment guidance](../library-code-comments/SKILL.md). Bootstrap bundles both with this skill in tracked or local mode; apply the library perspective only to library work and preserve project requirements.

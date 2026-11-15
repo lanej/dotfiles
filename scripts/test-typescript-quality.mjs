@@ -35,7 +35,7 @@ function fixture(t, text, rollout = 'strict') {
   put('src/main.ts', text);
   commit();
   execute(root, ['python3', path.join(source, 'bin/source-code'), 'setup', '--repo', root,
-    '--skills', 'typescript', '--agents', 'codex', '--pr-template', 'none', '--no-go',
+    '--authority', 'owned', '--adoption', 'new', '--skills', 'typescript', '--agents', 'codex', '--pr-template', 'none', '--no-go',
     '--typescript', '--typescript-rollout', rollout]);
   symlinkSync(path.join(toolInstallation, 'node_modules'), path.join(root, '.typescript-quality/node_modules'), 'dir');
   cpSync(path.join(toolInstallation, 'package-lock.json'), path.join(root, '.typescript-quality/package-lock.json'));

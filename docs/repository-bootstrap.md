@@ -9,8 +9,8 @@ The command needs Python 3.11+ and Git 2.31+ on macOS or Linux. Run `~/.files/bi
 ## Bootstrap a new repository
 
 ```sh
-~/.files/bin/source-code setup --repo ~/src/new-project --init --dry-run
-~/.files/bin/source-code setup --repo ~/src/new-project --init
+~/.files/bin/source-code setup --repo ~/src/new-project --authority owned --adoption new --init --dry-run
+~/.files/bin/source-code setup --repo ~/src/new-project --authority owned --adoption new --init
 ```
 
 `--init` creates the directory and initializes Git only if the target is not already a working tree. It refuses a nested initialization inside another repository. Without `--init`, the target must be an existing Git working tree; a subdirectory resolves to that working tree's root.
@@ -20,8 +20,8 @@ The default is **tracked mode**: files are available for normal review and commi
 ## Retrofit an existing repository
 
 ```sh
-~/.files/bin/source-code setup --repo ~/src/existing-project --mode local --dry-run
-~/.files/bin/source-code setup --repo ~/src/existing-project --mode local
+~/.files/bin/source-code setup --repo ~/src/existing-project --authority shared --adoption hold --mode local --dry-run
+~/.files/bin/source-code setup --repo ~/src/existing-project --authority shared --adoption hold --mode local
 ```
 
 **Local mode** puts precise file exclusions in a marked block of Git's `info/exclude`; it leaves `.gitignore` unchanged. Installed skills remain usable on this machine, without appearing in normal `git status` or `git add .`. Existing tracked files cannot be hidden this way, so local mode refuses to manage paths already in the index. Higher-priority `.gitignore` negations that defeat an exclusion are reported before installation. Exclusion is not encryption or access control, and `git add -f` can still add these files.
@@ -59,7 +59,7 @@ Choose a subset or template independently:
 
 ```sh
 # Architecture includes its Builder dependency; omit new Claude aliases.
-source-code setup --repo ~/src/app --skills architecture --agents codex --pr-template none
+source-code setup --repo ~/src/app --authority owned --adoption new --skills architecture --agents codex --pr-template none
 
 # Keep an existing team PR template while sharing the skills.
 source-code setup --repo ~/src/app --mode tracked --pr-template none
@@ -74,9 +74,9 @@ source-code setup --repo ~/src/app --mode tracked --pr-template local
 
 `source-code skill` prints the exact management `SKILL.md` as Markdown, including frontmatter, with no extra stdout text. It works outside Git, ignores project TOML, and exits nonzero with a diagnostic on stderr if the packaged skill is unavailable. It does not install skills into the target or select engineering policy.
 
-Use `source-code explain --repo PATH` for a human-readable desired-versus-recorded policy comparison, or add `--json` for one machine-readable object. It accepts the setup policy-selection options, including `--config`, `--kind`, `--stage`, `--skills`, and language flags, but not `--init`, `--conflict`, or `--dry-run`. It uses setup resolution and supports an existing directory before Git initialization. It does not initialize Git, modify project/Git files, provision dependencies, or run project commands.
+Use `source-code explain --repo PATH` for a human-readable desired-versus-recorded policy comparison, or add `--json` for one machine-readable object. It accepts the setup policy-selection options, including `--config`, `--kind`, `--authority`, `--adoption`, `--stage`, `--skills`, and language flags, but not `--init`, `--conflict`, or `--dry-run`. It uses setup resolution and supports an existing directory before Git initialization. It does not initialize Git, modify project/Git files, provision dependencies, or run project commands.
 
-The JSON contract has `schema_version = 1`, `repository`, `configuration` (path or null), `desired`, `installed` (recorded metadata or null), `selection`, `origins`, `differences`, and `warnings`. Desired/installed views include stage, optional kind, mode, skills and release pins, agent/template choices, detection choice, and check profiles. `selection` separates packages selected for update from retained packages. Origins distinguish CLI, applied TOML, saved state, defaults, detection, dependencies, and source release metadata; skills have individual origins. Differences identify dotted field names with desired and recorded values. Unversioned legacy skills remain visible with null pins.
+The JSON contract has `schema_version = 1`, `repository`, `configuration` (path or null), `desired`, `installed` (recorded metadata or null), `selection`, `origins`, `differences`, and `warnings`. Desired/installed views include stage, optional kind, authority/adoption (null when undeclared), mode, skills and release pins, agent/template choices, detection choice, and check profiles. `selection` separates packages selected for update from retained packages. Origins distinguish CLI, applied TOML, saved state, defaults, detection, dependencies, and source release metadata; skills have individual origins. Differences identify dotted field names with desired and recorded values. Unversioned legacy skills remain visible with null pins.
 
 For each check profile, `enabled` means it would be present after setup, `selected` means this invocation selects it for installation/update, and `action` is `install`, `update`, `retain`, or `absent`. Thus `--no-go` on an existing Go installation reports a retained profile rather than implying removal. JSON output contains no progress text; failures report to stderr and exit nonzero. Invalid TOML or malformed recorded metadata is an error rather than an empty successful result.
 
@@ -88,6 +88,8 @@ Author `source-code.toml` at the target repository root to make desired policy r
 
 ```toml
 schema_version = 1
+authority = "owned"
+adoption = "new"
 stage = "alpha"
 kind = "library"
 mode = "shadow"
@@ -95,7 +97,7 @@ skills = ["builder", "architecture", "pr-writer"]
 agents = "both"
 pr_template = "none"
 detect_languages = true
-# policy_version = "1.0.0" # Optional constraint on the installed source release.
+# policy_version = "1.1.0" # Optional constraint on the installed source release.
 
 [checks.go]
 enabled = false
@@ -108,7 +110,7 @@ enabled = false
 # projects = ["tsconfig.json"]
 ```
 
-The supported top-level keys are `schema_version` (required, currently `1`), `stage`, `kind`, `mode`, `skills`, `agents`, `pr_template`, `detect_languages`, `policy_version`, and `checks`. `[checks.python]` accepts `enabled` and a nonempty `paths` array; `--python-path` overrides that array. Skills are a nonempty array of unique curated names. `[checks.go]` accepts `enabled` and `rollout`; `[checks.typescript]` additionally accepts `projects`, a nonempty array of unique repository-relative leaf tsconfig paths. Rollout is `strict` or `ratchet`. Omitted fields preserve saved choices or existing defaults; false is an explicit choice. A disabled check cannot also select its rollout or projects. Existing check profiles are retained under the CLI's `--no-go` / `--no-typescript` semantics rather than silently removed.
+The supported top-level keys are `schema_version` (required, currently `1`), `stage`, `kind`, `authority`, `adoption`, `mode`, `skills`, `agents`, `pr_template`, `detect_languages`, `policy_version`, and `checks`. `[checks.python]` accepts `enabled` and a nonempty `paths` array; `--python-path` overrides that array. Skills are a nonempty array of unique curated names. `[checks.go]` accepts `enabled` and `rollout`; `[checks.typescript]` additionally accepts `projects`, a nonempty array of unique repository-relative leaf tsconfig paths. Rollout is `strict` or `ratchet`. Omitted fields preserve saved choices or existing defaults; false is an explicit choice. A disabled check cannot also select its rollout or projects. Existing check profiles are retained under the CLI's `--no-go` / `--no-typescript` semantics rather than silently removed.
 
 Optional `kind = "service" | "library" | "tool"` selects how the software is consumed. It is independent of lifecycle stage and language, never inferred, and retained when omitted on subsequent runs. `--kind KIND` overrides TOML. Service guidance focuses on integrations and operations, library guidance on public caller contracts and compatibility, and tool guidance on invocation, diagnostics, exit outcomes, and installation. Library kind also selects the library comment skill. Kind appears in generated policy and agent guidance; it does not change generated test commands or prescribe architecture. Repeating an unchanged kind or stage does not broaden a requested skill-subset upgrade or refresh retained package pins. Directory-specific kinds remain future work.
 
@@ -122,7 +124,7 @@ Shadow mode adds a local exclusion for the selected authored file only when it i
 
 ## Strict Python checks
 
-Opt in with `source-code setup --python`; Python detection remains guidance-only. Select scope with repeatable `--python-path PATH` or authored TOML:
+Opt in with `source-code setup --python --authority owned --adoption new`; Python detection remains guidance-only. Select scope with repeatable `--python-path PATH` or authored TOML:
 
 ```toml
 [checks.python]
@@ -144,7 +146,7 @@ The `workstation` set selects `tools.source-code`, whose setup target links `sou
 
 ```sh
 source-code detect --repo ~/src/project --json
-source-code setup --repo ~/src/project --stage alpha --mode shadow
+source-code setup --repo ~/src/project --authority owned --adoption new --stage alpha --mode shadow
 source-code setup --repo ~/src/project --no-detect-languages
 ```
 
@@ -152,12 +154,22 @@ Basic detection uses manifests and source-file extensions for Go, TypeScript, Ja
 
 Detection chooses language skills and records evidence in the policy's `detection` field. It does not introduce TypeScript/Python checks, Rust tooling, or CI; those remain explicit project choices. `languages` separately records installed generated Go/TypeScript/Python check profiles. The detection opt-out persists across upgrades. Removing a language file can update detection evidence without uninstalling existing skills or checks.
 
+## Authority and tool adoption
+
+Declare `authority = "owned" | "shared" | "upstream"` and `adoption = "hold" | "new" | "backfill"` in authored TOML, or pass `--authority` and `--adoption`. These selections follow CLI → TOML → saved-state precedence and are independent of lifecycle stage and project kind. Setup and upgrade require both when no configured or saved value exists; inspection can show unset values without writes. Existing installations remain usable, and validation reports missing legacy selections. Public/open-source visibility does not establish authority.
+
+Owned projects choose their stack; shared projects require project agreement, and upstream contributions follow maintainer conventions. Hold preserves the existing stack. New applies the required catalog to new independent surfaces while retaining established implementations. Backfill also records migration direction, but migration execution requires an explicitly agreed task scope. Shared/upstream adoption settings do not themselves grant authority; record the relevant project agreement before changing conventions. Shadow installation does not count as agreement.
+
+Read the portable [application tool-choice policy](../ai/skills/source-code-lifecycle/references/tool-choices.md) for the canonical catalog, boundary rules, and exception format. It requires Commander for TypeScript/JavaScript CLIs, Cobra plus lanej/charmed for Go command structure and terminal UI, and Connect for new application APIs we control when adoption selects the catalog. External integrations use the provider's protocol; protocol-specific edges retain the protocol appropriate to their contract. The catalog also covers Python/Rust CLIs, web UI, validation, logging, configuration, and tests. Install only tools the capability needs.
+
+The lifecycle package carries the catalog into portable tracked and shadow installations. Relevant language, architecture, and construction skills route to it. This release imposes binding agent implementation/review guidance; validation checks policy structure, not application dependency compliance. An [automated tool-choice gate](https://github.com/lanej/dotfiles/issues/323) is a separate follow-up.
+
 ## Lifecycle stages
 
 Source-code skills are project-only: they are absent from the default user-level Claude, Codex, and Pi catalogs. `ai/skills/project-only.json` defines that boundary, including Git, GitHub Actions, PR stacks, and PR writing. Coding lessons formerly bundled into user-level `operating-lessons` now ship with the relevant project Git, testing, architecture, Python, and JavaScript skills; general agent coordination and tool/account verification remain user-level. Install them explicitly, then reload the client's skill catalog if necessary. Normal workstation setup retires the managed global Builder rule and guidance, preserves personal skills and aliases, and keeps explicit legacy package references readable.
 
 ```sh
-source-code setup --repo ~/src/experiment --go --stage research --mode shadow --pr-template none
+source-code setup --repo ~/src/experiment --authority owned --adoption new --go --stage research --mode shadow --pr-template none
 source-code setup --repo ~/src/experiment --stage alpha --dry-run
 source-code setup --repo ~/src/experiment --stage alpha
 python3 scripts/check-source-code.py go
@@ -165,12 +177,12 @@ python3 scripts/check-source-code.py go
 
 | Stage | Generated checks | Additional evidence |
 | --- | --- | --- |
-| research | Go compile or TypeScript typecheck; inherited gates stay binding. | Exercise the experiment and record findings and limits. |
+| research (including POCs) | Go compile or TypeScript typecheck; inherited gates stay binding. | Exercise the experiment and record findings and limits. |
 | alpha | Lint, compile/typecheck, and tests; added race/vulnerability/audit passes are deferred. | Protect retained behavior and consequential failures. |
 | beta | Full language profile. | Affected integrations, compatibility/migrations, and caller contracts. |
 | production | Full language profile. | Independent review and applicable recovery, rollout, and operational evidence. |
 
-`.source-code.json` separates schema version `1`, policy version `1.0.0`, and the selected stage. The install manifest retains the source revision and content fingerprints. Unknown versions or stages fail before commands run. Policy version changes describe changed rules; stage changes describe the project's chosen assurance level. Neither asserts readiness or measured service reliability.
+`.source-code.json` separates schema version `1`, policy version `1.1.0`, and the selected stage. The install manifest retains the source revision and content fingerprints. Unknown versions or stages fail before commands run. Policy version changes describe changed rules; stage changes describe the project's chosen assurance level. Neither asserts readiness or measured service reliability.
 
 Beta is the default and preserves the former full generated checks. Reruns retain the selected stage. A stage-change preview shows old and new command plans; application uses the existing conflict and backup safeguards. A modified lifecycle policy cannot be silently skipped while other files adopt a different stage. Early-stage transitions reject incompatible older language runners retained by `--no-go` or `--no-typescript`; update that runner or keep full checks. Stage selection and strict-versus-ratchet adoption remain independent.
 
@@ -182,7 +194,7 @@ The shared comment policy is the default inside a selected project profile. Sele
 
 ```sh
 # Use library guidance privately in another repository, without a PR template.
-source-code setup --repo ~/src/library --skills library-code-comments --mode shadow --pr-template none
+source-code setup --repo ~/src/library --authority upstream --adoption hold --skills library-code-comments --mode shadow --pr-template none
 ```
 
 Local mode excludes the installed files through Git's `info/exclude`, retaining shared instructions and `.gitignore`. Reload the client's skill catalog if necessary, then explicitly request `library-code-comments` for the library work. Installation makes the skill available; it does not rewrite project policy or guarantee that every client selects it automatically. To share the policy with a team, use `--mode tracked` and review and commit the files.
@@ -202,13 +214,13 @@ When installing a GitHub template, alternate templates in the repository root, `
 A root `go.mod` opts into Go guidance, checks, and a portable CI workflow. New repositories use whole-project strictness:
 
 ```sh
-source-code setup --repo ~/src/new-go-project --init --go
+source-code setup --repo ~/src/new-go-project --authority owned --adoption new --init --go
 ```
 
 Existing configs or tracked Go source default to a ratchet, so adopting stronger rules does not require rewriting the project. To retrofit explicitly, start with committed Go source:
 
 ```sh
-source-code setup --repo ~/src/service --go-retrofit --pr-template none
+source-code setup --repo ~/src/service --authority shared --adoption hold --go-retrofit --pr-template none
 cd ~/src/service
 bash scripts/check-go.sh baseline
 bash scripts/check-go.sh

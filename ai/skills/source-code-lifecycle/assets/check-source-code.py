@@ -23,7 +23,10 @@ def plan(root: Path, language: str) -> tuple[str, list[list[str]]]:
         or rules["schema_version"] != 1
     ):
         raise ValueError("unsupported source-code schema version")
-    if policy.get("policy_version") != "1.0.0" or rules.get("policy_version") != policy["policy_version"]:
+    if (
+        policy.get("policy_version") not in {"1.0.0", "1.1.0"}
+        or rules.get("policy_version") != policy["policy_version"]
+    ):
         raise ValueError("unsupported or mismatched source-code policy version")
     languages = policy.get("languages")
     if not isinstance(languages, list) or not all(name in {"go", "typescript", "python"} for name in languages):
