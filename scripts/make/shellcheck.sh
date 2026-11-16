@@ -4,6 +4,7 @@ set -eu
 dotfiles=$1
 shellcheck -x \
     "$dotfiles"/scripts/make/*.sh \
+    "$dotfiles/.github/scripts/install-file-selection-tools.sh" \
     "$dotfiles/bootstrap.sh" \
     "$dotfiles/install.sh" \
     "$dotfiles/claude/evals/skill-maintenance/check_size.sh" \

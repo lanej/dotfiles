@@ -23,3 +23,5 @@ In `<leader>ff`, Ctrl-G includes or excludes ignored and hidden files while reta
 ## Verification
 
 Run `python3 scripts/test-nvim-file-picker.py --check history` for standalone history, concurrency, decay, global lookup, real shell acceptance, cancellation and safe filename forwarding. It uses Python, fd, fzf and Zsh. Run `python3 scripts/test-nvim-file-picker.py --check editor` for the mapped Neovim picker, file visits, shared shell ranking, Git-root scope and narrow global lookup. The editor check adds installed Neovim, FzfLua and devicons. Both checks use disposable configuration and history directories. Omit `--check` to run both.
+
+CI setup helpers live under `.github/scripts/`. `make shellcheck` includes the shared tool installer. Run `uvx --from ruff==0.17.5 ruff check --isolated .github/scripts/prepare-file-selection-plugins.py` to lint the editor fixture setup independently of GitHub Actions.
