@@ -373,6 +373,43 @@ def claude_workflow():
     print("PASS: Claude factory hooks preserve settings, finish clean tasks, and retain concurrent work.")
 
 
+def incompatible_manager_workflow():
+    for client in ("codex", "claude"):
+        with fixture(client) as (folder, project, env, git, _sessions):
+            manager = folder / "bin/worktree"
+            for version, status in (("worktree 0.1.0", 0), ("unrecognized build", 0), ("worktree 0.2.0", 1)):
+                manager.write_text("#!/bin/sh\n"
+                                   'if [ "$1" = --version ]; then\n'
+                                   f"  printf '%s\\n' '{version}'\n  exit {status}\nfi\n"
+                                   'touch "$HOME/allocation-attempted"\nexit 23\n')
+                result = launch(client, project, env, ["--worktree"])
+                assert result.returncode == 1, result
+                assert "incompatible worktree manager" in result.stderr, result.stderr
+                assert str(manager) in result.stderr and "make install" in result.stderr, result.stderr
+                assert "0.2.0 or newer" in result.stderr and "PATH" in result.stderr, result.stderr
+                assert not (folder / "home/allocation-attempted").exists()
+                assert not (Path(env["XDG_STATE_HOME"]) / "agent-treehouse").exists()
+                assert not (folder / "agent.json").exists()
+                assert len(git("worktree", "list", "--porcelain").split("worktree ")) == 2
+            if client == "claude":
+                command = ("import runpy,sys; from pathlib import Path; "
+                           "adapter=runpy.run_path(sys.argv[1]); "
+                           "print(adapter['new_session']('claude', Path(sys.argv[2]), sys.argv[3], sys.argv[4]))")
+                token = subprocess.check_output([sys.executable, "-c", command, str(ROOT / "bin/agent-worktree"),
+                                                 str(project), str(manager), str(folder / "bin/claude")],
+                                                env=env, text=True).strip()
+                state = Path(env["XDG_STATE_HOME"]) / "agent-treehouse" / (token + ".json")
+                original = state.read_bytes()
+                event = json.dumps({"hook_event_name": "WorktreeCreate", "session_id": "native-session", "cwd": str(project)})
+                for _attempt in range(2):
+                    result = subprocess.run([sys.executable, str(ROOT / "bin/agent-worktree"), "hook", token],
+                                            input=event, env=env, text=True, capture_output=True, timeout=30)
+                    assert result.returncode == 1 and "incompatible worktree manager" in result.stderr, result
+                    assert state.read_bytes() == original
+                assert not (folder / "home/allocation-attempted").exists()
+    print("PASS: Incompatible managers give upgrade guidance before session creation or allocation.")
+
+
 def lost_response_workflow(uncertain=False):
     with fixture("claude") as (folder, project, env, _git, _sessions):
         record_env = {key: os.environ.get(key) for key in ("HOME", "XDG_STATE_HOME")}
@@ -444,6 +481,7 @@ def legacy_workflow():
 
 
 if __name__ == "__main__":
+    incompatible_manager_workflow()
     codex_workflow()
     claude_workflow()
     if os.environ.get("AGENT_WORKTREE_TEST_LEGACY") == "1":

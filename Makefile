@@ -638,6 +638,12 @@ intent-ssh-remove:
 test-intent-ssh:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-intent-ssh.py"
 
-.PHONY: test-project-update
+.PHONY: update-zellij update-projects test-project-update
+update-zellij:
+	@"$(DOTFILES)/bin/project-update" update zellij
+
+update-projects:
+	@"$(DOTFILES)/bin/project-update" update --all
+
 test-project-update:
 	@"$(UV)" run --no-project --python ">=3.11" python "$(DOTFILES)/scripts/test-project-update.py"

@@ -5,7 +5,7 @@ description: Use when isolating coding work, creating agent Git worktrees, or fi
 
 # Agent worktrees
 
-Use the native `worktree` manager for agent-created checkouts. New allocations live at `<primary-repository>/.worktrees/<agent>-<8-hex>/`, before a task name exists. Never fall back to a temporary directory or Treehouse allocation when the manager is missing or fails; report the failure and identify dotfiles `make install` as the supported installer.
+Use the native `worktree` manager for agent-created checkouts. New allocations live at `<primary-repository>/.worktrees/<agent>-<8-hex>/`, before a task name exists. Never fall back to a temporary directory or another allocator when the manager is missing or fails; report the failure and identify dotfiles `make install` as the supported installer.
 
 ## Reuse assigned checkouts
 
@@ -38,4 +38,4 @@ worktree prune --worktree "<returned-path>"
 worktree prune --worktree "<returned-path>" --apply
 ```
 
-Do not use `--force` for routine cleanup. Preserve existing pool slots and other agents' checkouts. Follow the shared cleanup procedure before removal and report any retained path with its concrete reason. For an existing Treehouse lease, read the legacy `treehouse` skill and return only the lease this task actually acquired; never translate a lease ID into a manager task ID.
+Do not use `--force` for routine cleanup. Preserve pre-existing and other agents' checkouts. Follow the shared cleanup procedure before removal and report any retained path with its concrete reason.

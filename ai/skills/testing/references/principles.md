@@ -1,0 +1,13 @@
+# Minimum effective testing
+
+Optimize the full iteration cycle: implementation, test execution, failure diagnosis, review, maintenance, and rework. Choose the smallest set of checks that provides useful confidence in the current change. Each test should earn its reading and maintenance cost; neither test count nor coverage percentage determines adequacy. Preserve repository requirements and retained behavior.
+
+Protect observable outcomes through the real entrypoint where practical. Prefer a focused existing detector over another harness. Add unit checks for decisions that benefit from isolation; exercise real boundaries when compatibility or integration is the claim. Test doubles can protect orchestration but cannot establish that a real integration works. Scale coverage to the selected maturity, consequences, and uncertainty. TDD is optional unless the project requires it.
+
+Failures must explain what went wrong in CLI output: the operation or case, expected value, actual value, and a useful diff or relevant context. Prefer expressive comparisons, assertion APIs, and richer testing libraries that provide these diagnostics. Use the existing framework's native diagnostics when sufficient; do not add a dependency merely for syntax. Avoid opaque boolean wrappers that discard expected/actual details. Diagnostic clarity matters for humans and agents, especially in unattended CI.
+
+Run the affected checks after relevant changes. Broaden verification when a changed boundary, failure, or unresolved interaction justifies it. Do not repeat passing checks without a reason, mirror production logic in the oracle, or test private structure when an outcome suffices. Meaningful defects and independent expectations should drive assertions. Preserve useful counterexamples in the existing detector.
+
+Keep unavailable checks, mocked boundaries, local results, hosted CI, and real external observations distinct. A failed required check remains a failure or explicit limitation. Obtain independent review for complex interactions, concurrency, migrations, security-sensitive logic, or material uncertainty; simple mechanically verifiable edits need no separate dispatch. Reviewers do not recurse. Reassess material fixes and changed evidence.
+
+Establish a new detector's sensitivity once with a task-owned input and restore only that mutation. Do not reset someone else's changes, use a shared stash, or mutate unrelated source. Read [verification lessons](verification-lessons.md) when designing sensitivity checks, accepting delegated evidence, or verifying integrations. Avoid redundant tests and speculative infrastructure that slow future changes without adding useful confidence.

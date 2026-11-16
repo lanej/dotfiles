@@ -75,8 +75,6 @@ def pull(path, project):
             location = path / location
         if location.exists():
             raise ValueError(f"{path}: unfinished Git operation ({operation}); reconcile manually")
-    if git(path, "status", "--porcelain", "--untracked-files=all"):
-        raise ValueError(f"Preserve dirty checkout: {path}")
     remote = remote_for(path, project)
     branch, target = refresh(path, remote)
     current = git(path, "symbolic-ref", "--quiet", "--short", "HEAD")
@@ -85,7 +83,7 @@ def pull(path, project):
     ancestor = subprocess.run(["git", "-C", str(path), "merge-base", "--is-ancestor", "HEAD", target])
     if ancestor.returncode:
         raise ValueError(f"{path}: local commits or diverged history; reconcile manually")
-    git(path, "merge", "--ff-only", target)
+    git(path, "merge", "--ff-only", "--no-autostash", target)
 
 
 def status(path, project, fetch):

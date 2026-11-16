@@ -1,5 +1,7 @@
 # Dotfiles Repository
 
+Read the installed [source-code policy](.agents/source-code.md) for this repository’s lifecycle stage and pinned project skills. Dotfiles-specific rules below remain authoritative.
+
 ## Project Overview
 
 This repository manages Josh Lane's personal configuration files ("dotfiles")
@@ -80,7 +82,7 @@ Feature requests keep their existing workflows.
 
 ## Claude Commands & Agents Versioning Pattern
 
-New files under `claude/commands/` and `ai/{agents,skills}/` are gitignored by default; force-add deliberately with `git add -f` to version one. See the `claude-config-versioning` skill for the full workflow, symlink mechanics, and gitignore/clean-filter details.
+New files under `claude/commands/` and `ai/{agents,skills}/` are gitignored by default; force-add deliberately with `git add -f` to version one. Read [the agent configuration guide](docs/agent-configuration.md) for the workflow, symlink mechanics, and clean-filter details.
 
 ## Tech Radar
 

@@ -1,0 +1,65 @@
+# Rust / cargo
+
+Before selecting application tools or an API protocol, read [the project tool-choice policy](../../source-code-lifecycle/references/tool-choices.md). Apply the declared authority and adoption at the configured maturity; preserve external providers’ protocols and established stacks according to that policy.
+
+Read the project’s stage through [source-code lifecycle](../../source-code-lifecycle/SKILL.md) and use [testing](../../testing/SKILL.md) for proportionate evidence. Language detection installs this guidance; it does not add or replace compiler, test, or CI configuration. Preserve existing repository gates.
+
+Standard cargo usage works as documented. This file covers build-cost discipline and clippy triage,
+where the default instinct is usually wrong.
+
+## Build strategy: never reach for `--release`
+
+Release builds and `cargo install --path .` are very slow and almost never what iteration needs.
+
+| Goal | Command |
+|---|---|
+| Does it compile? | `cargo check` — fastest, no codegen |
+| Developing / testing behavior | `cargo run` (or `cargo run -- args`) |
+| Need the binary artifact only | `cargo build` (debug) |
+| Need optimized performance | `cargo build --release` — only then |
+
+## Validation commands
+
+Use the selected Rust entrypoint for the required sequence. Prefer `cargo check` over `cargo build` for compile feedback. Command examples describe available operations; they do not add gates beyond the selected policy and repository requirements.
+
+**Timeouts**: 120s covers check/test/debug builds. Only a release build needs 600s — if you're
+reaching for the long timeout, question whether the release build is needed at all.
+
+## Clippy triage
+
+Auto-fix first, then categorize what remains — do not blanket-fix or blanket-allow:
+
+```bash
+cargo clippy --fix --allow-dirty
+cargo clippy --explain <LINT_NAME>   # when the lint's intent is unclear
+```
+
+**Fix**: `redundant_closure`, `unnecessary_unwrap`, `manual_map`, `match_same_arms`,
+`needless_return`, and anything indicating a real panic, logic error, or API misuse.
+
+**Suppress** when the domain guarantees safety: `cast_possible_truncation`, `cast_sign_loss`,
+`missing_errors_doc` / `missing_panics_doc` (internal tools), `needless_pass_by_value`,
+`module_name_repetitions`, `too_many_lines`, `unused_assignments` (loop invariants).
+
+Suppress at the narrowest scope that works — function `#[allow(...)]`, then module `#![allow(...)]`,
+then `[lints.clippy]` in `Cargo.toml`. Always leave a comment stating the domain invariant:
+
+```rust
+#[allow(clippy::cast_possible_truncation)]
+fn process_excel_value(val: u64) -> u32 {
+    val as u32  // Excel row numbers are always < u32::MAX
+}
+```
+
+The goal is a clippy run where every remaining warning is actionable.
+
+## Cargo lock contention
+
+For lock contention, identify the process holding the lock and determine whether it is
+an active build or an orphan from this task. Wait for active builds. Stop an orphan only
+after confirming task ownership, using its specific PID or owned process group. Do not
+kill all Cargo processes; other sessions may be building.
+
+## Cargo.toml style
+
+Comments go on their own line, never inline after a dependency entry.

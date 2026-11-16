@@ -6,6 +6,7 @@ if command -v fzf >/dev/null; then
 	unset FZF_DEFAULT_OPTS
 	export FZF_DEFAULT_OPTS=$FZF_DEFAULT_OPTS'--prompt=\
 	--cycle
+	--tiebreak=length,pathname
 	--no-info
 	--height=62%
 	-i

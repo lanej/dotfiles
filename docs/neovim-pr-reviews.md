@@ -58,6 +58,9 @@ In ordinary code buffers, `,o` retains Treesitter selection.
 The previous `,rs`, `,rp`, `,rv`, `,rq`, and `,rl` shortcuts remain available.
 
 Use Octo’s remote diffs, inline comments, and suggestions.
+Remote review buffers are the default, including when the checkout matches the PR branch. Opening local source files can activate language servers; Rust analysis can execute build scripts, proc macros, and Cargo overrides from that checkout. Review contributor-controlled changes remotely unless you trust the checkout to execute code.
+Enter `:Octo review` to open the review layout, then use `,oc` on the current line or a linewise visual selection to add pending feedback.
+For a checkout you explicitly trust, enable local-file mode with `:lua require("octo.config").values.use_local_fs = true` before opening the review. Restore remote mode with `:lua require("octo.config").values.use_local_fs = false` before reviewing another checkout. This setting changes buffer selection; it does not sandbox language servers or establish trust.
 Opening a PR does not start a review.
 Save inline comment buffers with `:write` before submitting.
 

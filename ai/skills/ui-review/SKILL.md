@@ -1,114 +1,42 @@
 ---
 name: ui-review
-description: Review rendered web UIs against project layout rules and Josh's design preferences; capture screenshots, repair findings, and turn his feedback into reusable rules and approved references. Use for UI design, layout refinement, or explicit /ui-review requests.
+description: Use when a frontend project selects source-code UI review and needs Viewrule reports, scoped rules, or explicit user feedback recorded against reviewed screenshots.
 ---
 
-# UI review
+# Viewrule operation
 
-Use Viewrule through the `ui-review` compatibility wrapper in Josh's dotfiles. If it is not on PATH, use
-`~/.files/bin/ui-review`. Setup and rule types are documented in
-`~/.files/docs/ui-review.md`. This supplements the project's design system.
+Use Viewrule through the `ui-review` compatibility wrapper. Read `ui-review --help` and the selected subcommand’s help for supported options. This project skill supplies tool operation and feedback handling alongside the installed [UI acceptance guidance](../ui-acceptance/SKILL.md). It does not authorize installation, unrelated redesign, or changing project gates.
 
-Keep this skill focused on Viewrule's rendered visual review. Component API
-contracts and library-specific usage or publishing guidance belong to the
-component library's own skill, documentation, tests, and CI.
+Follow the target project's instructions and selected design system. When a project installs `ui-acceptance`, read its project-local `.agents/skills/ui-acceptance/SKILL.md`; otherwise preserve the repository's own acceptance criteria. Workstation tool availability does not opt the project into that profile. Follow host browser authorization, visibility, credential, and cleanup rules.
 
-## Dashboard color and grouping
+## Operate reports
 
-For dashboard category colors or work-activity groupings,
-read [Color as information architecture](../looker-development/references/dashboard-color-information-architecture.md).
-Apply it alongside the project design system. Status and health colors must
-communicate meaning; quantity alone does not justify warning colors. For Looker
-behind interactive SSO, use API/query evidence and the user's rendered feedback;
-do not fabricate a capture report or attempt automated SSO navigation.
+Use `ui-review guidance --project <project>` to inspect configured guidance. When project setup is requested, `ui-review init --project <project>` initializes configuration; preserve existing routes, viewport choices, rules, and references. Supply the application's actual runtime URL when capturing:
 
-## Design and verify
+```sh
+ui-review check --project <project> --url <actual-app-url>
+ui-review verify --project <project>
+```
 
-1. Identify the user's primary decision and the information needed to make it.
-   Run `ui-review guidance --project <project>` and inspect relevant approved
-   screenshots under `<project>/.ui-review/approved/` before designing.
-2. If unconfigured, run `ui-review init --project <project>`.
-   Set routes, representative viewport sizes, and a page-specific ready selector.
-   Use stable application state and realistic data. Add a small set of relevant
-   selector rules to `.ui-review/rules.json`; do not invent universal thresholds.
-3. Implement the UI, run `ui-review check --project <project> --url <actual-app-url>`, and read the
-   returned JSON plus every affected screenshot. Open the HTML report to compare
-   with the last approved reference. A screenshot capture is not a visual review.
-   Use the full-page image for hierarchy and open the detail tiles individually
-   at original size for text, alignment, clipping, and chart labels. Read every
-   tile covering the affected regions, including the right and bottom edges of
-   large screens. A resized overview cannot establish detail quality. Report
-   which page/viewport and tiles were reviewed; incomplete capture coverage fails.
-4. Fix objective errors. Review hierarchy, comparison quality, legibility, chart
-   truthfulness, and interaction states separately. DOM checks do not assess these
-   reliably. Report concrete elements and measurements, never an arbitrary score.
-5. Rerun affected checks after changes. Stop after three unsuccessful repair rounds
-   and explain the remaining blocker with evidence. Do not weaken rules, remove
-   failing selectors, disable enforcement, or approve screenshots merely to pass.
+Read the returned JSON, affected screenshots, and HTML report. Capture and verify results describe those operations; they do not certify visual correctness, interaction coverage, or live deployment. Follow the project's acceptance instructions to assess the result. Missing tools, capture failures, authentication limits, or incomplete evidence remain explicit limits; do not invent a successful report or automate unsupported SSO navigation.
 
-For an already scoped small edit, reuse the existing configuration and references.
-Do not force every UI into a dashboard or add unrelated redesign work. The CLI
-captures configured initial states; exercise relevant keyboard, loading, empty,
-error, and interaction states through the project's browser tests as needed.
+## Record actual feedback
 
-## Learn from Josh's feedback
-
-When Josh says a design looks good or asks for an adjustment, preserve his actual
-feedback against the exact report he viewed:
+When Josh explicitly approves a reference or asks for an adjustment, attach his actual feedback to the report he reviewed:
 
 ```sh
 ui-review feedback --report <report.json> --decision approve --note '<his feedback>'
 ui-review feedback --report <report.json> --decision adjust --note '<his feedback>'
 ```
 
-Use shell-safe quoting or a subprocess argument array for notes. Approval copies
-screenshots to the project's approved references; it does not waive automated
-failures. Never record model self-approval as Josh's approval.
-
-For measurable feedback, translate it into a rule JSON file and run:
+Use shell-safe quoting or an argument array. Never record model self-approval as Josh's approval. Preserve subjective feedback as guidance; when feedback supports a measurable rule, use the project's selected acceptance process to validate that rule, then run:
 
 ```sh
 ui-review learn --feedback <returned-id> --rule <rule.json>
 ```
 
-Scope selectors and thresholds to the applicable page and viewport. Check the rule
-against both the rejected layout and the accepted layout before calling it useful.
-For subjective feedback, retain the note as guidance instead of manufacturing a
-numeric proxy. "Looks good" alone approves that reference; it does not establish a
-universal font size, spacing scale, or density target.
+Feedback and rule scope default to the project. Only when Josh explicitly makes a preference cross-project, pass `--scope global` to both feedback and learn. Global notes/rules live in `~/.files/claude/ui-review/`; project selectors, thresholds, feedback, and approved screenshots stay in the application's `.ui-review/`. Preserve private app data and authentication state. Report the exact preference or rule changed and its scope; feedback handling does not grant publication authority.
 
-For density, use `region-density` with a meaningful `region` and content selectors.
-Use `measure: text` to detect text diluted inside large containers; use `boxes`
-for plots or other visual content whose outer area matters. These are geometric
-proxies, not semantic information density or Tufte's data-ink ratio. Combine them
-with required visible item counts and readable typography. Calibrate each screen
-size against accepted examples; do not improve density by shrinking type or
-padding the screen with irrelevant content. Check actual browser CSS viewport
-dimensions, not the monitor's physical pixel count.
+## Verification and optional gates
 
-Default to project scope. When Josh explicitly makes a preference cross-project,
-pass `--scope global` to both feedback and learn. Global entries live in
-`~/.files/claude/ui-review/`; they retain notes/rules, not project screenshots.
-Summarize the exact rule or preference change and its scope. Commit the intended
-feedback/rules through the normal repository workflow, keeping private app data
-and authentication state out of public dotfiles.
-
-## Enforcement
-
-Stop enforcement is retired in Viewrule 0.8.0; `enforceOnStop` is ignored.
-Use `ui-review verify --project <project>` to verify existing rendered evidence
-without a browser. Git gates are optional and scoped to selected applications;
-see `~/.files/docs/ui-review.md`. Use `ui-review check` in application CI for
-required gates. Explicit requests to configure enforcement authorize that
-configuration; do not add extra approval steps.
-
-A clean `enforceOnStop` gate does not mean every visual regression class in the
-project is covered. Viewrule's configured checks capture static, route-based
-states — an *interaction* state (collapse/expand, hover, open/closed) that
-isn't itself a distinct route can sit outside that coverage even with the gate
-live, and re-verifying it by ad hoc screenshot-and-`getBoundingClientRect()`
-each time a change touches it doesn't close the gap for the next change. When
-an element has meaningful interaction states like this, write a small
-persisted browser/e2e test asserting the geometry once, instead of re-deriving
-manual pixel measurement from scratch on every future edit. (detail: memory
-"feedback_viewrule_interactive_state_coverage_gap")
+Stop enforcement is retired; `enforceOnStop` is ignored. `ui-review verify --project <project>` checks existing evidence without launching a browser. Git gates and application CI are project choices. Configure them when requested or explicitly selected by project instructions, following the installed CLI documentation; tool installation alone does not authorize introducing gates or changing acceptance policy.

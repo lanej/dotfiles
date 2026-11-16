@@ -5,7 +5,9 @@
     "scripts/source_code_languages.py",
     "ai/skills/python/assets/check-python.py",
     "ai/skills/source-code-lifecycle/assets/check-source-code.py",
-    "scripts/test-python-quality.py"
+    "scripts/test-python-quality.py",
+    "ai/skills/protobuf/assets/check-protobuf.py",
+    "scripts/test-protobuf-quality.py"
   ],
   "commands": {
     "test": [

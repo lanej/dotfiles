@@ -8,7 +8,7 @@ import shutil
 import subprocess
 from collections.abc import Iterable
 from pathlib import Path
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 IGNORED = {
     ".git",
@@ -34,6 +34,7 @@ class Detection(TypedDict):
     languages: list[str]
     skills: list[str]
     evidence: dict[str, list[str]]
+    protobuf_roots: NotRequired[list[str]]
 
 
 def detect(root: Path, definitions: Path, excluded: Iterable[str] = ()) -> Detection:
@@ -106,8 +107,20 @@ def detect(root: Path, definitions: Path, excluded: Iterable[str] = ()) -> Detec
                     evidence.setdefault("typescript", set()).add(relative.as_posix())
             except (OSError, ValueError):
                 pass
-    return {
+    result: Detection = {
         "languages": sorted(evidence),
         "skills": sorted({rules[name]["skill"] for name in evidence}),
         "evidence": {name: sorted(paths)[:5] for name, paths in sorted(evidence.items())},
     }
+
+    if "protobuf" in evidence:
+        roots = {
+            str(Path(name).parent) for name in evidence["protobuf"] if Path(name).name in {"buf.yaml", "buf.work.yaml"}
+        }
+        if not roots or any(
+            Path(name).suffix == ".proto" and not any(Path(name).is_relative_to(Path(folder)) for folder in roots)
+            for name in evidence["protobuf"]
+        ):
+            roots.add(".")
+        result["protobuf_roots"] = sorted(roots)
+    return result
