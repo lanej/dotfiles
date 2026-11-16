@@ -143,6 +143,7 @@ class Arguments(argparse.Namespace):
     config_applied: set[str]
     cli_values: dict[str, object]
     skills_dir: Path | None = None
+    topic: str | None = None
     init: bool = False
     mode: str | None = None
     skills: str | None = None
@@ -178,6 +179,7 @@ CORE_SKILLS = (
     "testing",
     "source-code-lifecycle",
     "code-comments",
+    "cli",
 )
 SKILLS = DEFAULT_SKILLS + (
     "pr-writer",
@@ -198,6 +200,8 @@ SKILLS = DEFAULT_SKILLS + (
     "protobuf",
     "data-pipeline",
     "ui-acceptance",
+    "ui-review",
+    "cli",
 )
 STAGES = ("research", "alpha", "beta", "production")
 KINDS = ("service", "library", "tool")
@@ -732,8 +736,10 @@ def project_guidance(policy: Policy) -> str:
 
 def complete_skills(skills: Iterable[str], explicit_stage: bool = False, kind: str | None = None) -> set[str]:
     skills = set(skills)
-    if skills & {"data-pipeline", "ui-acceptance"}:
+    if skills & {"data-pipeline", "ui-acceptance", "ui-review"}:
         skills.add("architecture")
+    if "ui-review" in skills:
+        skills.add("ui-acceptance")
     if kind == "library":
         skills.add("library-code-comments")
     if "typescript" in skills:
@@ -2404,7 +2410,14 @@ def main() -> None:
     validation_parser.add_argument(
         "--strict", action="store_true", help="treat best-practice and customization warnings as failures"
     )
-    subcommands.add_parser("skill", help="print the source-code management skill as Markdown for agent discovery")
+    skill_parser = subcommands.add_parser(
+        "skill", help="print the source-code management skill as Markdown for agent discovery"
+    )
+    skill_parser.add_argument(
+        "--topic",
+        choices=("inspection", "setup", "validation"),
+        help="print one management reference instead of the entrypoint",
+    )
     detection_parser = subcommands.add_parser(
         "detect", help="inspect language evidence without installing guidance or checks"
     )
@@ -2418,7 +2431,8 @@ def main() -> None:
     args = command.parse_args(namespace=Arguments())
     try:
         if args.command == "skill":
-            skill_path = SOURCE / "ai/skills/source-code/SKILL.md"
+            package = SOURCE / "ai/skills/source-code"
+            skill_path = package / "references" / f"{args.topic}.md" if args.topic else package / "SKILL.md"
             if not skill_path.is_file():
                 raise ValueError(f"management skill is unavailable: {skill_path}; restore the source-code installation")
             sys.stdout.buffer.write(skill_path.read_bytes())

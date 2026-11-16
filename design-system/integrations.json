@@ -129,15 +129,14 @@
     "owner": "Filetype icons, literal-color previews, other plugins and optional tools",
     "mechanism": "explicit gaps",
     "reload": "Application specific",
-    "coverage": "Devicons may assign filetype colors; nvim-highlight-colors intentionally displays data colors; Markview, Snacks, Noice, Octo and other enabled plugin surfaces need interactive audits. Optional presenterm, btop, WezTerm, Xresources, NeoMutt, claude-tail and graphical apps are outside this daily-theme migration.",
+    "coverage": "Devicons may assign filetype colors; nvim-highlight-colors intentionally displays data colors; Markview, Snacks, Noice, Octo and other enabled plugin surfaces need interactive audits. Optional presenterm, btop, WezTerm, Xresources, NeoMutt and graphical apps are outside this daily-theme migration.",
     "sources": [
       "nvim/init.lua",
       "presenterm/themes/nord.yaml",
       "btop/btop.conf",
       "wezterm.lua",
       "rc/Xresources",
-      "mail/neomuttrc",
-      "claude-tail/themes/Nord.tmTheme"
+      "mail/neomuttrc"
     ]
   }
 ]

@@ -19,5 +19,7 @@
   "source-code-lifecycle",
   "testing",
   "typescript",
-  "ui-acceptance"
+  "ui-acceptance",
+  "ui-review",
+  "cli"
 ]

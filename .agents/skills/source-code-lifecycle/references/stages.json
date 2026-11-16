@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "policy_version": "1.1.0",
+  "stages": {
+    "research": {
+      "go": [
+        [
+          "bash",
+          "scripts/check-go.sh",
+          "compile"
+        ]
+      ],
+      "typescript": [
+        [
+          "node",
+          "scripts/check-typescript.mjs",
+          "typecheck"
+        ]
+      ],
+      "python": [
+        [
+          "python3",
+          "scripts/check-python.py",
+          "typecheck"
+        ]
+      ],
+      "protobuf": [
+        [
+          "python3",
+          "scripts/check-protobuf.py",
+          "build"
+        ]
+      ]
+    },
+    "alpha": {
+      "go": [
+        [
+          "bash",
+          "scripts/check-go.sh",
+          "alpha"
+        ]
+      ],
+      "typescript": [
+        [
+          "node",
+          "scripts/check-typescript.mjs",
+          "alpha"
+        ]
+      ],
+      "python": [
+        [
+          "python3",
+          "scripts/check-python.py",
+          "alpha"
+        ]
+      ],
+      "protobuf": [
+        [
+          "python3",
+          "scripts/check-protobuf.py",
+          "alpha"
+        ]
+      ]
+    },
+    "beta": {
+      "go": [
+        [
+          "bash",
+          "scripts/check-go.sh",
+          "all"
+        ]
+      ],
+      "typescript": [
+        [
+          "node",
+          "scripts/check-typescript.mjs",
+          "all"
+        ]
+      ],
+      "python": [
+        [
+          "python3",
+          "scripts/check-python.py",
+          "all"
+        ]
+      ],
+      "protobuf": [
+        [
+          "python3",
+          "scripts/check-protobuf.py",
+          "all"
+        ]
+      ]
+    },
+    "production": {
+      "go": [
+        [
+          "bash",
+          "scripts/check-go.sh",
+          "all"
+        ]
+      ],
+      "typescript": [
+        [
+          "node",
+          "scripts/check-typescript.mjs",
+          "all"
+        ]
+      ],
+      "python": [
+        [
+          "python3",
+          "scripts/check-python.py",
+          "all"
+        ]
+      ],
+      "protobuf": [
+        [
+          "python3",
+          "scripts/check-protobuf.py",
+          "all"
+        ]
+      ]
+    }
+  }
+}

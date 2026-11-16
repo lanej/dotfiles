@@ -3,6 +3,20 @@ stage = "beta"
 kind = "tool"
 authority = "owned"
 adoption = "new"
+mode = "tracked"
+agents = "both"
+pr_template = "none"
+skills = ["builder", "architecture", "octo-manager", "github-actions", "ui-review"]
+detect_languages = true
+
+[checks.go]
+enabled = false
+
+[checks.typescript]
+enabled = false
+
+[checks.protobuf]
+enabled = false
 
 [checks.python]
 enabled = true

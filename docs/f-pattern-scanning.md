@@ -50,7 +50,6 @@ Keep the heading, introduction, and first artifact together when they fit on one
 
 Retain current typography, margins, and spacing. Review every rendered page for avoidable blank space, orphaned headings, detached introductions, clipped artifacts, and unnecessary forced breaks. Oversized groups need restructuring or a layout exception recorded with its page number and reason in the review notes. Prose exceptions waive only their named text budgets. Scan the opening, headings, and leads, then read fully for meaning and qualifications; adherence to numeric limits does not establish page cohesion or comprehension.
 
-EPQ selects this profile with `epq-pdf-profile: decision`. New PDF scaffolds declare it; existing reports opt in. Source audits validate metadata and scoped `epq-prose-exception` containers. The render check evaluates resolved main-body prose after static fallbacks are selected and retains valid exception reasons. Rendered page review remains required.
 
 ## Illustrative example
 
