@@ -22,9 +22,7 @@ Specify what could contradict a claim before treating evidence as confirmation. 
 
 ## Default architecture: Pragmatic Hexagonal Architecture
 
-Follow ESR's Unix rules: modularity, clarity, composition, separation of policy/mechanism and interface/engine, simplicity, parsimony, transparency, robustness, knowledge represented as data, least surprise, useful silence, early clear failure and repair, programmer economy, generation, working behavior before optimization, diversity, and extensibility.
-
-Use [Pragmatic Hexagonal Architecture](references/standard.md) to guide code layout and dependency boundaries. Organize around capabilities with identifiable decisions and effects; choose the minimum structure that supports them.
+Use [Pragmatic Hexagonal Architecture](references/standard.md) to place decisions in a functional core and effects in an imperative shell. Keep the canonical model thin and use ports and adapters where substitution or isolation justifies them. Organize around the changed capability with the minimum structure it needs.
 
 - **PHA-A01 — Functional core:** Domain meaning, policy and decisions SHOULD be independent of effectful infrastructure, with external facts supplied explicitly. Atomic database constraints MAY enforce authoritative invariants; retain an inspectable contract and evidence of actual enforcement.
 - **PHA-A02 — Imperative shell:** The shell SHOULD own orchestration, I/O, composition and effects; business decisions SHOULD remain identifiable outside transport, storage and vendor glue. Small handlers MAY make explicit, exercisable simple decisions directly; isolation-dependent transactional decisions MAY stay near storage.
@@ -43,7 +41,7 @@ Start with a **steel thread**: one narrow, executable path from the capability's
 
 Keep the thread narrow in scope but real in execution. Resolve consequential uncertainty with a result that could contradict the approach; failure can be useful. For known requirements an early test may fit; for feasibility use a focused experiment at the relevant real boundary, then connect the result into the thread. Mocks cannot establish that the boundary they replace works. If a boundary is unavailable, state the substitution and remaining gap; do not claim the complete path is verified. Use safe, authorized experiments without bypassing permissions or production protections.
 
-Read the project's installed `testing` skill when selecting, writing, running, or reviewing checks. It owns stage-specific evidence requirements and protection of retained behavior. Research may use disposable structure; alpha protects the working thread; beta adds adoption and compatibility evidence; production adds controlled-change, independent-review, and applicable recovery evidence. Preserve explicit project requirements and protections against irreversible harm at every stage. If the testing skill is unavailable, use the construction reference's retained-behavior safeguards and report the missing stage guidance.
+Read the project's installed `testing` skill when selecting, writing, running, or reviewing checks. It owns stage-specific evidence requirements and protection of retained behavior. Use only the current-stage expectations in that selected skill. Preserve explicit project requirements and protections against irreversible harm at every stage. If the testing skill is unavailable, use the construction reference's retained-behavior safeguards and report the missing stage guidance.
 
 ## Describe the current system
 

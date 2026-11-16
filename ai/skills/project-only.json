@@ -1,4 +1,5 @@
 [
+  ".maturity-profiles",
   "architecture",
   "builder",
   "code-comments",
@@ -12,12 +13,15 @@
   "just",
   "library-code-comments",
   "octo-manager",
-  "pr-writer",
   "protobuf",
+  "pull-request",
   "python",
   "rust",
+  "ship",
   "source-code-lifecycle",
   "testing",
   "typescript",
-  "ui-acceptance"
+  "ui-acceptance",
+  "ui-review",
+  "cli"
 ]

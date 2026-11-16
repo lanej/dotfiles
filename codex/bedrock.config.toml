@@ -19,6 +19,4 @@ trust_level = "trusted"
 [projects."/Users/joshlane/workspace"]
 trust_level = "trusted"
 
-[projects."/Users/joshlane/src/looker-development"]
-trust_level = "trusted"
 # profile intentionally omitted — Codex checks AWS_BEARER_TOKEN_BEDROCK first (already sourced ambiently via ~/.config/bedrock/env), falling back to the AWS SDK credential chain only if that's unset

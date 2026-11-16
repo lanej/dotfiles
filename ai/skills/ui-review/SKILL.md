@@ -1,11 +1,11 @@
 ---
 name: ui-review
-description: Use when operating Viewrule through the ui-review CLI to capture or inspect reports, manage scoped rules, or record Josh's explicit visual feedback; project acceptance policy is selected separately.
+description: Use when a frontend project selects source-code UI review and needs Viewrule reports, scoped rules, or explicit user feedback recorded against reviewed screenshots.
 ---
 
 # Viewrule operation
 
-Use Viewrule through the `ui-review` compatibility wrapper. If it is not on PATH, use `~/.files/bin/ui-review`. Read `~/.files/docs/ui-review.md` for installation, configuration, supported commands, and version-specific limitations. This user-level skill supplies tool operation and personal feedback handling; it does not select application architecture, acceptance criteria, required browser tests, or CI gates.
+Use Viewrule through the `ui-review` compatibility wrapper. Read `ui-review --help` and the selected subcommand’s help for supported options. This project skill supplies tool operation and feedback handling alongside the installed [UI acceptance guidance](../ui-acceptance/SKILL.md). It does not authorize installation, unrelated redesign, or changing project gates.
 
 Follow the target project's instructions and selected design system. When a project installs `ui-acceptance`, read its project-local `.agents/skills/ui-acceptance/SKILL.md`; otherwise preserve the repository's own acceptance criteria. Workstation tool availability does not opt the project into that profile. Follow host browser authorization, visibility, credential, and cleanup rules.
 

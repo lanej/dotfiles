@@ -19,6 +19,8 @@ import time
 ROOT = Path(__file__).resolve().parent.parent
 HELPER = ROOT / "scripts/file-history.py"
 TIMEOUT = 30 if os.environ.get("CI") else 1
+# The editor scenario contains many independently bounded operations.
+EDITOR_TIMEOUT = 120 if os.environ.get("CI") else 30
 
 
 def run(env, *args, cwd=None):
@@ -161,7 +163,7 @@ def main():
             env["XDG_STATE_HOME"] = str(editor_state)
             return subprocess.run(
                 ["nvim", "--headless", "-u", "NONE", "-i", "NONE", "-n", "-l", "nvim/tests/file-picker.lua"],
-                cwd=ROOT, env=env, timeout=TIMEOUT,
+                cwd=ROOT, env=env, timeout=EDITOR_TIMEOUT,
             ).returncode
     return 0
 

@@ -113,7 +113,7 @@ Required correctness lint in the reusable [TypeScript profile](typescript-style.
 
 ### Source-code application stack
 
-The [project tool-choice policy](../ai/skills/source-code-lifecycle/references/tool-choices.md) selects Commander for TypeScript/JavaScript CLIs, Cobra with lanej/charmed for Go CLI/TUI work, Typer/Rich/Textual for Python, clap/Ratatui for Rust, and React/Vite/Connect Query/TanStack Router for web applications. It also selects validation, logging, configuration, and testing tools. Authority and adoption govern application independently of lifecycle stage, including research proofs of concept; existing stacks and upstream conventions are preserved according to project policy.
+The [project tool-choice policy](../ai/skills/source-code-lifecycle/references/tool-choices.md) selects Commander for TypeScript/JavaScript CLIs, Cobra with lanej/charmed for Go CLI/TUI work, Typer/Rich/Textual for Python, clap/Ratatui for Rust, and React/Vite/Connect Query/TanStack Router for web applications. The project [CLI construction skill](../ai/skills/cli/SKILL.md) requires compact agent guidance through `skill` and `skill --topic` commands for applicable new CLI surfaces. It also selects validation, logging, configuration, and testing tools. Authority and adoption govern application independently of lifecycle stage, including research proofs of concept; existing stacks and upstream conventions are preserved according to project policy.
 
 ### Connect
 

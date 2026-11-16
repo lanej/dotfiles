@@ -14,15 +14,11 @@ The locked toolchain uses Ruff format checking and safety/lint rules, `ty` with 
 
 ## Lifecycle and project gates
 
-| Stage | Introduced Python gate |
-| --- | --- |
-| research | Strict type checking, plus configured inherited gates. |
-| alpha | Check-only formatting, lint/security rules, strict typing, project tests, and inherited gates. |
-| beta / production | Alpha checks plus dependency vulnerability auditing. Production obligations still need project-specific evidence. |
+The selected Python entrypoint describes the checks required at the configured maturity. Run its lifecycle gate and preserve the inherited project requirements.
 
 Run `python3 scripts/check-source-code.py python` for the selected lifecycle gate. The standalone runner also supports `format`, `lint`, `typecheck`, `test`, `audit`, `alpha`, and `all`. Formatting is check-only.
 
-Configure test argv and explicitly retained gate argv under `commands.test` and `commands.legacy` in `.python-quality.json`. The default test command is `uv run --locked pytest` in the application's environment; declare project dependencies/tests or configure an appropriate existing command. Project hooks are explicitly trusted repository code and retain their environment; the checker environment is isolated separately. Inherited gates run once for typecheck/research, test, alpha, and all. Preserve other repository gates even when they are not configured in this profile.
+Configure test argv and explicitly retained gate argv under `commands.test` and `commands.legacy` in `.python-quality.json`. The default test command is `uv run --locked pytest` in the application's environment; declare project dependencies/tests or configure an appropriate existing command. Project hooks are explicitly trusted repository code and retain their environment; the checker environment is isolated separately. Inherited gates run through the selected command plan. Preserve other repository gates even when they are not configured in this profile.
 
 ## Dependency audit boundaries
 

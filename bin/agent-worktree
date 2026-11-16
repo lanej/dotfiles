@@ -59,6 +59,21 @@ def executable(client):
     raise ValueError(f"{client} executable unavailable in PATH")
 
 
+def worktree_manager(manager=None):
+    manager = manager or shutil.which("worktree")
+    if not manager:
+        raise ValueError("worktree manager unavailable; run make install in ~/.files before allocating")
+    result = run([manager, "--version"])
+    version = re.fullmatch(r"worktree (\d+)\.(\d+)\.(\d+)", result.stdout.strip())
+    if result.returncode or not version or tuple(map(int, version.groups())) < (0, 2, 0):
+        observed = result.stdout.strip() or result.stderr.strip() or "unknown version"
+        raise ValueError(f"incompatible worktree manager at {manager}: {observed}; "
+                         "agent launchers require worktree 0.2.0 or newer. "
+                         "Run make install in ~/.files with worktree-manager selected, "
+                         "then ensure PATH selects the upgraded binary")
+    return manager
+
+
 def native(client, real, args):
     for name in ("SIGPIPE", "SIGXFZ", "SIGXFSZ"):
         if hasattr(signal, name):
@@ -172,9 +187,7 @@ def acquire(token, cwd, _name):
     awaiting_start = record["client"] == "claude" and not record["sessions"]
     if process_start(record["pid"]) != record["started"] and not active and not awaiting_start:
         raise ValueError("containing launcher session has ended")
-    manager = record.get("manager") or shutil.which("worktree")
-    if not manager:
-        raise ValueError("worktree manager unavailable; run make install before allocating")
+    manager = worktree_manager(record.get("manager"))
     intent = uuid.uuid4().hex
     owner = f"agent-worktree:{record['client']}:{token}:{intent}"
     with state_lock():
@@ -765,9 +778,7 @@ def launch(client, args):
         root, primary = checkout(target)
         if root != primary:
             native(client, real, ["--cd", str(target), *cleaned])
-        manager = shutil.which("worktree")
-        if not manager:
-            raise ValueError("worktree manager unavailable; run make install before allocating")
+        manager = worktree_manager()
         token = new_session(client, primary, manager, real)
         try:
             allocated = acquire(token, target, primary.name)
@@ -798,9 +809,7 @@ def launch(client, args):
     if settings is None:
         native(client, real, args)
     extra, indices, _home, _documents = settings
-    manager = shutil.which("worktree")
-    if not manager:
-        raise ValueError("worktree manager unavailable; run make install before allocating")
+    manager = worktree_manager()
     token = new_session(client, primary, manager, real)
     return launch_owned(client, real, claude_args(args, token, extra, indices), Path.cwd(), token)
 

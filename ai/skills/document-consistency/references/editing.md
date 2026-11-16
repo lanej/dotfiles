@@ -1,0 +1,7 @@
+## Document editing
+
+### Dependency check
+Before finalizing an edit, grep the full document (and known sibling/duplicate docs — a project README next to its CLAUDE.md, other sections of one data dictionary) for every claim that depends on what changed. When dispatching the edit to a sub-agent, the briefing must explicitly include that grep — intro paragraphs and summary sections are the most common thing a "fix Section 3" brief misses. On a v1→v2→v3 same-session edit sequence, re-run the check after the *last* edit, not just the first. This applies even when the *cause* of the change isn't another edit to the doc itself — a rebase pulling in upstream doc changes, or a later commit that changes a real count (tests added/removed) the doc asserts, re-stales a figure just as surely as a manual edit does; re-run the sibling-doc grep after any such commit, not only after commits whose stated purpose is documentation. Recurred 3x in one multi-commit task (2026-08-15, mobile-optimization: post-task doc update, post-rebase, post-fix-wave), each caught only by review. (detail: memory "feedback_iterative_edit_dependency_check"; also "feedback_sibling_document_check"; "feedback_docs_recheck_on_every_number_change")
+
+### Citations in externally-shareable artifacts
+Memos, reports, proposals, comms: cite sources (URLs, not internal-only links) for quantitative, comparative, or external-behavior claims that could be challenged outside the company.

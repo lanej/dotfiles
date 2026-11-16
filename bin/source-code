@@ -38,6 +38,8 @@ class Manifest(TypedDict, total=False):
     version: Required[int]
     files: Required[dict[str, Snapshot]]
     mode: str
+    skill_storage: str
+    skill_source: str
     stage: str
     kind: str
     authority: str
@@ -80,10 +82,13 @@ class Policy(TypedDict):
     languages: list[str]
     skills: dict[str, str]
     detection: dict[str, object]
+    skill_storage: NotRequired[str]
 
 
 class PolicySelection(TypedDict):
     mode: str
+    skill_storage: str
+    skill_source: str
     skills: set[str]
     stage: str
     kind: str | None
@@ -115,6 +120,8 @@ class CheckView(TypedDict):
 
 class PolicyView(TypedDict):
     mode: str
+    skill_storage: str
+    skill_source: str
     stage: str
     kind: str | None
     authority: str | None
@@ -143,8 +150,10 @@ class Arguments(argparse.Namespace):
     config_applied: set[str]
     cli_values: dict[str, object]
     skills_dir: Path | None = None
+    topic: str | None = None
     init: bool = False
     mode: str | None = None
+    skill_storage: str | None = None
     skills: str | None = None
     go: bool | None = None
     go_rollout: str | None = None
@@ -169,7 +178,7 @@ class Arguments(argparse.Namespace):
 
 
 SOURCE = Path(__file__).resolve().parents[1]
-DEFAULT_SKILLS = ("builder", "architecture", "octo-manager")
+DEFAULT_SKILLS = ("builder", "architecture", "pull-request")
 CORE_SKILLS = (
     "builder",
     "architecture",
@@ -178,9 +187,10 @@ CORE_SKILLS = (
     "testing",
     "source-code-lifecycle",
     "code-comments",
+    "cli",
 )
 SKILLS = DEFAULT_SKILLS + (
-    "pr-writer",
+    "octo-manager",
     "go",
     "typescript",
     "code-comments",
@@ -189,6 +199,7 @@ SKILLS = DEFAULT_SKILLS + (
     "source-code-lifecycle",
     "data-change-planning",
     "git",
+    "ship",
     "gh-pr-stack",
     "github-actions",
     "javascript",
@@ -198,13 +209,28 @@ SKILLS = DEFAULT_SKILLS + (
     "protobuf",
     "data-pipeline",
     "ui-acceptance",
+    "ui-review",
+    "cli",
 )
+RENAMED_SKILLS = {"pr-writer": "pull-request", "pr-merge": "ship"}
+MANAGED_SKILLS = SKILLS + tuple(RENAMED_SKILLS)
 STAGES = ("research", "alpha", "beta", "production")
+MATURITY_SKILLS = (
+    "testing",
+    "code-comments",
+    "go",
+    "rust",
+    "typescript",
+    "python",
+    "protobuf",
+    "source-code-lifecycle",
+)
 KINDS = ("service", "library", "tool")
 AUTHORITIES = ("owned", "shared", "upstream")
 ADOPTIONS = ("hold", "new", "backfill")
 POLICY = ".source-code.json"
 LIFECYCLE_RUNNER = "scripts/check-source-code.py"
+LIFECYCLE_PLAN = ".source-code-stages.json"
 VERSIONS = ".agents/source-code-versions.json"
 GUIDANCE = "AGENTS.override.md"
 PROJECT_GUIDANCE = ".agents/source-code.md"
@@ -327,6 +353,7 @@ def allowed_path(relative: str) -> bool:
         TS_LOCK,
         POLICY,
         LIFECYCLE_RUNNER,
+        LIFECYCLE_PLAN,
         VERSIONS,
         GUIDANCE,
         PROJECT_GUIDANCE,
@@ -337,7 +364,9 @@ def allowed_path(relative: str) -> bool:
     ):
         return True
     return any(
-        relative.startswith(f".agents/skills/{skill}/") or relative == f".claude/skills/{skill}" for skill in SKILLS
+        (relative == f".agents/skills/{skill}" or relative.startswith(f".agents/skills/{skill}/"))
+        or relative == f".claude/skills/{skill}"
+        for skill in MANAGED_SKILLS
     )
 
 
@@ -360,6 +389,12 @@ def read_state(root: Path) -> tuple[Manifest, Snapshot | None]:
             raise ValueError(f"invalid manifest {profile}")
     if "mode" in state and state["mode"] not in ("tracked", "local"):
         raise ValueError("invalid manifest mode")
+    if state.get("skill_storage", "copied") not in ("linked", "copied"):
+        raise ValueError("invalid manifest skill storage")
+    if state.get("skill_storage") == "linked":
+        source = state.get("skill_source")
+        if not isinstance(source, str) or not Path(source).is_absolute():
+            raise ValueError("invalid canonical skill source")
     if "go_rollout" in state and state["go_rollout"] not in ("strict", "ratchet"):
         raise ValueError("invalid manifest Go rollout")
     if "go_legacy" in state and state["go_legacy"] is not None and not isinstance(state["go_legacy"], str):
@@ -378,11 +413,12 @@ def read_state(root: Path) -> tuple[Manifest, Snapshot | None]:
     if "skill_versions" in state:
         pins = state["skill_versions"]
         if not isinstance(pins, dict) or not all(
-            name in SKILLS and isinstance(value, str) and VERSION_RE.fullmatch(value) for name, value in pins.items()
+            name in MANAGED_SKILLS and isinstance(value, str) and VERSION_RE.fullmatch(value)
+            for name, value in pins.items()
         ):
             raise ValueError("invalid manifest skill versions")
     if "skills" in state and (
-        not isinstance(state["skills"], list) or not all(name in SKILLS for name in state["skills"])
+        not isinstance(state["skills"], list) or not all(name in MANAGED_SKILLS for name in state["skills"])
     ):
         raise ValueError("invalid manifest skill selection")
     if "agents" in state and state["agents"] not in ("codex", "both"):
@@ -403,9 +439,34 @@ def read_state(root: Path) -> tuple[Manifest, Snapshot | None]:
             )
         else:
             valid = (
-                set(entry) == {"kind", "target"}
-                and path.startswith(".claude/skills/")
-                and entry.get("target") == f"../../.agents/skills/{Path(path).name}"
+                entry.get("kind") == "link"
+                and set(entry) == {"kind", "target"}
+                and (
+                    path.startswith(".claude/skills/")
+                    and entry.get("target") == f"../../.agents/skills/{Path(path).name}"
+                    or state.get("skill_storage") == "linked"
+                    and (
+                        path == f".agents/skills/{Path(path).name}"
+                        and Path(path).name in MANAGED_SKILLS
+                        and (
+                            entry.get("target") == str(Path(state["skill_source"]) / Path(path).name)
+                            or Path(path).name in MATURITY_SKILLS
+                            and entry.get("target")
+                            == str(
+                                selected_skill_directory(
+                                    Path(state["skill_source"]), Path(path).name, state.get("stage", "beta")
+                                )
+                            )
+                        )
+                        or path == ".agents/skills/testing"
+                        and entry.get("target")
+                        == str(
+                            Path(state["skill_source"]) / ".testing-profiles" / state.get("stage", "beta") / "testing"
+                        )
+                        or path == VERSIONS
+                        and entry.get("target") == str(Path(state["skill_source"]) / "source-code-versions.json")
+                    )
+                )
             )
         if not valid:
             raise ValueError(f"invalid managed entry in manifest: {path}")
@@ -423,6 +484,7 @@ def load_configuration(args: Arguments) -> None:
         key: getattr(args, key)
         for key in (
             "mode",
+            "skill_storage",
             "stage",
             "kind",
             "authority",
@@ -461,6 +523,7 @@ def load_configuration(args: Arguments) -> None:
         "authority",
         "adoption",
         "mode",
+        "skill_storage",
         "skills",
         "agents",
         "pr_template",
@@ -479,6 +542,7 @@ def load_configuration(args: Arguments) -> None:
         "authority": AUTHORITIES,
         "adoption": ADOPTIONS,
         "mode": ("tracked", "shadow", "local"),
+        "skill_storage": ("linked", "copied"),
         "agents": ("codex", "both"),
         "pr_template": ("none", "local", "github"),
     }
@@ -501,7 +565,7 @@ def load_configuration(args: Arguments) -> None:
         if (
             not isinstance(skills, list)
             or not skills
-            or not all(isinstance(name, str) and name in SKILLS for name in skills)
+            or not all(isinstance(name, str) and name in MANAGED_SKILLS for name in skills)
             or len(set(skills)) != len(skills)
         ):
             raise ValueError("configuration skills must be a nonempty array of unique supported skill names")
@@ -653,7 +717,7 @@ def read_versions(path: Path) -> Registry:
     ):
         raise ValueError(f"unsupported skill version registry: {path}")
     skills = versions.get("skills")
-    if not isinstance(skills, dict) or not skills or not set(skills) <= set(SKILLS):
+    if not isinstance(skills, dict) or not skills or not set(skills) <= set(MANAGED_SKILLS):
         raise ValueError(f"invalid skill versions: {path}")
     for version in [versions.get("policy_version"), *skills.values()]:
         if not isinstance(version, str) or not VERSION_RE.fullmatch(version):
@@ -684,7 +748,10 @@ def project_router() -> str:
 
 
 def project_guidance(policy: Policy) -> str:
-    rows = "\n".join(f"| {name} | {version} |" for name, version in sorted(policy["skills"].items()))
+    linked = policy.get("skill_storage") == "linked"
+    rows = "\n".join(
+        f"| {name} | {'canonical' if linked else version} |" for name, version in sorted(policy["skills"].items())
+    )
     lifecycle = (
         "Read the installed `.agents/skills/source-code-lifecycle/SKILL.md` first, then "
         if "source-code-lifecycle" in policy["skills"]
@@ -717,8 +784,13 @@ def project_guidance(policy: Policy) -> str:
         f"Policy version: **{policy['policy_version']}**. Schema version: **{policy['schema_version']}**. Lifecycle stage: **{policy['stage']}**.\n\n"
         + kind_guidance
         + tooling
-        + "Paths in this policy are relative to the repository root. The authoritative pins and stage are in `.source-code.json`; this file is their generated summary. Preserve the authored `AGENTS.md` and all more-specific repository instructions.\n\n"
-        "| Skill | Version |\n| --- | --- |\n"
+        + "Paths in this policy are relative to the repository root. Before applying this policy, read the repository's `AGENTS.md` if it exists. Preserve its requirements and all more-specific repository instructions. This override adds project policy; it does not waive existing gates.\n\n"
+        + (
+            "Project stage and selections are in `.source-code.json`. Skills follow the canonical source immediately; read `.agents/source-code-versions.json` for live versions. Versions recorded in project metadata describe setup time, not pins. Canonical edits affect every linked repository. Run setup on each checkout to recreate local skill links; keep the canonical checkout available.\n\n"
+            if linked
+            else "The authoritative pins and stage are in `.source-code.json`; this file is their generated summary.\n\n"
+        )
+        + "| Skill | Version |\n| --- | --- |\n"
         + rows
         + "\n\n"
         + lifecycle
@@ -731,9 +803,13 @@ def project_guidance(policy: Policy) -> str:
 
 
 def complete_skills(skills: Iterable[str], explicit_stage: bool = False, kind: str | None = None) -> set[str]:
-    skills = set(skills)
-    if skills & {"data-pipeline", "ui-acceptance"}:
+    skills = {RENAMED_SKILLS.get(name, name) for name in skills}
+    if "ship" in skills:
+        skills.add("git")
+    if skills & {"data-pipeline", "ui-acceptance", "ui-review"}:
         skills.add("architecture")
+    if "ui-review" in skills:
+        skills.add("ui-acceptance")
     if kind == "library":
         skills.add("library-code-comments")
     if "typescript" in skills:
@@ -744,6 +820,8 @@ def complete_skills(skills: Iterable[str], explicit_stage: bool = False, kind: s
         skills.add("code-comments")
     if skills & set(CORE_SKILLS) or explicit_stage or kind is not None:
         skills.update(CORE_SKILLS)
+    if "git" in skills:
+        skills.update({"pull-request", "ship"})
     return skills
 
 
@@ -759,9 +837,24 @@ def detect_languages(root: Path, state: Manifest | None = None) -> Detection:
     finally:
         sys.dont_write_bytecode = previous_bytecode
     state = read_state(root)[0] if state is None else state
+    managed = set(state["files"])
+    if not managed and (root / POLICY).is_file():
+        portable = json.loads((root / POLICY).read_text())
+        if isinstance(portable, dict) and portable.get("skill_storage") == "linked":
+            # A clone retains generated runtime files but has no local manifest.
+            # Those files are not evidence of application languages.
+            managed.update({LIFECYCLE_RUNNER, LIFECYCLE_PLAN})
+            for language, artifacts in (
+                ("go", GO_FILES),
+                ("typescript", TS_FILES),
+                ("python", PY_FILES),
+                ("protobuf", PROTO_FILES),
+            ):
+                if language in portable.get("languages", []):
+                    managed.update(artifacts)
     return cast(
         Detection,
-        module.detect(root, SOURCE / "ai/skills/source-code-lifecycle/references/languages.json", set(state["files"])),
+        module.detect(root, SOURCE / "ai/skills/source-code-lifecycle/references/languages.json", managed),
     )
 
 
@@ -778,11 +871,17 @@ def artifact_owner(path: str) -> str | None:
         return "python"
     if path in PROTO_FILES:
         return "protobuf"
-    if path in {POLICY, VERSIONS, GUIDANCE, PROJECT_GUIDANCE, HOST_RULE, LIFECYCLE_RUNNER}:
+    if path in {POLICY, VERSIONS, GUIDANCE, PROJECT_GUIDANCE, HOST_RULE, LIFECYCLE_RUNNER, LIFECYCLE_PLAN}:
         return "source-code-lifecycle"
     if path in {".github/pull_request_template.md", ".agents/templates/pull_request_template.md"}:
-        return "pr-writer"
+        return "pull-request"
     return None
+
+
+def selected_skill_directory(source: Path, name: str, stage: str) -> Path:
+    if name in MATURITY_SKILLS:
+        return source / ".maturity-profiles" / stage / name
+    return source / name
 
 
 def package(
@@ -793,6 +892,8 @@ def package(
     typescript_profile: bool = False,
     python_profile: bool = False,
     protobuf_profile: bool = False,
+    skill_source: Path | None = None,
+    stage: str = "beta",
 ) -> tuple[dict[str, Snapshot], dict[str, bytes]]:
     """Assemble from canonical sources; only installation paths are adapted."""
     files: dict[str, Snapshot] = {}
@@ -810,11 +911,24 @@ def package(
         payloads[destination] = data
 
     for skill in skills:
-        directory = SOURCE / "ai/skills" / skill
+        directory = (skill_source or SOURCE / "ai/skills") / skill
+        selected = selected_skill_directory(skill_source or SOURCE / "ai/skills", skill, stage)
+        if skill_source is not None:
+            directory = selected
+            if directory.is_symlink() or not (directory / "SKILL.md").is_file():
+                raise ValueError(f"missing or linked canonical skill: {directory}")
+            files[f".agents/skills/{skill}"] = {"kind": "link", "target": str(directory)}
+            if "claude" in agents:
+                files[f".claude/skills/{skill}"] = {"kind": "link", "target": f"../../.agents/skills/{skill}"}
+            continue
         if not (directory / "SKILL.md").is_file():
             raise ValueError(f"missing skill: {directory}")
+        if skill in MATURITY_SKILLS:
+            add(f".agents/skills/{skill}/SKILL.md", selected / "SKILL.md")
         for source in sorted(directory.rglob("*")):
             relative = source.relative_to(directory)
+            if skill in MATURITY_SKILLS and relative == Path("SKILL.md"):
+                continue
             if "__pycache__" in relative.parts or source.suffix == ".pyc":
                 continue
             if skill == "code-comments" and str(relative) == "references/standard.md":
@@ -842,7 +956,8 @@ def package(
             if skill == "git":
                 replacements = [
                     ("../../../docs/verification.md", "references/verification.md"),
-                    ("../../../docs/pull-requests.md", "references/pull-requests.md"),
+                    ("../../../docs/octo-pr-submission.md", "references/octo-pr-submission.md"),
+                    ("../../../docs/pull-requests.md", "../pull-request/references/docs/pull-requests.md"),
                 ]
             if skill == "git" and str(relative) == "references/review.md":
                 replacements = [("../../../../docs/pull-requests.md", "pull-requests.md")]
@@ -853,19 +968,23 @@ def package(
                 ]
             if skill == "octo-manager":
                 replacements = [("../../../docs/octo-pr-submission.md", "references/submission.md")]
-            if skill == "pr-writer":
-                replacements = [("../../agents/", "references/")]
+            if skill == "pull-request":
+                replacements = [
+                    ("../../agents/", "references/"),
+                    ("../../../docs/octo-pr-submission.md", "references/octo-pr-submission.md"),
+                ]
             add(f".agents/skills/{skill}/{relative}", source, replacements)
-        if skill == "pr-writer":
+        if skill == "pull-request":
+            add(".agents/skills/pull-request/references/octo-pr-submission.md", SOURCE / "docs/octo-pr-submission.md")
             for name in ("pull-request-writer.md", "github-pr-writer.md"):
                 add(
-                    f".agents/skills/pr-writer/references/{name}",
+                    f".agents/skills/pull-request/references/{name}",
                     SOURCE / "ai/agents" / name,
                     [("~/.files/docs/", "docs/"), ("~/.files/ai/agents/", "")],
                 )
             for name in PR_DOCS:
                 add(
-                    f".agents/skills/pr-writer/references/docs/{name}",
+                    f".agents/skills/pull-request/references/docs/{name}",
                     SOURCE / "docs" / name,
                     [("../ai/agents/", "../")],
                 )
@@ -1255,9 +1374,28 @@ def check_visibility(root: Path, paths: set[str], exclusions: str, mode: str) ->
         git(metadata, "init", "--bare", "--quiet")
         (metadata / "info/exclude").write_text(exclusions)
         worktree = root
-        if not worktree.exists():
+        linked_parent = any(
+            (root / parent).is_symlink()
+            for relative in paths
+            for parent in PurePosixPath(relative).parents
+            if str(parent) != "."
+        )
+        if not worktree.exists() or linked_parent:
+            # Git refuses pathspecs below existing symlinks during a link-to-copy
+            # migration. Evaluate the planned layout with the same ignore rules.
             worktree = metadata / "preview"
             worktree.mkdir()
+            ignores = {".gitignore"}
+            for relative in paths:
+                ignores.update(str(parent / ".gitignore") for parent in PurePosixPath(relative).parents)
+            for name in ignores:
+                source = root / name
+                if any(parent.is_symlink() for parent in source.parents if parent.is_relative_to(root)):
+                    continue
+                if source.is_file() and not source.is_symlink():
+                    destination = worktree / name
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    destination.write_bytes(source.read_bytes())
         command = ["--git-dir", str(metadata), "--work-tree", str(worktree)]
         # Preserve effective repository overrides as well as global defaults.
         for key in ("core.excludesFile", "core.ignoreCase"):
@@ -1289,17 +1427,23 @@ def metadata_directory(root: Path) -> Path:
     return directory
 
 
-def recorded_skills(state: Manifest) -> set[str]:
+def recorded_skill_names(state: Manifest) -> set[str]:
     return set(state.get("skills", [])) | {
         Path(name).parts[2]
         for name in state["files"]
-        if name.startswith(".agents/skills/") and name.endswith("/SKILL.md")
+        if name.startswith(".agents/skills/") and (name.endswith("/SKILL.md") or len(Path(name).parts) == 3)
     }
+
+
+def recorded_skills(state: Manifest) -> set[str]:
+    return {RENAMED_SKILLS.get(name, name) for name in recorded_skill_names(state)}
 
 
 def resolve_policy(root: Path, args: Arguments, state: Manifest) -> ResolvedPolicy:
     """Resolve selections once for installation, upgrades, and inspection."""
-    mode = args.mode or state.get("mode", "tracked")
+    storage = args.skill_storage or state.get("skill_storage", "copied" if state["files"] else "linked")
+    source = str(SOURCE / "ai/skills") if args.skill_storage else state.get("skill_source", str(SOURCE / "ai/skills"))
+    mode = args.mode or state.get("mode", "tracked" if state["files"] else "local")
     if mode == "shadow":
         mode = "local"
     if mode not in ("tracked", "local"):
@@ -1307,6 +1451,7 @@ def resolve_policy(root: Path, args: Arguments, state: Manifest) -> ResolvedPoli
     selected = args.skills
     if selected is None:
         selected = ",".join(state.get("skills", DEFAULT_SKILLS))
+    selected = ",".join(RENAMED_SKILLS.get(name, name) for name in selected.split(","))
     skills = set(selected.split(","))
     unknown = skills - set(SKILLS)
     if unknown:
@@ -1358,9 +1503,14 @@ def resolve_policy(root: Path, args: Arguments, state: Manifest) -> ResolvedPoli
             raise ValueError(
                 f"{name} must be selected explicitly with --{name} or source-code.toml before setup or upgrade"
             )
+    if args.stage is not None and args.stage != state.get("stage", "beta"):
+        skills.update(recorded_skills(state) & set(MATURITY_SKILLS))
+    skills.update(RENAMED_SKILLS[name] for name in recorded_skill_names(state) if name in RENAMED_SKILLS)
     skills = complete_skills(
         skills, bool(args.stage) and args.stage != state.get("stage"), kind if kind != state.get("kind") else None
     )
+    if storage != state.get("skill_storage", "copied"):
+        skills |= recorded_skills(state)
     if not skills <= set(SKILLS):
         raise ValueError("language detection selected unsupported skills")
     stage = args.stage or state.get("stage", "beta")
@@ -1385,7 +1535,17 @@ def resolve_policy(root: Path, args: Arguments, state: Manifest) -> ResolvedPoli
 
     origins: dict[str, object] = {
         name: origin(name)
-        for name in ("mode", "stage", "kind", "authority", "adoption", "agents", "pr_template", "detect_languages")
+        for name in (
+            "mode",
+            "skill_storage",
+            "stage",
+            "kind",
+            "authority",
+            "adoption",
+            "agents",
+            "pr_template",
+            "detect_languages",
+        )
     }
     skill_origins: dict[str, list[dict[str, object]]] = {}
     origins["skills"] = skill_origins
@@ -1432,6 +1592,8 @@ def resolve_policy(root: Path, args: Arguments, state: Manifest) -> ResolvedPoli
         origins["pr_template"] = {"source": "dependency", "detail": "ratchet adoption omits a new template"}
     return {
         "mode": mode,
+        "skill_storage": storage,
+        "skill_source": source if storage == "linked" else "",
         "skills": skills,
         "stage": stage,
         "kind": kind,
@@ -1448,6 +1610,49 @@ def resolve_policy(root: Path, args: Arguments, state: Manifest) -> ResolvedPoli
         "template": template,
         "origins": origins,
     }
+
+
+def storage_migration(root: Path, state: Manifest, storage: str) -> set[str]:
+    """Remove only unchanged owned artifacts; never follow a linked directory."""
+    changing_storage = storage != state.get("skill_storage", "copied")
+    names = recorded_skill_names(state)
+    if not changing_storage:
+        names &= RENAMED_SKILLS.keys()
+    removals: set[str] = set()
+    for name in names:
+        relative = f".agents/skills/{name}"
+        directory = root / relative
+        removals.update(path for path in state["files"] if path.startswith(relative + "/"))
+        if state.get("skill_storage") == "linked":
+            actual = inspect(root, relative)
+            if actual is not None and actual != state["files"].get(relative):
+                raise ValueError(f"preserving changed skill link: {relative}")
+            removals.add(relative)
+        else:
+            if directory.is_symlink():
+                raise ValueError(f"preserving linked skill directory: {relative}")
+            for child in directory.rglob("*"):
+                path = child.relative_to(root).as_posix()
+                if child.is_dir() and not child.is_symlink():
+                    removals.add(path)
+                    continue
+                expected = state["files"].get(path)
+                if expected is None or inspect(root, path) != expected:
+                    raise ValueError(f"preserving customized or unmanaged skill content: {path}")
+                removals.add(path)
+            removals.add(relative)
+        if name in RENAMED_SKILLS:
+            alias = f".claude/skills/{name}"
+            actual = inspect(root, alias)
+            if actual is not None and actual != state["files"].get(alias):
+                raise ValueError(f"preserving changed skill link: {alias}")
+            if alias in state["files"]:
+                removals.add(alias)
+    if changing_storage and VERSIONS in state["files"]:
+        if inspect(root, VERSIONS) != state["files"][VERSIONS]:
+            raise ValueError(f"preserving customized registry: {VERSIONS}")
+        removals.add(VERSIONS)
+    return removals
 
 
 def install(args: Arguments) -> None:
@@ -1493,10 +1698,11 @@ def install(args: Arguments) -> None:
     if not isinstance(old_pins, dict):
         raise ValueError("invalid installed skill version pins")
     if not all(
-        name in SKILLS and isinstance(version, str) and VERSION_RE.fullmatch(version)
+        name in MANAGED_SKILLS and isinstance(version, str) and VERSION_RE.fullmatch(version)
         for name, version in old_pins.items()
     ):
         raise ValueError("invalid installed skill version pins")
+    old_pins = {name: version for name, version in old_pins.items() if name not in RENAMED_SKILLS}
     resolved = resolve_policy(root, args, state)
     mode, skills, stage, kind = resolved["mode"], resolved["skills"], resolved["stage"], resolved["kind"]
     go_profile, typescript_profile, python_profile = (
@@ -1507,10 +1713,20 @@ def install(args: Arguments) -> None:
     detect_enabled, detection = resolved["detect_enabled"], resolved["detection"]
     agent_selection, agents, template = resolved["agent_selection"], resolved["agents"], resolved["template"]
     protobuf_profile = resolved["protobuf_profile"]
+    storage = resolved["skill_storage"]
+    skill_source = Path(resolved["skill_source"]) if storage == "linked" else None
     desired, payloads = package(
-        sorted(skills), agents, template, go_profile, typescript_profile, python_profile, protobuf_profile
+        sorted(skills),
+        agents,
+        template,
+        go_profile,
+        typescript_profile,
+        python_profile,
+        protobuf_profile,
+        skill_source,
+        stage,
     )
-    versions = read_versions(SOURCE / "ai/skills/source-code-versions.json")
+    versions = read_versions((skill_source or SOURCE / "ai/skills") / "source-code-versions.json")
     pins: dict[str, str] = {}
     languages: list[str] = []
     if skills:
@@ -1554,11 +1770,7 @@ def install(args: Arguments) -> None:
                     raise ValueError(
                         f"{stage} requires an updated {name} runner; rerun setup with --{name} or retain beta/full checks"
                     )
-        retained_skills = {
-            Path(path).parts[2]
-            for path in state["files"]
-            if path.startswith(".agents/skills/") and path.endswith("/SKILL.md")
-        }
+        retained_skills = recorded_skills(state)
         policy_changed = (
             state.get("policy_version") is not None and state["policy_version"] != versions["policy_version"]
         )
@@ -1593,7 +1805,11 @@ def install(args: Arguments) -> None:
                 "retained skills have no version pins; use source-code upgrade to version the complete installation"
             )
         pins = {
-            name: versions["skills"][name] if name in skills else old_pins[name]
+            name: old_pins.get(name, versions["skills"][name])
+            if storage == "linked"
+            else versions["skills"][name]
+            if name in skills
+            else old_pins[name]
             for name in sorted(skills | retained_skills)
         }
         required_kind_skills = {"source-code-lifecycle"} if kind is not None else set()
@@ -1611,6 +1827,7 @@ def install(args: Arguments) -> None:
             "languages": languages,
             "skills": pins,
             "detection": {"enabled": detect_enabled, **detection},
+            **({"skill_storage": "linked"} if storage == "linked" else {}),
         }
         if kind is not None:
             policy["kind"] = kind
@@ -1622,6 +1839,9 @@ def install(args: Arguments) -> None:
             (GUIDANCE, project_router().encode()),
             (PROJECT_GUIDANCE, project_guidance(policy).encode()),
         ]
+        if skill_source is not None:
+            desired[VERSIONS] = {"kind": "link", "target": str(skill_source / "source-code-versions.json")}
+            resources = [(path, data) for path, data in resources if path != VERSIONS]
         if "source-code-lifecycle" in skills:
             resources.append(
                 (
@@ -1629,11 +1849,15 @@ def install(args: Arguments) -> None:
                     (SOURCE / "ai/skills/source-code-lifecycle/assets/check-source-code.py").read_bytes(),
                 )
             )
+        if "source-code-lifecycle" in skills and (storage == "linked" or LIFECYCLE_PLAN in state["files"]):
+            resources.append(
+                (LIFECYCLE_PLAN, (SOURCE / "ai/skills/source-code-lifecycle/references/stages.json").read_bytes())
+            )
         for path, data in resources:
             desired[path] = file_entry(data)
             payloads[path] = data
         if "claude" in agents:
-            data = b"# Source-code project policy\n\nRead `AGENTS.override.md` in the repository root and follow its pinned project skills and lifecycle stage. Preserve existing repository instructions and gates.\n"
+            data = b"# Source-code project policy\n\nRead `AGENTS.override.md` in the repository root and follow its selected project skills and lifecycle stage. Preserve existing repository instructions and gates.\n"
             desired[HOST_RULE] = file_entry(data)
             payloads[HOST_RULE] = data
     ts_rollout: str | None = None
@@ -1661,15 +1885,22 @@ def install(args: Arguments) -> None:
         desired["octo-manager.toml"] = file_entry(data)
         payloads["octo-manager.toml"] = data
 
-    managed = dict(state["files"])
+    removals = storage_migration(root, state, storage)
+    managed = {path: entry for path, entry in state["files"].items() if path not in removals}
     if legacy:
         managed.pop(legacy, None)
     changes, snapshots, conflicts, skipped = [], dict(ts_snapshots), [], []
     if legacy_snapshot:
         snapshots[legacy_snapshot[0]] = legacy_snapshot[1]
     for relative, expected in sorted(desired.items()):
-        actual = inspect(root, relative)
-        snapshots[relative] = actual
+        actual = (
+            None
+            if any(relative == path or relative.startswith(path + "/") for path in removals)
+            else inspect(root, relative)
+        )
+        if not any(relative.startswith(path + "/") for path in removals):
+            if relative not in removals:
+                snapshots[relative] = inspect(root, relative)
         if relative == "octo-manager.toml":
             managed.pop(relative, None)
             if actual is None:
@@ -1691,9 +1922,14 @@ def install(args: Arguments) -> None:
                 policy_changed = (
                     owner == "source-code-lifecycle" and state.get("policy_version") != versions["policy_version"]
                 )
-                if old_pins.get(owner) != pins.get(owner) or policy_changed:
+                if (
+                    old_pins.get(owner) != pins.get(owner)
+                    or policy_changed
+                    or owner in MATURITY_SKILLS
+                    and state.get("stage") != stage
+                ):
                     raise ValueError(
-                        f"cannot upgrade the {owner} version while skipping locally modified content at {relative}; reconcile it or use --conflict replace"
+                        f"cannot change the {owner} version or maturity while skipping locally modified content at {relative}; reconcile it or use --conflict replace"
                     )
             if relative in {POLICY, GUIDANCE, PROJECT_GUIDANCE, VERSIONS, HOST_RULE} and args.conflict != "replace":
                 label = "lifecycle policy" if relative == POLICY else "policy artifact"
@@ -1718,6 +1954,15 @@ def install(args: Arguments) -> None:
     paths = set(managed) | {STATE}
     if "octo-manager" in skills:
         paths.add("octo-manager.toml")
+    local_paths = (
+        (
+            {path for path in managed if path.startswith((".agents/skills/", ".claude/skills/"))}
+            | ({VERSIONS, HOST_RULE} & set(managed))
+            | {STATE}
+        )
+        if storage == "linked"
+        else set()
+    )
     if go_profile and rollout == "ratchet":
         paths.add(GO_BASELINE)
     if typescript_profile:
@@ -1743,13 +1988,48 @@ def install(args: Arguments) -> None:
         if "octo-manager.toml" in tracked:
             paths.discard("octo-manager.toml")
             visible_paths.discard("octo-manager.toml")
-        if mode == "local" and paths & tracked:
+        if ((paths if mode == "local" else local_paths) | set(removals)) & tracked:
             raise ValueError(
                 "local mode cannot hide tracked files: "
-                + ", ".join(sorted(paths & tracked))
+                + ", ".join(sorted(((paths if mode == "local" else local_paths) | set(removals)) & tracked))
                 + "; keep tracked mode or explicitly remove them from the index first"
             )
-    relative_config = None
+    generated_config: bytes | None = None
+    if skill_source is not None and args.config_path is None:
+        config_path = root / "source-code.toml"
+        if config_path.exists() or config_path.is_symlink():
+            raise ValueError(f"preserving existing configuration: {config_path}")
+        rows = ["schema_version = 1"]
+        selections: dict[str, object] = {
+            "stage": stage,
+            "authority": resolved["authority"],
+            "adoption": resolved["adoption"],
+            "mode": mode,
+            "skill_storage": storage,
+            "skills": sorted(pins),
+            "agents": agent_selection,
+            "pr_template": template,
+            "detect_languages": detect_enabled,
+        }
+        if kind is not None:
+            selections["kind"] = kind
+        rows.extend(f"{key} = {json.dumps(value, ensure_ascii=False)}" for key, value in selections.items())
+        for language, enabled, settings_path in (
+            ("go", go_profile, ".go-quality.json"),
+            ("typescript", typescript_profile, ".typescript-quality.json"),
+            ("python", python_profile, ".python-quality.json"),
+            ("protobuf", protobuf_profile, ".protobuf-quality.json"),
+        ):
+            if not enabled and getattr(args, language) is None:
+                continue
+            rows.extend(["", f"[checks.{language}]", f"enabled = {str(enabled).lower()}"])
+            settings = json.loads(payloads[settings_path]) if settings_path in payloads else {}
+            if enabled:
+                for key in ("rollout", "projects", "paths"):
+                    if key in settings:
+                        rows.append(f"{key} = {json.dumps(settings[key], ensure_ascii=False)}")
+        generated_config = ("\n".join(rows) + "\n").encode()
+    relative_config = "source-code.toml" if generated_config is not None else None
     if args.config_path is not None:
         try:
             relative_config = args.config_path.relative_to(root).as_posix()
@@ -1757,15 +2037,19 @@ def install(args: Arguments) -> None:
             relative_config = None
     private_config = mode == "local" and relative_config is not None and relative_config not in tracked
     new_exclude = config_exclude_text(
-        exclude_text(old_exclude, paths if mode == "local" else set()), relative_config, private_config
+        exclude_text(old_exclude, paths if mode == "local" else local_paths), relative_config, private_config
     )
     check_visibility(
-        root, visible_paths if initializing or mode == "local" else visible_paths - tracked, new_exclude, mode
+        root, visible_paths if mode == "local" else visible_paths - tracked - local_paths, new_exclude, mode
     )
+    if mode == "tracked" and local_paths:
+        check_visibility(root, local_paths, new_exclude, "local")
     revision = git(SOURCE, "rev-parse", "HEAD", check=False).stdout.strip() or "unknown"
     new_state: Manifest = {
         "version": 1,
         "mode": mode,
+        "skill_storage": storage,
+        **({"skill_source": str(skill_source)} if skill_source is not None else {}),
         "source_revision": revision,
         "go_profile": go_profile,
         "files": managed,
@@ -1805,6 +2089,18 @@ def install(args: Arguments) -> None:
     state_changed = state_before != file_entry(state_data)
 
     print(f"source-code setup: {root} ({mode})")
+    print(
+        f"  Skill storage: {storage}"
+        + (
+            f"; follows {skill_source} (canonical edits affect every linked repository)"
+            if skill_source
+            else " (portable pinned packages)"
+        )
+    )
+    if generated_config is not None:
+        print("  create source-code.toml (portable project selections)")
+    for relative in sorted(removals):
+        print(f"  remove unchanged managed content: {relative}")
     print("  Detected language guidance: " + (", ".join(detection["languages"]) or "none"))
     if getattr(args, "config_path", None):
         effective = policy_view(root, resolved, state, versions["policy_version"], rollout, ts_rollout, payloads, pins)
@@ -1835,7 +2131,7 @@ def install(args: Arguments) -> None:
         print(f"  update local exclusions: {exclude}")
     if state_changed:
         print(f"  update {STATE}")
-    if not changes and not state_changed and new_exclude == old_exclude:
+    if not changes and not removals and generated_config is None and not state_changed and new_exclude == old_exclude:
         print("  already current")
     if args.dry_run:
         print("  preview only; no files changed")
@@ -1851,9 +2147,11 @@ def install(args: Arguments) -> None:
         # git init may supply a template's existing exclude file.
         old_exclude = exclude.read_text() if exclude.exists() else ""
         new_exclude = config_exclude_text(
-            exclude_text(old_exclude, paths if mode == "local" else set()), relative_config, private_config
+            exclude_text(old_exclude, paths if mode == "local" else local_paths), relative_config, private_config
         )
-        check_visibility(root, visible_paths, new_exclude, mode)
+        check_visibility(root, visible_paths - local_paths if mode == "tracked" else visible_paths, new_exclude, mode)
+        if local_paths:
+            check_visibility(root, local_paths, new_exclude, "local")
     for relative, before in snapshots.items():
         if inspect(root, relative) != before:
             raise ValueError(f"destination changed during planning; retry after reviewing: {relative}")
@@ -1862,6 +2160,14 @@ def install(args: Arguments) -> None:
     if (exclude.read_text() if exclude.exists() else "") != old_exclude:
         raise ValueError("Git exclusions changed during planning; retry after reviewing")
 
+    if storage_migration(root, state, storage) != removals:
+        raise ValueError("managed skills changed during migration planning")
+    for relative in sorted(removals, key=lambda value: len(Path(value).parts), reverse=True):
+        destination = root / relative
+        if destination.is_dir() and not destination.is_symlink():
+            destination.rmdir()
+        elif destination.exists() or destination.is_symlink():
+            destination.unlink()
     backup = None
     for relative, expected, replacing in changes:
         destination = root / relative
@@ -1877,11 +2183,18 @@ def install(args: Arguments) -> None:
         if relative == "octo-manager.toml":
             seed_file(destination, payloads[relative])
         elif expected["kind"] == "link":
+            if destination.is_symlink():
+                destination.unlink()
             destination.symlink_to(expected["target"], target_is_directory=True)
         else:
             atomic_file(destination, payloads[relative], expected["executable"])
     if new_exclude != old_exclude:
         atomic_file(exclude, new_exclude.encode())
+    if generated_config is not None:
+        config_path = root / "source-code.toml"
+        if config_path.exists() or config_path.is_symlink():
+            raise ValueError("configuration appeared during planning; preserving it")
+        atomic_file(config_path, generated_config)
     if state_changed:
         atomic_file(root / STATE, state_data)
     print("  installed; no files staged, committed, or published")
@@ -1905,7 +2218,7 @@ def prepare_upgrade(args: Arguments) -> None:
             {
                 Path(path).parts[2]
                 for path in state["files"]
-                if path.startswith(".agents/skills/") and path.endswith("/SKILL.md")
+                if path.startswith(".agents/skills/") and (path.endswith("/SKILL.md") or len(Path(path).parts) == 3)
             }
         )
         if not saved:
@@ -1944,7 +2257,9 @@ def prepare_upgrade(args: Arguments) -> None:
             )
     if state.get("policy_version") and version_key(available["policy_version"]) < version_key(state["policy_version"]):
         raise ValueError("upgrade would downgrade the installed policy; use a newer source checkout")
-    findings = skill_findings([SOURCE / "ai/skills" / name for name in sorted(skills)])
+    findings = skill_findings(
+        [selected_skill_directory(SOURCE / "ai/skills", name, resolved["stage"]) for name in sorted(skills)]
+    )
     errors = [f"{item['path']}: {message}" for item in findings for message in item["errors"]]
     warnings = [f"{item['path']}: {message}" for item in findings for message in item["warnings"]]
     if errors or args.strict and warnings:
@@ -2001,7 +2316,7 @@ def validate_project(args: Arguments) -> int:
     )
     if not folders:
         raise ValueError(f"no SKILL.md packages found: {directory}")
-    findings = skill_findings(folders)
+    findings = skill_findings([folder.resolve() for folder in folders])
     errors: list[str] = []
     warnings: list[str] = []
     for finding in findings:
@@ -2042,6 +2357,17 @@ def validate_project(args: Arguments) -> int:
                     raise ValueError("project kind requires installed lifecycle guidance")
                 if policy.get("kind") == "library" and "library-code-comments" not in policy.get("skills", {}):
                     raise ValueError("library kind requires caller documentation guidance")
+                linked = state.get("skill_storage") == "linked"
+                if policy.get("skill_storage", "copied") != state.get("skill_storage", "copied"):
+                    raise ValueError("policy storage and install manifest disagree")
+                if linked:
+                    expected_registry = str(Path(state["skill_source"]) / "source-code-versions.json")
+                    if inspect(root, VERSIONS) != {"kind": "link", "target": expected_registry}:
+                        raise ValueError("canonical version registry link is missing or redirected")
+                    for name in recorded_skills(state):
+                        link = root / ".agents/skills" / name
+                        if not (link / "SKILL.md").is_file():
+                            raise ValueError(f"missing canonical skill target: {name}")
                 if policy.get("policy_version") != versions["policy_version"]:
                     raise ValueError("policy pin and installed version registry disagree")
                 for name, choices in (("authority", AUTHORITIES), ("adoption", ADOPTIONS)):
@@ -2065,7 +2391,7 @@ def validate_project(args: Arguments) -> int:
                 managed = {
                     Path(path).parts[2]
                     for path in state["files"]
-                    if path.startswith(".agents/skills/") and path.endswith("/SKILL.md")
+                    if path.startswith(".agents/skills/") and (path.endswith("/SKILL.md") or len(Path(path).parts) == 3)
                 }
                 if set(pins) != managed:
                     raise ValueError("skill version pins and installed manifest disagree")
@@ -2086,7 +2412,7 @@ def validate_project(args: Arguments) -> int:
                 ):
                     raise ValueError("installed languages and lifecycle policy disagree")
                 for name, version in pins.items():
-                    if versions["skills"].get(name) != version:
+                    if name not in versions["skills"] or not linked and versions["skills"].get(name) != version:
                         raise ValueError(f"{name}: pin {version} differs from installed release registry")
                 if (root / GUIDANCE).read_text() != project_router():
                     raise ValueError(f"{GUIDANCE} is stale or customized; reconcile with setup or upgrade")
@@ -2094,8 +2420,13 @@ def validate_project(args: Arguments) -> int:
                     raise ValueError(f"{PROJECT_GUIDANCE} is stale or customized; reconcile with setup or upgrade")
                 if state.get("stage") != policy["stage"] or state.get("policy_version") != policy["policy_version"]:
                     raise ValueError("policy stage/version and install manifest disagree")
-                print(f"Policy {policy['policy_version']}; stage {policy['stage']}; {len(pins)} pinned skills")
-                print(f"Instructions: {GUIDANCE} routes to authored AGENTS.md and generated {PROJECT_GUIDANCE}")
+                label = "linked" if linked else "pinned"
+                print(f"Policy {policy['policy_version']}; stage {policy['stage']}; {len(pins)} {label} skills")
+                if linked:
+                    print(f"Canonical skills: {state['skill_source']}")
+                    for name in sorted(pins):
+                        print(f"  {name}: {versions['skills'][name]} (live)")
+                print(f"Instructions: {GUIDANCE} routes to authored AGENTS.md and the selected project skills")
             except (OSError, ValueError, TypeError, KeyError) as error:
                 errors.append(str(error))
     for message in errors:
@@ -2122,6 +2453,8 @@ def policy_view(
     payloads = payloads or {}
     view: PolicyView = {
         "mode": resolved["mode"],
+        "skill_storage": resolved["skill_storage"],
+        "skill_source": resolved["skill_source"],
         "stage": resolved["stage"],
         "kind": resolved["kind"],
         "authority": resolved["authority"],
@@ -2137,6 +2470,9 @@ def policy_view(
     view["skill_versions"] = {
         name: (pins if pins is not None else state.get("skill_versions", {})).get(name) for name in view["skills"]
     }
+    if resolved["skill_storage"] == "linked":
+        live = read_versions(Path(resolved["skill_source"]) / "source-code-versions.json")
+        view["skill_versions"] = {name: live["skills"].get(name) for name in view["skills"]}
     for language, runner, rollout, settings_name in (
         ("go", "scripts/check-go.sh", go_rollout, ".go-quality.json"),
         ("typescript", "scripts/check-typescript.mjs", ts_rollout, ".typescript-quality.json"),
@@ -2191,6 +2527,8 @@ def recorded_policy(root: Path, state: Manifest, snapshot: Snapshot | None) -> P
             raise ValueError(f"recorded policy {name} and manifest disagree; run validate")
     resolved: PolicySelection = {
         "mode": state.get("mode", "tracked"),
+        "skill_storage": state.get("skill_storage", "copied"),
+        "skill_source": state.get("skill_source", ""),
         "stage": state.get("stage", "beta"),
         "kind": state.get("kind"),
         "authority": state.get("authority"),
@@ -2206,12 +2544,15 @@ def recorded_policy(root: Path, state: Manifest, snapshot: Snapshot | None) -> P
     }
     pins = policy.get("skills", state.get("skill_versions", {}))
     if not isinstance(pins, dict) or any(
-        name not in SKILLS or not isinstance(version, str) or not VERSION_RE.fullmatch(version)
+        name not in MANAGED_SKILLS or not isinstance(version, str) or not VERSION_RE.fullmatch(version)
         for name, version in pins.items()
     ):
         raise ValueError("invalid recorded skill pins")
     if state.get("skill_versions") is not None and pins != state["skill_versions"]:
         raise ValueError("recorded skill pins and manifest disagree; run validate")
+    if resolved["skill_storage"] == "linked":
+        registry = read_versions(root / VERSIONS)
+        pins = {name: registry["skills"][name] for name in recorded_skills(state)}
     view = policy_view(root, resolved, state, state.get("policy_version"), pins=pins)
     for item in view["checks"].values():
         item.pop("action")
@@ -2238,6 +2579,8 @@ def explain_policy(args: Arguments) -> int:
         resolved["typescript_profile"],
         resolved["python_profile"],
         resolved["protobuf_profile"],
+        Path(resolved["skill_source"]) if resolved["skill_storage"] == "linked" else None,
+        resolved["stage"],
     )
     go_rollout, ts_rollout = None, None
     if resolved["go_profile"]:
@@ -2404,7 +2747,14 @@ def main() -> None:
     validation_parser.add_argument(
         "--strict", action="store_true", help="treat best-practice and customization warnings as failures"
     )
-    subcommands.add_parser("skill", help="print the source-code management skill as Markdown for agent discovery")
+    skill_parser = subcommands.add_parser(
+        "skill", help="print the source-code management skill as Markdown for agent discovery"
+    )
+    skill_parser.add_argument(
+        "--topic",
+        choices=("inspection", "setup", "validation"),
+        help="print one management reference instead of the entrypoint",
+    )
     detection_parser = subcommands.add_parser(
         "detect", help="inspect language evidence without installing guidance or checks"
     )
@@ -2418,7 +2768,8 @@ def main() -> None:
     args = command.parse_args(namespace=Arguments())
     try:
         if args.command == "skill":
-            skill_path = SOURCE / "ai/skills/source-code/SKILL.md"
+            package = SOURCE / "ai/skills/source-code"
+            skill_path = package / "references" / f"{args.topic}.md" if args.topic else package / "SKILL.md"
             if not skill_path.is_file():
                 raise ValueError(f"management skill is unavailable: {skill_path}; restore the source-code installation")
             sys.stdout.buffer.write(skill_path.read_bytes())
@@ -2468,7 +2819,12 @@ def add_install_arguments(parser: argparse.ArgumentParser, inspection: bool = Fa
     parser.add_argument(
         "--mode",
         choices=("tracked", "local", "shadow"),
-        help="shareable files or local Git exclusions; shadow aliases local (default: previous mode, else tracked)",
+        help="shareable files or local Git exclusions; shadow aliases local (default: previous mode, else shadow)",
+    )
+    parser.add_argument(
+        "--skill-storage",
+        choices=("linked", "copied"),
+        help="linked canonical skills or portable pinned copies (default: saved storage; new installations use linked)",
     )
     parser.add_argument(
         "--skills",
