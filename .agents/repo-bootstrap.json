@@ -112,7 +112,27 @@
     ".agents/skills/github-actions/SKILL.md": {
       "executable": false,
       "kind": "file",
-      "sha256": "647f69a74de968713cffc2f8362c6b916fe6c311640cc105a11d4befbfb0a853"
+      "sha256": "a4e1576d0858a7204f583ce18dc2a2da1b67203eb5521ab12c04b65924fda0ef"
+    },
+    ".agents/skills/github-actions/references/deployment-layout.md": {
+      "executable": false,
+      "kind": "file",
+      "sha256": "97e903c3fc318ce1be6c2514bf67c68b91b04a11fad0686013612e0963468888"
+    },
+    ".agents/skills/github-actions/references/gcp-authentication.md": {
+      "executable": false,
+      "kind": "file",
+      "sha256": "8f3b90687bdab9cfaedbad2d8cf15b33976f452d27b3efe1ef3125022289478d"
+    },
+    ".agents/skills/github-actions/references/queued-runs.md": {
+      "executable": false,
+      "kind": "file",
+      "sha256": "fc1ca00b1325f8911e7482103be89f4ee314c42ad991ad2a80fcc7ae03eddb7f"
+    },
+    ".agents/skills/github-actions/references/runtime-verification.md": {
+      "executable": false,
+      "kind": "file",
+      "sha256": "9c07b52a395de005d32976816ac08f449c96fe18a0a89e85f0481de36935d843"
     },
     ".agents/skills/go/SKILL.md": {
       "executable": false,
@@ -152,7 +172,27 @@
     ".agents/skills/javascript/SKILL.md": {
       "executable": false,
       "kind": "file",
-      "sha256": "dd711c246b8dcfb1d0bb2811ab31fabaa54a8ff4486fbf08c3a0bacfba996833"
+      "sha256": "01ebb262f9cee66ab1d30b636a0e265b1266eaeead1bdca2944c94ae03b7c73e"
+    },
+    ".agents/skills/javascript/references/astro.md": {
+      "executable": false,
+      "kind": "file",
+      "sha256": "414dc2230564c2aefbb880479942c22aec83eaef509ada0be003f4eab3696736"
+    },
+    ".agents/skills/javascript/references/mcp-stdio.md": {
+      "executable": false,
+      "kind": "file",
+      "sha256": "ef4e3a931e4507540f8b302a75079efad4bbaa452696ce50fd463e2bd1a7dca0"
+    },
+    ".agents/skills/javascript/references/runtime-and-testing.md": {
+      "executable": false,
+      "kind": "file",
+      "sha256": "38bc585fabb145cbeafdf1bbdfb74b1646302d2a9b75984465b227bf417216b9"
+    },
+    ".agents/skills/javascript/references/sse-streaming.md": {
+      "executable": false,
+      "kind": "file",
+      "sha256": "fedd789defb7483f2a01e93f9a9b9e74ae690576dce5f418916a82bd8abea0b1"
     },
     ".agents/skills/javascript/references/worktree-lessons.md": {
       "executable": false,
@@ -347,12 +387,12 @@
     ".agents/source-code-versions.json": {
       "executable": false,
       "kind": "file",
-      "sha256": "f5ba284149dc3e67ab9df81269913e67d86afe019b13b51efddc61167de53dda"
+      "sha256": "b385cd32151d8cbc32f07a69e4db1ac33cbb8762e4b74c4e13d2797f89afcde3"
     },
     ".agents/source-code.md": {
       "executable": false,
       "kind": "file",
-      "sha256": "012691ac2cf987cf1a9e6f92c289197767eb293e915afd2126afcb5d573d94de"
+      "sha256": "7329b6528b757bcfa99467403f0a5564f0de805c89ad87d70b6557073a1c1547"
     },
     ".claude/rules/source-code.md": {
       "executable": false,
@@ -456,7 +496,7 @@
     ".source-code.json": {
       "executable": false,
       "kind": "file",
-      "sha256": "cc3293f53cd8dac3f43cf7ec172185287dba23c04b9d88eb45aa279c348aa968"
+      "sha256": "310bde4abeb62c2693e887f699922ce675c0e57b785cf2627366d5eceb255a06"
     },
     "AGENTS.override.md": {
       "executable": false,
@@ -487,9 +527,9 @@
     "code-comments": "1.0.0",
     "data-change-planning": "1.0.0",
     "git": "1.1.0",
-    "github-actions": "1.0.0",
+    "github-actions": "1.0.1",
     "go": "1.1.1",
-    "javascript": "1.1.0",
+    "javascript": "1.1.1",
     "library-code-comments": "1.0.0",
     "octo-manager": "1.0.1",
     "python": "1.1.0",
@@ -517,7 +557,7 @@
     "typescript",
     "ui-acceptance"
   ],
-  "source_revision": "3dd7883bab7cba259c8ec12e90f6432b77e0e24d",
+  "source_revision": "4eab06ecea9aebe6043e72fe9f489eaeede1642f",
   "stage": "beta",
   "version": 1
 }
