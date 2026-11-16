@@ -238,6 +238,35 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         assert not (retired / ".claude/skills" / old_name).exists()
         run([str(cli), "validate", "--repo", str(retired), "--strict"])
 
+    # A project exposes only the testing entrypoint selected for its maturity.
+    for storage in ("linked", "copied"):
+        staged_testing = workspace / ("stage selected testing " + storage)
+        staged_testing.mkdir()
+        git(staged_testing, "init", "--quiet")
+        (staged_testing / "source-code.toml").write_text('schema_version = 1\nauthority = "owned"\nadoption = "new"\nmode = "shadow"\nskill_storage = "' + storage + '"\nskills = ["testing"]\ndetect_languages = false\npr_template = "none"\n')
+        for stage in ("research", "alpha", "beta", "production", "research"):
+            command = [str(cli), "setup", "--repo", str(staged_testing), "--stage", stage]
+            if stage == "alpha":
+                command += ["--skills", "just"]
+            run(command)
+            installed = staged_testing / ".agents/skills/testing"
+            selected = source / "ai/skills/.testing-profiles" / stage / "testing"
+            assert (installed / "SKILL.md").read_bytes() == (selected / "SKILL.md").read_bytes()
+            assert {child.name for child in installed.iterdir()} == {"SKILL.md", "references"}
+            assert installed.is_symlink() == (storage == "linked")
+            if storage == "linked":
+                assert installed.resolve() == selected
+            assert (installed / "references/principles.md").is_file()
+            run([str(cli), "validate", "--repo", str(staged_testing), "--strict"])
+        if storage == "copied":
+            entrypoint = staged_testing / ".agents/skills/testing/SKILL.md"
+            original = entrypoint.read_bytes()
+            entrypoint.write_bytes(original + b"\nLocal testing guidance.\n")
+            before = tree(staged_testing)
+            run([str(cli), "setup", "--repo", str(staged_testing), "--stage", "alpha", "--conflict", "skip"], expected=1)
+            assert tree(staged_testing) == before
+            entrypoint.write_bytes(original)
+
     # Agents can discover the tool before choosing or creating a project.
     assert run([str(cli), "skill"], cwd=workspace) == (source / "ai/skills/source-code/SKILL.md").read_text()
     assert "skill" in run([str(cli), "--help"])
@@ -826,24 +855,24 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     run([str(cli), "validate", "--repo", str(library), "--strict"])
     override = library / "AGENTS.override.md"
     assert override.is_file()
-    assert json.loads((library / ".source-code.json").read_text())["skills"]["testing"] == "1.0.0"
+    assert json.loads((library / ".source-code.json").read_text())["skills"]["testing"] == "1.1.0"
     registry = source / "ai/skills/source-code-versions.json"
     registry_bytes = registry.read_bytes()
     versions = json.loads(registry_bytes)
-    versions["skills"]["testing"] = "1.1.0"
+    versions["skills"]["testing"] = "1.2.0"
     registry.write_text(json.dumps(versions))
-    testing_guide = source / "ai/skills/testing/SKILL.md"
+    testing_guide = source / "ai/skills/.testing-profiles/beta/testing/SKILL.md"
     testing_bytes = testing_guide.read_bytes()
     testing_guide.write_bytes(testing_bytes + b"\nAdditional project verification guidance.\n")
     before = tree(library)
     preview = run([str(cli), "upgrade", "--repo", str(library), "--dry-run"])
-    assert "1.0.0 -> 1.1.0" in preview
+    assert "1.1.0 -> 1.2.0" in preview
     release_view = json.loads(run([str(cli), "explain", "--skill-storage", "copied", "--repo", str(library), "--json"]))
-    assert any(item["field"] == "skill_versions.testing" and item["installed"] == "1.0.0" and item["desired"] == "1.1.0" for item in release_view["differences"])
+    assert any(item["field"] == "skill_versions.testing" and item["installed"] == "1.1.0" and item["desired"] == "1.2.0" for item in release_view["differences"])
     assert tree(library) == before, "upgrade preview wrote files"
     run([str(cli), "upgrade", "--repo", str(library)])
     upgraded = json.loads((library / ".source-code.json").read_text())
-    assert upgraded["skills"]["testing"] == "1.1.0" and upgraded["stage"] == "beta"
+    assert upgraded["skills"]["testing"] == "1.2.0" and upgraded["stage"] == "beta"
     assert not (library / ".github").exists(), "upgrade added an unselected PR template"
     assert not git(library, "status", "--porcelain", "--untracked-files=all")
     run([str(cli), "validate", "--repo", str(library), "--strict"])

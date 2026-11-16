@@ -434,7 +434,16 @@ def read_state(root: Path) -> tuple[Manifest, Snapshot | None]:
                     and (
                         path == f".agents/skills/{Path(path).name}"
                         and Path(path).name in MANAGED_SKILLS
-                        and entry.get("target") == str(Path(state["skill_source"]) / Path(path).name)
+                        and (
+                            entry.get("target") == str(Path(state["skill_source"]) / Path(path).name)
+                            or Path(path).name == "testing"
+                            and entry.get("target")
+                            == str(
+                                selected_skill_directory(
+                                    Path(state["skill_source"]), "testing", state.get("stage", "beta")
+                                )
+                            )
+                        )
                         or path == VERSIONS
                         and entry.get("target") == str(Path(state["skill_source"]) / "source-code-versions.json")
                     )
@@ -848,6 +857,12 @@ def artifact_owner(path: str) -> str | None:
     return None
 
 
+def selected_skill_directory(source: Path, name: str, stage: str) -> Path:
+    if name == "testing":
+        return source / ".testing-profiles" / stage / name
+    return source / name
+
+
 def package(
     skills: Sequence[str],
     agents: set[str],
@@ -857,6 +872,7 @@ def package(
     python_profile: bool = False,
     protobuf_profile: bool = False,
     skill_source: Path | None = None,
+    stage: str = "beta",
 ) -> tuple[dict[str, Snapshot], dict[str, bytes]]:
     """Assemble from canonical sources; only installation paths are adapted."""
     files: dict[str, Snapshot] = {}
@@ -875,7 +891,9 @@ def package(
 
     for skill in skills:
         directory = (skill_source or SOURCE / "ai/skills") / skill
+        selected = selected_skill_directory(skill_source or SOURCE / "ai/skills", skill, stage)
         if skill_source is not None:
+            directory = selected
             if directory.is_symlink() or not (directory / "SKILL.md").is_file():
                 raise ValueError(f"missing or linked canonical skill: {directory}")
             files[f".agents/skills/{skill}"] = {"kind": "link", "target": str(directory)}
@@ -884,8 +902,12 @@ def package(
             continue
         if not (directory / "SKILL.md").is_file():
             raise ValueError(f"missing skill: {directory}")
+        if skill == "testing":
+            add(".agents/skills/testing/SKILL.md", selected / "SKILL.md")
         for source in sorted(directory.rglob("*")):
             relative = source.relative_to(directory)
+            if skill == "testing" and (relative == Path("SKILL.md") or relative.parts[0] == "assets"):
+                continue
             if "__pycache__" in relative.parts or source.suffix == ".pyc":
                 continue
             if skill == "code-comments" and str(relative) == "references/standard.md":
@@ -1671,7 +1693,15 @@ def install(args: Arguments) -> None:
     storage = resolved["skill_storage"]
     skill_source = Path(resolved["skill_source"]) if storage == "linked" else None
     desired, payloads = package(
-        sorted(skills), agents, template, go_profile, typescript_profile, python_profile, protobuf_profile, skill_source
+        sorted(skills),
+        agents,
+        template,
+        go_profile,
+        typescript_profile,
+        python_profile,
+        protobuf_profile,
+        skill_source,
+        stage,
     )
     versions = read_versions((skill_source or SOURCE / "ai/skills") / "source-code-versions.json")
     pins: dict[str, str] = {}
@@ -1869,7 +1899,12 @@ def install(args: Arguments) -> None:
                 policy_changed = (
                     owner == "source-code-lifecycle" and state.get("policy_version") != versions["policy_version"]
                 )
-                if old_pins.get(owner) != pins.get(owner) or policy_changed:
+                if (
+                    old_pins.get(owner) != pins.get(owner)
+                    or policy_changed
+                    or owner == "testing"
+                    and state.get("stage") != stage
+                ):
                     raise ValueError(
                         f"cannot upgrade the {owner} version while skipping locally modified content at {relative}; reconcile it or use --conflict replace"
                     )
@@ -2199,7 +2234,9 @@ def prepare_upgrade(args: Arguments) -> None:
             )
     if state.get("policy_version") and version_key(available["policy_version"]) < version_key(state["policy_version"]):
         raise ValueError("upgrade would downgrade the installed policy; use a newer source checkout")
-    findings = skill_findings([SOURCE / "ai/skills" / name for name in sorted(skills)])
+    findings = skill_findings(
+        [selected_skill_directory(SOURCE / "ai/skills", name, resolved["stage"]) for name in sorted(skills)]
+    )
     errors = [f"{item['path']}: {message}" for item in findings for message in item["errors"]]
     warnings = [f"{item['path']}: {message}" for item in findings for message in item["warnings"]]
     if errors or args.strict and warnings:
@@ -2520,6 +2557,7 @@ def explain_policy(args: Arguments) -> int:
         resolved["python_profile"],
         resolved["protobuf_profile"],
         Path(resolved["skill_source"]) if resolved["skill_storage"] == "linked" else None,
+        resolved["stage"],
     )
     go_rollout, ts_rollout = None, None
     if resolved["go_profile"]:
