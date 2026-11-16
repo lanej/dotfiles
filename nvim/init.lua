@@ -1614,6 +1614,7 @@ require("lazy").setup({
 		config = function()
 			require("octo").setup({
 				picker = "fzf-lua",
+				use_local_fs = true,
 				mappings = require("pr-reviews").octo_mappings,
 				picker_config = {
 					use_emojis = false,

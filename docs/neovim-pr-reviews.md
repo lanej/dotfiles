@@ -58,6 +58,8 @@ In ordinary code buffers, `,o` retains Treesitter selection.
 The previous `,rs`, `,rp`, `,rv`, `,rq`, and `,rl` shortcuts remain available.
 
 Use Octo’s remote diffs, inline comments, and suggestions.
+Local-file mode is enabled: when the checkout matches the PR branch, Octo uses local file buffers on the right side of its review diff.
+Enter `:Octo review` to open the review layout, then use `,oc` on the current line or a linewise visual selection to add pending feedback.
 Opening a PR does not start a review.
 Save inline comment buffers with `:write` before submitting.
 
