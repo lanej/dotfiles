@@ -33,6 +33,8 @@ New tasks remain protected until explicitly finished. Pruning still requires all
 
 New agent instructions and Codex/Claude launchers use the manager. Checkouts live at `<primary>/.worktrees/<agent>-<8-hex>/`; the manager supplies a branch when none is requested. Existing assigned checkouts and Treehouse ownership records retain their original ownership, and pool directories remain protected. Octo Manager repair repositories remain separate. See the [tool documentation](https://github.com/lanej/worktree-manager/blob/v0.2.0/README.md) for the complete lifecycle, cleanup, JSON and recovery contracts.
 
+Agent launchers require `worktree` 0.2.0 or newer and check the selected executable before creating an integration session or attempting allocation. If `codex --worktree` or Claude reports an incompatible manager, run `make install` from `~/.files` with `worktree-manager` selected, then check `command -v worktree` and `worktree --version` in the launching shell. An older executable earlier in `PATH` must be updated or removed from that position. Configuration alone does not upgrade installed software.
+
 ## Verify
 
 `make test-worktree-manager WORKTREE_MANAGER_BINARY=/path/to/worktree-PLATFORM-ARCH GIT_WORKTREE_HOOKS_GIT=/path/to/patched/git` exercises actual installation, provider selection, global vetoes, missing-binary behavior, opt-out and configuration preservation in disposable homes and repositories. Keep the native executable's adjacent checksum file available. The feature workflow downloads the pinned public packages; it does not compile Git or Go.
