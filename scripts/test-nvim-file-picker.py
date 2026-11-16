@@ -136,7 +136,8 @@ def main():
         for name in ("fzf-lua", "nvim-web-devicons"):
             if not (plugins / name / "lua").is_dir():
                 raise SystemExit(f"Missing installed plugin: {plugins / name}")
-    with tempfile.TemporaryDirectory(prefix="file-picker-test-") as temporary:
+    # Keep Neovim's Unix socket paths below macOS's short sockaddr_un limit.
+    with tempfile.TemporaryDirectory(prefix="file-picker-", dir="/tmp") as temporary:
         temporary = Path(temporary).resolve()
         env = dict(os.environ, NVIM_TEST_PLUGIN_ROOT=str(plugins))
         home = temporary / "home with spaces"
