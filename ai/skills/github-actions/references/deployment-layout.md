@@ -8,7 +8,8 @@ GitHub Actions has **no per-job path filter** — `on.push.paths` applies to the
 # .github/workflows/deploy-service-a.yml
 on:
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
       - 'src/service_a/**'
       - 'Dockerfile.service_a'
@@ -16,7 +17,8 @@ on:
 # .github/workflows/deploy-service-b.yml
 on:
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
       - 'src/service_b/**'
       - 'Dockerfile.service_b'

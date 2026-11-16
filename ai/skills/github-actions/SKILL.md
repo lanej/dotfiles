@@ -1,9 +1,11 @@
 ---
 name: github-actions
-description: GitHub Actions workflow design for deploying to GCP — Workload Identity Federation (keyless OIDC), per-resource least-privilege IAM, path-filtered multi-workflow layouts, and digest-based Cloud Run deploys. Use when creating or editing .github/workflows/*.yml that build/push images or deploy to GCP, when setting up CI auth to a cloud provider, or when a workflow needs to trigger on specific file paths for one of several deployable components in the same repo.
+description: Use when authoring, formatting, or reviewing GitHub Actions workflows, including component path filters and GCP deployment authentication and permissions.
 ---
 
 # GitHub Actions
+
+Prefer expanded block-style YAML: put each sequence item on its own line, including single-item lists, and expand mappings rather than using inline flow collections. Apply this to triggers, branches, paths, runner labels, and matrix values so diffs isolate each change. Preserve the nesting required by the workflow schema.
 
 For GCP deployment workflows, use keyless OIDC federation, scope trust to the intended repository and protected ref, grant deployment permissions per resource, and deploy Cloud Run images by digest. Preserve the target project’s infrastructure ownership and publication authority.
 
