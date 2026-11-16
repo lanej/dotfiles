@@ -5,6 +5,8 @@ description: "Use when designing or reviewing software architecture, evaluating 
 
 # Architecture
 
+When designing or changing software, read [Unix design principles](references/unix-philosophy.md) and apply them proportionally alongside the project architecture requirements.
+
 Before selecting application tools or an API protocol, read [the project tool-choice policy](../source-code-lifecycle/references/tool-choices.md). Apply the declared authority and adoption at every lifecycle stage, including research; preserve external providers’ protocols and established stacks according to that policy.
 
 Before a software plan or a substantial model/interface change, read [data and interface planning](../data-change-planning/SKILL.md). Explain the problem, show how representation and exchange change, contain complexity within capabilities, and resolve consequential open choices before implementation. Apply the same expectations to delegated briefs.
