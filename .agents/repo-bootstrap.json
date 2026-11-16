@@ -7,17 +7,17 @@
     ".agents/skills/architecture/SKILL.md": {
       "executable": false,
       "kind": "file",
-      "sha256": "e243bdbc0f577f7ab250ba56451e3d328bd1e86c9f10bea9a5140efa41ed1148"
+      "sha256": "9d070e91601a60a3547bc82c70b30f004c0c1f2398211cd137c36aa9b0c5643d"
     },
     ".agents/skills/architecture/references/design-lessons.md": {
       "executable": false,
       "kind": "file",
-      "sha256": "f74b92a75745163ef454d489f21060ef268f46024664c9b11a884dc252a98a57"
+      "sha256": "06d5d19be3a493aea20982f33613c3ca7138718c9affaffec87c9f6605169222"
     },
     ".agents/skills/architecture/references/unix-philosophy.md": {
       "executable": false,
       "kind": "file",
-      "sha256": "b2e2e786765d2aefa3c494251511979ce48dc9adad2ac1d7b1415c00a3b30113"
+      "sha256": "4e5146a18414eade4fc4dd6efe0bdaaa35418f6aa804af8996781ee55903f45a"
     },
     ".agents/skills/builder/.gitignore": {
       "executable": false,
@@ -27,7 +27,7 @@
     ".agents/skills/builder/SKILL.md": {
       "executable": false,
       "kind": "file",
-      "sha256": "961f2cd2b86dd0d81346c97d66b1fb79f3388f60d640eb56e91aae8893155a90"
+      "sha256": "750d2c1cdf83a9934a769180af3e17d3852b4440eefb207a1cb169b67c9f5bf0"
     },
     ".agents/skills/builder/references/construction.md": {
       "executable": false,
@@ -407,12 +407,12 @@
     ".agents/source-code-versions.json": {
       "executable": false,
       "kind": "file",
-      "sha256": "913885bac0f709144c639346929d5beeab3e0cab8e96b6671fce3dc70acd149c"
+      "sha256": "0377144a89c0a886e72244d981e12dbcc59611189eb1c2f9f4776f3bcd1f8f76"
     },
     ".agents/source-code.md": {
       "executable": false,
       "kind": "file",
-      "sha256": "2937ef967bbfd9679c062fbc9cb9c698289a8138624c4681ed2e91a13f2ed8b1"
+      "sha256": "b652a7e205da5eb69a09247988bbbb8c5e5528f79059efc78785ad15b9885fff"
     },
     ".claude/rules/source-code.md": {
       "executable": false,
@@ -524,7 +524,7 @@
     ".source-code.json": {
       "executable": false,
       "kind": "file",
-      "sha256": "0fbcad6e4742d0103c31aaff6749ecf2a68a50d85f5a2ed1939031fbe84ff64a"
+      "sha256": "c2fc9939acb20f6708eb9cc0613381fa9801e312854d4f3d4eac68f3df4404c5"
     },
     "AGENTS.override.md": {
       "executable": false,
@@ -550,8 +550,8 @@
   "protobuf_profile": false,
   "python_profile": true,
   "skill_versions": {
-    "architecture": "1.2.1",
-    "builder": "1.1.0",
+    "architecture": "1.2.2",
+    "builder": "1.1.1",
     "cli": "1.0.0",
     "code-comments": "1.0.0",
     "data-change-planning": "1.0.0",
@@ -589,7 +589,7 @@
     "ui-acceptance",
     "ui-review"
   ],
-  "source_revision": "ec1a784b43ba3fa712ab80c8d825ccc1fc868aff",
+  "source_revision": "ae4ce8e7747aa1df749a44a6f2db1ebb2bb771a0",
   "stage": "beta",
   "version": 1
 }

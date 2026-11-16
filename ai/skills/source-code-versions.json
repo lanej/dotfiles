@@ -2,8 +2,8 @@
   "schema_version": 1,
   "policy_version": "1.1.0",
   "skills": {
-    "architecture": "1.2.1",
-    "builder": "1.1.0",
+    "architecture": "1.2.2",
+    "builder": "1.1.1",
     "code-comments": "1.0.0",
     "data-change-planning": "1.0.0",
     "gh-pr-stack": "1.0.0",

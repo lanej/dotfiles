@@ -1,8 +1,8 @@
 # Unix philosophy
 
-Apply these Unix design principles when designing or changing software under this project profile, alongside the selected lifecycle stage and existing project requirements. They are general software guidance; they do not require a Unix-only runtime, a shell implementation, or extra architecture layers.
+Use these principles as design heuristics within Pragmatic Hexagonal Architecture. For example, a filter can keep its output composable by writing records to standard output and diagnostics to standard error. The PHA contract still determines what its caller must learn if processing stops halfway.
 
-Eric S. Raymond's 17 Unix rules:
+The following rules paraphrase Eric S. Raymond’s *The Art of Unix Programming*.
 
 1. **Modularity:** Build simple components with clean interfaces.
 2. **Clarity:** Prefer readable code over clever code.
