@@ -9,7 +9,7 @@ if command -v fzf >/dev/null; then
 	--tiebreak=length,pathname
 	--no-info
 	--height=62%
-	-i
+	--smart-case
 	--bind ctrl-j:preview-down,ctrl-k:preview-up
 	--bind ctrl-/:toggle-preview
 	'
@@ -38,6 +38,9 @@ if command -v fzf >/dev/null; then
 	if command -v fd >/dev/null; then
 		unset FZF_CTRL_T_COMMAND
 		export FZF_CTRL_T_COMMAND='fd --type f --follow --exclude .git'
+		if command -v python3 >/dev/null; then
+			export FZF_CTRL_T_COMMAND='python3 "$HOME/.files/scripts/file-history.py" files'
+		fi
 	fi
 
 	if command -v bat >/dev/null; then
@@ -45,6 +48,11 @@ if command -v fzf >/dev/null; then
 		export FZF_CTRL_T_OPTS=$FZF_DEFAULT_OPTS"
 		--preview='bat --plain --color=always {}'
 		--preview-window right:60%:border-left:wrap"
+	fi
+	# Candidates already encode file visits and directory depth; keep that order on ties.
+	export FZF_CTRL_T_OPTS="${FZF_CTRL_T_OPTS-} --smart-case --tiebreak=index"
+	if command -v python3 >/dev/null; then
+		export FZF_CTRL_T_OPTS="$FZF_CTRL_T_OPTS --bind='enter:execute-silent(python3 \"\$HOME/.files/scripts/file-history.py\" record -- {+})+accept'"
 	fi
 fi
 

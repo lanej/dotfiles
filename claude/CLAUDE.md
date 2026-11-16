@@ -52,7 +52,7 @@ Before applying a new threshold or classification bar to a batch, confirm its ex
 
 Use the `worktree` skill at `~/.claude/skills/worktree/SKILL.md` for task isolation and new agent-created checkouts at `<primary-repository>/.worktrees/<agent>-<8-hex>/`. Existing Treehouse leases retain their legacy return procedure.
 
-Reuse explicit user-selected, host-managed, and preassigned Firstmate checkouts.
+Reuse explicit user-selected, host-managed, and preassigned task checkouts.
 Do not nest worktrees or claim their leases.
 
 ## Tool Preferences

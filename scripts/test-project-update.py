@@ -144,6 +144,27 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout)[0]["outcome"], "ok")
 
+    def test_make_update_targets_report_pending_activation_without_failure(self):
+        fixture = self.base / "make fixture"
+        (fixture / "bin").mkdir(parents=True)
+        command = fixture / "bin/project-update"
+        command.write_text(f"#!{sys.executable}\n"
+                           "import json, os, sys\n"
+                           "print(json.dumps(sys.argv[1:]))\n"
+                           "sys.exit(int(os.environ['UPDATE_RESULT']))\n")
+        command.chmod(0o755)
+        for target, selection in (("update-zellij", "zellij"), ("update-projects", "--all"),
+                                  ("project-updates", "--all")):
+            for code in (0, 3, 1, 2):
+                with self.subTest(target=target, code=code):
+                    result = subprocess.run(
+                        ["make", "--no-print-directory", "-f", str(ROOT / "Makefile"),
+                         f"DOTFILES={fixture}", target],
+                        env={**self.env, "UPDATE_RESULT": str(code)}, text=True, capture_output=True)
+                    self.assertEqual(json.loads(result.stdout), ["update", selection])
+                    self.assertEqual(result.returncode == 0, code in (0, 3), result.stderr)
+                    self.assertEqual("manual activation remains" in result.stderr, code == 3)
+
     def test_concurrent_mutation_is_rejected(self):
         cache = self.base / "cache/dotfiles/project-update"
         cache.mkdir(parents=True)

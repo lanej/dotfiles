@@ -70,8 +70,7 @@ claude/commands/*
 claude/workflows/
 
 # Repo-local Claude Code state (permission grants, `claude -w` worktrees, ...).
-# Shared settings, MCP server list, and the source-code project links are tracked.
-!.claude/
+# Only the shared settings and MCP server list are tracked.
 .claude/*
 !.claude/settings.json
 !.claude/mcp-servers.json
@@ -92,28 +91,3 @@ sh/htop_history
 
 # Unexpanded shell variable paths (accidental git adds)
 $HOME/
-
-# Shared source-code guidance; keep unrelated Claude project state local.
-!.claude/rules/
-.claude/rules/*
-!.claude/rules/source-code.md
-!.claude/skills/
-.claude/skills/*
-!.claude/skills/architecture
-!.claude/skills/builder
-!.claude/skills/code-comments
-!.claude/skills/data-change-planning
-!.claude/skills/git
-!.claude/skills/github-actions
-!.claude/skills/go
-!.claude/skills/javascript
-!.claude/skills/library-code-comments
-!.claude/skills/octo-manager
-!.claude/skills/python
-!.claude/skills/rust
-!.claude/skills/source-code-lifecycle
-!.claude/skills/testing
-!.claude/skills/typescript
-!.claude/skills/ui-acceptance
-!.claude/skills/ui-review
-!.claude/skills/cli

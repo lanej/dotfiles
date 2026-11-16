@@ -8,6 +8,7 @@ alias cpr='copy -r'
 alias curl-ttfb='curls -o /dev/null -w "Connect: %{time_connect} TTFB: %{time_starttransfer} Total time: %{time_total} \n"'
 alias curls='curl -s'
 alias fucking='sudo'
+alias frec='python3 "$HOME/.files/scripts/file-history.py" pick --global'
 alias g="git"
 alias gpr="hub pull-request"
 alias gpro='hub pull-request -o'
@@ -426,7 +427,7 @@ claude-bedrock() {
 	echo "🟠 Claude Code → AWS Bedrock (long-lived key, no SSO)"
 
 	AWS_REGION="${AWS_REGION:-us-west-2}" \
-		claude --settings '{"env":{"CLAUDE_CODE_USE_BEDROCK":"1","CLAUDE_CODE_USE_VERTEX":"","ANTHROPIC_VERTEX_PROJECT_ID":""}}' "$@"
+		claude --settings '{"env":{"CLAUDE_CODE_USE_BEDROCK":"1","CLAUDE_CODE_USE_VERTEX":"","ANTHROPIC_VERTEX_PROJECT_ID":"","ANTHROPIC_DEFAULT_SONNET_MODEL":"us.anthropic.claude-sonnet-5-5","ANTHROPIC_DEFAULT_HAIKU_MODEL":"us.anthropic.claude-haiku-5-5"}}' "$@"
 }
 cbd() {
 	if [ "$#" -gt 0 ]; then
