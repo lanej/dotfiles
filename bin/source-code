@@ -946,11 +946,36 @@ def go_adoption(root: Path, state: Manifest, rollout: str | None) -> tuple[str, 
     return rollout, legacy
 
 
+def bun_ci_setup(root: Path) -> str | None:
+    entry = inspect(root, "package.json")
+    if entry is None or entry["kind"] != "file":
+        return None
+    project = json.loads((root / "package.json").read_text())
+    manager = project.get("packageManager", "")
+    if not isinstance(manager, str) or not manager.startswith("bun@"):
+        return None
+    version = manager.removeprefix("bun@")
+    if not VERSION_RE.fullmatch(version):
+        raise ValueError("Bun CI requires an exact packageManager version, such as bun@1.4.4")
+    return f"      - uses: oven-sh/setup-bun@v2\n        with:\n          bun-version: '{version}'\n"
+
+
 def go_configuration(
     root: Path, state: Manifest, rollout: str | None, desired: dict[str, Snapshot], payloads: dict[str, bytes]
 ) -> tuple[str, str | None, tuple[str, Snapshot | None] | None]:
     """Layer the profile beside project policy rather than rewriting it."""
     rollout, legacy = go_adoption(root, state, rollout)
+    setup = bun_ci_setup(root)
+    if setup is not None:
+        workflow_path = ".github/workflows/go-quality.yml"
+        workflow = payloads[workflow_path].decode()
+        workflow = workflow.replace(
+            "      - run: python3 scripts/check-source-code.py go\n",
+            setup + "      - run: bun install --frozen-lockfile --ignore-scripts\n"
+            "      - run: python3 scripts/check-source-code.py go\n",
+        )
+        payloads[workflow_path] = workflow.encode()
+        desired[workflow_path] = file_entry(payloads[workflow_path])
     settings = {"version": 1, "rollout": rollout, "config": ".golangci.yml", "legacy": None}
     snapshot = None
     if legacy:
@@ -1002,6 +1027,18 @@ def typescript_configuration(
     if not package_entry or package_entry["kind"] != "file":
         raise ValueError("TypeScript adoption requires a regular package.json; initialize the project first")
     project = json.loads((root / "package.json").read_text())
+    setup = bun_ci_setup(root)
+    if setup is not None:
+        workflow_path = ".github/workflows/typescript-quality.yml"
+        workflow = payloads[workflow_path].decode()
+        if (root / "go.mod").is_file():
+            setup += "      - uses: actions/setup-go@v6\n        with:\n          go-version-file: go.mod\n"
+        workflow = workflow.replace(
+            "      - run: npm ci\n",
+            setup + "      - run: bun install --frozen-lockfile --ignore-scripts\n",
+        )
+        payloads[workflow_path] = workflow.encode()
+        desired[workflow_path] = file_entry(payloads[workflow_path])
     scripts = project.get("scripts", {})
     if not isinstance(scripts, dict):
         raise ValueError("package.json scripts must be an object")
@@ -1022,8 +1059,10 @@ def typescript_configuration(
             if len(found) > 1:
                 raise ValueError("multiple package managers; declare packageManager in package.json first")
             manager = found[0] if found else "npm"
-        if manager not in ("npm", "pnpm", "yarn"):
-            raise ValueError("TypeScript command defaults support npm, pnpm, or yarn; configure the project explicitly")
+        if manager not in ("npm", "pnpm", "yarn", "bun"):
+            raise ValueError(
+                "TypeScript command defaults support npm, pnpm, yarn, or bun; configure the project explicitly"
+            )
         configs = [path for path in root.iterdir() if path.name.startswith(("eslint.config.", ".eslintrc"))]
         if (configs or "eslintConfig" in project) and not scripts.get("lint"):
             raise ValueError("existing ESLint policy needs a non-mutating package.json lint script before adoption")
@@ -1034,6 +1073,8 @@ def typescript_configuration(
                     raise ValueError(f"{name} is a mutating gate; provide a check-only script before adoption")
                 legacy.append([manager, "run", name])
         audit = [manager, "audit", "--audit-level=high"]
+        if manager == "bun":
+            audit = ["bun", "audit"]
         if manager == "yarn":
             audit = ["yarn", "npm", "audit", "--severity", "high", "--recursive"]
             if project.get("packageManager", "").startswith("yarn@1."):
