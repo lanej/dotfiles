@@ -1,7 +1,7 @@
 local B = {}
 local github = require("pr-review-github")
 
-function B.open(session, notify)
+function B.open(session)
 	local pr = session.pr
 	require("pr-review-ghlite").open(session, function()
 		vim.t.pr_review_id = pr.id
