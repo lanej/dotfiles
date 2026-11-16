@@ -89,7 +89,7 @@ Coding agent used with shared skills, role instructions, and repository guidance
 
 ### fzf
 
-I use fzf for shell navigation and Neovim through FzfLua. The [directory and worktree picker](directory-picker.md) uses its query matcher inside a Charmed terminal UI.
+I use fzf for shell navigation and Neovim through FzfLua. A [standalone file-history helper](file-selection.md) shares frequency/recency scores between shell selections and editor file visits, supports global previously-used-file search, and prefers fewer directory levels then shorter paths when fuzzy scores tie. Shell and editor searches use smart case. The [directory and worktree picker](directory-picker.md) uses fzf's query matcher inside a Charmed terminal UI.
 
 ### Kitty
 
