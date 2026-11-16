@@ -333,13 +333,13 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     for mode in ("tracked", "shadow"):
         domain = workspace / ("domain guidance " + mode)
         owned_install(domain, "--init", "--mode", mode, "--stage", "research",
-                      "--skills", "data-pipeline,ui-acceptance", "--no-detect-languages", "--pr-template", "none")
+                      "--skills", "data-pipeline,ui-review", "--no-detect-languages", "--pr-template", "none")
         policy = json.loads((domain / ".source-code.json").read_text())
-        assert {"data-pipeline", "ui-acceptance", "architecture", "testing", "git"} <= policy["skills"].keys()
+        assert {"data-pipeline", "ui-review", "ui-acceptance", "architecture", "testing", "git"} <= policy["skills"].keys()
         assert policy["languages"] == []
-        assert not (domain / ".agents/skills/ui-review").exists()
         assert (domain / ".agents/skills/data-pipeline/references/medallion-architecture.md").is_file()
         assert (domain / ".agents/skills/ui-acceptance/references/visual-review.md").is_file()
+        assert (domain / ".agents/skills/ui-review/SKILL.md").is_file()
         run([str(cli), "validate", "--repo", str(domain), "--strict"])
         if mode == "tracked":
             git(domain, "add", ".")

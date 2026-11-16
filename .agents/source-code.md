@@ -29,6 +29,7 @@ Paths in this policy are relative to the repository root. The authoritative pins
 | testing | 1.0.0 |
 | typescript | 1.1.1 |
 | ui-acceptance | 1.0.0 |
+| ui-review | 1.0.0 |
 
 Read the installed `.agents/skills/source-code-lifecycle/SKILL.md` first, then load the installed skills relevant to the task. Preserve existing repository instructions and required gates. A stage or version pin does not establish readiness.
 

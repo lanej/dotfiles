@@ -21,7 +21,8 @@
     "source-code-lifecycle": "1.2.1",
     "testing": "1.0.0",
     "typescript": "1.1.1",
-    "ui-acceptance": "1.0.0"
+    "ui-acceptance": "1.0.0",
+    "ui-review": "1.0.0"
   },
   "detection": {
     "enabled": true,

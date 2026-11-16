@@ -22,6 +22,7 @@
     "octo-manager": "1.0.1",
     "protobuf": "1.0.0",
     "data-pipeline": "1.0.1",
-    "ui-acceptance": "1.0.0"
+    "ui-acceptance": "1.0.0",
+    "ui-review": "1.0.0"
   }
 }

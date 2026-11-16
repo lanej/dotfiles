@@ -28,13 +28,13 @@ The reporter must not invoke further writers or reviewers. If named selection is
 
 # Git worktree location
 
-Use the `worktree` skill at `~/.agents/skills/dotfiles/worktree/SKILL.md` for task isolation and agent-created checkouts. The native manager creates `<primary-repository>/.worktrees/<agent>-<8-hex>/`; do not fall back to temporary paths or new Treehouse leases.
+Use the `worktree` skill at `~/.agents/skills/dotfiles/worktree/SKILL.md` for task isolation and agent-created checkouts. The native manager creates `<primary-repository>/.worktrees/<agent>-<8-hex>/`; do not fall back to temporary paths or alternate allocators.
 
 Reuse explicit user-selected, host-managed, and preassigned Firstmate checkouts. Do not nest worktrees or claim their leases.
 
 # Git worktree cleanup
 
-Finish owned manager task protection and explicitly prune through the `worktree` skill. Return outstanding pooled Treehouse leases through the legacy `treehouse` skill. Apply the following preservation rules to task-owned non-pool worktrees; never remove an active or uncertain manager task by bypassing its protection.
+Finish owned manager task protection and explicitly prune through the `worktree` skill. Apply the following preservation rules to task-owned non-pool worktrees; never remove an active or uncertain manager task by bypassing its protection.
 
 Treat cleanup of temporary worktrees created for the task as part of completion. This includes temporary worktrees created by subagents for the same task. Record their paths and the starting checkout so ownership stays clear across subagents and handoffs.
 

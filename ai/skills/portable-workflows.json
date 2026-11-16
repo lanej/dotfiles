@@ -10,5 +10,12 @@
   "stahp",
   "handoff",
   "skill-authoring",
-  "distill"
+  "distill",
+  "agent-coordination",
+  "verify-claims",
+  "tool-operation",
+  "document-consistency",
+  "source-code",
+  "zellij",
+  "worktree"
 ]

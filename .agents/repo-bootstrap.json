@@ -384,15 +384,20 @@
       "kind": "file",
       "sha256": "282180d5de05ef8d4bca4d615b1f400d4a6ee487da26e8fd0c7068d9699895c4"
     },
+    ".agents/skills/ui-review/SKILL.md": {
+      "executable": false,
+      "kind": "file",
+      "sha256": "e19f09be8a280b67ed8e1abc8c9d6679049816511441b1d64af9c56bbdb52cbe"
+    },
     ".agents/source-code-versions.json": {
       "executable": false,
       "kind": "file",
-      "sha256": "bc3839e457ca36c017aa2a1352ee54cfc9f69157d53b6d7809bc5887b4ddfa45"
+      "sha256": "55cde3028f4d7c6c23863615e706e8a05eaf2d0c12b4d8391371e2a46f5dab66"
     },
     ".agents/source-code.md": {
       "executable": false,
       "kind": "file",
-      "sha256": "7f253b963a0475e5b632b800ea2a1a35e1e9ba5451d5e5560ee1463254134747"
+      "sha256": "01619132d3b41fe8e2643e2f114c3da5bcab672a500c8307ff5858ac78d30cfa"
     },
     ".claude/rules/source-code.md": {
       "executable": false,
@@ -463,6 +468,10 @@
       "kind": "link",
       "target": "../../.agents/skills/ui-acceptance"
     },
+    ".claude/skills/ui-review": {
+      "kind": "link",
+      "target": "../../.agents/skills/ui-review"
+    },
     ".python-quality.json": {
       "executable": false,
       "kind": "file",
@@ -496,7 +505,7 @@
     ".source-code.json": {
       "executable": false,
       "kind": "file",
-      "sha256": "70bd9120de94eb92ee7dc368857d97bc2f50ec4fd30e7b198e81465d7188080a"
+      "sha256": "ab902bd9fe7e1dbe462f69f66684a4da4db20859e1133a6c3d23759bf528ecd5"
     },
     "AGENTS.override.md": {
       "executable": false,
@@ -537,7 +546,8 @@
     "source-code-lifecycle": "1.2.1",
     "testing": "1.0.0",
     "typescript": "1.1.1",
-    "ui-acceptance": "1.0.0"
+    "ui-acceptance": "1.0.0",
+    "ui-review": "1.0.0"
   },
   "skills": [
     "architecture",
@@ -555,9 +565,10 @@
     "source-code-lifecycle",
     "testing",
     "typescript",
-    "ui-acceptance"
+    "ui-acceptance",
+    "ui-review"
   ],
-  "source_revision": "b6935ed8c02289eb364a797cfdbd9ed49c0087da",
+  "source_revision": "cf2c3bb2c82b176345daa038600f38fc173b67db",
   "stage": "beta",
   "version": 1
 }

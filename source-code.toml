@@ -6,7 +6,7 @@ adoption = "new"
 mode = "tracked"
 agents = "both"
 pr_template = "none"
-skills = ["builder", "architecture", "octo-manager", "github-actions", "ui-acceptance"]
+skills = ["builder", "architecture", "octo-manager", "github-actions", "ui-review"]
 detect_languages = true
 
 [checks.go]

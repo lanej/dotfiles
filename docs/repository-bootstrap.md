@@ -73,7 +73,7 @@ source-code setup --repo ~/src/app --mode tracked --pr-template none
 source-code setup --repo ~/src/app --mode tracked --pr-template local
 ```
 
-`--skills` accepts the names listed by `source-code setup --help`, comma-separated. The core includes Builder, architecture, data/interface planning, Git/PR workflow, testing, lifecycle, and shared comments. Language guidance covers Go, TypeScript, JavaScript, Python, Rust, and Protobuf; `gh-pr-stack`, `github-actions`, `just`, `data-pipeline`, and `ui-acceptance` are available explicitly. These are curated portable packages, not an automatic copy of workstation skills. Language detection selects matching guidance; root Go modules retain their existing automatic check-profile behavior.
+`--skills` accepts the names listed by `source-code setup --help`, comma-separated. The core includes Builder, architecture, data/interface planning, Git/PR workflow, testing, lifecycle, and shared comments. Language guidance covers Go, TypeScript, JavaScript, Python, Rust, and Protobuf; `gh-pr-stack`, `github-actions`, `just`, `data-pipeline`, `ui-acceptance`, and `ui-review` are available explicitly. These are curated portable packages, not an automatic copy of workstation skills. Language detection selects matching guidance; root Go modules retain their existing automatic check-profile behavior.
 
 ## Policy inspection and agent discovery
 
@@ -168,7 +168,7 @@ source-code setup --repo ~/src/project --authority owned --adoption new --skills
 # Review the selection before applying the same command without --dry-run.
 ```
 
-The user-level `ui-review` skill retains Viewrule commands and explicit personal-feedback handling. It does not impose application design policy, browser-test requirements, or CI gates. Project `ui-acceptance` works with the project's selected capture tools; Viewrule is optional. The `data-pipeline` skill is project-only and is removed from managed user catalogs on workstation skill sync, while unrelated local entries and aliases are preserved.
+The project-only `ui-review` skill supplies Viewrule commands and explicit user-feedback handling for frontend projects, and selects `ui-acceptance` as a dependency. It does not authorize unrelated design changes or new CI gates. Project `ui-acceptance` works with the project's selected capture tools; Viewrule is optional. The `data-pipeline` skill is project-only and is removed from managed user catalogs on workstation skill sync, while unrelated local entries and aliases are preserved.
 
 The installed Git profile owns [review and merge assessment](../ai/skills/git/references/review.md); PR writing conventions stay in the project's PR guidance. Global operating procedures retain authorization and truthful outcome reporting, without choosing reviewers or a publication tool for every repository. Installing a profile grants no push, PR, merge, or messaging authority.
 
@@ -184,7 +184,7 @@ The lifecycle package carries the catalog into portable tracked and shadow insta
 
 ## Lifecycle stages
 
-Source-code skills are project-only: they are absent from the default user-level Claude, Codex, and Pi catalogs. `ai/skills/project-only.json` defines that boundary, including Git, GitHub Actions, PR stacks, PR writing, data pipelines, and UI acceptance. Coding lessons formerly bundled into user-level `operating-lessons` now ship with the relevant project Git, testing, architecture, Python, and JavaScript skills; general agent coordination and tool/account verification remain user-level. Install them explicitly, then reload the client's skill catalog if necessary. Normal workstation setup retires the managed global Builder rule and guidance, preserves personal skills and aliases, and keeps explicit legacy package references readable.
+Source-code engineering skills are project-only; the `source-code` management skill remains user-level. Project packages are absent from the default user-level Claude, Codex, and Pi catalogs. `ai/skills/project-only.json` defines that boundary, including Git, GitHub Actions, PR stacks, PR writing, data pipelines, and UI acceptance. Coding lessons formerly bundled into user-level `operating-lessons` now ship with the relevant project Git, testing, architecture, Python, and JavaScript skills; `agent-coordination`, `verify-claims`, `tool-operation`, and `document-consistency` provide focused user-level guidance with conditional references. Zellij and source-code management also remain user-level across supported agents. Install them explicitly, then reload the client's skill catalog if necessary. Normal workstation setup retires the managed global Builder rule and guidance, preserves personal skills and aliases, and keeps explicit legacy package references readable.
 
 ```sh
 source-code setup --repo ~/src/experiment --authority owned --adoption new --go --stage research --mode shadow --pr-template none

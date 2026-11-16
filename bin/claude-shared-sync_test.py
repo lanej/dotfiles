@@ -69,7 +69,7 @@ def test_make_claude_shared_migrates_links_and_preserves_local_entries(tmp_path)
     assert not retired.is_symlink()
     assert not (installed_skills / "builder").exists()
     assert not stale_pipeline.exists() and not stale_pipeline.is_symlink()
-    assert (installed_skills / "ui-review/SKILL.md").is_file()
+    assert not (installed_skills / "ui-review").exists()
     assert local.read_text() == "Local instructions.\n"
     assert local_agent.read_text() == "Local agent.\n"
     assert not (installed_skills / "paseo-plugin").exists()

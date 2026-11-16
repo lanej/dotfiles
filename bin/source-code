@@ -198,6 +198,7 @@ SKILLS = DEFAULT_SKILLS + (
     "protobuf",
     "data-pipeline",
     "ui-acceptance",
+    "ui-review",
 )
 STAGES = ("research", "alpha", "beta", "production")
 KINDS = ("service", "library", "tool")
@@ -732,8 +733,10 @@ def project_guidance(policy: Policy) -> str:
 
 def complete_skills(skills: Iterable[str], explicit_stage: bool = False, kind: str | None = None) -> set[str]:
     skills = set(skills)
-    if skills & {"data-pipeline", "ui-acceptance"}:
+    if skills & {"data-pipeline", "ui-acceptance", "ui-review"}:
         skills.add("architecture")
+    if "ui-review" in skills:
+        skills.add("ui-acceptance")
     if kind == "library":
         skills.add("library-code-comments")
     if "typescript" in skills:
