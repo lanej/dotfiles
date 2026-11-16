@@ -20,5 +20,9 @@
   "zellij",
   "worktree",
   "quarto",
-  "matplotlib"
+  "matplotlib",
+  "gcp",
+  "sentry-cli",
+  "xlsx",
+  "duckdb"
 ]

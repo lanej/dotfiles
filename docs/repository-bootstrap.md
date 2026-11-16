@@ -77,7 +77,7 @@ source-code setup --repo ~/src/app --mode tracked --pr-template local
 
 ## Policy inspection and agent discovery
 
-`source-code skill` prints the exact management `SKILL.md` as Markdown, including frontmatter, with no extra stdout text. It works outside Git, ignores project TOML, and exits nonzero with a diagnostic on stderr if the packaged skill is unavailable. It does not install skills into the target or select engineering policy.
+`source-code skill` prints the exact management `SKILL.md` as Markdown, including frontmatter, with no extra stdout text. Use `source-code skill --topic inspection`, `--topic setup`, or `--topic validation` to read the matching progressive-disclosure reference without locating its package directory. It works outside Git, ignores project TOML, and exits nonzero with a diagnostic on stderr if the packaged skill is unavailable. It does not install skills into the target or select engineering policy.
 
 Use `source-code explain --repo PATH` for a human-readable desired-versus-recorded policy comparison, or add `--json` for one machine-readable object. It accepts the setup policy-selection options, including `--config`, `--kind`, `--authority`, `--adoption`, `--stage`, `--skills`, and language flags, but not `--init`, `--conflict`, or `--dry-run`. It uses setup resolution and supports an existing directory before Git initialization. It does not initialize Git, modify project/Git files, provision dependencies, or run project commands.
 

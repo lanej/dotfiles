@@ -71,6 +71,17 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     (invalid_context / "source-code.toml").write_text("not valid TOML [[[\n")
     before = tree(invalid_context)
     run([str(cli), "skill"], cwd=invalid_context)
+    for topic in ("inspection", "setup", "validation"):
+        assert run([str(cli), "skill", "--topic", topic], cwd=invalid_context) == (
+            source / "ai/skills/source-code/references" / f"{topic}.md"
+        ).read_text()
+    run([str(cli), "skill", "--topic", "../SKILL"], cwd=invalid_context, expected=2)
+    topic_path = source / "ai/skills/source-code/references/setup.md"
+    topic_path.rename(topic_path.with_suffix(".saved"))
+    assert "management skill is unavailable" in run(
+        [str(cli), "skill", "--topic", "setup"], cwd=invalid_context, expected=1
+    )
+    topic_path.with_suffix(".saved").rename(topic_path)
     assert tree(invalid_context) == before
     management = source / "ai/skills/source-code/SKILL.md"
     management.rename(management.with_suffix(".saved"))

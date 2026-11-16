@@ -1,0 +1,11 @@
+# Inspect a source-code project
+
+## Inspect the target
+
+Resolve the intended checkout and inspect existing repository instructions, `.source-code.json`, the `AGENTS.override.md` router, and generated `.agents/source-code.md` when present. Reuse an assigned worktree; setup operates on that checkout and does not allocate worktrees. Existing policy records the installed lifecycle stage, skill pins, check profiles, and detection evidence. Read authored `source-code.toml` at the target Git root when present; it expresses desired policy separately from generated state.
+
+Use `source-code --help` and the chosen subcommand’s `--help` for the installed version’s supported options. If the command is missing, the dotfiles workstation set supplies it; `make source-code-config` from the owning dotfiles checkout links it explicitly. Do not apply unrelated workstation configuration or assume a newer release is installed.
+
+Run `source-code explain --repo PATH` to compare desired policy with the recorded installation and see each choice’s origin. Add `--json` for schema-versioned output, including package pins and differences. It shares setup selection rules and accepts the same policy overrides; retained check profiles are distinguished from selected updates. It works before Git initialization and never writes project/Git files, provisions dependencies, or runs project commands. Recorded metadata is not an integrity check; use validate and setup previews for those boundaries.
+
+Run `source-code detect --repo PATH --json` to inspect language evidence without changing files. Detection selects guidance for Go, TypeScript, JavaScript, Python, Rust, and Protobuf. Generated check profiles are a separate choice: root Go modules enable Go setup by default, and detected Protobuf sources or Buf workspaces select Protobuf checks unless explicitly disabled. TypeScript and Python checks require `--typescript` and `--python` respectively. For a new guidance-only install, use `--no-go --no-typescript --no-python --no-protobuf`; these flags do not uninstall existing profiles. `--no-detect-languages` saves a detection opt-out.

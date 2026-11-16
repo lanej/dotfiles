@@ -143,6 +143,7 @@ class Arguments(argparse.Namespace):
     config_applied: set[str]
     cli_values: dict[str, object]
     skills_dir: Path | None = None
+    topic: str | None = None
     init: bool = False
     mode: str | None = None
     skills: str | None = None
@@ -2407,7 +2408,14 @@ def main() -> None:
     validation_parser.add_argument(
         "--strict", action="store_true", help="treat best-practice and customization warnings as failures"
     )
-    subcommands.add_parser("skill", help="print the source-code management skill as Markdown for agent discovery")
+    skill_parser = subcommands.add_parser(
+        "skill", help="print the source-code management skill as Markdown for agent discovery"
+    )
+    skill_parser.add_argument(
+        "--topic",
+        choices=("inspection", "setup", "validation"),
+        help="print one management reference instead of the entrypoint",
+    )
     detection_parser = subcommands.add_parser(
         "detect", help="inspect language evidence without installing guidance or checks"
     )
@@ -2421,7 +2429,8 @@ def main() -> None:
     args = command.parse_args(namespace=Arguments())
     try:
         if args.command == "skill":
-            skill_path = SOURCE / "ai/skills/source-code/SKILL.md"
+            package = SOURCE / "ai/skills/source-code"
+            skill_path = package / "references" / f"{args.topic}.md" if args.topic else package / "SKILL.md"
             if not skill_path.is_file():
                 raise ValueError(f"management skill is unavailable: {skill_path}; restore the source-code installation")
             sys.stdout.buffer.write(skill_path.read_bytes())
