@@ -1,17 +1,26 @@
-name: File selection acceptance
+name: Neovim file selection acceptance
 
 on:
   pull_request:
-    paths: ['scripts/file-history.py', 'scripts/test-nvim-file-picker.py', 'nvim/lua/file-picker.lua', 'nvim/lua/fzfconfig.lua', 'nvim/tests/file-picker.lua', 'nvim/lazy-lock.json', 'zsh/zlogin', 'zsh/zshrc', 'sh/alias', '.github/workflows/file-selection.yml']
+    paths: &editor-paths
+      - 'scripts/file-history.py'
+      - 'scripts/test-nvim-file-picker.py'
+      - 'nvim/lua/file-picker.lua'
+      - 'nvim/lua/fzfconfig.lua'
+      - 'nvim/lua/navigation-ui.lua'
+      - 'nvim/tests/file-picker.lua'
+      - 'nvim/lazy-lock.json'
+      - 'zsh/zlogin'
+      - '.github/workflows/file-selection.yml'
   push:
     branches: [master]
-    paths: ['scripts/file-history.py', 'scripts/test-nvim-file-picker.py', 'nvim/lua/file-picker.lua', 'nvim/lua/fzfconfig.lua', 'nvim/tests/file-picker.lua', 'nvim/lazy-lock.json', 'zsh/zlogin', 'zsh/zshrc', 'sh/alias', '.github/workflows/file-selection.yml']
+    paths: *editor-paths
 
 permissions:
   contents: read
 
 jobs:
-  acceptance:
+  editor:
     strategy:
       fail-fast: false
       matrix:
@@ -60,7 +69,5 @@ jobs:
               subprocess.run(["git", "-C", str(destination), "checkout", "--quiet", "--detach", "FETCH_HEAD"], check=True)
           with open(os.environ["GITHUB_ENV"], "a") as environment:
               environment.write(f"NVIM_TEST_PLUGIN_ROOT={plugins}\n")
-      - name: Verify standalone history and shell selection
-        run: python3 scripts/test-nvim-file-picker.py --check history
       - name: Verify mapped editor selection
         run: python3 scripts/test-nvim-file-picker.py --check editor

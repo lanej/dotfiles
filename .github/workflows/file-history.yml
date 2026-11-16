@@ -1,0 +1,50 @@
+name: File history and shell selection acceptance
+
+on:
+  pull_request:
+    paths: &history-paths
+      - 'scripts/file-history.py'
+      - 'scripts/test-nvim-file-picker.py'
+      - 'zsh/zlogin'
+      - '.github/workflows/file-history.yml'
+  push:
+    branches: [master]
+    paths: *history-paths
+
+permissions:
+  contents: read
+
+jobs:
+  history:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install file enumeration and shell tools on Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fd-find zsh
+          mkdir -p "$RUNNER_TEMP/file-history-tools/bin"
+          ln -s "$(command -v fdfind)" "$RUNNER_TEMP/file-history-tools/bin/fd"
+      - name: Install file enumeration on macOS
+        if: runner.os == 'macOS'
+        run: brew install fd
+      - name: Install pinned fzf
+        shell: bash
+        run: |
+          case "$(uname -s)-$(uname -m)" in
+            Linux-x86_64) fzf_platform=linux_amd64 ;;
+            Darwin-arm64) fzf_platform=darwin_arm64 ;;
+            Darwin-x86_64) fzf_platform=darwin_amd64 ;;
+            *) exit 1 ;;
+          esac
+          mkdir -p "$RUNNER_TEMP/file-history-tools/bin"
+          curl --fail --location --retry 3 "https://github.com/junegunn/fzf/releases/download/v0.59.0/fzf-0.59.0-$fzf_platform.tar.gz" | tar -xz -C "$RUNNER_TEMP/file-history-tools/bin"
+          echo "$RUNNER_TEMP/file-history-tools/bin" >> "$GITHUB_PATH"
+      - name: Verify standalone history and shell selection
+        run: python3 scripts/test-nvim-file-picker.py --check history
