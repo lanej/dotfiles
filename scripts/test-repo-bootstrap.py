@@ -883,7 +883,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     testing_guide.write_bytes(testing_bytes + b"\nAdditional project verification guidance.\n")
     before = tree(library)
     preview = run([str(cli), "upgrade", "--repo", str(library), "--dry-run"])
-    assert "1.1.0 -> 1.2.0" in preview
+    assert f"{testing_version} -> 1.2.0" in preview
     release_view = json.loads(run([str(cli), "explain", "--skill-storage", "copied", "--repo", str(library), "--json"]))
     assert any(item["field"] == "skill_versions.testing" and item["installed"] == testing_version and item["desired"] == "1.2.0" for item in release_view["differences"])
     assert tree(library) == before, "upgrade preview wrote files"
