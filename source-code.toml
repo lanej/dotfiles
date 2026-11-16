@@ -19,6 +19,7 @@ enabled = false
 [checks.protobuf]
 enabled = false
 
+# The tracked standalone profile owns Python scope and gates in .python-quality.json.
+# Make and CI run its all gate; shadow setup installs guidance only.
 [checks.python]
-enabled = true
-paths = ["bin/source-code", "scripts/source_code_languages.py", "ai/skills/python/assets/check-python.py", "ai/skills/source-code-lifecycle/assets/check-source-code.py", "scripts/test-python-quality.py", "ai/skills/protobuf/assets/check-protobuf.py", "scripts/test-protobuf-quality.py"]
+enabled = false
