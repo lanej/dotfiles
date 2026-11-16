@@ -2,7 +2,9 @@
 
 Use `project-update` for an individual project or the registered set. Each project owns its build, installation and restart behavior; the driver coordinates commands without managing processes. uv, Python 3.11+ and Git are required; the command uses uv to select a compatible Python. Run `make shell` to link the command after the change is checked out in your normal dotfiles source, or invoke `./bin/project-update` directly.
 
-From dotfiles, run `make update-zellij` to update Zellij and its compatible plugins, or `make update-projects` to update all registered projects. These targets invoke the repository's `project-update` directly without requiring `make shell` first. Ordinary build and installation targets continue to use the selected checkout.
+From dotfiles, run `make update-zellij` to update Zellij and its compatible plugins, or `make project-updates` (also available as `make update-projects`) to update all registered projects. These targets invoke the repository's `project-update` directly without requiring `make shell` first. Ordinary build and installation targets continue to use the selected checkout.
+
+The Make targets succeed when installation completes but manual activation remains, and print a reminder. Actual update failures still fail Make. Calling `project-update` directly retains exit code 3 for pending activation.
 
 ```sh
 project-update status --all --fetch
