@@ -73,7 +73,7 @@ source-code setup --repo ~/src/app --mode tracked --pr-template none
 source-code setup --repo ~/src/app --mode tracked --pr-template local
 ```
 
-`--skills` accepts the names listed by `source-code setup --help`, comma-separated. The core includes Builder, architecture, data/interface planning, Git/PR workflow, testing, lifecycle, and shared comments. Language guidance covers Go, TypeScript, JavaScript, Python, Rust, and Protobuf; `gh-pr-stack`, `github-actions`, and `just` are available explicitly. These are curated portable packages, not an automatic copy of workstation skills. Language detection selects matching guidance; root Go modules retain their existing automatic check-profile behavior.
+`--skills` accepts the names listed by `source-code setup --help`, comma-separated. The core includes Builder, architecture, data/interface planning, Git/PR workflow, testing, lifecycle, and shared comments. Language guidance covers Go, TypeScript, JavaScript, Python, Rust, and Protobuf; `gh-pr-stack`, `github-actions`, `just`, `data-pipeline`, and `ui-acceptance` are available explicitly. These are curated portable packages, not an automatic copy of workstation skills. Language detection selects matching guidance; root Go modules retain their existing automatic check-profile behavior.
 
 ## Policy inspection and agent discovery
 
@@ -159,6 +159,19 @@ Basic detection uses manifests and source-file extensions for Go, TypeScript, Ja
 
 Detection chooses language skills and records evidence in the policy's `detection` field. Detected Protobuf sources and Buf workspaces also select the Protobuf check profile by default, unless explicitly disabled. TypeScript/Python checks and Rust tooling remain explicit project choices. `languages` separately records installed generated Go/TypeScript/Python/Protobuf check profiles. The detection opt-out persists across upgrades. Removing a language file can update detection evidence without uninstalling existing skills or checks.
 
+## Optional project capabilities
+
+Select `data-pipeline` for warehouse layers, declarative schemas, and ETL guidance, or `ui-acceptance` for rendered UI evidence, interaction coverage, and project-scoped visual rules. They include the core architecture, testing, and lifecycle dependencies needed to interpret that guidance. Neither is selected automatically from language detection, installed workstation tools, or a project's apparent maturity. Research still permits a disposable experiment; retained behavior and existing repository gates govern durable protection.
+
+```sh
+source-code setup --repo ~/src/project --authority owned --adoption new --skills data-pipeline,ui-acceptance --dry-run
+# Review the selection before applying the same command without --dry-run.
+```
+
+The user-level `ui-review` skill retains Viewrule commands and explicit personal-feedback handling. It does not impose application design policy, browser-test requirements, or CI gates. Project `ui-acceptance` works with the project's selected capture tools; Viewrule is optional. The `data-pipeline` skill is project-only and is removed from managed user catalogs on workstation skill sync, while unrelated local entries and aliases are preserved.
+
+The installed Git profile owns [review and merge assessment](../ai/skills/git/references/review.md); PR writing conventions stay in the project's PR guidance. Global operating procedures retain authorization and truthful outcome reporting, without choosing reviewers or a publication tool for every repository. Installing a profile grants no push, PR, merge, or messaging authority.
+
 ## Authority and tool adoption
 
 Declare `authority = "owned" | "shared" | "upstream"` and `adoption = "hold" | "new" | "backfill"` in authored TOML, or pass `--authority` and `--adoption`. These selections follow CLI → TOML → saved-state precedence and are independent of lifecycle stage and project kind. Setup and upgrade require both when no configured or saved value exists; inspection can show unset values without writes. Existing installations remain usable, and validation reports missing legacy selections. Public/open-source visibility does not establish authority.
@@ -171,7 +184,7 @@ The lifecycle package carries the catalog into portable tracked and shadow insta
 
 ## Lifecycle stages
 
-Source-code skills are project-only: they are absent from the default user-level Claude, Codex, and Pi catalogs. `ai/skills/project-only.json` defines that boundary, including Git, GitHub Actions, PR stacks, and PR writing. Coding lessons formerly bundled into user-level `operating-lessons` now ship with the relevant project Git, testing, architecture, Python, and JavaScript skills; general agent coordination and tool/account verification remain user-level. Install them explicitly, then reload the client's skill catalog if necessary. Normal workstation setup retires the managed global Builder rule and guidance, preserves personal skills and aliases, and keeps explicit legacy package references readable.
+Source-code skills are project-only: they are absent from the default user-level Claude, Codex, and Pi catalogs. `ai/skills/project-only.json` defines that boundary, including Git, GitHub Actions, PR stacks, PR writing, data pipelines, and UI acceptance. Coding lessons formerly bundled into user-level `operating-lessons` now ship with the relevant project Git, testing, architecture, Python, and JavaScript skills; general agent coordination and tool/account verification remain user-level. Install them explicitly, then reload the client's skill catalog if necessary. Normal workstation setup retires the managed global Builder rule and guidance, preserves personal skills and aliases, and keeps explicit legacy package references readable.
 
 ```sh
 source-code setup --repo ~/src/experiment --authority owned --adoption new --go --stage research --mode shadow --pr-template none

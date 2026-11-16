@@ -329,6 +329,30 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     run([str(cli), "setup", "--repo", str(alternate), "--config", "missing.toml"], cwd=workspace, expected=1)
     assert tree(alternate) == before
 
+    # Domain guidance is opt-in, portable, and separate from workstation tools.
+    for mode in ("tracked", "shadow"):
+        domain = workspace / ("domain guidance " + mode)
+        owned_install(domain, "--init", "--mode", mode, "--stage", "research",
+                      "--skills", "data-pipeline,ui-acceptance", "--no-detect-languages", "--pr-template", "none")
+        policy = json.loads((domain / ".source-code.json").read_text())
+        assert {"data-pipeline", "ui-acceptance", "architecture", "testing", "git"} <= policy["skills"].keys()
+        assert policy["languages"] == []
+        assert not (domain / ".agents/skills/ui-review").exists()
+        assert (domain / ".agents/skills/data-pipeline/references/medallion-architecture.md").is_file()
+        assert (domain / ".agents/skills/ui-acceptance/references/visual-review.md").is_file()
+        run([str(cli), "validate", "--repo", str(domain), "--strict"])
+        if mode == "tracked":
+            git(domain, "add", ".")
+            git(domain, "commit", "-qm", "Select project domain guidance")
+            clone = workspace / "portable domain clone"
+            run(["git", "clone", "--quiet", str(domain), str(clone)])
+            run([str(cli), "validate", "--repo", str(clone), "--strict"])
+            run(["python3", str(VALIDATOR), *[str(clone / ".agents/skills" / name) for name in policy["skills"]]])
+        else:
+            assert not git(domain, "status", "--porcelain"), "private domain guidance escaped shadow exclusions"
+        run([str(cli), "upgrade", "--repo", str(domain)])
+        assert json.loads((domain / ".source-code.json").read_text())["skills"].keys() == policy["skills"].keys()
+
     profile_intent = workspace / "inferred profiles"
     profile_intent.mkdir()
     git(profile_intent, "init", "--quiet")
