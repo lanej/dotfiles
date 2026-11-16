@@ -1899,7 +1899,8 @@ def install(args: Arguments) -> None:
     local_paths = (
         (
             {path for path in managed if path.startswith((".agents/skills/", ".claude/skills/"))}
-            | {VERSIONS, STATE, HOST_RULE}
+            | ({VERSIONS, HOST_RULE} & set(managed))
+            | {STATE}
         )
         if storage == "linked"
         else set()

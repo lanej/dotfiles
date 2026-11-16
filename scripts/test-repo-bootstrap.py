@@ -93,6 +93,12 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(default_clone)])
     assert not git(default_clone, "status", "--porcelain", "--untracked-files=all")
 
+    codex_only = workspace / "default Codex-only setup"
+    run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(codex_only), "--init", "--agents", "codex"])
+    assert (codex_only / ".agents/skills/ship/SKILL.md").is_file()
+    assert not (codex_only / ".claude").exists()
+    assert not git(codex_only, "status", "--porcelain", "--untracked-files=all")
+
     # New projects share canonical packages; only portable settings are committed.
     linked_projects = [workspace / "linked one", workspace / "linked two"]
     for target in linked_projects:
