@@ -4,6 +4,20 @@ kind = "tool"
 skill_storage = "linked"
 authority = "owned"
 adoption = "new"
+mode = "shadow"
+agents = "both"
+pr_template = "none"
+skills = ["builder", "architecture", "octo-manager", "github-actions", "ui-review"]
+detect_languages = true
+
+[checks.go]
+enabled = false
+
+[checks.typescript]
+enabled = false
+
+[checks.protobuf]
+enabled = false
 
 [checks.python]
 enabled = true

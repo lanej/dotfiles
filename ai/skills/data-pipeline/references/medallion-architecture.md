@@ -46,7 +46,7 @@ A three-layer data architecture pattern for organizing data pipelines, also know
 - Optimized for consumption (denormalized, pre-aggregated)
 - May include slowly-changing dimensions (SCD Type 2)
 
-**Example:** `engineering_demand.classified_tickets_enriched` (joins classified_tickets with DORA, user identity, carrier integration)
+**Example:** `analytics.customer_activity_enriched` (joins normalized activity with customer and calendar data)
 
 **Characteristics:**
 - Ready for BI/reporting/ML

@@ -20,6 +20,10 @@ Authority describes who can choose the stack, independently of stage, kind, and 
 
 Shared and upstream authority still require project agreement when adoption is `new` or `backfill`; the setting alone does not grant authority. Record that agreement in project instructions or the relevant project decision. Missing settings on legacy installations do not imply owned authority or migration permission: preserve conventions and establish the settings before applying this catalog. Setup and upgrade require explicit selections when no configured or saved choices exist. Inspecting or running an existing installation does not require changing it.
 
+## CLI construction
+
+For command-line interface work, read the installed [CLI construction skill](../../cli/SKILL.md). It requires the catalog’s language tools and progressive agent guidance through `TOOL skill` and `TOOL skill --topic NAME` where project authority and adoption apply. It preserves existing command meanings and does not authorize an unscoped retrofit.
+
 ## Catalog
 
 Each choice is required when its capability is needed and authority/adoption permit applying this catalog. This is binding implementation and review guidance; structural validation does not inspect application dependencies or certify compliance.

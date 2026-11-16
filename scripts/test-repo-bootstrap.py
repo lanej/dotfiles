@@ -278,6 +278,17 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     (invalid_context / "source-code.toml").write_text("not valid TOML [[[\n")
     before = tree(invalid_context)
     run([str(cli), "skill"], cwd=invalid_context)
+    for topic in ("inspection", "setup", "validation"):
+        assert run([str(cli), "skill", "--topic", topic], cwd=invalid_context) == (
+            source / "ai/skills/source-code/references" / f"{topic}.md"
+        ).read_text()
+    run([str(cli), "skill", "--topic", "../SKILL"], cwd=invalid_context, expected=2)
+    topic_path = source / "ai/skills/source-code/references/setup.md"
+    topic_path.rename(topic_path.with_suffix(".saved"))
+    assert "management skill is unavailable" in run(
+        [str(cli), "skill", "--topic", "setup"], cwd=invalid_context, expected=1
+    )
+    topic_path.with_suffix(".saved").rename(topic_path)
     assert tree(invalid_context) == before
     management = source / "ai/skills/source-code/SKILL.md"
     management.rename(management.with_suffix(".saved"))
@@ -544,13 +555,14 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     for mode in ("tracked", "shadow"):
         domain = workspace / ("domain guidance " + mode)
         owned_install(domain, "--init", "--mode", mode, "--stage", "research",
-                      "--skills", "data-pipeline,ui-acceptance", "--no-detect-languages", "--pr-template", "none")
+                      "--skills", "data-pipeline,ui-review", "--no-detect-languages", "--pr-template", "none")
         policy = json.loads((domain / ".source-code.json").read_text())
-        assert {"data-pipeline", "ui-acceptance", "architecture", "testing", "git"} <= policy["skills"].keys()
+        assert {"data-pipeline", "ui-review", "ui-acceptance", "architecture", "testing", "git", "cli"} <= policy["skills"].keys()
         assert policy["languages"] == []
-        assert not (domain / ".agents/skills/ui-review").exists()
         assert (domain / ".agents/skills/data-pipeline/references/medallion-architecture.md").is_file()
         assert (domain / ".agents/skills/ui-acceptance/references/visual-review.md").is_file()
+        assert (domain / ".agents/skills/ui-review/SKILL.md").is_file()
+        assert (domain / ".agents/skills/cli/references/agent-discovery.md").is_file()
         run([str(cli), "validate", "--repo", str(domain), "--strict"])
         if mode == "tracked":
             git(domain, "add", ".")

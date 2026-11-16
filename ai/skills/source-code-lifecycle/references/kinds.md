@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | `service` | Integrators and operators | Explain integration contracts, failure behavior, configuration, and observable health. For retained deployments, provide evidence appropriate to rollout, recovery, and operational changes. |
 | `library` | Callers who should not need to inspect implementation | Document supported public behavior, inputs/outputs, constraints, interactions, errors, and useful examples. Identify provisional APIs and compatibility expectations. Use the installed library comment guidance. |
-| `tool` | People or automation invoking an interface | Define invocation, inputs/outputs, diagnostics, failure outcomes, and installation requirements. For CLIs, preserve meaningful exit codes and machine-readable output contracts; for interactive tools, cover the actual interaction and recovery paths. |
+| `tool` | People or automation invoking an interface | Define invocation, inputs/outputs, diagnostics, failure outcomes, and installation requirements. For CLIs, follow [CLI construction](../../cli/SKILL.md), including progressive `skill` / `skill --topic` discovery, meaningful exit codes, and machine-readable output contracts; for interactive tools, cover the actual interaction and recovery paths. |
 
 Use the selected lifecycle entrypoint for the depth of these obligations at the project’s current maturity.
 

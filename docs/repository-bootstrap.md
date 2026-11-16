@@ -74,7 +74,7 @@ source-code setup --repo ~/src/app --mode tracked --pr-template none
 source-code setup --repo ~/src/app --mode tracked --pr-template local
 ```
 
-`--skills` accepts the names listed by `source-code setup --help`, comma-separated. The core includes Builder, architecture, data/interface planning, Git/PR workflow, testing, lifecycle, and shared comments. Language guidance covers Go, TypeScript, JavaScript, Python, Rust, and Protobuf; `gh-pr-stack`, `github-actions`, `just`, `data-pipeline`, and `ui-acceptance` are available explicitly. These are curated project skills, selected independently of workstation skills. Language detection selects matching guidance; root Go modules retain their existing automatic check-profile behavior.
+`--skills` accepts the names listed by `source-code setup --help`, comma-separated. The core includes Builder, architecture, data/interface planning, Git/PR workflow, CLI construction, testing, lifecycle, and shared comments. Language guidance covers Go, TypeScript, JavaScript, Python, Rust, and Protobuf; `gh-pr-stack`, `github-actions`, `just`, `data-pipeline`, `ui-acceptance`, and `ui-review` are available explicitly. These are curated project skills, selected independently of workstation skills. Language detection selects matching guidance; root Go modules retain their existing automatic check-profile behavior.
 
 ## Current-stage project guidance
 
@@ -98,9 +98,13 @@ Canonical skill contents and their release versions follow the source immediatel
 
 Existing copied installations retain copied storage. Preview `source-code setup --skill-storage linked --dry-run` to migrate explicitly. Migration preserves customized or unmanaged package content, rejects tracked artifacts that would need removal, and only replaces unchanged installer-owned files. The command never untracks files. Remove copied packages from the index separately if their removal is intended. The reverse `--skill-storage copied` materializes portable packages without writing through the links. CLI overrides do not rewrite authored TOML; set `skill_storage = "copied"` there to retain that selection.
 
+## CLI construction
+
+The project-only `cli` skill is part of the core engineering profile and applies when building or reviewing command-line interfaces. It routes to the canonical language tool catalog and requires a compact Markdown `TOOL skill` entrypoint with task guidance available through `TOOL skill --topic NAME`. Discovery reads bundled resources without loading project configuration, resolving credentials, contacting services, or running application setup. Authority, adoption, established command meanings, and migration scope remain binding. This is implementation/review guidance; an automated application-compliance gate remains separate follow-up work.
+
 ## Policy inspection and agent discovery
 
-`source-code skill` prints the exact management `SKILL.md` as Markdown, including frontmatter, with no extra stdout text. It works outside Git, ignores project TOML, and exits nonzero with a diagnostic on stderr if the packaged skill is unavailable. It does not install skills into the target or select engineering policy.
+`source-code skill` prints the exact management `SKILL.md` as Markdown, including frontmatter, with no extra stdout text. Use `source-code skill --topic inspection`, `--topic setup`, or `--topic validation` to read the matching progressive-disclosure reference without locating its package directory. It works outside Git, ignores project TOML, and exits nonzero with a diagnostic on stderr if the packaged skill is unavailable. It does not install skills into the target or select engineering policy.
 
 Use `source-code explain --repo PATH` for a human-readable desired-versus-recorded policy comparison, or add `--json` for one machine-readable object. It accepts the setup policy-selection options, including `--config`, `--kind`, `--authority`, `--adoption`, `--stage`, `--skills`, and language flags, but not `--init`, `--conflict`, or `--dry-run`. It uses setup resolution and supports an existing directory before Git initialization. It does not initialize Git, modify project/Git files, provision dependencies, or run project commands.
 
@@ -192,7 +196,7 @@ source-code setup --repo ~/src/project --authority owned --adoption new --skills
 # Review the selection before applying the same command without --dry-run.
 ```
 
-The user-level `ui-review` skill retains Viewrule commands and explicit personal-feedback handling. It does not impose application design policy, browser-test requirements, or CI gates. Project `ui-acceptance` works with the project's selected capture tools; Viewrule is optional. The `data-pipeline` skill is project-only and is removed from managed user catalogs on workstation skill sync, while unrelated local entries and aliases are preserved.
+The project-only `ui-review` skill supplies Viewrule commands and explicit user-feedback handling for frontend projects, and selects `ui-acceptance` as a dependency. It does not authorize unrelated design changes or new CI gates. Project `ui-acceptance` works with the project's selected capture tools; Viewrule is optional. The `data-pipeline` skill is project-only and is removed from managed user catalogs on workstation skill sync, while unrelated local entries and aliases are preserved.
 
 The installed Git profile owns [review and merge assessment](../ai/skills/git/references/review.md); PR writing conventions stay in the project's PR guidance. Global operating procedures retain authorization and truthful outcome reporting, without choosing reviewers or a publication tool for every repository. Installing a profile grants no push, PR, merge, or messaging authority.
 
@@ -208,7 +212,7 @@ The lifecycle package carries the catalog into portable tracked and shadow insta
 
 ## Lifecycle stages
 
-Source-code skills are project-only: they are absent from the default user-level Claude, Codex, and Pi catalogs. `ai/skills/project-only.json` defines that boundary, including Git, GitHub Actions, PR stacks, PR writing, data pipelines, and UI acceptance. Coding lessons formerly bundled into user-level `operating-lessons` now ship with the relevant project Git, testing, architecture, Python, and JavaScript skills; general agent coordination and tool/account verification remain user-level. Install them explicitly, then reload the client's skill catalog if necessary. Normal workstation setup retires the managed global Builder rule and guidance, preserves personal skills and aliases, and keeps explicit legacy package references readable.
+Source-code engineering skills are project-only; the `source-code` management skill remains user-level. Project packages are absent from the default user-level Claude, Codex, and Pi catalogs. `ai/skills/project-only.json` defines that boundary, including Git, GitHub Actions, PR stacks, PR writing, data pipelines, and UI acceptance. Coding lessons formerly bundled into user-level `operating-lessons` now ship with the relevant project Git, testing, architecture, Python, and JavaScript skills; `agent-coordination`, `verify-claims`, `tool-operation`, and `document-consistency` provide focused user-level guidance with conditional references. Zellij and source-code management also remain user-level across supported agents. Install them explicitly, then reload the client's skill catalog if necessary. Normal workstation setup retires the managed global Builder rule and guidance, preserves personal skills and aliases, and keeps explicit legacy package references readable.
 
 ```sh
 source-code setup --repo ~/src/experiment --authority owned --adoption new --go --stage research --mode shadow --pr-template none
