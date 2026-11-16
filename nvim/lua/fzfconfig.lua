@@ -1,5 +1,7 @@
 local fzf_lua = require("fzf-lua")
 local actions = require("fzf-lua.actions")
+local files = require("file-picker")
+files.setup()
 
 require("fzf-lua").setup({
 	-- NOTE: Forcing fzf instead of sk to avoid NVIM_LISTEN_ADDRESS issue (ibhagwan/fzf-lua#1812)
@@ -13,6 +15,7 @@ require("fzf-lua").setup({
 	defaults = {
 		compat_warn = false,
 		fzf_opts = {
+			["--smart-case"] = true,
 			-- Prefer shorter paths when fuzzy match scores are equal.
 			["--tiebreak"] = "length,pathname",
 		},
@@ -170,35 +173,29 @@ vim.keymap.set("n", "<leader>at", function()
 	require("fzf-lua").tags()
 end, { noremap = true, silent = true })
 
--- Keymap to list files using fzf-lua (press <C-g> in picker to toggle gitignore)
+-- File selection blends fuzzy matching with file visits; <C-g> includes ignored files.
 vim.keymap.set("n", "<leader>ff", function()
-	local fzf = require("fzf-lua")
-	local no_ignore = false
-
-	local function run_files(query)
-		fzf.files({
-			cmd = no_ignore and "fd --type f --follow --hidden --no-ignore --exclude .git"
-				or "fd --type f --follow --exclude .git",
-			prompt = no_ignore and "All Files❯ " or "Files❯ ",
+	local function open(query, no_ignore)
+		files.files({
+			hidden = no_ignore,
+			no_ignore = no_ignore,
 			query = query or "",
 			actions = {
-				["ctrl-g"] = function(_selected, opts)
-					no_ignore = not no_ignore
-					local current_query = (opts and opts.last_query) or ""
+				["enter"] = actions.file_edit_or_qf,
+				["ctrl-g"] = function(_, opts)
 					vim.schedule(function()
-						run_files(current_query)
+						open(opts.last_query or "", not opts.no_ignore)
 					end)
 				end,
 			},
 		})
 	end
-
-	run_files()
+	open()
 end, { noremap = true, silent = true })
 
--- Keymap to list files in the current directory using fzf-lua
+-- Search from the current file's directory with the same ranking.
 vim.keymap.set("n", "<leader>fr", function()
-	require("fzf-lua").files({ cwd = vim.fn.expand("%:p:h") })
+	files.files({ cwd = vim.fn.expand("%:p:h") })
 end, { noremap = true, silent = true })
 
 -- Keymap to list command history using fzf-lua
@@ -206,9 +203,9 @@ vim.keymap.set("n", "<leader>rr", function()
 	require("fzf-lua").command_history()
 end, { noremap = true, silent = true })
 
--- Keymap to list recently opened files using fzf-lua
+-- Previously opened files, ranked by match quality and frequency/recency.
 vim.keymap.set("n", "<leader>fc", function()
-	require("fzf-lua").oldfiles()
+	files.files({ ["global"] = true })
 end, { noremap = true, silent = true })
 
 -- Keymap to list lines in the current buffer using fzf-lua
@@ -229,9 +226,9 @@ vim.keymap.set("n", "<leader>bc", function()
 	require("fzf-lua").git_bcommits()
 end, { noremap = true, silent = true })
 
--- Keymap to list git files using fzf-lua
+-- Tracked files use the same learned ranking.
 vim.keymap.set("n", "<leader>gf", function()
-	require("fzf-lua").git_files()
+	files.files({ git = true })
 end, { noremap = true, silent = true })
 
 -- Keymap to list git status using fzf-lua
