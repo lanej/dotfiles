@@ -238,34 +238,37 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         assert not (retired / ".claude/skills" / old_name).exists()
         run([str(cli), "validate", "--repo", str(retired), "--strict"])
 
-    # A project exposes only the testing entrypoint selected for its maturity.
+    # Selected project skills expose only their current-maturity entrypoints.
+    maturity_skills = ("testing", "code-comments", "go", "rust", "typescript", "python", "protobuf", "source-code-lifecycle")
     for storage in ("linked", "copied"):
-        staged_testing = workspace / ("stage selected testing " + storage)
+        staged_testing = workspace / ("stage selected guidance " + storage)
         staged_testing.mkdir()
         git(staged_testing, "init", "--quiet")
-        (staged_testing / "source-code.toml").write_text('schema_version = 1\nauthority = "owned"\nadoption = "new"\nmode = "shadow"\nskill_storage = "' + storage + '"\nskills = ["testing"]\ndetect_languages = false\npr_template = "none"\n')
+        (staged_testing / "source-code.toml").write_text('schema_version = 1\nauthority = "owned"\nadoption = "new"\nmode = "shadow"\nskill_storage = "' + storage + '"\nskills = ' + json.dumps(maturity_skills) + '\ndetect_languages = false\npr_template = "none"\n')
         for stage in ("research", "alpha", "beta", "production", "research"):
             command = [str(cli), "setup", "--repo", str(staged_testing), "--stage", stage]
             if stage == "alpha":
                 command += ["--skills", "just"]
             run(command)
-            installed = staged_testing / ".agents/skills/testing"
-            selected = source / "ai/skills/.testing-profiles" / stage / "testing"
-            assert (installed / "SKILL.md").read_bytes() == (selected / "SKILL.md").read_bytes()
-            assert {child.name for child in installed.iterdir()} == {"SKILL.md", "references"}
-            assert installed.is_symlink() == (storage == "linked")
-            if storage == "linked":
-                assert installed.resolve() == selected
-            assert (installed / "references/principles.md").is_file()
+            for name in maturity_skills:
+                installed = staged_testing / ".agents/skills" / name
+                selected = source / "ai/skills/.maturity-profiles" / stage / name
+                assert (installed / "SKILL.md").read_bytes() == (selected / "SKILL.md").read_bytes()
+                assert {child.name for child in installed.iterdir()} <= {"SKILL.md", "references", "assets"}
+                assert installed.is_symlink() == (storage == "linked")
+                if storage == "linked":
+                    assert installed.resolve() == selected
+                assert (installed / "references").is_dir()
             run([str(cli), "validate", "--repo", str(staged_testing), "--strict"])
         if storage == "copied":
-            entrypoint = staged_testing / ".agents/skills/testing/SKILL.md"
-            original = entrypoint.read_bytes()
-            entrypoint.write_bytes(original + b"\nLocal testing guidance.\n")
-            before = tree(staged_testing)
-            run([str(cli), "setup", "--repo", str(staged_testing), "--stage", "alpha", "--conflict", "skip"], expected=1)
-            assert tree(staged_testing) == before
-            entrypoint.write_bytes(original)
+            for name in ("testing", "go"):
+                entrypoint = staged_testing / ".agents/skills" / name / "SKILL.md"
+                original = entrypoint.read_bytes()
+                entrypoint.write_bytes(original + b"\nLocal project guidance.\n")
+                before = tree(staged_testing)
+                run([str(cli), "setup", "--repo", str(staged_testing), "--stage", "alpha", "--conflict", "skip"], expected=1)
+                assert tree(staged_testing) == before
+                entrypoint.write_bytes(original)
 
     # Agents can discover the tool before choosing or creating a project.
     assert run([str(cli), "skill"], cwd=workspace) == (source / "ai/skills/source-code/SKILL.md").read_text()
@@ -861,7 +864,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     versions = json.loads(registry_bytes)
     versions["skills"]["testing"] = "1.2.0"
     registry.write_text(json.dumps(versions))
-    testing_guide = source / "ai/skills/.testing-profiles/beta/testing/SKILL.md"
+    testing_guide = source / "ai/skills/.maturity-profiles/beta/testing/SKILL.md"
     testing_bytes = testing_guide.read_bytes()
     testing_guide.write_bytes(testing_bytes + b"\nAdditional project verification guidance.\n")
     before = tree(library)
@@ -1069,7 +1072,10 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         trace_before = trace.read_bytes()
         run(["python3", str(runner), "go"], env=environment, expected=1)
         assert trace.read_bytes() == trace_before
-    assert "locally modified lifecycle policy" in owned_install(explicit_go, "--skills", "go", "--stage", "research", "--conflict", "skip", expected=1)
+    before = tree(explicit_go)
+    rejection = owned_install(explicit_go, "--skills", "go", "--stage", "research", "--conflict", "skip", expected=1)
+    assert ".source-code.json" in rejection and "cannot change" in rejection, rejection
+    assert tree(explicit_go) == before
     policy_path.write_text(original)
     legacy_runner = explicit_go / "scripts/check-go.sh"
     legacy_bytes = legacy_runner.read_bytes()

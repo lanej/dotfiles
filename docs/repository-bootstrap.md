@@ -76,9 +76,9 @@ source-code setup --repo ~/src/app --mode tracked --pr-template local
 
 `--skills` accepts the names listed by `source-code setup --help`, comma-separated. The core includes Builder, architecture, data/interface planning, Git/PR workflow, testing, lifecycle, and shared comments. Language guidance covers Go, TypeScript, JavaScript, Python, Rust, and Protobuf; `gh-pr-stack`, `github-actions`, `just`, `data-pipeline`, and `ui-acceptance` are available explicitly. These are curated project skills, selected independently of workstation skills. Language detection selects matching guidance; root Go modules retain their existing automatic check-profile behavior.
 
-## Current-stage testing guidance
+## Current-stage project guidance
 
-Source-code selects a separate testing entrypoint for the configured maturity. Linked profiles point `.agents/skills/testing` to that stage's canonical package; copied profiles materialize only its entrypoint and shared references. Neither installed form contains the other stage entrypoints or a testing ramp. Changing `--stage` and applying setup or upgrade switches the entrypoint; a dry run previews it first. Shared principles cover minimum effective testing, useful CLI failure diagnostics, and verification boundaries without prescribing another maturity's coverage.
+Source-code selects separate entrypoints for testing, lifecycle, comments, Go, Rust, TypeScript, Python, and Protobuf at the configured maturity. Linked profiles point each selected skill to its current-stage package under `ai/skills/.maturity-profiles/`; copied profiles materialize only the selected entrypoint, shared references, and required tool assets. Neither installed form exposes other-stage entrypoints as project skill guidance. Shared architectural rules and tool mechanics remain common; the full lifecycle comparison is an administration reference for comparing or changing maturity. Changing `--stage` and applying setup or upgrade switches the entrypoint; a dry run previews it first. Shared principles cover minimum effective testing, useful CLI failure diagnostics, and verification boundaries without prescribing another maturity's coverage.
 
 ## Ship a scoped change safely
 

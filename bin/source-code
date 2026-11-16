@@ -211,6 +211,16 @@ SKILLS = DEFAULT_SKILLS + (
 RENAMED_SKILLS = {"pr-writer": "pull-request", "pr-merge": "ship"}
 MANAGED_SKILLS = SKILLS + tuple(RENAMED_SKILLS)
 STAGES = ("research", "alpha", "beta", "production")
+MATURITY_SKILLS = (
+    "testing",
+    "code-comments",
+    "go",
+    "rust",
+    "typescript",
+    "python",
+    "protobuf",
+    "source-code-lifecycle",
+)
 KINDS = ("service", "library", "tool")
 AUTHORITIES = ("owned", "shared", "upstream")
 ADOPTIONS = ("hold", "new", "backfill")
@@ -436,13 +446,18 @@ def read_state(root: Path) -> tuple[Manifest, Snapshot | None]:
                         and Path(path).name in MANAGED_SKILLS
                         and (
                             entry.get("target") == str(Path(state["skill_source"]) / Path(path).name)
-                            or Path(path).name == "testing"
+                            or Path(path).name in MATURITY_SKILLS
                             and entry.get("target")
                             == str(
                                 selected_skill_directory(
-                                    Path(state["skill_source"]), "testing", state.get("stage", "beta")
+                                    Path(state["skill_source"]), Path(path).name, state.get("stage", "beta")
                                 )
                             )
+                        )
+                        or path == ".agents/skills/testing"
+                        and entry.get("target")
+                        == str(
+                            Path(state["skill_source"]) / ".testing-profiles" / state.get("stage", "beta") / "testing"
                         )
                         or path == VERSIONS
                         and entry.get("target") == str(Path(state["skill_source"]) / "source-code-versions.json")
@@ -858,8 +873,8 @@ def artifact_owner(path: str) -> str | None:
 
 
 def selected_skill_directory(source: Path, name: str, stage: str) -> Path:
-    if name == "testing":
-        return source / ".testing-profiles" / stage / name
+    if name in MATURITY_SKILLS:
+        return source / ".maturity-profiles" / stage / name
     return source / name
 
 
@@ -902,11 +917,11 @@ def package(
             continue
         if not (directory / "SKILL.md").is_file():
             raise ValueError(f"missing skill: {directory}")
-        if skill == "testing":
-            add(".agents/skills/testing/SKILL.md", selected / "SKILL.md")
+        if skill in MATURITY_SKILLS:
+            add(f".agents/skills/{skill}/SKILL.md", selected / "SKILL.md")
         for source in sorted(directory.rglob("*")):
             relative = source.relative_to(directory)
-            if skill == "testing" and (relative == Path("SKILL.md") or relative.parts[0] == "assets"):
+            if skill in MATURITY_SKILLS and relative == Path("SKILL.md"):
                 continue
             if "__pycache__" in relative.parts or source.suffix == ".pyc":
                 continue
@@ -1482,6 +1497,8 @@ def resolve_policy(root: Path, args: Arguments, state: Manifest) -> ResolvedPoli
             raise ValueError(
                 f"{name} must be selected explicitly with --{name} or source-code.toml before setup or upgrade"
             )
+    if args.stage is not None and args.stage != state.get("stage", "beta"):
+        skills.update(recorded_skills(state) & set(MATURITY_SKILLS))
     skills.update(RENAMED_SKILLS[name] for name in recorded_skill_names(state) if name in RENAMED_SKILLS)
     skills = complete_skills(
         skills, bool(args.stage) and args.stage != state.get("stage"), kind if kind != state.get("kind") else None
@@ -1902,11 +1919,11 @@ def install(args: Arguments) -> None:
                 if (
                     old_pins.get(owner) != pins.get(owner)
                     or policy_changed
-                    or owner == "testing"
+                    or owner in MATURITY_SKILLS
                     and state.get("stage") != stage
                 ):
                     raise ValueError(
-                        f"cannot upgrade the {owner} version while skipping locally modified content at {relative}; reconcile it or use --conflict replace"
+                        f"cannot change the {owner} version or maturity while skipping locally modified content at {relative}; reconcile it or use --conflict replace"
                     )
             if relative in {POLICY, GUIDANCE, PROJECT_GUIDANCE, VERSIONS, HOST_RULE} and args.conflict != "replace":
                 label = "lifecycle policy" if relative == POLICY else "policy artifact"
