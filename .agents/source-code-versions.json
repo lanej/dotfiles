@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "policy_version": "1.1.0",
+  "skills": {
+    "architecture": "1.2.0",
+    "builder": "1.1.0",
+    "code-comments": "1.0.0",
+    "data-change-planning": "1.0.0",
+    "git": "1.1.0",
+    "github-actions": "1.0.0",
+    "go": "1.1.1",
+    "javascript": "1.1.0",
+    "library-code-comments": "1.0.0",
+    "octo-manager": "1.0.1",
+    "python": "1.1.0",
+    "rust": "1.1.0",
+    "source-code-lifecycle": "1.2.1",
+    "testing": "1.0.0",
+    "typescript": "1.1.1",
+    "ui-acceptance": "1.0.0"
+  }
+}

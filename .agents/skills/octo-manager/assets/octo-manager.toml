@@ -1,0 +1,14 @@
+schema_version = 1
+
+[merging]
+# Effective installed source-code stage: research/alpha on, beta/production off.
+auto_merge = "project_stage"
+
+[notifications.instructions]
+review_feedback = "Inspect and address actionable review findings using the installed project guidance."
+checks_failed = "Inspect the failed run and address the cause using the installed project checks."
+merge_conflict = "Inspect and resolve the merge conflict using the installed project guidance."
+dependencies_pending = "Inspect and report the remaining prerequisites."
+owner_review_required = "Review the current head and record readiness when satisfied."
+merged = "Report completion and perform the configured post-merge follow-up."
+merge_uncertain = "Inspect reconciliation evidence before retrying the merge."

@@ -1,0 +1,34 @@
+---
+name: architecture
+description: "Use when designing or reviewing software architecture, evaluating boundaries, or assessing architectural tradeoffs. Apply Pragmatic Hexagonal Architecture without prescribing an implementation workflow."
+---
+
+# Architecture
+
+When designing or changing software, read [Unix design principles](references/unix-philosophy.md) and apply them proportionally alongside the project architecture requirements.
+
+Before selecting application tools or an API protocol, read [the project tool-choice policy](../source-code-lifecycle/references/tool-choices.md). Apply the declared authority and adoption at every lifecycle stage, including research; preserve external providers’ protocols and established stacks according to that policy.
+
+Before a software plan or a substantial model/interface change, read [data and interface planning](../data-change-planning/SKILL.md). Explain the problem, show how representation and exchange change, contain complexity within capabilities, and resolve consequential open choices before implementation. Apply the same expectations to delegated briefs.
+
+Read [the architecture standard](../builder/references/standard.md) before
+assessing a design or implementation. The companion `builder` skill supplies
+this shared standard; use its construction workflow only when implementation
+work is also requested.
+
+Trace the changed capability from its contract and external assumptions through
+decisions, effects, and observable outcomes. Apply the standard proportionally:
+small utilities need no interface hierarchy, and existing systems need no
+unrelated rewrite.
+
+Recommend the minimum boundaries that preserve inspectable decisions,
+consequential evidence, and localized policy changes. Distinguish established
+facts, assumptions, and verification gaps. A tidy layout or green checks do not
+establish architectural compliance.
+
+For findings, identify the affected behavior, requirement ID, and supporting
+evidence. Record material deviations using the standard's exception format.
+Keep the response focused on the requested design decision or review; do not
+begin implementation or require a separate architecture report by default.
+
+Read [design lessons](references/design-lessons.md) when choosing a new layer, extending an existing idiom, or defining a classification threshold.

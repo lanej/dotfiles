@@ -467,7 +467,7 @@ uv sync --python 3.11
 
 ## Integration with Other Skills
 
-- **Testing**: Use with `/testing/pytest-shell` for test setup
+- **Testing**: Follow the repository’s installed testing guidance for test setup
 - **Scripts**: All Python scripts use `uv run` instead of `python`
 - **CI/CD**: Include in the project’s selected setup workflow
 - **Documentation**: Use `/eureka` to capture uv workflow insights
