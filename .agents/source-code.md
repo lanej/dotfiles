@@ -13,7 +13,7 @@ Paths in this policy are relative to the repository root. The authoritative pins
 
 | Skill | Version |
 | --- | --- |
-| architecture | 1.2.0 |
+| architecture | 1.2.1 |
 | builder | 1.1.0 |
 | cli | 1.0.0 |
 | code-comments | 1.0.0 |
