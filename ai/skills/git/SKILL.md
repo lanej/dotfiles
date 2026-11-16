@@ -12,6 +12,7 @@ the failure modes on this machine that have actually cost time.
 
 - Write commit messages directly from the staged diff and relevant context.
   `/git:commit [context]` provides the commit workflow.
+- For PR drafting, publication, and title/body revisions, use the [pull-request workflow](../pull-request/SKILL.md). It selects Octo when required or selected and otherwise uses the native review-platform workflow; writers remain separate from publication.
 - Format: Commitizen conventional, `<type>(<scope>): <subject>`, subject ≤ 50 chars.
 - AI attribution trailers (`Co-Authored-By: Claude`) in commits are fine.
 - Atomic commits; the message explains *why*.
@@ -22,7 +23,7 @@ the failure modes on this machine that have actually cost time.
 
 Before preparing a change for review or assessing merge readiness, read [the project review procedure](references/review.md). It governs independent review, scoped repair, and exact-head validation for this installed profile; repository-specific instructions and publication authority remain binding.
 
-Follow [the shared PR guidance](../../../docs/pull-requests.md) when creating or updating a PR. The calling agent owns GitHub descriptions and revisions; follow the target repository’s installed drafting and publication guidance. Separate drafting agents are optional when explicitly useful, not publication prerequisites. Use `pull-request-writer` guidance for other review platforms. Lead with the outcome and why, include screenshots when useful, and add context only when the diff and checks do not supply it. Do not reproduce automated test results. Use `--body-file` for multiline updates and verify the rendered result.
+Follow the [pull-request workflow](../pull-request/SKILL.md) for repository templates, writing, publication, and verification of saved content. Creating or updating a PR does not authorize merging it.
 
 ## Branch naming
 

@@ -1,14 +1,10 @@
 ---
 name: protobuf
-description: Use when creating, modifying, reviewing, or validating Protobuf schemas. Apply strict Buf lint, formatting, compilation, and compatibility checks, including a native rule rejecting string fields named with a _json suffix.
+description: "Use when creating, modifying, reviewing, or validating Protobuf schemas. Apply schema correctness guidance and the selected lifecycle checks; preserve repository-specific requirements. Select only the configured maturity guidance."
 ---
 
-# Protobuf
+# Select the current protobuf guidance
 
-Read the project's [source-code lifecycle](../source-code-lifecycle/SKILL.md). When `protobuf` is listed in `.source-code.json` languages, run `python3 scripts/check-source-code.py protobuf` for its generated gate. Setup automatically selects the profile when it detects project `.proto` files or Buf workspaces. Use `--protobuf` to select it explicitly or `--no-protobuf` to save an opt-out; disabling language detection also prevents automatic selection. Preserve existing project gates and Buf workspace, dependency, and generation configuration. Read [the profile guide](references/correctness.md) before adoption or configuration changes.
+Read the project's `.source-code.json` to identify its configured stage. Load exactly `../.maturity-profiles/<stage>/protobuf/SKILL.md`, relative to this canonical skill directory. Do not load other maturity files. Without a configured stage, preserve existing repository requirements and use the shared technical guidance without assuming a maturity.
 
-Model structured data with explicit messages, enums, repeated fields, typed maps, and `oneof` variants. Do not serialize JSON into string fields in place of a typed contract. The native `FIELD_NO_JSON_STRING` Buf plugin rejects fields whose declared type is `string` and whose name ends in `_json`, including nested, repeated, and oneof fields. Generic names, bytes, wrappers, maps, and dynamic well-known types are outside this rule; review their intended contracts rather than claiming they have been analyzed. Application code can still hide JSON in innocently named strings.
-
-Run `python3 scripts/check-protobuf.py tools` explicitly to provision pinned Buf if absent and build the native plugin with Go. Rebuild after plugin source or module changes. CI uses the official Buf Action to install Buf and the same tools command to build the plugin. Setup and check modes do not provision tools. Use `lint` during implementation, `format` to check, and `fmt` to apply formatting. Research compiles and runs the JSON string rule; alpha adds strict lint and format checking; beta/production also require an explicit compatibility baseline. Supply `--against` to the standalone runner or set `PROTOBUF_AGAINST` for the lifecycle gate. CI compares against the PR base or previous push commit.
-
-Fix findings at their cause. Inline Buf lint ignores are disabled in the generated gate. For published schemas, introduce compatible fields or a versioned migration; never rename published fields, recycle field numbers, loosen policy, or select a newer baseline merely to pass checks. Preserve deleted field names and numbers as reserved where appropriate. Buf checks schema structure and compatibility; use runtime validation and focused application tests for value constraints and actual serialization behavior.
+New source-code installations link directly to the selected entrypoint. This selector preserves existing linked installations until setup or upgrade switches their discovery link. Read [shared guidance](references/common.md) when needed; the selected entrypoint controls maturity-specific expectations.

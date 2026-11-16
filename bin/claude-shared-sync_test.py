@@ -20,6 +20,8 @@ def test_make_claude_shared_migrates_links_and_preserves_local_entries(tmp_path)
     obsolete.mkdir()
     (obsolete / "SKILL.md").write_text("Retired instructions.\n")
     shutil.copytree(ROOT / "ai/skills/builder", repo / "ai/skills/builder")
+    for name in ("ship", "pull-request", ".maturity-profiles"):
+        shutil.copytree(ROOT / "ai/skills" / name, repo / "ai/skills" / name)
     shutil.copyfile(ROOT / "ai/skills/project-only.json", repo / "ai/skills/project-only.json")
     shutil.copytree(ROOT / "ai/skills/ui-review", repo / "ai/skills/ui-review")
     shutil.copytree(ROOT / "ai/skills/data-pipeline", repo / "ai/skills/data-pipeline")
@@ -67,7 +69,9 @@ def test_make_claude_shared_migrates_links_and_preserves_local_entries(tmp_path)
     assert (installed_agents / "reviewer.md").readlink() == agents / "reviewer.md"
     assert (installed_agents / "reviewer.md").read_text() == external.read_text()
     assert not retired.is_symlink()
-    assert not (installed_skills / "builder").exists()
+    for name in ("builder", "ship", "pull-request", ".maturity-profiles"):
+        assert not (installed_skills / name).exists()
+        assert not (installed_skills / name).is_symlink()
     assert not stale_pipeline.exists() and not stale_pipeline.is_symlink()
     assert not (installed_skills / "ui-review").exists()
     assert local.read_text() == "Local instructions.\n"
