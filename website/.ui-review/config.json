@@ -37,6 +37,21 @@
       "name": "zellij-notifications",
       "path": "/dotfiles/reference/zellij/notifications/",
       "ready": "main h1"
+    },
+    {
+      "name": "design-system",
+      "path": "/dotfiles/design-system/",
+      "ready": "#atomic-catalog"
+    },
+    {
+      "name": "nord-preset",
+      "path": "/dotfiles/design-system/nord/",
+      "ready": "main h1"
+    },
+    {
+      "name": "radar",
+      "path": "/dotfiles/reference/radar/",
+      "ready": ".tech-radar"
     }
   ],
   "viewports": [

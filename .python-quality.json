@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "paths": [
+    "bin/source-code",
+    "scripts/source_code_languages.py",
+    "ai/skills/python/assets/check-python.py",
+    "ai/skills/source-code-lifecycle/assets/check-source-code.py",
+    "scripts/test-python-quality.py",
+    "ai/skills/protobuf/assets/check-protobuf.py",
+    "scripts/test-protobuf-quality.py"
+  ],
+  "commands": {
+    "test": [
+      "env",
+      "-u",
+      "UV_PROJECT_ENVIRONMENT",
+      "uv",
+      "run",
+      "--project",
+      ".python-quality",
+      "--locked",
+      "--no-sync",
+      "python",
+      "scripts/test-repo-bootstrap.py"
+    ],
+    "legacy": [
+      [
+        "env",
+        "-u",
+        "UV_PROJECT_ENVIRONMENT",
+        "uv",
+        "run",
+        "--project",
+        ".python-quality",
+        "--locked",
+        "--no-sync",
+        "python",
+        "scripts/test-python-quality.py"
+      ]
+    ]
+  }
+}

@@ -1,0 +1,45 @@
+name: Directory picker
+on:
+  pull_request:
+    paths: &picker-paths
+      - 'tools/directory-picker/**'
+      - 'bin/directory-picker'
+      - 'bin/fzf-path-preview'
+      - 'scripts/directory_preview.py'
+      - 'scripts/test-directory-picker*.py'
+      - 'scripts/test-theme-native.py'
+      - 'design-system/generated/colors.json'
+      - 'bootstrap/tools.toml'
+      - 'sh/alias'
+      - 'zsh/zshrc'
+      - '.github/workflows/directory-picker.yml'
+  push:
+    branches: [master]
+    paths: *picker-paths
+permissions:
+  contents: read
+jobs:
+  picker:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: tools/directory-picker/go.mod
+          cache-dependency-path: tools/directory-picker/go.sum
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update -qq && sudo apt-get install -y zsh
+      - name: Install picker fixture dependencies
+        run: |
+          version=$(python -c 'import tomllib; print(tomllib.load(open("bootstrap/tools.toml","rb"))["tools"]["fzf"]["version"])')
+          go install github.com/junegunn/fzf@v"$version"
+          python -m pip install pyte==0.8.2
+      - run: go -C tools/directory-picker test -race ./...
+      - run: make directory-picker test-directory-picker
+      - run: python scripts/test-directory-picker-native.py "$RUNNER_TEMP/picker-captures"

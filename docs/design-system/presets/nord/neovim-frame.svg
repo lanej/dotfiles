@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="708" height="224" viewBox="0 0 708 224" role="img" aria-label="neovim-frame — captured native terminal cells">
+<rect width="100%" height="100%" fill="#2E3440"/>
+<g font-family="monospace" font-size="14" style="white-space:pre">
+<rect x="12" y="12" width="495" height="20" fill="#2E3440"/>
+<text x="12" y="27" fill="#4c566a" font-weight="normal" font-style="normal" text-decoration="none" textLength="495" lengthAdjust="spacingAndGlyphs">-- A shared syntax fixture, not an application service.</text>
+<rect x="507" y="12" width="189" height="20" fill="#2E3440"/>
+<rect x="12" y="32" width="45" height="20" fill="#2E3440"/>
+<text x="12" y="47" fill="#81a1c1" font-weight="normal" font-style="normal" text-decoration="none" textLength="45" lengthAdjust="spacingAndGlyphs">local</text>
+<rect x="57" y="32" width="81" height="20" fill="#2E3440"/>
+<text x="66" y="47" fill="#d8dee9" font-weight="normal" font-style="normal" text-decoration="none" textLength="63" lengthAdjust="spacingAndGlyphs">retries</text>
+<rect x="138" y="32" width="9" height="20" fill="#2E3440"/>
+<text x="138" y="47" fill="#81a1c1" font-weight="normal" font-style="normal" text-decoration="none" textLength="9" lengthAdjust="spacingAndGlyphs">=</text>
+<rect x="147" y="32" width="9" height="20" fill="#2E3440"/>
+<rect x="156" y="32" width="9" height="20" fill="#2E3440"/>
+<text x="156" y="47" fill="#b48ead" font-weight="normal" font-style="normal" text-decoration="none" textLength="9" lengthAdjust="spacingAndGlyphs">3</text>
+<rect x="165" y="32" width="531" height="20" fill="#2E3440"/>
+<rect x="12" y="52" width="45" height="20" fill="#2E3440"/>
+<text x="12" y="67" fill="#81a1c1" font-weight="normal" font-style="normal" text-decoration="none" textLength="45" lengthAdjust="spacingAndGlyphs">local</text>
+<rect x="57" y="52" width="9" height="20" fill="#2E3440"/>
+<rect x="66" y="52" width="72" height="20" fill="#2E3440"/>
+<text x="66" y="67" fill="#88c0d0" font-weight="normal" font-style="normal" text-decoration="none" textLength="72" lengthAdjust="spacingAndGlyphs">function</text>
+<rect x="138" y="52" width="558" height="20" fill="#2E3440"/>
+<text x="147" y="67" fill="#d8dee9" font-weight="normal" font-style="normal" text-decoration="none" textLength="99" lengthAdjust="spacingAndGlyphs">greet(name)</text>
+<rect x="12" y="72" width="18" height="20" fill="#2E3440"/>
+<rect x="30" y="72" width="18" height="20" fill="#2E3440"/>
+<text x="30" y="87" fill="#81a1c1" font-weight="normal" font-style="normal" text-decoration="none" textLength="18" lengthAdjust="spacingAndGlyphs">if</text>
+<rect x="48" y="72" width="54" height="20" fill="#2E3440"/>
+<text x="57" y="87" fill="#d8dee9" font-weight="normal" font-style="normal" text-decoration="none" textLength="36" lengthAdjust="spacingAndGlyphs">name</text>
+<rect x="102" y="72" width="18" height="20" fill="#2E3440"/>
+<text x="102" y="87" fill="#81a1c1" font-weight="normal" font-style="normal" text-decoration="none" textLength="18" lengthAdjust="spacingAndGlyphs">==</text>
+<rect x="120" y="72" width="45" height="20" fill="#2E3440"/>
+<text x="129" y="87" fill="#d8dee9" font-weight="normal" font-style="normal" text-decoration="none" textLength="27" lengthAdjust="spacingAndGlyphs">nil</text>
+<rect x="165" y="72" width="36" height="20" fill="#2E3440"/>
+<text x="165" y="87" fill="#81a1c1" font-weight="normal" font-style="normal" text-decoration="none" textLength="36" lengthAdjust="spacingAndGlyphs">then</text>
+<rect x="201" y="72" width="495" height="20" fill="#2E3440"/>
+<rect x="12" y="92" width="36" height="20" fill="#2E3440"/>
+<rect x="48" y="92" width="54" height="20" fill="#2E3440"/>
+<text x="48" y="107" fill="#81a1c1" font-weight="normal" font-style="normal" text-decoration="none" textLength="54" lengthAdjust="spacingAndGlyphs">return</text>
+<rect x="102" y="92" width="9" height="20" fill="#2E3440"/>
+<rect x="111" y="92" width="81" height="20" fill="#2E3440"/>
+<text x="111" y="107" fill="#a3be8c" font-weight="normal" font-style="normal" text-decoration="none" textLength="81" lengthAdjust="spacingAndGlyphs">&quot;unknown&quot;</text>
+<rect x="192" y="92" width="504" height="20" fill="#2E3440"/>
+<rect x="12" y="112" width="18" height="20" fill="#2E3440"/>
+<rect x="30" y="112" width="27" height="20" fill="#2E3440"/>
+<text x="30" y="127" fill="#81a1c1" font-weight="normal" font-style="normal" text-decoration="none" textLength="27" lengthAdjust="spacingAndGlyphs">end</text>
+<rect x="57" y="112" width="639" height="20" fill="#2E3440"/>
+<rect x="12" y="132" width="18" height="20" fill="#2E3440"/>
+<rect x="30" y="132" width="54" height="20" fill="#2E3440"/>
+<text x="30" y="147" fill="#81a1c1" font-weight="normal" font-style="normal" text-decoration="none" textLength="54" lengthAdjust="spacingAndGlyphs">return</text>
+<rect x="84" y="132" width="9" height="20" fill="#2E3440"/>
+<rect x="93" y="132" width="72" height="20" fill="#2E3440"/>
+<text x="93" y="147" fill="#a3be8c" font-weight="normal" font-style="normal" text-decoration="none" textLength="72" lengthAdjust="spacingAndGlyphs">&quot;hello &quot;</text>
+<rect x="165" y="132" width="9" height="20" fill="#2E3440"/>
+<rect x="174" y="132" width="18" height="20" fill="#2E3440"/>
+<text x="174" y="147" fill="#81a1c1" font-weight="normal" font-style="normal" text-decoration="none" textLength="18" lengthAdjust="spacingAndGlyphs">..</text>
+<rect x="192" y="132" width="504" height="20" fill="#2E3440"/>
+<text x="201" y="147" fill="#d8dee9" font-weight="normal" font-style="normal" text-decoration="none" textLength="36" lengthAdjust="spacingAndGlyphs">name</text>
+<rect x="12" y="152" width="27" height="20" fill="#2E3440"/>
+<text x="12" y="167" fill="#88c0d0" font-weight="normal" font-style="normal" text-decoration="none" textLength="27" lengthAdjust="spacingAndGlyphs">end</text>
+<rect x="39" y="152" width="657" height="20" fill="#2E3440"/>
+<rect x="12" y="172" width="108" height="20" fill="#2E3440"/>
+<text x="12" y="187" fill="#d8dee9" font-weight="normal" font-style="normal" text-decoration="none" textLength="108" lengthAdjust="spacingAndGlyphs">print(greet(</text>
+<rect x="120" y="172" width="63" height="20" fill="#2E3440"/>
+<text x="120" y="187" fill="#a3be8c" font-weight="normal" font-style="normal" text-decoration="none" textLength="63" lengthAdjust="spacingAndGlyphs">&quot;world&quot;</text>
+<rect x="183" y="172" width="513" height="20" fill="#2E3440"/>
+<text x="183" y="187" fill="#d8dee9" font-weight="normal" font-style="normal" text-decoration="none" textLength="99" lengthAdjust="spacingAndGlyphs">), retries)</text>
+<rect x="12" y="192" width="684" height="20" fill="#2E3440"/>
+<text x="12" y="207" fill="#4c566a" font-weight="normal" font-style="normal" text-decoration="none" textLength="9" lengthAdjust="spacingAndGlyphs">~</text>
+</g></svg>

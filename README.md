@@ -8,79 +8,166 @@ The Astro Starlight site in [`website/`](website/) renders the shared [documenta
 
 ## Installation
 
-The [setup requirements](docs/setup-requirements.md) define the configuration and software installation boundaries and their acceptance criteria.
+**Run `make` to apply configuration. Run `make install` to install selected tools and configure them.** Both use this machine's [configuration sets](#configuration-sets).
 
-For the copyable `curl | sh` entrypoint, use the [shared quick start](docs/index.mdx#quick-start). It clones or reuses `~/.files` and runs the existing minimal bootstrap. The same setup with each step explicit:
+### Set up a new machine
+
+Requires Git, Make, and Bash on macOS or Linux. The [one-line quick start](docs/index.mdx#quick-start) clones or reuses `~/.files` and runs the minimal bootstrap. To run each step yourself:
+
+**1. Clone and initialize the native configuration.**
 
 ```sh
-$ git clone https://github.com/lanej/dotfiles.git ~/.files && cd ~/.files
-$ make base      # initialize the native baseline and its machine TOML
-$ # Add tool and work-context sets to ~/.config/dotfiles/config.toml.
-$ make bootstrap # native OS configuration plus uv and Python
-$ make plan      # preview the selected tools and configuration
-$ make install   # install and configure the selected tool sets
+git clone https://github.com/lanej/dotfiles.git ~/.files
+cd ~/.files
+make base
 ```
 
-Default `make` installs configuration only. Software installation has two explicit stages. `make bootstrap` (or `bash bootstrap.sh`) applies the built-in native OS baseline and installs only uv and Python, without reading machine TOML or installing optional tools. `make install` (or `bash bootstrap.sh install`) validates this machine's [configuration sets](#configuration-sets), installs their tools, and applies their configuration and integrations. It also ensures uv and Python are available, so it can be run directly or retried independently. Both stages operate on the current checkout without pulling updates.
+**2. Choose this machine's tools.** Edit `~/.config/dotfiles/config.toml`; use `workstation` for the broad setup, then add work-context sets or individual overrides as needed:
 
-Select `workstation` for the broad installation, add work-context sets, and override individual properties as needed. Set `tools.mermaid = true` to also install Mermaid CLI (`mmdc`) and its headless browser for inline Mermaid diagrams in Neovim.
+```toml
+sets = ["workstation"]
+```
 
-`make` defaults to `configure`, applying the native baseline plus the selected bundles and individual overrides from machine TOML without installing packages. `make setup` and `make all` are aliases for the same configuration step. For initial setup before Python is available, `make base` links only the built-in OS baseline and creates a missing machine TOML with `sets = ["macos"]` or `sets = ["linux"]`, respecting `XDG_CONFIG_HOME` and `DOTFILES_CONFIG`; existing files and symlinks are preserved. `make shell git` also links basic shell and Git configuration without Python. Both configuration paths print a checklist: green `✓` for completed configuration and integrations, red `✗` with diagnostics for incomplete steps. Missing tools such as `tmux`, `uv`, or `jq` do not stop other setup steps, and configuration links are installed independently of optional integrations. It exits nonzero after the full checklist if anything needs attention. Install the missing dependencies or fix the reported issue, then rerun the same target; existing links and user configuration are safe to reuse. Existing fzf-tab checkouts are reused without pulling updates. Linting and tests run separately with `make lint` and the `test` targets. Color is enabled in terminals; `NO_COLOR=1` disables it and `CLICOLOR_FORCE=1` enables it for captured output.
+The file respects `XDG_CONFIG_HOME` and `DOTFILES_CONFIG`. `make base` creates it only when missing and selects the native `macos` or `linux` baseline. See [configuration composition](#configuration-sets) for available sets and override examples. To add Mermaid CLI and its headless browser for Neovim diagrams, set `tools.mermaid = true`.
 
-The native platform set is selected automatically. Explicit platform tools are rejected on an unsupported OS:
+**3. Bootstrap, preview, and install.**
 
-| Set | Baseline configuration |
-|---|---|
-| `linux` | X11, Polybar, bspwm/sxhkd/rofi configuration |
-| `macos` | Yabai/skhd window-manager configuration |
+```sh
+make bootstrap
+make plan
+make install
+```
 
-Explicitly requesting an unsupported target fails before writing configuration.
-Existing tmux plugin directories are preserved, including local plugins without
-Git metadata; failed TPM installation reports an error for manual recovery.
+Open a new shell after setup to load the linked shell configuration.
 
-Zsh also starts silently during a partial install. Missing shared files and
-optional tools leave the basic prompt, completion, and history available.
-The custom fzf integration requires both `fzf` and `fd`; it activates in a new
-shell once they are installed. Failed integration generators do not replace
-working cached hooks. Run `make test-zsh-startup` to exercise this workflow.
+### Choose a setup command
 
-`make` / `make configure` (with the shell set selected), `make install`, and `make zsh-config` generate Zsh completions for supported tools already on `PATH`, including fd, uv, Rust, GitHub CLI, Codex, Zellij, Atuin, and the shell utilities. `make zsh-completions` refreshes just those files without configuring plugins or installing software. The tool-specific commands live in [`scripts/make/completions.sh`](scripts/make/completions.sh); tools without generators continue using their packaged completions or existing shell integrations.
+| Command | Use it to |
+| --- | --- |
+| `make` | Reapply the native baseline, selected bundles, and individual overrides. Configuration only; requires Python 3.11+. |
+| `make base` | Initialize missing machine TOML and link the built-in native baseline, without Python. |
+| `make shell git` | Link basic shell and Git configuration without Python. |
+| `make bootstrap` | Apply the native baseline and install only uv and Python. Ignores machine TOML. |
+| `make plan` | Preview the selected tools and configuration before installation. |
+| `make install` | Install selected tools and apply their configuration and integrations. Ensures uv and Python are available first. |
 
-Generated files go to `~/.zsh/completions/_<tool>`. Missing tools are skipped; failed or empty generators report failure and keep the last working file. Files and symlinks created by hand are preserved. To let dotfiles manage one, move that file aside and rerun setup. Unchanged output preserves the file and completion cache. Changed output invalidates the dump for the next shell. Run `recomp` to regenerate and reload completions in the current Zsh, including files added manually. It no longer runs plugin setup. `make test-zsh-completions` exercises this workflow.
+`make configure`, `make setup`, and `make all` are aliases for `make`. `bash bootstrap.sh` and `bash bootstrap.sh install` are the script equivalents of the two installation stages. Neither stage pulls updates or switches branches. Linting and tests run separately with `make lint` and the `test` targets.
 
-Register work-only or other locally installed tools in `~/.config/dotfiles/completions` (or `$XDG_CONFIG_HOME/dotfiles/completions`). Keep this machine-specific file outside the checkout. Each non-comment line is a completion name, a generator command, and its arguments, separated by spaces or tabs. For example:
+`make lua-check` runs StyLua and Luacheck on every tracked or untracked, non-ignored Lua source file, including Neovim, WezTerm, tests, scripts, fixtures, and generated modules. `make lua-format` applies formatting before analysis. The editor tool set installs both tools through Homebrew, APT, or Pacman; other systems need Luacheck installed with LuaRocks first. Generated data tables retain their generator's layout with StyLua directives; parsing and static analysis still cover those files. The Lua quality workflow runs the same check for Lua changes in pull requests and on `master`.
+
+### Update an existing machine
+
+From the checkout, pull the latest changes and reapply configuration:
+
+```sh
+cd ~/.files
+git pull --ff-only
+make
+```
+
+Open a new shell to load shell changes. Run `make plan` followed by `make install` if you also want to install newly selected tools.
+
+### Shell completions
+
+**`recomp` is the completion refresh helper.** Run it in the current Zsh session after installing a supported CLI or adding a completion file:
+
+```sh
+recomp
+```
+
+It regenerates completions for supported tools on `PATH`, clears stale completion definitions, and reloads completion in the current shell. No shell restart or plugin setup is needed.
+
+| Command | Effect |
+| --- | --- |
+| `recomp` | Generate completions and reload the current Zsh session. |
+| `recomp add <tool>` | Find a generator, register it locally, and load its completion now. |
+| `make zsh-completions` | Generate completion files only; open a new shell afterward. |
+| `make` / `make configure` | Generate completions as part of configuration when the shell set is selected. |
+
+`make install` and `make zsh-config` also generate completions. Supported tools include fd, uv, Rust, GitHub CLI, Codex, Zellij, and Atuin; [the generator script](scripts/make/completions.sh) lists every built-in command. Missing tools are skipped. Tools without generators continue using packaged completions or existing shell integrations.
+
+#### Register a local tool
+
+Use `recomp add` for a work-only or other locally installed CLI:
+
+```sh
+recomp add epf
+```
+
+For a new tool, it tries `epf completions zsh`, then `epf completion zsh`. It validates the output before saving the working command and loads the completion in the current shell. Existing local registrations and built-in generators are reused first. Both the target and generator must already be installed.
+
+For a different command or an override, supply the generator explicitly:
+
+```sh
+recomp add cargo \
+  rustup completions zsh cargo
+```
+
+Registrations stay outside the checkout in `~/.config/dotfiles/completions` (or `$XDG_CONFIG_HOME/dotfiles/completions`). Future `make` and `recomp` runs reuse the saved command. Repeating the same registration leaves the file unchanged; an explicit replacement updates that tool's entry without duplicating it. Built-in generators need no extra local entry unless you override them.
+
+Failed validation leaves the registry and last working completion intact. Hand-written completion files and symlinks are preserved. If the registry itself is a symlink, edit it directly so its managed destination stays intact.
+
+<details>
+<summary>Edit the local registry manually</summary>
+
+Each non-comment line contains a completion name, a generator command, and its arguments, separated by spaces or tabs. For example:
 
 ```text
 epf epf completions zsh
 ```
 
-Run `make zsh-completions` or `recomp` after editing it. Local entries take precedence over built-ins and use the same validation and file preservation. Both the target binary and generator must be on `PATH`; missing targets are skipped before generation or packaged-file lookup. The first entry for a name wins. Arguments are literal words: shell quoting, expansions, and pipelines are not evaluated. Put a more involved generator in an executable wrapper on `PATH` and register that command instead. Dotfiles does not install tools listed here.
+Local entries override built-ins, and the first entry for a name wins. Run `recomp` after editing. Arguments are literal words: shell quoting, expansions, and pipelines are not evaluated. `recomp add` rejects arguments containing whitespace; put complex commands in an executable wrapper on `PATH` and register that command instead. Missing targets are skipped during normal refresh; registration does not install software.
 
-Older fd builds without `--gen-completions` use their packaged `_fd` from standard Zsh completion locations or the fd release directory. If neither source is available, setup explains how to install it and preserves the previous file.
+</details>
 
-`make benchmark-zsh-startup` measures the current home's interactive login-shell
-startup and exit over 30 runs after three warmups. It reports median and p95
-wall time for `zsh -d -i -l -c exit`, including process launch and logout,
-with global rc files skipped. It inherits your `HOME` and `PATH`; run it on your
-workstation for representative timings. Use
-`ZSH_BENCHMARK_ARGS='--runs 60 --json'` for more samples and JSON output.
+<details>
+<summary>Completion files, preservation, and older fd versions</summary>
 
-`make configure` with the AI bundle (or `make claude`) also removes installed Claude Code plugins listed in
-[`claude/blocked-plugins.json`](claude/blocked-plugins.json) from user scope when
-the Claude CLI is available. Add a marketplace-qualified plugin ID to that list
-to retire another plugin; Superpowers is the initial entry. Already-absent
-installations are a no-op; invalid configuration, inspection, or uninstall
-failures mark that step incomplete so they can be fixed.
+Generated files live at `~/.zsh/completions/_<tool>`. Failed or empty generators report failure and keep the last working file. Hand-written files and symlinks are preserved; move one aside and rerun setup to let dotfiles manage it. Unchanged output preserves the file and cache; changed output invalidates the dump for the next shell. `recomp` also picks up completion files added by hand and ignores insecure completion directories.
 
-`make claude-shared` links the shared `ai/skills` and `ai/agents` sources into
-Claude's installed directories, preserving local entries. `make claude` includes
-this target.
+Older fd builds without `--gen-completions` use their packaged `_fd` from standard Zsh completion locations or the fd release directory. If neither source is available, setup explains how to install it and preserves the previous file. `make test-zsh-completions` exercises generation and active-shell refresh.
 
-`make codex` also exposes the shared `ai/skills` tree through
-`~/.agents/skills/dotfiles`, preserving local Codex skills. Skill directories
-remain linked to their sources. File-linked or lowercase entrypoints are
-normalized in `~/.codex/dotfiles-skills`; rerun `make codex-skills` after changing
-those entrypoints. Missing external skill sources are reported and skipped.
+</details>
+
+### Recover an incomplete setup
+
+The configuration checklist shows green `✓` for completed steps and red `✗` with diagnostics for incomplete steps. Independent steps continue after a failure; the command exits nonzero after the full checklist if anything needs attention. Install missing dependencies or fix the reported issue, then rerun the same target. Existing links and user configuration are safe to reuse.
+
+Zsh starts silently during a partial install, keeping the basic prompt, completion, and history available. The custom fzf integration activates in a new shell when both `fzf` and `fd` are installed. Failed integration generators keep working cached hooks. Existing fzf-tab and tmux plugin directories are preserved, including local tmux plugins without Git metadata; failed TPM installation reports an error for manual recovery.
+
+The native platform set is selected automatically; explicitly requesting unsupported platform tools fails before writing configuration.
+
+| Set | Native configuration |
+| --- | --- |
+| `linux` | X11, Polybar, bspwm/sxhkd/rofi |
+| `macos` | Yabai/skhd |
+
+Color is enabled in terminals. Use `NO_COLOR=1` to disable it or `CLICOLOR_FORCE=1` to enable it in captured output. The [setup requirements](docs/setup-requirements.md) record the intended boundaries and acceptance criteria.
+
+<details>
+<summary>Check shell startup and measure performance</summary>
+
+`make test-zsh-startup` checks partial-install startup. `make benchmark-zsh-startup` measures the current home's interactive login-shell startup and exit over 30 runs after three warmups. It reports median and p95 wall time for `zsh -d -i -l -c exit`, including process launch and logout, with global rc files skipped. It inherits your `HOME` and `PATH`; run it on your workstation for representative timings. Use `ZSH_BENCHMARK_ARGS='--runs 60 --json'` for more samples and JSON output.
+
+</details>
+
+### AI tool integrations
+
+| Command | Integration |
+| --- | --- |
+| `make claude-shared` | Link shared `ai/skills` and `ai/agents` into Claude's installed directories, preserving local entries. Included in `make claude`. |
+| `make codex` | Expose shared `ai/skills` through `~/.agents/skills/dotfiles`, preserving local Codex skills. |
+| `make codex-skills` | Refresh normalized file-linked or lowercase skill entrypoints in `~/.codex/dotfiles-skills`. Missing external sources are reported and skipped. |
+
+`make configure` with the AI bundle (or `make claude`) also removes user-scope Claude Code plugins listed in [`claude/blocked-plugins.json`](claude/blocked-plugins.json) when the Claude CLI is available. Add a marketplace-qualified ID there to retire a plugin; Superpowers is the initial entry. Already-absent plugins are a no-op. Invalid configuration, inspection, or uninstall failures mark that step incomplete.
+
+### Worktree tracking and resource limits
+
+[Treehouse](docs/treehouse-launchers.md) manages reusable agent worktree slots. The optional [worktree policy](docs/git-worktree-policy.md) tracks linked worktrees across registered repositories, including worktrees created outside Treehouse, and supports independent per-repository and global count and disk budgets. Limits are disabled by default.
+
+The optional [worktrees bundle](docs/worktree-manager.md) installs the standalone `worktree` command for fresh task checkouts, explicit finish protection, global tracking, budgets, and safe pruning. Existing Treehouse pools and agent defaults remain available while the replacement is evaluated.
+
+The base set installs the [patched Git runtime](docs/git-worktree-hooks.md#install-through-dotfiles) from a pinned platform package. Shared Git configuration enables global tracking and admission hooks without per-repository installation; budgets remain disabled until configured. Stock Git keeps inventory refreshed through `post-checkout`; callers need explicit preflight checks to block creation. Treehouse manages leases independently of this machine-wide inventory.
 
 ## Configuration sets
 
@@ -111,24 +198,27 @@ source = "release"
 
 | Set | Groups |
 |---|---|
-| `shell` | Zsh, Git, history, search, navigation, and command-line tools |
-| `terminal` | Tmux, Zellij, terminal configuration, font, and monitoring |
+| `base` | Patched Git with worktree hooks and shared settings; always applied |
+| `shell` | Zsh, history, search, navigation, and command-line tools; selected by default |
+| `terminal` | Tmux, Zellij, terminal configuration, font, and monitoring; selected by default |
 | `editor` | Neovim, formatters, language servers, and parser tooling |
 | `development` | Language runtimes, Rust maintenance, and development cache configuration |
-| `ai` | Claude, Codex, Treehouse, Firstmate, and agent status |
-| `workstation` | Composes the five tool bundles above, plus mail and Quarto configuration |
+| `ai` | Claude, Codex, worktree manager, and agent status |
+| `octo-manager` | Opt-in Octo service with Codex tracking and receipt hooks |
+| `worktrees` | Standalone worktree manager with task protection, tracking, optional limits, and explicit safe pruning |
+| `workstation` | Adds editor, development, AI tools, and source-code project setup, plus mail and Quarto configuration |
 | `macos` | Yabai/skhd installation and their configuration |
 | `linux` | X11, Polybar, and bspwm configuration for separately installed desktop tools |
 | `easypost` | GitHub app access off, EasyPost direnv integration, and Bedrock setup |
 | `personal` | GitHub app access on, EasyPost direnv and Bedrock setup off |
 
-The native platform baseline applies first, then the selected bundles extend it. A headless host can select `shell`, `development`, and `ai` and disable desktop recipes individually. On Linux, set `tools.x11`, `tools.polybar`, and `tools.bspwm` to `false`, or maintain a private `linux` set. Work context and additional tool bundles are never inferred from the hostname.
+Git and the native platform baseline apply first, followed by the default `shell` and `terminal` bundles, then additional selected sets. Treehouse remains in the optional `ai` bundle. Set `tools.git-worktree-hooks = false` to keep standard Git. A headless host can disable terminal and desktop recipes individually. On Linux, set `tools.x11`, `tools.polybar`, and `tools.bspwm` to `false`, or maintain a private `linux` set. Work context and additional tool bundles are never inferred from the hostname.
 
-The repository maintains sets in [`config/sets`](config/sets). Add private sets under `~/.config/dotfiles/sets/`; local files take precedence over repository sets of the same name, except `base`. A set can include other sets with its own `sets = [...]` list. Dependencies apply before the including set, each named set applies once, and later sets override earlier properties. Machine properties apply last, including overrides to native platform tools. The always-applied `base` supplies shared property defaults, followed by the native OS set. An unconfigured machine applies only that baseline.
+The repository maintains sets in [`config/sets`](config/sets). Add private sets under `~/.config/dotfiles/sets/`; local files take precedence over repository sets of the same name, except `base`. A set can include other sets with its own `sets = [...]` list. Dependencies apply before the including set, each named set applies once, and later sets override earlier properties. Machine properties apply last, including overrides to native platform tools. The always-applied `base` supplies Git and shared property defaults, followed by the native OS set and the default `shell` and `terminal` sets. An unconfigured `make install` selects those tools; machine properties can disable individual tools.
 
 Each `[tools]` property enables or disables one catalog recipe. Shared tool dependencies are added once and installed first. Explicitly disabling a required dependency, selecting an unsupported platform tool, or naming an unknown property fails before the tool plan runs. `false` skips that recipe; it does not uninstall an existing application or change that application's own package/plugin management. GUI, mail, and Ruby entries retain the existing configuration-only behavior; those applications are installed separately.
 
-[`bootstrap/tools.toml`](bootstrap/tools.toml) owns direct package pins, dependencies, installers, Make configuration targets, and preparation/post-install hooks. The checked-in [`config/targets.mk`](config/targets.mk) is generated from that catalog and the built-in native sets, keeping `make base` independent of Python. This first-stage baseline does not read machine settings or private sets. Default `make`, `make install`, and `make configure` resolve the full TOML configuration and respect individual overrides, including native platform tool disables. Use `make config` to inspect values and their sources, or `make plan` to inspect the resolved baseline, full tool selection, and execution phases without applying them.
+[`bootstrap/tools.toml`](bootstrap/tools.toml) owns direct package pins, dependencies, installers, Make configuration targets, and preparation/post-install hooks. The checked-in [`config/targets.mk`](config/targets.mk) is generated from that catalog and the built-in native sets, keeping `make base` independent of Python. This first-stage baseline links Git, shell helpers, and native OS configuration without installing software, and does not read machine settings or private sets. Default `make`, `make install`, and `make configure` resolve the full TOML configuration and respect individual overrides, including native platform tool disables. Use `make config` to inspect values and their sources, or `make plan` to inspect the resolved baseline, full tool selection, and execution phases without applying them.
 
 Use `make install DOTFILES_CONFIG=/path/to/machine.toml` or `DOTFILES_CONFIG=/path/to/machine.toml bash bootstrap.sh install` for an alternate configuration. The full stage rejects a missing explicitly selected file. Every catalog tool has a boolean `tools.<name>` property; `codex.github_enabled` controls Codex GitHub access and `zellij.source` selects `"patched"`, `"release"`, or `"main"`.
 
@@ -143,7 +233,7 @@ python3 scripts/dotfiles-config.py --format make-targets > config/targets.mk
 
 `make test-dotfiles-config-editor` checks the real Neovim/Taplo editing workflow and requires both tools on `PATH`.
 
-`IS_EASYPOST` and `BOOTSTRAP_MERMAID` are retired. Select `easypost` or `personal` and set `tools.mermaid` directly. Existing installations should select `workstation` and run `make install` for the previous broad installation; the native platform set is automatic. Use `make` to reapply the selected configuration without installing tools. Personal machines must explicitly select `personal` to enable GitHub app access. Rerun `make codex-permissions` and reload Codex to apply that access choice. Rerun `make zellij-runtime` to apply a runtime source change, then restart existing Zellij session servers. Set selection does not uninstall previously installed optional tools.
+`IS_EASYPOST` and `BOOTSTRAP_MERMAID` are retired. Select `easypost` or `personal` and set `tools.mermaid` directly. Existing installations should select `workstation` and run `make install` for the previous broad installation; the native platform set is automatic. Use `make` to reapply the selected configuration without installing tools. Personal machines must explicitly select `personal` to enable GitHub app access. Rerun `make codex-permissions` and reload Codex to apply that access choice. Rerun `make zellij-runtime` to apply a runtime source change, then restart existing Zellij session servers. Set selection does not uninstall previously installed optional tools. For local PR monitoring, see [the opt-in Octo Manager setup](docs/octo-manager.md).
 
 `make codex` converts the shared `ai/agents` Markdown files (including
 external symlinks) into personal agents in `~/.codex/agents/*.toml`.
@@ -167,19 +257,23 @@ inside tmux so hooks inherit the launching pane. See
 [tmux window status](docs/tmux.md#claude-and-codex-window-status) for the states
 and event mapping.
 
-## Repository skills and PR templates
+## Source-code standards and project setup
 
 Bootstrap or retrofit a repository with portable Builder, architecture, and PR-writer skills, plus a PR template. Preview first; choose shareable files or a locally excluded installation:
 
 ```sh
-~/.files/bin/repo-bootstrap --repo ~/src/new-project --init --dry-run
-~/.files/bin/repo-bootstrap --repo ~/src/new-project --init
-~/.files/bin/repo-bootstrap --repo ~/src/existing-project --mode local
+~/.files/bin/source-code setup --repo ~/src/new-project --init --dry-run
+~/.files/bin/source-code setup --repo ~/src/new-project --init
+~/.files/bin/source-code setup --repo ~/src/existing-project --mode local
 ```
 
-The installer preserves project instructions and local edits, supports Codex and Claude Code discovery, and safely updates unchanged managed files on rerun. It does not stage or publish changes. See the [repository bootstrap guide](docs/repository-bootstrap.md) for subsets, template choices, conflict handling, and upgrades.
+The `workstation` set installs `source-code`; `make source-code-config` links it explicitly. `source-code detect --json` reports basic language evidence, and setup selects matching project skills. Root Go modules retain automatic Go check setup; TypeScript checks remain opt-in. Use `--stage research|alpha|beta|production` to select engineering effort and generated CI gates; beta retains the full checks by default. Builder, testing, comments, and language guidance are project-installed skills, excluded from the default user catalog. `--mode shadow` keeps them private. The installer preserves project instructions and local edits, supports Codex and Claude Code discovery, and safely updates unchanged managed files on rerun. It does not stage or publish changes. See the [source-code setup guide](docs/repository-bootstrap.md) for subsets, template choices, conflict handling, and upgrades. `source-code validate` checks skill structure and version pins; `source-code upgrade --dry-run` previews updates while preserving project selections. The generated `AGENTS.override.md` records the stage and versions and routes to the existing shared instructions. `repo-bootstrap` remains a compatibility alias for `source-code setup`.
 
-Go modules also receive a strict correctness profile: exhaustive enums and sum types, error/resource/security checks, race tests, and vulnerability analysis. Use `repo-bootstrap --go` before creating a new module; root `go.mod` files are detected automatically. The committed `scripts/check-go.sh` runs the same pinned checks locally and in CI. Use `repo-bootstrap --go-retrofit --pr-template none` to merge an existing config and adopt a shrinking lint baseline. See [my Go style guide](docs/go-style.md) for defaults, examples, and rollout tradeoffs.
+Go modules also receive a strict correctness profile: exhaustive enums and sum types, error/resource/security checks, race tests, and vulnerability analysis. Use `source-code setup --go` before creating a new module; root `go.mod` files are detected automatically. The committed `scripts/check-go.sh` runs the same pinned checks locally and in CI. Use `source-code setup --go-retrofit --pr-template none` to merge an existing config and adopt a shrinking lint baseline. See [my Go style guide](docs/go-style.md) for defaults, examples, and rollout tradeoffs.
+
+## SSH approval on the Mac
+
+Dotfiles installs both Keylease, the credential broker, and Intent, the approval library and transport tooling, through the `workstation` set or `make intent-install keylease-install`. Automatic SSH approval awaits production integration of the stable remote socket design. See [SSH approval setup](docs/intent-ssh.md) for installation, experimental status and removal of the obsolete managed hook.
 
 ## Shared shell history
 
@@ -224,6 +318,10 @@ and `Alt+-` / `Alt+=` send `F11` / `F12`. On macOS, use Option for Alt.
 These shortcuts also work through tmux, so Codex actions such as `F2` and `F4`
 are available as `Alt+2` and `Alt+4`. Reload Kitty with `Cmd+Shift+R`.
 
+Use **Ctrl-B** (`zz`) for directory history and **Alt-W** (`zw`) for repository worktrees. The [directory picker guide](docs/directory-picker.md) covers responsive previews, path labels, and narrowing.
+
+Use `make keybindings` to inventory owned and existing Kitty/skhd shortcuts, and `make check-keybindings` to detect overlaps and generated drift. The [keybinding registry guide](docs/keybindings.md) explains coverage, chord queries, and how to migrate native bindings into generated sections.
+
 ## Key Makefile Targets
 
 | Target | Description |
@@ -235,7 +333,9 @@ are available as `Alt+2` and `Alt+4`. Reload Kitty with `Cmd+Shift+R`.
 | `make` / `make configure` / `make setup` / `make all` | Reapply the selected configuration without installing packages |
 | `make plan` | Preview the baseline, selected tools, and execution phases |
 | `make config` | Show effective properties and their sources |
-| `make lint` | Run skill audits and instruction-size checks |
+| `make lint` | Run shell, Lua, theme, skill, and instruction-size checks |
+| `make lua-check` | Check formatting and statically analyze all repository-owned Lua |
+| `make lua-format` | Apply Lua formatting, then run static analysis |
 | `make claude` | Set up Claude skills, commands, agents, and MCP servers |
 | `make codex` | Share dotfiles skills and Claude user and plugin MCP servers with Codex |
 | `make codex-skills` | Refresh shared dotfiles skills for Codex |
@@ -277,3 +377,7 @@ $ sh transfer.sh
 
 See [docs/](docs/) for tool-specific notes and decision rationale.
 For creating and updating pull requests, follow [the PR guidance](docs/pull-requests.md).
+
+## Ancillary project updates
+
+Use `project-update status --all --fetch` to compare registered checkouts with their upstream default branches, and `project-update update --all` to pull, build and activate them using project-specific restart controls. Individual actions remain available; see the [project update convention](docs/project-updates.md).

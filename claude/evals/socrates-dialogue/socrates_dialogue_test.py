@@ -2,6 +2,7 @@
 import importlib.util
 import hashlib
 import json
+import re
 from pathlib import Path
 import sys
 from types import SimpleNamespace
@@ -138,15 +139,21 @@ def test_scenario_coverage_and_expected_endpoints():
                 assert turn["action"] != "ready_to_plan"
 
 
-@pytest.mark.parametrize("command", ["socrates", "specify", "shape", "critique", "verify"])
+@pytest.mark.parametrize("command", ["socrates", "specify", "shape", "critique", "verify",
+                                     "compose", "eureka", "stahp", "handoff", "reflection"])
 def test_entrypoints_load_one_contract_with_valid_metadata(command):
     text = (app.ROOT / "claude/commands" / f"{command}.md").read_text()
     metadata = yaml.safe_load(text.split("---", 2)[1])
-    assert isinstance(metadata["argument-hint"], str)
-    assert "Task" not in metadata["allowed-tools"]
-    assert "$HOME/.claude/commands/socrates/dialogue.txt" in text
-    assert "Score <" not in text and "sub-70%" not in text
-    assert (app.ROOT / "claude/commands/socrates/dialogue.txt").is_file()
+    if "argument-hint" in metadata:
+        assert isinstance(metadata["argument-hint"], str)
+    assert "Task" not in metadata.get("allowed-tools", [])
+    target, = re.findall(r"`\$HOME/\.claude/skills/([^`]+)`", text)
+    skill = app.ROOT / "ai/skills" / target
+    assert skill.is_file()
+    for reference in re.findall(r"\]\(([^)]+)\)", skill.read_text()):
+        assert (skill.parent / reference).is_file()
+    assert (app.ROOT / "claude/commands/socrates/dialogue.txt").resolve() == (
+        app.ROOT / "ai/skills/socrates/references/dialogue.txt")
 
 
 def test_shared_scaffold_and_planning_companion_do_not_restore_old_gate():

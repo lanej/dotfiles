@@ -1,6 +1,7 @@
 """One detector for exposing shared skills and migrating the Builder package."""
 
 from pathlib import Path
+import json
 import re
 import shutil
 import subprocess
@@ -8,6 +9,58 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def test_selective_workflow_install_survives_checkout_removal_and_preserves_local_skills(tmp_path):
+    source = tmp_path / "checkout/ai/skills"
+    source.mkdir(parents=True)
+    names = json.loads((ROOT / "ai/skills/portable-workflows.json").read_text())
+    shutil.copyfile(ROOT / "ai/skills/portable-workflows.json", source / "portable-workflows.json")
+    for name in names:
+        shutil.copytree(ROOT / "ai/skills" / name, source / name)
+    home = tmp_path / "user"
+    local = home / ".agents/skills/personal/SKILL.md"
+    local.parent.mkdir(parents=True)
+    local.write_text("Personal workflow.\n")
+    command = [sys.executable, str(ROOT / "bin/sync-codex-skills"),
+               "--source", str(source), "--home", str(home)]
+    resources = {
+        "socrates": {
+            "dialogue.txt": ROOT / "claude/commands/socrates/dialogue.txt",
+            "spec-scaffold.tpl": ROOT / "claude/commands/socrates/spec-scaffold.tpl",
+            "phases-2-3.txt": ROOT / "claude/commands/socrates/phases-2-3.txt",
+        },
+        "reflection": {"reflection.md": ROOT / "ai/agents/reflection.md"},
+    }
+    for _ in range(2):
+        subprocess.run(command + ["--only", "shape"], check=True, capture_output=True, text=True)
+        for name in names:
+            installed = home / ".agents/skills/dotfiles" / name
+            assert installed.is_dir() and not installed.is_symlink()
+            assert (installed / "SKILL.md").read_bytes() == (source / name / "SKILL.md").read_bytes()
+        for name, references in resources.items():
+            installed = home / ".agents/skills/dotfiles" / name
+            entrypoint = installed / "SKILL.md"
+            assert entrypoint.is_file() and not entrypoint.is_symlink()
+            assert entrypoint.read_bytes() == (ROOT / "ai/skills" / name / "SKILL.md").read_bytes()
+            for filename, resource in references.items():
+                assert (installed / "references" / filename).read_bytes() == resource.read_bytes()
+        assert local.read_text() == "Personal workflow.\n"
+    unrelated = home / ".codex/dotfiles-skills/unrelated/SKILL.md"
+    unrelated.parent.mkdir()
+    unrelated.write_text("Keep this installed entry.\n")
+    subprocess.run(command + ["--only", *names], check=True, capture_output=True, text=True)
+    assert unrelated.read_text() == "Keep this installed entry.\n"
+    shutil.rmtree(source.parent.parent)
+    for name in names:
+        installed = home / ".agents/skills/dotfiles" / name
+        for document in installed.rglob("*"):
+            assert not document.is_symlink(), document
+        for target in re.findall(r"\]\(([^)]+)\)", (installed / "SKILL.md").read_text()):
+            if "://" not in target and not target.startswith("#"):
+                assert (installed / target).is_file(), target
+    helper = home / ".agents/skills/dotfiles/handoff/scripts/transcript.py"
+    subprocess.run([sys.executable, str(helper), "--help"], check=True, capture_output=True)
 
 
 def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(tmp_path):
@@ -23,8 +76,19 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     source.mkdir(parents=True)
     (source / "SKILL.md").symlink_to(instruction)
     (source / "references").symlink_to(external / "references")
+    obsolete = repo / "ai/skills/paseo-plugin"
+    obsolete.mkdir()
+    (obsolete / "SKILL.md").write_text("Retired instructions.\n")
     builder = repo / "ai/skills/builder"
     shutil.copytree(ROOT / "ai/skills/builder", builder)
+    shutil.copyfile(ROOT / "ai/skills/project-only.json", repo / "ai/skills/project-only.json")
+    shutil.copytree(ROOT / "ai/skills/ui-review", repo / "ai/skills/ui-review")
+    project_names = json.loads((repo / "ai/skills/project-only.json").read_text())
+    for name in project_names:
+        directory = repo / "ai/skills" / name
+        if not directory.exists():
+            directory.mkdir()
+            (directory / "SKILL.md").write_text(f"---\nname: {name}\ndescription: Project-only guidance.\n---\n")
     construction = builder / "references/construction.md"
     construction_text = construction.read_text()
     (repo / "ai/agents").mkdir()
@@ -33,6 +97,7 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     (repo / "bin").mkdir()
     (repo / "bin/sync-codex-skills").symlink_to(ROOT / "bin/sync-codex-skills")
     (repo / "bin/sync-claude-shared").symlink_to(ROOT / "bin/sync-claude-shared")
+    (repo / "bin/sync-agent-status-hooks").symlink_to(ROOT / "bin/sync-agent-status-hooks")
     local = home / ".agents/skills/local-workflow/SKILL.md"
     local.parent.mkdir(parents=True)
     local.write_text("Local instructions.\n")
@@ -43,6 +108,7 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     (home / ".local").symlink_to(data, target_is_directory=True)
     cache = home / ".codex/dotfiles-skills"
     cache.mkdir(parents=True)
+    stale_pipeline = home / ".codex/dotfiles-skills/data-pipeline"
     global_file = home / ".codex/AGENTS.md"
     previous_guidance = (
         "Keep my leading preferences.\n"
@@ -72,6 +138,10 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     personal.mkdir()
     (personal / "SKILL.md").write_text("Keep my external skill.\n")
     (old_sources / "personal").symlink_to(personal)
+    for name in project_names:
+        if name != "builder":
+            (old_sources / name).symlink_to(repo / "ai/skills" / name)
+        (cache / name).symlink_to(repo / "ai/skills" / name)
     old_claude.symlink_to(legacy)
     old_rule = home / ".claude/rules/pragmatic-hexagonal.md"
     old_rule.symlink_to(legacy / "references/instructions.md")
@@ -100,6 +170,7 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     assert old_claude.parent.is_symlink(), "rejected update migrated the directory"
     assert not (home / ".local/share/software-standards/builder").exists()
     construction.write_text(construction_text)
+    subprocess.run([sys.executable, str(repo / "scripts/install-software-standard.py"), "--source", str(builder), "--home", str(home)], check=True, capture_output=True)
     subprocess.run(command, cwd=repo, env=env, check=True, capture_output=True, text=True)
 
     installed = home / ".agents/skills/dotfiles/shared-workflow"
@@ -108,19 +179,24 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     assert not (installed / "SKILL.md").is_symlink()
     assert (installed / "references/guide.md").read_text() == "Review guide.\n"
     builder_installed = home / ".agents/skills/dotfiles/builder"
-    assert (builder_installed / "references/standard.md").read_bytes() == (builder / "references/standard.md").read_bytes()
-    assert (builder_installed / "references/construction.md").read_text() == construction_text
-    assert (builder_installed / "scripts/operations.py").read_bytes() == (builder / "scripts/operations.py").read_bytes()
-    assert re.search(r"^name: builder$", (builder_installed / "SKILL.md").read_text(), re.M)
+    for base in (home / ".agents/skills/dotfiles", home / ".claude/skills"):
+        for name in project_names:
+            assert not (base / name).exists() and not (base / name).is_symlink()
+    assert not builder_installed.exists() and not builder_installed.is_symlink()
+    assert not (home / ".agents/skills/dotfiles/ui-review").exists()
+    assert not stale_pipeline.exists() and not stale_pipeline.is_symlink()
     assert local.read_text() == "Local instructions.\n"
+    assert not (home / ".agents/skills/dotfiles/paseo-plugin").exists()
+    assert not (home / ".claude/skills/paseo-plugin").exists()
+    assert (obsolete / "SKILL.md").read_text() == "Retired instructions.\n"
     package = (home / ".local/share/software-standards/builder").resolve()
-    assert builder_installed.resolve() == package
-    assert (home / ".claude/skills/builder").resolve() == package
+    assert (package / "references/construction.md").read_text() == construction_text
+    assert not (home / ".claude/skills/builder").exists()
     assert not old_claude.parent.is_symlink()
     assert (home / ".claude/skills/personal").resolve() == personal
     assert (old_sources / "pragmatic-hexagonal").readlink() == legacy
     assert builder.is_dir() and not builder.is_symlink(), "migration replaced the source skill"
-    assert (home / ".claude/rules/builder.md").read_bytes() == (package / "references/instructions.md").read_bytes()
+    assert not (home / ".claude/rules/builder.md").exists()
     assert not old_claude.is_symlink() and not old_rule.is_symlink()
     assert (alias / "SKILL.md").read_bytes() == (builder / "SKILL.md").read_bytes()
     assert reference_alias.read_bytes() == (package / "references/instructions.md").read_bytes()
@@ -131,9 +207,8 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     assert global_file.read_text().endswith("Keep my existing global preferences.\n")
     assert local_rule.read_text() == "Keep my local rule.\n"
     guidance = global_file.read_text()
-    # Follow the actual installed instruction path, without claiming model loading.
-    target, = re.findall(r"`(~\/[^`]+)`", guidance)
-    assert (home / target[2:]).read_bytes() == (package / "SKILL.md").read_bytes()
+    assert "<!-- builder:start -->" not in guidance
+    assert "<!-- pragmatic-hexagonal:start -->" not in guidance
 
     instruction.write_text(instruction.read_text() + "Use the latest guide.\n")
     construction_text += "Protect retained behavior during the next increment.\n"
@@ -141,17 +216,19 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     subprocess.run(command, cwd=repo, env=env, check=True, capture_output=True, text=True)
     assert (installed / "SKILL.md").read_text() == instruction.read_text()
     assert local.read_text() == "Local instructions.\n"
+    assert not (home / ".agents/skills/dotfiles/paseo-plugin").exists()
+    assert not (home / ".claude/skills/paseo-plugin").exists()
 
     assert (alias / "references/construction.md").read_text() == construction_text
     assert reference_alias.read_bytes() == (package / "references/instructions.md").read_bytes()
 
     # A copied skill package must not depend on the dotfiles checkout layout.
     portable = tmp_path / "portable"
-    shutil.copytree(builder_installed, portable)
+    shutil.copytree(package, portable)
     assert global_file.read_text() == guidance, "repeat install changed global instructions"
     shutil.rmtree(repo)
-    assert (builder_installed / "references/standard.md").is_file()
-    assert (home / ".claude/skills/builder/references/construction.md").read_text() == construction_text
+    assert not builder_installed.exists()
+    assert (package / "references/construction.md").read_text() == construction_text
     assert (home / ".claude/skills/personal/SKILL.md").read_text() == "Keep my external skill.\n"
     assert (alias / "references/construction.md").read_text() == construction_text
     assert reference_alias.read_bytes() == (package / "references/instructions.md").read_bytes()

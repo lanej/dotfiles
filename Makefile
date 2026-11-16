@@ -4,7 +4,6 @@ MAKE_SCRIPTS := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))scripts/make
 # Bootstrap installs its managed runtime here even before shell setup exists.
 export PATH := $(HOME)/.local/bin:$(PATH)
 GO ?= go
-FIRSTMATE_HOME ?= $(HOME)/src/firstmate
 INSTRUCTION_SIZE_BASE ?= HEAD
 UNAME_S := $(shell uname -s)
 include $(MAKE_SCRIPTS)/../../config/targets.mk
@@ -53,9 +52,22 @@ plan:
 test-dotfiles-config:
 	@python3 "$(DOTFILES)/scripts/test-dotfiles-config.py"
 
+.PHONY: source-code-python-tools source-code-python-check test-python-quality
+source-code-python-tools:
+	@python3 "$(DOTFILES)/scripts/check-python.py" tools
+
+source-code-python-check:
+	@python3 "$(DOTFILES)/scripts/check-python.py" all
+
+test-python-quality:
+	@python3 "$(DOTFILES)/scripts/test-python-quality.py"
+
 .PHONY: test-repo-bootstrap
 test-repo-bootstrap:
 	@python3 "$(DOTFILES)/scripts/test-repo-bootstrap.py"
+
+source-code-config:
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 
 .PHONY: test-go-quality
 test-go-quality:
@@ -69,6 +81,8 @@ test-dotfiles-config-editor:
 base: config-init
 base: SELECTED_TARGETS = $(BASE_TARGETS)
 configure: SELECTED_TARGETS = $(SETUP_TARGETS)
+configure: export DOTFILES_WORKTREE_POLICY_ENABLED = $(if $(filter worktree-policy,$(subst $(comma), ,$(call config-value,DOTFILES_TOOLS))),true,false)
+configure: export DOTFILES_WORKTREE_MANAGER_ENABLED = $(if $(filter worktree-manager,$(subst $(comma), ,$(call config-value,DOTFILES_TOOLS))),true,false)
 base configure:
 ifneq ($(findstring n,$(firstword $(filter-out --%,$(MAKEFLAGS)))),)
 	+@$(MAKE) -f "$(firstword $(MAKEFILE_LIST))" --no-print-directory --keep-going $(or $(SELECTED_TARGETS),setup-empty)
@@ -92,7 +106,32 @@ instruction-size:
 	$(call require-command,jq)
 	@bash "$(DOTFILES)/claude/evals/skill-maintenance/check_size.sh" --base "$(INSTRUCTION_SIZE_BASE)" --installed-home "$(HOME)"
 
-lint: shellcheck audit-skills instruction-size
+lint: shellcheck audit-skills instruction-size theme-check lua-check
+
+.PHONY: lua-check lua-format
+lua-check:
+	$(call require-command,stylua)
+	$(call require-command,luacheck)
+	@python3 "$(DOTFILES)/scripts/lua-quality.py"
+lua-format:
+	$(call require-command,stylua)
+	$(call require-command,luacheck)
+	@python3 "$(DOTFILES)/scripts/lua-quality.py" --fix
+
+.PHONY: theme-generate theme-check theme-cache test-theme test-theme-native test-theme-presentation
+theme-generate:
+	@python3 "$(DOTFILES)/scripts/theme.py"
+theme-check:
+	@python3 "$(DOTFILES)/scripts/theme.py" --check
+theme-cache:
+	$(call require-command,bat)
+	@bat cache --build
+test-theme:
+	@python3 "$(DOTFILES)/scripts/test-theme.py"
+test-theme-presentation:
+	@"$(UV)" run --script "$(DOTFILES)/scripts/test-theme-presentation.py"
+test-theme-native:
+	@"$(UV)" run --script "$(DOTFILES)/scripts/test-theme-native.py"
 
 shellcheck:
 	$(call require-command,shellcheck)
@@ -101,26 +140,14 @@ shellcheck:
 treehouse-config:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 
-firstmate-config: treehouse-config zellij-config
-	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(FIRSTMATE_HOME)"
 
-.PHONY: pi-config firstmate-mobile-config test-firstmate-github
+.PHONY: pi-config
 pi-config: pi-resources
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 
-firstmate-mobile-config: firstmate-config pi-config
-	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(FIRSTMATE_HOME)"
 
-test-firstmate-github:
-	@node --test "$(DOTFILES)/scripts/test-firstmate-github.mjs"
 
-.PHONY: test-firstmate-peers
-test-firstmate-peers:
-	@node --test "$(DOTFILES)/scripts/test-firstmate-peers.mjs"
 
-.PHONY: test-firstmate-primary
-test-firstmate-primary:
-	@python3 "$(DOTFILES)/scripts/test-firstmate-primary.py"
 
 .PHONY: test-paseo-tasks test-paseo-task-import test-paseo-task-router test-paseo-tasks-ui paseo-tasks-config
 test-paseo-tasks:
@@ -169,20 +196,37 @@ zellij: zellij-config
 .PHONY: zellij-runtime
 zellij-runtime:
 	@bash "$(MAKE_SCRIPTS)/bootstrap-task.sh" "$@" "$(DOTFILES)"
+.PHONY: zellij-copy-hop test-zellij-copy-hop
+zellij-copy-hop:
+	@python3 "$(DOTFILES)/scripts/install-zellij-copy-hop.py"
+test-zellij-copy-hop:
+	@cargo fmt --manifest-path "$(DOTFILES)/zellij/copy-hop/Cargo.toml" --check
+	@cargo clippy --locked --all-targets --manifest-path "$(DOTFILES)/zellij/copy-hop/Cargo.toml" -- -D warnings
+	@$(UV) run --script "$(DOTFILES)/scripts/test-zellij-copy-hop.py"
 .PHONY: zellij-command-prompt test-zellij-command-prompt test-zellij-session-keys
 zellij-command-prompt:
 	@python3 "$(DOTFILES)/scripts/install-zellij-command-prompt.py"
-test-zellij-command-prompt:
+test-zellij-command-prompt: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-command-prompt.py"
-test-zellij-session-keys:
+test-zellij-session-keys: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-command-prompt.py" --session-keys
-.PHONY: zellij-status test-zellij-status
+.PHONY: zellij-status zellij-helpers test-zellij-helpers test-zellij-pane test-zellij-status
+zellij-helpers:
+	@bash "$(DOTFILES)/scripts/build-zellij-helpers.sh"
+test-zellij-helpers: zellij-helpers
+	@cargo fmt --all --manifest-path "$(DOTFILES)/zellij/Cargo.toml" --check
+	@cargo clippy --locked --all-targets --manifest-path "$(DOTFILES)/zellij/Cargo.toml" -- -D warnings
+	@cargo test --locked --manifest-path "$(DOTFILES)/zellij/Cargo.toml"
+	@python3 "$(DOTFILES)/scripts/test-zellij-status-config.py"
+	@python3 "$(DOTFILES)/scripts/test-zellij-helpers.py"
+test-zellij-pane: zellij-helpers
+	@python3 "$(DOTFILES)/scripts/test-zellij-helpers.py" --live-panes
 .PHONY: test-zellij-notifications test-zellij-notifications-ui
-test-zellij-notifications:
+test-zellij-notifications: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-notifications.py"
-test-zellij-notifications-ui:
+test-zellij-notifications-ui: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-notifications-ui.py"
-zellij-status:
+zellij-status: zellij-helpers
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(ZELLIJ_STATUS_WASM)"
 zellij-config:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(ZELLIJ_STATUS_WASM)"
@@ -199,6 +243,8 @@ X:
 ruby:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 git:
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
+mergiraf-config:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 gpg:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
@@ -219,6 +265,9 @@ wezterm:
 AMPHETAMINE_PREFS ?= $(HOME)/Library/Containers/com.if.Amphetamine/Data/Library/Preferences/com.if.Amphetamine
 amphetamine:
 	@bash "$(MAKE_SCRIPTS)/amphetamine.sh" "$(DOTFILES)" "$(AMPHETAMINE_PREFS)" "$(UNAME_S)"
+MENUBAR_STATS_PREFS ?= $(HOME)/Library/Group Containers/3EYN7PPTPF.com.fabriceleyne.menubarstats/Library/Preferences/3EYN7PPTPF.com.fabriceleyne.menubarstats
+menubar-stats:
+	@bash "$(MAKE_SCRIPTS)/menubar-stats.sh" "$(DOTFILES)" "$(MENUBAR_STATS_PREFS)" "$(UNAME_S)"
 undercurl:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 go:
@@ -243,14 +292,31 @@ test-git-worktree-cleanup: FORCE
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-cleanup.py"
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-size-cache.py"
 	@python3 "$(DOTFILES)/scripts/test-git-worktree-wip-push.py"
+.PHONY: worktree-policy-native test-git-worktree-policy test-treehouse-worktree-policy test-install-git-worktree-hooks
+worktree-policy-native:
+	@sh "$(DOTFILES)/scripts/build-worktree-policy.sh" "$(DOTFILES)/tools/worktree-policy/target"
+
+test-git-worktree-policy: worktree-policy-native
+	@GIT_WORKTREE_POLICY_BINARY="$(DOTFILES)/tools/worktree-policy/target/git-worktree-policy" "$(UV)" run --no-project "$(DOTFILES)/scripts/test-git-worktree-policy.py"
+test-treehouse-worktree-policy: worktree-policy-native
+	@GIT_WORKTREE_POLICY_BINARY="$(DOTFILES)/tools/worktree-policy/target/git-worktree-policy" "$(UV)" run --no-project "$(DOTFILES)/scripts/test-treehouse-worktree-policy.py" --git "$(GIT_WORKTREE_HOOKS_GIT)"
+.PHONY: test-worktree-manager
+test-worktree-manager:
+	@"$(UV)" run --no-project "$(DOTFILES)/scripts/test-worktree-manager.py" --binary "$(WORKTREE_MANAGER_BINARY)" --git "$(GIT_WORKTREE_HOOKS_GIT)"
+test-install-git-worktree-hooks:
+	@"$(UV)" run --no-project "$(DOTFILES)/scripts/test-install-git-worktree-hooks.py" --archive "$(GIT_WORKTREE_HOOKS_ARCHIVE)"
 claude-plugins:
 	$(call require-command,claude)
 	@"$(DOTFILES)/bin/claude-remove-blocked-plugins" --blocklist "$(DOTFILES)/claude/blocked-plugins.json"
 software-standard:
-	@python3 "$(DOTFILES)/scripts/install-software-standard.py" --source "$(DOTFILES)/ai/skills/builder" --home "$(HOME)"
+	@python3 "$(DOTFILES)/scripts/install-software-standard.py" --source "$(DOTFILES)/ai/skills/builder" --home "$(HOME)" --project-only
 
 claude-shared: software-standard
 	@python3 "$(DOTFILES)/bin/sync-claude-shared" --source "$(DOTFILES)/ai" --home "$(HOME)"
+claude-config claude-shared codex-skills agent-status-broker: paseo-agent-cleanup
+.PHONY: paseo-agent-cleanup
+paseo-agent-cleanup:
+	@python3 "$(DOTFILES)/bin/sync-agent-status-hooks" --home "$(HOME)"
 claude: claude-config claude-plugins agent-status-broker claude-shared
 claude-config: software-standard
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
@@ -258,7 +324,6 @@ codex-skills: software-standard
 	@python3 "$(DOTFILES)/bin/sync-codex-skills" --source "$(DOTFILES)/ai/skills" --home "$(HOME)"
 agent-status-broker:
 	@AGENT_STATUS_GO="$(GO)" "$(DOTFILES)/scripts/install-agent-status-broker" --no-start $(AGENT_STATUS_INSTALL_FLAGS)
-	@python3 "$(DOTFILES)/bin/sync-agent-status-hooks"
 # The aggregate waits for hook migration before installing Codex hooks. The
 # standalone config target remains usable without the broker.
 codex-tmux: agent-status-broker
@@ -267,7 +332,11 @@ codex-tmux codex-tmux-config: codex-permissions
 	$(call require-command,$(UV))
 	@"$(UV)" run --no-project --python '>=3.11' python "$(DOTFILES)/bin/sync-codex-tmux-hooks"
 # The codex aggregate runs this after its other hook installers finish.
-codex codex-worktree-hook:
+codex:
+	$(call require-command,$(UV))
+	@"$(UV)" run --script "$(DOTFILES)/bin/codex-worktree-config" --install
+
+codex-worktree-hook:
 	$(call require-command,$(UV))
 	@"$(UV)" run --script "$(DOTFILES)/bin/codex-worktree-config" --install
 
@@ -288,6 +357,7 @@ codex-config: codex-guidance codex-permissions
 codex-guidance: codex-env codex-skills
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)" "$(call config-value,DOTFILES_CODEX_EASYPOST)"
 # Retain a clear failure for old callers instead of silently restoring servers.
+.PHONY: codex-mcp
 codex-mcp:
 	@"$(DOTFILES)/bin/sync-codex-mcp-servers"
 quarto:
@@ -316,9 +386,12 @@ codex-worktree-exit-hook: codex-tmux
 test-codex-worktree-exit:
 	@"$(UV)" run --script "$(DOTFILES)/scripts/test-codex-worktree-exit.py"
 
-.PHONY: test-agent-treehouse
+.PHONY: test-agent-worktree test-agent-treehouse
+test-agent-worktree:
+	@"$(UV)" run --script "$(DOTFILES)/scripts/test-agent-worktree.py"
+
 test-agent-treehouse:
-	@"$(UV)" run --script "$(DOTFILES)/scripts/test-agent-treehouse.py"
+	@AGENT_WORKTREE_TEST_LEGACY=1 "$(UV)" run --script "$(DOTFILES)/scripts/test-agent-worktree.py"
 
 audit-skills:
 	@"$(DOTFILES)/bin/claude-skill-audit"
@@ -370,6 +443,24 @@ test-yabai-browser-focus:
 test-kitty-last-url:
 	@kitty +runpy "import runpy; runpy.run_path('$(DOTFILES)/scripts/test-kitty-last-url.py', run_name='__main__')"
 
+.PHONY: keybindings check-keybindings generate-keybindings test-keybindings
+keybindings:
+	@"$(UV)" run --no-project "$(DOTFILES)/scripts/keybindings.py" list
+
+check-keybindings:
+	@"$(UV)" run --no-project "$(DOTFILES)/scripts/keybindings.py" check
+
+generate-keybindings:
+	@"$(UV)" run --no-project "$(DOTFILES)/scripts/keybindings.py" generate
+
+test-keybindings:
+	@"$(UV)" run --no-project "$(DOTFILES)/scripts/test-keybindings.py"
+	@"$(UV)" run --no-project "$(DOTFILES)/scripts/keybindings.py" check
+
+.PHONY: test-kitty-tab-titles
+test-kitty-tab-titles: zellij-helpers
+	@kitty +runpy "import runpy; runpy.run_path('$(DOTFILES)/scripts/test-kitty-tab-titles.py', run_name='__main__')"
+
 test-tmux-session-fallback:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-tmux-session-fallback.py"
 
@@ -382,60 +473,74 @@ atuin-tunnel:
 claude-json-prune-schedule:
 	@bash "$(MAKE_SCRIPTS)/schedule-maintenance.sh" claude-json "$(DOTFILES)" "$(HOME)" "$(UNAME_S)"
 
-.PHONY: all base configure setup setup-empty lint shellcheck audit-skills instruction-size zsh tmux zellij vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zellij test-firstmate test-zellij-layout test-zellij-sessions test-zsh-startup benchmark-zsh-startup amphetamine
+.PHONY: all base configure setup setup-empty lint shellcheck audit-skills instruction-size zsh tmux zellij vim kitty claude codex codex-tmux codex-env FORCE test test-ui-review test-setup test-zellij  test-zellij-layout test-zellij-sessions test-zsh-startup benchmark-zsh-startup amphetamine menubar-stats
 
 test-setup:
 	@python3 "$(DOTFILES)/scripts/test-setup.py"
 
 .PHONY: test-zellij-attach
-test-zellij-attach:
+test-zellij-attach: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-attach.py"
 
 .PHONY: test-zellij-move
-test-zellij-move:
+test-zellij-move: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij.py" --move-pane
 
 .PHONY: test-zellij-swap
-test-zellij-swap:
+test-zellij-swap: zellij-helpers
 	@cargo test --locked --manifest-path "$(DOTFILES)/zellij/status/Cargo.toml" captured_nonleader_survives_election_but_rejects_stale_identity
 	@python3 "$(DOTFILES)/scripts/test-zellij.py" --swap-tab
 
-test-zellij:
+test-zellij: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij.py"
 .PHONY: test-zellij-codex-titles
-test-zellij-codex-titles:
+test-zellij-codex-titles: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-codex-titles.py"
 .PHONY: test-zellij-claude-titles
-test-zellij-claude-titles:
+test-zellij-claude-titles: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-claude-titles.py"
 .PHONY: test-zellij-shell-titles
-test-zellij-shell-titles:
+test-zellij-shell-titles: zellij-helpers
+	@python3 "$(DOTFILES)/scripts/test-zellij-shell-titles-cleanup.py"
 	@python3 "$(DOTFILES)/scripts/test-zellij-shell-titles.py"
 .PHONY: test-zellij-navigation
-test-zellij-navigation:
+test-zellij-navigation: zellij-helpers
+	@python3 "$(DOTFILES)/scripts/sync-zellij-contract.py" --check
 	@python3 "$(DOTFILES)/scripts/test-zellij-navigation.py"
 
-test-firstmate:
-	@python3 "$(DOTFILES)/scripts/test-firstmate.py"
 
-test-zellij-layout:
+test-zellij-layout: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-layout.py"
 
 .PHONY: test-zellij-clipboard
-test-zellij-clipboard:
+test-zellij-clipboard: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-clipboard.py"
 
-test-zellij-status:
-	@python3 "$(DOTFILES)/scripts/test-zellij-status.py"
+test-zellij-status: test-zellij-helpers
+	@cargo test --locked --manifest-path "$(DOTFILES)/zellij/status/Cargo.toml"
+	@"$(UV)" run --script "$(DOTFILES)/scripts/test-zellij-status.py"
 .PHONY: test-zellij-auto-title
-test-zellij-auto-title:
+test-zellij-auto-title: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-auto-title.py"
 .PHONY: test-zellij-tab-labels
-test-zellij-tab-labels:
+test-zellij-tab-labels: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-tab-labels.py"
 
-test-zellij-sessions:
+.PHONY: test-zellij-ancestor-navigation
+test-zellij-ancestor-navigation:
+	@python3 "$(DOTFILES)/scripts/test-zellij-sessions.py" --ancestor-navigation-only
+
+test-zellij-sessions: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-sessions.py"
+
+.PHONY: directory-picker
+directory-picker:
+	@mkdir -p "$(HOME)/.local/libexec/dotfiles"
+	@$(GO) -C "$(DOTFILES)/tools/directory-picker" build -mod=readonly -trimpath -o "$(HOME)/.local/libexec/dotfiles/directory-picker-ui" .
+
+.PHONY: test-directory-picker
+test-directory-picker:
+	@python3 "$(DOTFILES)/scripts/test-directory-picker.py"
 
 test-zsh-startup:
 	@python3 "$(DOTFILES)/scripts/test-zsh-startup.py"
@@ -490,7 +595,7 @@ epenv: ep-direnv
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 
 .PHONY: test-ssh-agent
-test-ssh-agent:
+test-ssh-agent: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-ssh-agent.py"
 
 # Pi shares the existing skill catalog without a second copy.
@@ -500,3 +605,47 @@ pi-resources: codex-skills
 	@python3 "$(DOTFILES)/bin/sync-pi-resources" --source "$(DOTFILES)/ai" --home "$(HOME)"
 test-pi-resources:
 	@python3 "$(DOTFILES)/scripts/test-pi-resources.py"
+
+firstmate-retire:
+	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
+
+.PHONY: codex-octo-hook test-codex-octo-hook
+codex-octo-hook:
+	@python3 "$(DOTFILES)/bin/codex-octo-submit" --install
+
+test-codex-octo-hook: FORCE
+	@python3 "$(DOTFILES)/scripts/test-codex-octo-hook.py"
+
+.PHONY: test-octo-manager-install
+test-octo-manager-install:
+	@python3 "$(DOTFILES)/scripts/test-octo-manager-install.py"
+
+.PHONY: octo-manager-install octo-manager-reinstall octo-manager-pull-latest octo-manager-pull octo-manager-start octo-manager-restart
+octo-manager-install octo-manager-reinstall octo-manager-pull-latest octo-manager-start octo-manager-restart:
+	@python3 "$(DOTFILES)/scripts/install-octo-manager.py" "$(patsubst octo-manager-%,%,$@)" --home "$(HOME)"
+
+octo-manager-pull: octo-manager-pull-latest
+
+# SSH transport activation awaits the stable-socket production integration.
+.PHONY: intent-install keylease-install intent-ssh intent-ssh-remove keylease-ssh-remove test-intent-ssh
+intent-install keylease-install:
+	@"$(UV)" run --no-project --python ">=3.11" python "$(DOTFILES)/scripts/install-approval-cli.py" "$(patsubst %-install,%,$@)"
+intent-ssh:
+	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/setup-intent-ssh.py"
+keylease-ssh-remove: intent-ssh-remove
+intent-ssh-remove:
+	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/setup-intent-ssh.py" --remove
+test-intent-ssh:
+	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-intent-ssh.py"
+
+.PHONY: update-zellij update-projects project-updates test-project-update
+project-updates: update-projects
+
+update-zellij:
+	@bash "$(MAKE_SCRIPTS)/project-update.sh" "$(DOTFILES)" zellij
+
+update-projects:
+	@bash "$(MAKE_SCRIPTS)/project-update.sh" "$(DOTFILES)" --all
+
+test-project-update:
+	@"$(UV)" run --no-project --python ">=3.11" python "$(DOTFILES)/scripts/test-project-update.py"

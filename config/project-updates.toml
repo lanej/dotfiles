@@ -1,0 +1,23 @@
+# Each command receives one action as its last argument, in the project checkout.
+# Add missing projects only after identifying their real build/restart entrypoints.
+[projects.octo-manager]
+path = "~/src/octo-manager"
+command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "octo-manager"]
+
+# Dotfiles owns the curated runtime pin and compatible plugin revisions.
+# Pull dotfiles' default branch, rather than Zellij's upstream main mirror.
+[projects.zellij]
+path = "{dotfiles}"
+command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "zellij"]
+
+[projects.bedrock-router]
+path = "~/src/bedrock-router"
+command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "bedrock-router"]
+
+[projects.intent]
+path = "~/src/intent"
+command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "intent"]
+
+[projects.keylease]
+path = "~/src/1password-agent"
+command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "keylease"]

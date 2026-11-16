@@ -17,67 +17,55 @@ check_os() {
     bash "$make_scripts/require.sh" os "$1" "$os" "$target"
 }
 
+# WHY: Native consumers share committed artifacts without a startup generator.
 case "$target" in
-    pi-config)
-        node "$dotfiles/firstmate/github-feedback.mjs" configure-pi "$setup_home/.pi/agent/settings.json"
+    shell|tmux-config|zellij-config|vim-config|kitty-config|git)
+        mkdir -p "$setup_home/.config/dotfiles"
+        if [[ -e "$setup_home/.config/dotfiles/theme" && ! -L "$setup_home/.config/dotfiles/theme" ]]; then
+            printf '%s\n' "Theme path is not a managed link: $setup_home/.config/dotfiles/theme" >&2
+            exit 1
+        fi
+        ln -fns "$dotfiles/design-system/generated" "$setup_home/.config/dotfiles/theme"
         ;;
-    firstmate-mobile-config)
-        firstmate_home=${6:-$setup_home/src/firstmate}
-        mkdir -p "$firstmate_home/config"
-        if [[ ! -e "$firstmate_home/config/github-feedback.json" && ! -L "$firstmate_home/config/github-feedback.json" ]]; then
-            cp "$dotfiles/firstmate/github-feedback.json" "$firstmate_home/config/github-feedback.json"
-        fi
-        if [[ ! -e "$firstmate_home/config/peers.json" && ! -L "$firstmate_home/config/peers.json" ]]; then
-            cp "$dotfiles/firstmate/peers.json" "$firstmate_home/config/peers.json"
-        fi
-        FIRSTMATE_HOME="$firstmate_home" node "$dotfiles/firstmate/github-feedback.mjs" configure-paseo
-        # Remove only stale links that this checkout's retired dispatcher owned.
-        for entry in bugfix-dispatcher-launch bugfix-worker; do
-            destination="$setup_home/.local/bin/$entry"
-            if [[ -L "$destination" && $(readlink "$destination") == "$dotfiles/bin/$entry" ]]; then
-                rm "$destination"
-            fi
-        done
+esac
+
+case "$target" in
+    pi-config|firstmate-retire)
+        node "$dotfiles/scripts/retire-firstmate.mjs" "$setup_home"
         ;;
     treehouse-config)
         mkdir -p "${setup_home}/.config/treehouse"
         ln -fs "${dotfiles}/treehouse/config.toml" "${setup_home}/.config/treehouse/config.toml"
         ;;
-    firstmate-config)
-        firstmate_home=${6:-$setup_home/src/firstmate}
-        test -x "$firstmate_home/bin/fm-session-start.sh" || { printf '%s\n' 'Missing Firstmate checkout. Run bootstrap.sh first.' >&2; exit 1; }
-        mkdir -p "$setup_home/.local/bin" "$setup_home/.config/firstmate" "$firstmate_home/config"
-        ln -fs "$dotfiles/bin/firstmate" "$setup_home/.local/bin/firstmate"
-        ln -fs "$dotfiles/firstmate/tmux.conf" "$setup_home/.config/firstmate/tmux.conf"
-        primary_config="$setup_home/.config/firstmate/primary-harness"
-        if [[ ! -e "$primary_config" && ! -L "$primary_config" ]]; then
-            ln -s "$dotfiles/firstmate/primary-harness" "$primary_config"
-        fi
-        if [ ! -e "$firstmate_home/config/backend" ] && [ ! -L "$firstmate_home/config/backend" ]; then
-            ln -s "$dotfiles/firstmate/backend" "$firstmate_home/config/backend"
-        fi
-        for setting in crew-harness codex-approval-mode; do
-            if [[ ! -e "$firstmate_home/config/$setting" && ! -L "$firstmate_home/config/$setting" ]]; then
-                ln -s "$dotfiles/firstmate/$setting" "$firstmate_home/config/$setting"
-            fi
-        done
-        ;;
     dev)
         mkdir -p "${setup_home}/src"
+        ;;
+    source-code-config)
+        mkdir -p "$setup_home/.local/bin"
+        ln -fs "$dotfiles/bin/source-code" "$setup_home/.local/bin/source-code"
+        ln -fs "$dotfiles/bin/repo-bootstrap" "$setup_home/.local/bin/repo-bootstrap"
         ;;
     shell)
         mkdir -p "${setup_home}/.local/bin"
         for source in "${dotfiles}"/bin/*; do
-            if [ "${source##*/}" != ep-direnv ]; then
-                ln -fs "$source" "${setup_home}/.local/bin/"
-            fi
+            case "${source##*/}" in
+                ep-direnv|source-code|repo-bootstrap) ;;
+                *) ln -fs "$source" "${setup_home}/.local/bin/" ;;
+            esac
         done
+        # Preserve existing login hooks; they may own required host setup.
+        if [ ! -e "$setup_home/.ssh/rc" ] && [ ! -L "$setup_home/.ssh/rc" ]; then
+            (umask 077; mkdir -p "$setup_home/.ssh")
+            ln -s "$dotfiles/sh/ssh-rc" "$setup_home/.ssh/rc"
+        elif [ "$(readlink "$setup_home/.ssh/rc" || true)" != "$dotfiles/sh/ssh-rc" ]; then
+            printf 'Existing ~/.ssh/rc preserved; add "%s/.local/bin/zellij-agent" publish-login to enable stable forwarded agents.\n' "$setup_home" >&2
+        fi
         ln -fs "${dotfiles}/sh/alias" "${setup_home}/.alias"
         ln -fs "${dotfiles}/sh/profile" "${setup_home}/.profile"
         mkdir -p "${setup_home}/.config/htop"
         ln -fs "${dotfiles}/sh/htoprc" "${setup_home}/.config/htop/htoprc"
         mkdir -p "${setup_home}/.config/bottom"
-        ln -fs "${dotfiles}/sh/bottom.toml" "${setup_home}/.config/bottom/bottom.toml"
+        ln -fs "${dotfiles}/design-system/generated/bottom.toml" "${setup_home}/.config/bottom/bottom.toml"
         mkdir -p "${setup_home}/.config/btop"
         ln -fs "${dotfiles}/btop/btop.conf" "${setup_home}/.config/btop/btop.conf"
         mkdir -p "${setup_home}/.local/share/z"
@@ -87,15 +75,20 @@ case "$target" in
         mkdir -p "${setup_home}/.config/atuin"
         ln -fs "${dotfiles}/sh/atuin.toml" "${setup_home}/.config/atuin/config.toml"
         ln -fs "${dotfiles}/sh/dircolors" "${setup_home}/.dir_colors"
+        mkdir -p "${setup_home}/.config/eza"
+        ln -fs "${dotfiles}/design-system/generated/eza.yml" "${setup_home}/.config/eza/theme.yml"
         ln -fs "${dotfiles}/bash/bashrc" "${setup_home}/.bashrc"
         ln -fs "${dotfiles}/bash/bashenv" "${setup_home}/.bashenv"
         ln -fs "${dotfiles}/bash/bashrc" "${setup_home}/.bashrc"
         ln -fs "${dotfiles}/bash/bashprofile" "${setup_home}/.bash_profile"
         ln -fns "${dotfiles}/bat" "${setup_home}/.config/bat"
+        if command -v bat >/dev/null 2>&1; then
+            BAT_CONFIG_DIR="$setup_home/.config/bat" BAT_CACHE_PATH="$setup_home/.cache/bat" bat cache --build
+        fi
         ln -fs "${setup_home}/.alias" "${setup_home}/.bashalias"
         mkdir -p "${setup_home}/.config/glow"
         ln -fs "${dotfiles}/sh/glow.yml" "${setup_home}/.config/glow/glow.yml"
-        ln -fs "${dotfiles}/sh/glow.nord.json" "${setup_home}/.config/glow/nord.json"
+        ln -fs "${dotfiles}/design-system/generated/glow.json" "${setup_home}/.config/glow/theme.json"
         ;;
     zsh-config)
         ln -fs "${dotfiles}/zsh/zshrc" "${setup_home}/.zshrc"
@@ -148,7 +141,8 @@ case "$target" in
                 esac
             fi
         fi
-        mkdir -p "$setup_home/.config/zellij/layouts" "$setup_home/.config/zellij/plugins" "$setup_home/.local/bin" "$setup_home/.local/share/zsh"
+        mkdir -p "$setup_home/.config/zellij/layouts" "$setup_home/.config/zellij/plugins" "$setup_home/.config/zellij/themes" "$setup_home/.local/bin" "$setup_home/.local/share/zsh"
+        ln -fs "$dotfiles/design-system/generated/zellij.kdl" "$setup_home/.config/zellij/themes/dotfiles.kdl"
         if [ "$status_available" = true ]; then
             ln -fs "$status_wasm" "$setup_home/.config/zellij/plugins/lane-status.wasm"
             ln -fs "$dotfiles/zellij/config.kdl" "$setup_home/.config/zellij/config.kdl"
@@ -165,7 +159,7 @@ case "$target" in
             ln -fs "$dotfiles/zellij/layouts/tmux-native.kdl" "$setup_home/.config/zellij/layouts/tmux.kdl"
         fi
         for source in "$dotfiles"/bin/zellij-*; do
-            if [ -f "$source" ] && [ -x "$source" ]; then
+            if [ -L "$source" ] || { [ -f "$source" ] && [ -x "$source" ]; }; then
                 ln -fs "$source" "$setup_home/.local/bin/"
             fi
         done
@@ -209,13 +203,51 @@ case "$target" in
         ln -fs "${dotfiles}/ruby/gemrc" "${setup_home}/.gemrc"
         ln -fs "${dotfiles}/ruby/rspec" "${setup_home}/.rspec"
         ;;
+    mergiraf-config)
+        check_command "mergiraf"
+        attributes_dir="$setup_home/.config/dotfiles/mergiraf"
+        mkdir -p "$attributes_dir"
+        attributes_stage=$(mktemp "$attributes_dir/attributes.XXXXXX")
+        trap 'rm -f "$attributes_stage"' EXIT
+        cat "$dotfiles/git/gitattributes" > "$attributes_stage"
+        printf '\n' >> "$attributes_stage"
+        mergiraf languages --gitattributes >> "$attributes_stage"
+        mv "$attributes_stage" "$attributes_dir/attributes"
+        ln -fs "$attributes_dir/attributes" "$setup_home/.gitattributes"
+        ;;
     git)
+        if [[ -n ${DOTFILES_WORKTREE_POLICY_ENABLED:-} || -n ${DOTFILES_WORKTREE_MANAGER_ENABLED:-} ]]; then
+            for selection in "${DOTFILES_WORKTREE_POLICY_ENABLED:-false}" "${DOTFILES_WORKTREE_MANAGER_ENABLED:-false}"; do
+                case "$selection" in true|false) ;; *) exit 1 ;; esac
+            done
+            policy_enabled=false policy_provider=legacy
+            if [[ ${DOTFILES_WORKTREE_MANAGER_ENABLED:-false} == true ]]; then
+                policy_enabled=true policy_provider=worktree-manager
+                manager_config="${XDG_CONFIG_HOME:-$setup_home/.config}/worktree-manager/config.json"
+                if [[ ! -e "$manager_config" && ! -L "$manager_config" ]]; then
+                    mkdir -p "${manager_config%/*}"
+                    cp "$dotfiles/worktree-manager/config.json" "$manager_config"
+                fi
+            elif [[ ${DOTFILES_WORKTREE_POLICY_ENABLED:-false} == true ]]; then
+                policy_enabled=true
+            fi
+            policy_config="$setup_home/.config/dotfiles/worktree-policy.gitconfig"
+            git config --file "$policy_config" worktree.policyProvider "$policy_provider"
+            for event in pre post checkout; do
+                git config --file "$policy_config" "hook.worktree-policy-$event.enabled" "$policy_enabled"
+            done
+        fi
+        mkdir -p "${setup_home}/.local/bin"
+        ln -fs "${dotfiles}/bin/git-worktree-policy" "${setup_home}/.local/bin/git-worktree-policy"
+        ln -fs "${dotfiles}/bin/git-worktree-policy-hook" "${setup_home}/.local/bin/git-worktree-policy-hook"
         ln -fs "${dotfiles}/git/gitconfig" "${setup_home}/.gitconfig"
         ln -fs "${dotfiles}/git/gitignore" "${setup_home}/.gitignore"
         ln -fs "${dotfiles}/git/gitcommit" "${setup_home}/.gitcommit"
         ln -fs "${dotfiles}/git/gitattributes" "${setup_home}/.gitattributes"
-        ln -fs "${dotfiles}/git/hooks/pre-commit" "${dotfiles}/.git/hooks/pre-commit"
-        ln -fs "${dotfiles}/git/hooks/commit-msg" "${dotfiles}/.git/hooks/commit-msg"
+        common_gitdir=$(git -C "$dotfiles" rev-parse --path-format=absolute --git-common-dir)
+        hooks_dir="$common_gitdir/hooks"
+        ln -fs "${dotfiles}/git/hooks/pre-commit" "$hooks_dir/pre-commit"
+        ln -fs "${dotfiles}/git/hooks/commit-msg" "$hooks_dir/commit-msg"
         ;;
     gpg)
         mkdir -p "${setup_home}/.gnupg"
@@ -252,6 +284,8 @@ case "$target" in
         ln -fs "${dotfiles}/kitty/kittyconf" "${setup_home}/.config/kitty/kitty.conf"
         ln -fs "${dotfiles}/kitty/close_tab_with_confirmation.py" "${setup_home}/.config/kitty/close_tab_with_confirmation.py"
         ln -fs "${dotfiles}/kitty/open_last_url.py" "${setup_home}/.config/kitty/open_last_url.py"
+        ln -fs "${dotfiles}/kitty/select_hint.py" "${setup_home}/.config/kitty/select_hint.py"
+        ln -fs "${dotfiles}/kitty/tab_bar.py" "${setup_home}/.config/kitty/tab_bar.py"
         ;;
     python)
         mkdir -p "${setup_home}/.config/"

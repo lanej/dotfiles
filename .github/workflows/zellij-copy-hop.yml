@@ -1,0 +1,68 @@
+name: Zellij copy Hop
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/zellij-copy-hop.yml'
+      - 'zellij/copy-hop/**'
+      - 'zellij/config.kdl'
+      - 'scripts/install-zellij'
+      - 'scripts/install-zellij-copy-hop.py'
+      - 'scripts/test-zellij-copy-hop.py'
+      - 'scripts/test-zellij-command-prompt.py'
+      - 'scripts/test-zellij.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  copy-hop:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      RUSTUP_TOOLCHAIN: '1.95.0'
+      CARGO_BUILD_JOBS: '2'
+      ZELLIJ_TEST_ARTIFACTS: ${{ github.workspace }}/.zellij-diagnostics
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Install native build tools on Linux
+        if: runner.os == 'Linux'
+        run: |
+          if ! command -v cc || ! command -v cmake || ! command -v pkg-config || ! pkg-config --exists openssl; then
+            sudo apt-get update --error-on=any -o Acquire::Retries=3
+            sudo apt-get install -y -o Acquire::Retries=3 build-essential cmake pkg-config libssl-dev
+          fi
+      - name: Install native build tools on macOS
+        if: runner.os == 'macOS'
+        run: brew install cmake pkg-config openssl@3
+      - name: Install plugin toolchain
+        run: rustup toolchain install 1.95.0 --profile minimal --component rustfmt,clippy --target wasm32-wasip1
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cache/dotfiles/zellij
+            ~/.cache/dotfiles/zellij-copy-hop
+            zellij/copy-hop/target
+          key: copy-hop-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/install-zellij', 'zellij/copy-hop/Cargo.lock') }}-${{ github.sha }}
+          restore-keys: copy-hop-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/install-zellij', 'zellij/copy-hop/Cargo.lock') }}-
+      - name: Install matching runtime and dotfiles plugin
+        run: |
+          bash scripts/install-zellij
+          make zellij-copy-hop
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Exercise native keyboard jumps
+        run: make test-zellij-copy-hop
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: copy-hop-${{ matrix.os }}
+          path: .zellij-diagnostics
+          if-no-files-found: ignore

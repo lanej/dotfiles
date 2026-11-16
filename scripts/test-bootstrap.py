@@ -1,16 +1,149 @@
 #!/usr/bin/env python3
 """One fresh-box bootstrap workflow; downloads and package managers are fixtures."""
 from pathlib import Path
+import argparse
 import json
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
+
+
+def test_compatibility(root):
+    with tempfile.TemporaryDirectory(prefix="dotfiles-bootstrap-compatibility-") as temporary:
+        home = Path(temporary)
+        env = {**os.environ, "HOME": str(home)}
+        for key in ("SSL_CERT_FILE", "SSL_CERT_DIR"):
+            env.pop(key, None)
+
+        def run(script, *, extra=None, success=True):
+            result = subprocess.run(
+                ["/bin/bash", "-c", 'source "$1"\n' + script, "bootstrap-test", str(root / "bootstrap.sh")],
+                env={**env, **(extra or {})}, capture_output=True, text=True, timeout=30,
+            )
+            assert (result.returncode == 0) == success, result.stdout + result.stderr
+            return result
+
+        python = home / "python3"
+        python.write_text(f"#!{sys.executable}\n" + '''
+import os
+from pathlib import Path
+import ssl
+import sys
+defaults = ssl.get_default_verify_paths()
+ssl.get_default_verify_paths = lambda: defaults._replace(cafile=os.environ.get("TEST_DEFAULT_CA"))
+Path.is_file = lambda self: str(self) == os.environ.get("TEST_SYSTEM_CA")
+exec(sys.stdin.read())
+''')
+        python.chmod(0o755)
+        trust = '''
+os=linux
+configure_python_ca_trust || exit
+printf '%s\\n' "${SSL_CERT_FILE-unset}" "${SSL_CERT_DIR-unset}"
+'''
+        for bundle in ("/etc/pki/tls/certs/ca-bundle.crt", "/etc/ssl/certs/ca-certificates.crt"):
+            result = run(trust, extra={"PATH": f"{home}:{env['PATH']}", "TEST_SYSTEM_CA": bundle})
+            assert result.stdout.splitlines() == [bundle, "unset"], result.stdout
+        result = run(trust, extra={"PATH": f"{home}:{env['PATH']}", "TEST_DEFAULT_CA": "/existing/ca.pem"})
+        assert result.stdout.splitlines() == ["unset", "unset"], result.stdout
+        for setting, value in (("SSL_CERT_FILE", "/custom/ca.pem"), ("SSL_CERT_DIR", "/custom/certs")):
+            result = run(trust, extra={setting: value})
+            assert result.stdout.splitlines() == [
+                value if setting == "SSL_CERT_FILE" else "unset",
+                value if setting == "SSL_CERT_DIR" else "unset",
+            ], result.stdout
+        result = run(trust, extra={"PATH": f"{home}:{env['PATH']}"})
+        assert result.stdout.splitlines() == ["unset", "unset"], result.stdout
+        print("PASS Linux CA discovery preserves existing and explicit trust stores")
+
+        npm_bin = home / "npm-bin"
+        cargo_bin = home / ".cargo/bin"
+        npm_bin.mkdir()
+        cargo_bin.mkdir(parents=True)
+        wrapper = npm_bin / "stylua"
+        wrapper.write_text("#!/bin/sh\necho 'GLIBC_2.34 not found' >&2\nexit 1\n")
+        wrapper.chmod(0o755)
+        installer_fixtures = '''
+os=linux
+package_semver() { return 1; }
+npm() {
+    printf 'npm %s\\n' "$*" >> "$HOME/events"
+    case "$*" in
+        "list -g --depth=0 @johnnymorganz/stylua-bin") test -f "$HOME/npm-bin/stylua" ;;
+        "uninstall -g @johnnymorganz/stylua-bin") rm "$HOME/npm-bin/stylua" ;;
+        *) return 1 ;;
+    esac
+}
+cargo() {
+    printf 'cargo %s\\n' "$*" >> "$HOME/events"
+    [ "${TEST_CARGO_FAIL:-0}" != 1 ] || return 1
+    printf '#!/bin/sh\\necho "stylua 2.6.0"\\n' > "$HOME/.cargo/bin/stylua"
+    chmod +x "$HOME/.cargo/bin/stylua"
+}
+'''
+        path = {"PATH": f"{npm_bin}:{cargo_bin}:{env['PATH']}"}
+        run(installer_fixtures + "\ninstall_package_version stylua 2.6.0", extra={**path, "TEST_CARGO_FAIL": "1"}, success=False)
+        assert wrapper.exists(), "Failed source build removed the existing wrapper"
+        result = run(installer_fixtures + "\ninstall_package_version stylua 2.6.0\nstylua --version", extra=path)
+        assert result.stdout.strip().endswith("stylua 2.6.0"), result.stdout
+        assert not wrapper.exists()
+        events = (home / "events").read_text()
+        assert "cargo install stylua --locked --version 2.6.0 --features lua54,luajit,luau" in events
+        previous = events
+        run(installer_fixtures + "\ninstall_package_version stylua 2.6.0", extra=path)
+        assert (home / "events").read_text() == previous, "Rerun reinstalled working StyLua"
+        result = run('''
+os=macos
+install_package_version() { test "$*" = "node 24"; }
+npm() { printf '%s\\n' "$*"; }
+install_stylua_from_release 2.6.0
+''')
+        assert result.stdout.strip() == "install -g @johnnymorganz/stylua-bin@2.6.0"
+        print("PASS source-built Linux StyLua replaces the incompatible npm wrapper; macOS retains npm")
+
+        luacheck_fixtures = '''
+command() {
+    case "$*" in
+        "-v brew"|"-v apt-get"|"-v pacman") return 1 ;;
+        "-v dnf") return 0 ;;
+        *) builtin command "$@" ;;
+    esac
+}
+sudo() {
+    printf '%s\\n' "$*" >> "$HOME/events"
+    [ "${TEST_DNF_FAIL:-0}" != 1 ]
+}
+luarocks() {
+    printf 'luarocks %s\\n' "$*" >> "$HOME/events"
+    [ "${TEST_LUAROCKS_FAIL:-0}" != 1 ] || return 1
+    mkdir -p "$HOME/.local/bin"
+    printf '#!/bin/sh\\necho "Luacheck: 1.2.0"\\n' > "$HOME/.local/bin/luacheck"
+    chmod +x "$HOME/.local/bin/luacheck"
+}
+install_luacheck_package
+'''
+        run(luacheck_fixtures, extra={"TEST_DNF_FAIL": "1"}, success=False)
+        assert not (home / ".local/bin/luacheck").exists()
+        run(luacheck_fixtures, extra={"TEST_LUAROCKS_FAIL": "1"}, success=False)
+        assert not (home / ".local/bin/luacheck").exists()
+        result = run(luacheck_fixtures)
+        assert result.stdout.strip() == "Luacheck: 1.2.0"
+        events = (home / "events").read_text()
+        assert "dnf install -y luarocks lua-devel" in events
+        assert f"luarocks install --tree {home}/.local luacheck" in events
+        print("PASS DNF Luacheck installs through LuaRocks and propagates package failures")
 
 
 def main():
     root = Path(__file__).resolve().parents[1]
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--compatibility-only", action="store_true")
+    options = parser.parse_args()
+    test_compatibility(root)
+    if options.compatibility_only:
+        return
     with tempfile.TemporaryDirectory(prefix="dotfiles-bootstrap-") as temporary:
         home = Path(temporary)
         router_binary = home / ".codex/bedrock-router/bedrock-router"
@@ -29,12 +162,23 @@ def main():
         installed.chmod(0o755)
         checkout = home / ".files"
         checkout.mkdir()
+        (checkout / ".git/hooks").mkdir(parents=True)
+        shutil.copytree(root / "git", checkout / "git")
         shutil.copyfile(root / "bootstrap.sh", checkout / "bootstrap.sh")
         shutil.copyfile(root / "Makefile", checkout / "Makefile")
         shutil.copytree(root / "config", checkout / "config")
         shutil.copytree(root / "bootstrap", checkout / "bootstrap")
         (checkout / "scripts").mkdir()
         shutil.copyfile(root / "scripts/dotfiles-config.py", checkout / "scripts/dotfiles-config.py")
+        (checkout / "scripts/install-approval-cli.py").write_text("from pathlib import Path\nimport os, sys\nPath(os.environ['HOME'], sys.argv[1] + '-installed').touch()\n")
+        shutil.copyfile(root / "scripts/install-treehouse", checkout / "scripts/install-treehouse")
+        (checkout / "scripts/install-worktree-policy").write_text('#!/bin/sh\n[ "$1" = 0.1.1 ] || exit 1\ntouch "$HOME/native-policy-installed"\n')
+        manager_version = tomllib.loads((root / "bootstrap/tools.toml").read_text())["tools"]["worktree-manager"]["version"]
+        (checkout / "scripts/install-worktree-manager").write_text('#!/bin/sh\n[ "$1" = ' + manager_version + ' ] || exit 1\ntouch "$HOME/worktree-manager-installed"\n')
+        (checkout / "scripts/install-git-worktree-hooks.py").write_text(
+            "from pathlib import Path\nimport os\n"
+            "home = Path(os.environ['HOME'])\n"
+            "(home / 'patched-git-installed').touch()\n")
         shutil.copyfile(root / "scripts/setup-checklist.sh", checkout / "scripts/setup-checklist.sh")
         machine_config = home / ".config/dotfiles/config.toml"
         machine_config.parent.mkdir(parents=True)
@@ -62,7 +206,6 @@ def main():
 import os
 from pathlib import Path
 import io
-import hashlib
 import json
 import shutil
 import subprocess
@@ -84,7 +227,9 @@ def record(event):
 if name == "uname":
     print("Linux" if args == ["-s"] else "aarch64")
 elif name == "git":
-    if args[:1] == ["clone"] and "https://github.com/neovim/neovim.git" in args:
+    if args[:1] == ["-C"] and Path(args[1]).resolve() == (home / ".files").resolve() and args[2:] == ["rev-parse", "--path-format=absolute", "--git-common-dir"]:
+        print((home / ".files/.git").resolve())
+    elif args[:1] == ["clone"] and "https://github.com/neovim/neovim.git" in args:
         (home / "src/oss/neovim").mkdir(parents=True)
 elif name == "sudo":
     if args == ["dnf", "install", "-y", "ImageMagick"]:
@@ -166,23 +311,10 @@ echo "$1" > "$HOME/claude-version"
                 archive.addfile(member, io.BytesIO(payload))
         record("btop")
         sys.exit(0)
-    elif url.endswith("/treehouse-v3.1.6-linux-arm64.tar.gz"):
-        with tarfile.open(target, "w:gz") as archive:
-            payload = b"#!/bin/sh\necho 'GLIBC_2.34 not found' >&2\nexit 1\n"
-            member = tarfile.TarInfo("treehouse")
-            member.size = len(payload)
-            member.mode = 0o755
-            archive.addfile(member, io.BytesIO(payload))
-        sys.exit(0)
-    elif url == "https://github.com/kunchenguid/treehouse/releases/download/v3.1.6/checksums.txt":
-        release_archive = Path(target).with_name("treehouse-v3.1.6-linux-arm64.tar.gz")
-        digest = hashlib.sha256(release_archive.read_bytes()).hexdigest()
-        Path(target).write_text(digest + "  " + release_archive.name + "\n")
-        sys.exit(0)
-    elif url == "https://github.com/kunchenguid/treehouse/archive/refs/tags/v3.1.6.tar.gz":
+    elif url == "https://github.com/lanej/treehouse/archive/e4c17fdfa6778545c2e073d741e5e837ff19e6c4.tar.gz":
         with tarfile.open(target, "w:gz") as archive:
             payload = b"module github.com/kunchenguid/treehouse/v3\n"
-            member = tarfile.TarInfo("treehouse-3.1.6/go.mod")
+            member = tarfile.TarInfo("treehouse-fork/go.mod")
             member.size = len(payload)
             archive.addfile(member, io.BytesIO(payload))
         sys.exit(0)
@@ -246,14 +378,20 @@ elif name == "make" and args[-1:] in (["treehouse-config"], ["firstmate-config"]
     # These integrations configure their already-installed tools before the
     # full environment is ready; the final make below checks all runtimes.
     sys.exit(0)
+elif name == "make" and args[-1:] == ["directory-picker"]:
+    assert shutil.which("fzf") and shutil.which("go")
+    record("directory-picker build")
 elif name == "make" and args[-1:] == ["pi-config"]:
     assert subprocess.check_output(["pi", "--version"], text=True).strip() == "1.4.0"
     record("pi config")
 elif name == "make" and args[-1:] == ["base"]:
     subprocess.run(["/usr/bin/make", *args], check=True)
     record("base")
+elif name == "make" and args[-1:] == ["zellij-helpers"]:
+    assert shutil.which("cargo"), "native helpers require Rust"
+    record("zellij helpers")
 elif name == "make":
-    assert {"configure", "atuin-sync", "agent-status-broker", "sql-formatters", "zellij-status", "zellij-config"}.intersection(args), args
+    assert {"configure", "atuin-sync", "agent-status-broker", "sql-formatters", "zellij-status", "zellij-config", "zellij-copy-hop"}.intersection(args), args
     for tool in ("node", "python3", "uv", "codex", "claude", "btop", "zellij"):
         value = subprocess.check_output([tool, "--version"], text=True).strip()
         expected = {
@@ -312,6 +450,8 @@ elif name == "rustup" and args[:3] == ["run", "1.95.0", "cargo"]:
     assert "--locked" in args and "--no-default-features" in args, args
     assert args[args.index("--features") + 1] == "plugins_from_target,vendored_curl,web_server_capability", args
     assert args[-3:] == ["--bin", "zellij", "zellij"], args
+    assert os.environ["CARGO_PROFILE_RELEASE_LTO"] == "true"
+    assert os.environ["CARGO_PROFILE_RELEASE_CODEGEN_UNITS"] == "1"
     target = args[args.index("--target") + 1]
     assert target == "aarch64-unknown-linux-gnu", args
     install_root = Path(args[args.index("--root") + 1])
@@ -334,17 +474,29 @@ elif name == "rustup" and args[:3] == ["run", "1.95.0", "cargo"]:
     output.chmod(0o755)
     (home / "zellij-owned").write_text(revision)
     record("zellij")
+elif name == "cargo" and args[:2] == ["install", "mergiraf"]:
+    assert args == ["install", "mergiraf", "-q", "--locked", "--version", "0.20.0"], args
+    (home / ".cargo/bin/mergiraf").symlink_to(fixture / "driver")
+    record("mergiraf")
+elif name == "mergiraf":
+    assert args == ["--version"], args
+    print("mergiraf 0.20.0")
 elif name in ("cargo", "rustc", "rustup", "rust-analyzer"):
     print(name + " 1.93.1")
 elif name == "go":
     if args[:1] == ["build"]:
         assert os.environ["CGO_ENABLED"] == "0"
-        assert args[args.index("-ldflags") + 1] == "-X main.version=v3.1.6", args
+        assert args[args.index("-ldflags") + 1] == "-X main.version=dev", args
+        assert os.environ["GOOS"] == "linux" and os.environ["GOARCH"] == "arm64"
         assert Path("go.mod").is_file()
         output = Path(args[args.index("-o") + 1])
         shutil.copyfile(fixture / "driver", output)
         output.chmod(0o755)
         record("treehouse build")
+    elif args == ["env", "GOHOSTOS"]:
+        print("linux")
+    elif args == ["env", "GOHOSTARCH"]:
+        print("arm64")
     elif args == ["env", "GOBIN"]:
         print("")
     elif args == ["env", "GOPATH"]:
@@ -362,7 +514,7 @@ elif name == "go":
 elif name == "glow":
     print("glow version master")
 elif name == "treehouse":
-    print("treehouse v3.1.6")
+    print("dev")
 elif name == "gh" and args == ["auth", "status"]:
     sys.exit(1)
 else:
@@ -380,7 +532,7 @@ else:
             "gh", "git-crypt", "jq", "rg", "stylua", "nvim", "shfmt",
             "bash-language-server", "typescript-language-server", "gopls",
             "gotestsum", "ctags-lsp", "tree-sitter", "hexyl", "yaml-language-server",
-            "direnv", "just", "loginctl", "zellij",
+            "direnv", "just", "loginctl", "zellij", "lsof",
             "no-mistakes", "gh-axi", "tasks-axi", "quota-axi",
             "chrome-devtools-axi", "lavish-axi",
         ):
@@ -419,8 +571,10 @@ else:
         if result.returncode:
             raise AssertionError(result.stdout + result.stderr)
         assert (home / ".xinitrc").is_symlink()
+        assert (home / ".gitconfig").resolve() == (checkout / "git/gitconfig").resolve()
         assert (home / ".local/bin/uv").is_file()
         assert (home / ".local/bin/python3").is_file()
+        assert not (home / "patched-git-installed").exists()
         assert not (home / ".nvm").exists()
         assert not (home / ".cargo").exists()
         assert not (home / ".local/bin/codex").exists()
@@ -428,13 +582,14 @@ else:
 
         # Stage two installs the configured workstation on ARM Linux, including
         # an older Neovim that needs a source build and missing eza/yq/btop.
-        machine_config.write_text('sets = ["workstation", "easypost"]\n[tools]\nmermaid = false\npi = true\n')
+        machine_config.write_text('sets = ["workstation", "easypost"]\n[tools]\nmermaid = false\npi = true\nworktree-manager = true\nworktree-policy = true\ntreehouse = true\n')
         plan = subprocess.run(
             ["/usr/bin/make", "--no-print-directory", "plan"],
             cwd=checkout, env=env, capture_output=True, text=True,
         )
         assert plan.returncode == 0, plan.stdout + plan.stderr
         assert "codex" in {tool["name"] for tool in json.loads(plan.stdout)["tools"]}
+        assert "git-worktree-hooks" in {tool["name"] for tool in json.loads(plan.stdout)["tools"]}
         preview = subprocess.run(
             ["/usr/bin/make", "--no-print-directory", "-n", "configure"],
             cwd=checkout, env=env, capture_output=True, text=True,
@@ -453,6 +608,8 @@ else:
             raise AssertionError(result.stdout + result.stderr)
         assert shadow_node.is_symlink() and shadow_node.resolve() == driver.resolve()
         events = (home / "events").read_text().splitlines()
+        assert "mergiraf" in events
+        assert (home / ".cargo/bin/mergiraf").is_file()
         assert events.index("make") > max(
             events.index(tool) for tool in ("uv", "node", "python", "rustup", "codex", "claude", "pi")
         )
@@ -460,16 +617,27 @@ else:
         assert "neovim build" in events
         assert "eza package" in events
         assert "treehouse build" in events
+        assert "directory-picker build" in events
+        treehouse_command = ["/bin/bash", str(checkout / "scripts/install-treehouse")]
+        for replaced in (False, True):
+            if replaced:
+                (home / ".local/bin/treehouse").write_text('#!/bin/sh\necho v99.0.0\n')
+            repeated = subprocess.run(treehouse_command, env=env, capture_output=True, text=True)
+            assert repeated.returncode == 0, repeated.stdout + repeated.stderr
+            assert (home / "events").read_text().splitlines().count("treehouse build") == (2 if replaced else 1)
         assert (home / ".local/bin/tmux").is_file()
         assert events.index("tmux package") < events.index("make")
         assert "yq" in events
         assert "btop" in events
         assert (home / ".local/bin/zellij").is_file()
+        assert "zellij helpers" in (home / "events").read_text()
         assert events.index("zellij") < events.index("make")
         # Repeat the real entrypoint with the installed executable already in
         # place. Cargo owns installation and caching; the fixture models its output.
         runtime_command = ["/bin/bash", str(checkout / "scripts/install-zellij")]
-        runtime_env = {**env, "PATH": f"{home / '.cargo/bin'}:{env['PATH']}"}
+        runtime_env = {**env, "PATH": f"{home / '.cargo/bin'}:{env['PATH']}",
+                       "CARGO_PROFILE_RELEASE_LTO": "false",
+                       "CARGO_PROFILE_RELEASE_CODEGEN_UNITS": "16"}
         installed = home / ".local/bin/zellij"
         previous = installed.read_bytes()
         repeated = subprocess.run(runtime_command, env=runtime_env, capture_output=True, text=True)
@@ -499,6 +667,20 @@ else:
         assert repeated.returncode == 0, repeated.stdout + repeated.stderr
         assert not runtime_calls()[-1]["force"]
         assert (home / "events").read_text().splitlines().count("zellij") == 2
+        receipt = home / ".local/.dotfiles-zellij-install"
+        receipt.write_text(f"revision-target-v1:{revision}\n")
+        failed = subprocess.run(runtime_command,
+                                env={**runtime_env, "FIXTURE_FAIL_ZELLIJ_INSTALL": "1"},
+                                capture_output=True, text=True)
+        assert failed.returncode != 0 and runtime_calls()[-1]["force"]
+        assert installed.read_bytes() == previous
+        assert receipt.read_text() == f"revision-target-v1:{revision}\n"
+        optimized = subprocess.run(runtime_command, env=runtime_env, capture_output=True, text=True)
+        assert optimized.returncode == 0, optimized.stdout + optimized.stderr
+        assert runtime_calls()[-1]["force"], "Old-profile installation skipped the optimized rebuild"
+        repeated = subprocess.run(runtime_command, env=runtime_env, capture_output=True, text=True)
+        assert repeated.returncode == 0, repeated.stdout + repeated.stderr
+        assert not runtime_calls()[-1]["force"], "Matching optimized installation rebuilt unnecessarily"
         isolated_target = runtime_calls()[-1]["target_dir"]
         # Exercise a second pinned recipe through the same installer entrypoint.
         alternate_revision = "1" * 40
@@ -584,9 +766,15 @@ else:
         new_events = (home / "events").read_text().splitlines()[previous_events:]
         assert "neovim build" not in new_events and "neovim setup" not in new_events
         assert "pi" not in new_events
+        assert "mergiraf" not in new_events
         assert (home / "pi-version").read_text() == "1.5.0"
         assert "node" not in new_events and "zellij" not in new_events
         assert not (home / ".local/bin/nvim").exists()
+        assert (home / "patched-git-installed").is_file()
+        assert (home / "native-policy-installed").is_file()
+        assert (home / "intent-installed").is_file()
+        assert (home / "keylease-installed").is_file()
+        assert (home / "worktree-manager-installed").is_file()
         print("PASS: minimal bootstrap provides the native baseline and runtime; explicit installation adds selected tools and private Bedrock credentials.")
 
 

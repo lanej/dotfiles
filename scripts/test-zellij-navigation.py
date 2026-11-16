@@ -2,7 +2,7 @@
 """Accept smart pane navigation through installed Zsh, Neovim and Zellij.
 
 Uses the pinned Navigator plugin, real terminal keystrokes and a private session.
-Requires Neovim 0.12+, Zsh, tmux, Zellij 0.45.1+, git, and public GitHub access.
+Requires Neovim 0.12+, Zsh, the pinned Zellij 0.46.0 runtime, git, and public GitHub access.
 """
 
 import importlib
@@ -13,104 +13,31 @@ import shlex
 import shutil
 import subprocess
 import tempfile
+import urllib.request
 
 
 workflow = importlib.import_module("test-zellij")
 ROOT, Terminal, PROMPT = workflow.ROOT, workflow.Terminal, workflow.PROMPT
 
 
-def nested_workflow(binary, env, work, init):
-    """Keep navigation in the nearest mux in both real nesting directions."""
-    env = {**env, "TMUX_TMPDIR": env["XDG_RUNTIME_DIR"]}
-    tmux = shutil.which("tmux")
-    outer_socket, inner_socket = "navigation-outer", "navigation-inner"
-    name = "nested-" + work.name
-
-    def mux(socket, *args):
-        result = subprocess.run([tmux, "-L", socket, *args], env=env,
-                                text=True, capture_output=True, timeout=3)
-        result.check_returncode()
-        return result.stdout.strip()
-
-    terminal = Terminal(binary, env, name, [
-        tmux, "-L", outer_socket, "-f", "/dev/null", "new-session", "-s", "outer",
-        binary, "attach", "--create", name,
-    ])
-    try:
-        # tmux may render the prompt's trailing blank with erase-to-end-of-line.
-        terminal.until("Zellij starts inside tmux", lambda: PROMPT.rstrip() in terminal.output)
-        outer_pane = mux(outer_socket, "display-message", "-p", "#{pane_id}")
-        mux(outer_socket, "split-window", "-h", "-d", "/bin/sh")
-        terminal.prefix(b"v")
-        terminal.until("nested Zellij has two panes", lambda: len(terminal.terminals()) == 2)
-        panes = sorted(terminal.terminals(), key=lambda p: p["pane_x"])
-        left, right = panes[0]["id"], panes[1]["id"]
-        terminal.until("nested Zsh is ready", lambda:
-                       PROMPT.decode().strip() in terminal.action("dump-screen", "--pane-id", str(right)))
-        terminal.send(b"\x08")
-        terminal.until("Zsh navigation stays in nested Zellij", lambda:
-                       next(p for p in terminal.terminals() if p["id"] == left)["is_focused"])
-
-        socket = work / "nested-nvim.sock"
-        terminal.send((shlex.join(["nvim", "-u", str(init), "-i", "NONE", "--listen", str(socket)]) + "\r").encode())
-        def editor(expression, address=socket):
-            result = subprocess.run(["nvim", "--server", str(address), "--remote-expr", expression],
-                                    env=env, text=True, capture_output=True, timeout=2)
-            result.check_returncode()
-            return result.stdout.strip()
-        terminal.until("nested editor has two splits", lambda: socket.exists() and editor('winnr("$")') == "2")
-        terminal.send(b"\x0c")
-        terminal.until("nested editor crosses its internal split", lambda: editor("winnr()") == "2")
-        # A native notification can acknowledge a CLI query without its JSON.
-        # The editor boundary still retries that empty ownership observation.
-        (work / "query-empty-once").write_text("list-panes")
-        terminal.send(b"\x0c")
-        terminal.until("editor boundary moves the inner Zellij pane", lambda:
-                       next(p for p in terminal.terminals() if p["id"] == right)["is_focused"])
-        assert not (work / "query-empty-once").exists()
-        assert mux(outer_socket, "display-message", "-p", "#{pane_id}") == outer_pane
-
-        # Reverse the innermost ownership without clearing either inherited
-        # mux's variables: tmux now owns this pane below a live Zellij server.
-        terminal.send((shlex.join(["env", "-u", "TMUX", "-u", "TMUX_PANE",
-                                  tmux, "-L", inner_socket, "-f", "/dev/null",
-                                  "new-session", "-s", "inner"]) + "\r").encode())
-        terminal.until("tmux starts inside Zellij", lambda:
-                       PROMPT.decode().strip() in mux(inner_socket, "capture-pane", "-p"))
-        inner_left = mux(inner_socket, "display-message", "-p", "#{pane_id}")
-        inner_right = mux(inner_socket, "split-window", "-h", "-d", "-P", "-F", "#{pane_id}")
-        inner_editor = work / "inner-tmux-nvim.sock"
-        terminal.send((shlex.join(["nvim", "-u", str(init), "-i", "NONE", "--listen", str(inner_editor)]) + "\r").encode())
-        terminal.until("tmux-owned editor starts", lambda:
-                       inner_editor.exists() and editor('winnr("$")', inner_editor) == "2")
-        terminal.send(b"\x0c")
-        terminal.until("tmux-owned editor crosses its internal split", lambda:
-                       editor("winnr()", inner_editor) == "2")
-        terminal.send(b"\x0c")
-        terminal.until("editor boundary moves the innermost tmux pane", lambda:
-                       mux(inner_socket, "display-message", "-p", "#{pane_id}") == inner_right)
-        assert inner_left != inner_right
-        assert next(p for p in terminal.terminals() if p["id"] == right)["is_focused"]
-        assert mux(outer_socket, "display-message", "-p", "#{pane_id}") == outer_pane
-        terminal.until("innermost Zsh prompt is ready", lambda:
-                       PROMPT.decode().strip() in mux(inner_socket, "capture-pane", "-p", "-t", inner_right))
-        terminal.send(b"printf '%s' ax\x08 > \"$HOME/tmux-backspace\"\r")
-        proof = Path(env["HOME"]) / "tmux-backspace"
-        terminal.until("tmux-owned Zsh keeps backspace", lambda:
-                       proof.exists() and proof.read_text() == "a")
-        print("PASS: Zellij inside tmux and tmux inside Zellij each retain their own navigation; "
-              "outer pane focus and tmux shell editing remain unchanged.")
-    finally:
-        subprocess.run([tmux, "-L", inner_socket, "kill-server"], env=env,
-                       capture_output=True, timeout=5)
-        subprocess.run([binary, "kill-session", name], env=env, capture_output=True, timeout=5)
-        subprocess.run([tmux, "-L", outer_socket, "kill-server"], env=env,
-                       capture_output=True, timeout=5)
-        terminal.close()
+def check_client_contract(client, runtime_revision):
+    source = json.loads((client / "protocol/source.json").read_text())
+    if source["revision"] == runtime_revision:
+        return
+    files = ("common_types.proto", "client_to_server.proto", "server_to_client.proto",
+             "app_control.proto", "pane_mirror.proto")
+    for name in files:
+        url = (f"https://raw.githubusercontent.com/lanej/zellij/{runtime_revision}/"
+               f"zellij-utils/src/client_server_contract/{name}")
+        with urllib.request.urlopen(url, timeout=30) as response:
+            runtime_contract = response.read()
+        assert (client / "protocol" / name).read_bytes() == runtime_contract, (
+            f"Lua client protobuf contract differs from the pinned runtime: {name}; "
+            "update the pinned client dependency")
 
 
 def main():
-    for name in ("zellij", "nvim", "zsh", "tmux", "git"):
+    for name in ("zellij", "nvim", "zsh", "git"):
         assert shutil.which(name), f"Install {name} before testing pane navigation"
     with tempfile.TemporaryDirectory(prefix="zj-nav-", dir="/tmp") as directory:
         work = Path(directory).resolve()
@@ -141,29 +68,7 @@ def main():
         config.unlink()
         config.write_text(configuration)
         binary = shutil.which("zellij")
-        # Delay a real query during a tab switch, or drop one query's stdout to
-        # reproduce native empty acknowledgements. All data comes from the server.
-        proxy = work / "tools"
-        proxy.mkdir()
-        (proxy / "zellij").write_text('''#!/usr/bin/env python3
-import os, pathlib, subprocess, sys, time
-work = pathlib.Path(os.environ["NAVIGATION_WORK"])
-armed = work / "query-armed"
-if armed.exists() and (armed.read_text() or "list-panes") in sys.argv:
-    armed.unlink()
-    (work / "query-blocked").touch()
-    while not (work / "query-release").exists():
-        time.sleep(0.01)
-empty = work / "query-empty-once"
-if empty.exists() and empty.read_text() in sys.argv:
-    empty.unlink()
-    sys.exit(subprocess.call([os.environ["NAVIGATION_ZELLIJ"], *sys.argv[1:]],
-                             stdout=subprocess.DEVNULL))
-os.execv(os.environ["NAVIGATION_ZELLIJ"], [os.environ["NAVIGATION_ZELLIJ"], *sys.argv[1:]])
-''')
-        (proxy / "zellij").chmod(0o700)
-        env.update(NAVIGATION_WORK=str(work), NAVIGATION_ZELLIJ=binary)
-        env["PATH"] = str(proxy) + os.pathsep + env["PATH"]
+        env["NAVIGATION_WORK"] = str(work)
         # The actual installed zshrc activates the integration. Omit unrelated
         # account/profile setup and replace only its prompt in this fixture.
         (home / ".profile").unlink()
@@ -179,6 +84,17 @@ os.execv(os.environ["NAVIGATION_ZELLIJ"], [os.environ["NAVIGATION_ZELLIJ"], *sys
                         "https://github.com/numToStr/Navigator.nvim.git", revision], check=True, env=env)
         subprocess.run(["git", "-C", str(plugin), "checkout", "-q", "--detach", "FETCH_HEAD"], check=True, env=env)
         env["NAVIGATOR_RUNTIME"] = str(plugin)
+        client = Path(os.environ["ZELLIJ_CLIENT_RUNTIME"]) if os.environ.get("ZELLIJ_CLIENT_RUNTIME") else work / "zellij-client.nvim"
+        if not os.environ.get("ZELLIJ_CLIENT_RUNTIME"):
+            client_revision = json.loads((ROOT / "nvim/lazy-lock.json").read_text())["zellij-client.nvim"]["commit"]
+            subprocess.run(["git", "init", "-q", str(client)], check=True, env=env)
+            subprocess.run(["git", "-C", str(client), "fetch", "-q", "--depth=1",
+                            "https://github.com/lanej/zellij-client.nvim.git", client_revision], check=True, env=env)
+            subprocess.run(["git", "-C", str(client), "checkout", "-q", "--detach", "FETCH_HEAD"], check=True, env=env)
+        runtime_revision = next(line.split("=", 1)[1] for line in (ROOT / "scripts/install-zellij").read_text().splitlines()
+                                if line.startswith("zellij_revision="))
+        check_client_contract(client, runtime_revision)
+        env["ZELLIJ_CLIENT_RUNTIME"] = str(client)
         editing = work / "editing.txt"
         editing.write_text("Navigation fixture\n")
         env["NAVIGATION_FILE"] = str(editing)
@@ -186,8 +102,43 @@ os.execv(os.environ["NAVIGATION_ZELLIJ"], [os.environ["NAVIGATION_ZELLIJ"], *sys
         init.write_text('''
 vim.opt.runtimepath:prepend(vim.env.HOME .. "/.config/nvim")
 vim.opt.runtimepath:append(vim.env.NAVIGATOR_RUNTIME)
+vim.opt.runtimepath:append(vim.env.ZELLIJ_CLIENT_RUNTIME)
 vim.opt.swapfile = false
+local module = require("pane-navigation")
+local original_new = module.new
+module.new = function(api, ...)
+    _G.zellij_acceptance_client = api
+    local client = original_new(api, ...)
+    local navigate = client.navigate
+    client.navigate = function(self, direction)
+        local function send()
+            local start = vim.uv.hrtime()
+            navigate(self, direction, function(result)
+                vim.g.navigation_results = (vim.g.navigation_results or 0) + 1
+                vim.g.navigation_latency_us = (vim.uv.hrtime() - start) / 1000
+            end)
+        end
+        local work = vim.env.NAVIGATION_WORK
+        if vim.uv.fs_stat(work .. "/query-armed") then
+            vim.fn.delete(work .. "/query-armed")
+            vim.fn.writefile({}, work .. "/query-blocked")
+            local function release()
+                if vim.uv.fs_stat(work .. "/query-release") then
+                    send()
+                else
+                    vim.defer_fn(release, 10)
+                end
+            end
+            release()
+        else
+            send()
+        end
+        return self
+    end
+    return client
+end
 require("pane-navigation").setup()
+vim.system = function() error("Pane navigation launched a subprocess") end
 vim.cmd.edit(vim.env.NAVIGATION_FILE)
 vim.cmd("vsplit")
 vim.cmd("wincmd h")
@@ -197,7 +148,11 @@ vim.cmd("wincmd h")
         env["NVIM_APPNAME"] = "navigation-scrollback"
         scrollback_config = home / ".config" / env["NVIM_APPNAME"]
         scrollback_config.mkdir()
-        (scrollback_config / "init.lua").write_text("vim.opt.swapfile = false\n")
+        (scrollback_config / "init.lua").write_text(
+            'vim.opt.runtimepath:prepend(vim.env.HOME .. "/.config/nvim")\n'
+            'vim.opt.runtimepath:append(vim.env.NAVIGATOR_RUNTIME)\n'
+            'vim.opt.runtimepath:append(vim.env.ZELLIJ_CLIENT_RUNTIME)\n'
+            'vim.opt.swapfile = false\nrequire("pane-navigation").setup()\n')
         outside = subprocess.run(["zsh", "-d", "-i", "-c", "bindkey -M viins '^H'"],
                                  env=env, text=True, capture_output=True, check=True, timeout=5)
         assert '"^H" backward-delete-char' in outside.stdout, outside
@@ -230,20 +185,47 @@ vim.cmd("wincmd h")
                 result.check_returncode()
                 return result.stdout.strip()
 
+            for mode_keys in (b"[", b"/Navigation\r"):
+                terminal.prefix(mode_keys)
+                terminal.send(b"\x08")
+                terminal.until("native copy/search navigation reaches the left pane", lambda: focused() == left)
+                terminal.send(b"\x0c")
+                terminal.until("native navigation returns to application mode", lambda: focused() == right)
+
             terminal.send(b"\x08")
             terminal.until("bare Ctrl-h moves from the Zsh prompt", lambda: focused() == left)
             terminal.send((shlex.join(["nvim", "-u", str(init), "-i", "NONE", "--listen", str(socket)]) + "\r").encode())
             terminal.until("Neovim opens two splits", lambda: socket.exists() and editor('winnr("$")') == "2")
+            editor("luaeval('(function() zellij_acceptance_client:request({query_tab_names={}}, {expect_output=true}, function(err, value) vim.g.zellij_public_error=err; vim.g.zellij_public_tabs=value end); return true end)()')")
+            terminal.until("the reusable API lists tab names", lambda:
+                           "home" in editor("get(g:, 'zellij_public_tabs', '')"))
+            assert editor("get(g:, 'zellij_public_error', '')") == ""
+
             terminal.send(b"\x0c")
             terminal.until("Ctrl-l moves inside Neovim first", lambda: editor("winnr()") == "2")
             assert focused() == left
             terminal.send(b"\x0c")
             terminal.until("Ctrl-l crosses the editor boundary", lambda: focused() == right)
+            terminal.until("the server acknowledges direct IPC", lambda:
+                           int(editor("get(g:, 'navigation_results', 0)")) > 0)
+            print("Direct socket navigation acknowledgement:", editor("g:navigation_latency_us"), "microseconds", flush=True)
             terminal.send(b"\x08")
             terminal.until("Ctrl-h returns from Zsh to Neovim", lambda: focused() == left)
             assert editor('winnr("$")') == "2"
             terminal.send(b"\x08")
             terminal.until("Ctrl-h returns to the editor's left split", lambda: editor("winnr()") == "1")
+
+            for selection in (b"v", b"V", b"\x16"):
+                terminal.send(selection + b"\x0c")
+                terminal.until("visual selection moves to the next editor split", lambda: editor("winnr()") == "2")
+                terminal.send(b"\x0c")
+                terminal.until("visual navigation crosses the editor boundary", lambda: focused() == right)
+                terminal.send(b"\x08")
+                terminal.until("return from visual boundary", lambda: focused() == left)
+                terminal.send(b"\x1b")
+                terminal.until("leave visual selection before resetting focus", lambda: editor("mode()") == "n")
+                terminal.send(b"\x08")
+                terminal.until("restore the left editor split", lambda: editor("winnr()") == "1")
 
             terminal.send(b"i\x0c")
             terminal.until("insert-mode navigation stays inside the editor first", lambda:
@@ -308,19 +290,38 @@ vim.cmd("wincmd h")
             terminal.until("second tab left pane selected", lambda: focused() == second[0]["id"])
             terminal.prefix(b"\x10")
             terminal.until("return to original editor", lambda: focused() == left)
+            completed = int(editor("get(g:, 'navigation_results', 0)"))
             (work / "query-armed").touch()
             terminal.send(b"\x08")
-            terminal.until("navigation waits for the real pane query", lambda:
+            terminal.until("hold the editor request before sending it", lambda:
                            (work / "query-blocked").exists())
             terminal.prefix(b"n")
             terminal.until("change tab while navigation waits", lambda: terminal.tabs()[1]["active"])
             (work / "query-release").touch()
-            # A response from the editor's event loop follows its synchronous
-            # navigation helper completing; no arbitrary settling sleep.
-            terminal.until("delayed navigation finishes", lambda: editor('winnr("$")') == "3")
+            terminal.until("delayed navigation is acknowledged", lambda:
+                           int(editor("get(g:, 'navigation_results', 0)")) > completed)
             assert focused() == second[0]["id"], "Stale navigation moved a different tab"
             terminal.prefix(b"\x10")
             terminal.until("return to the original tab", lambda: focused() == left)
+
+            # A single-client in-place scrollback editor can safely cross its
+            # pane boundary even though list-clients omits its focus row.
+            terminal.prefix(b"l")
+            terminal.until("select the shell for scrollback", lambda: focused() == right)
+            known_panes = {p["id"] for p in terminal.terminals()}
+            terminal.action("edit-scrollback", "--ansi", "--pane-id", str(right))
+            terminal.until("single-client scrollback opens", lambda:
+                           any(p["id"] not in known_panes for p in terminal.terminals()))
+            scrollback = next(p["id"] for p in terminal.terminals() if p["id"] not in known_panes)
+            terminal.send(b"v\x08")
+            terminal.until("visual scrollback navigation reaches its neighbor", lambda: focused() == left)
+            terminal.prefix(b"l")
+            terminal.until("return to the retained scrollback editor", lambda: focused() == scrollback)
+            terminal.send(b"\x1b:q!\r")
+            terminal.until("close single-client scrollback", lambda:
+                           all(p["id"] != scrollback for p in terminal.terminals()))
+            terminal.prefix(b"h")
+            terminal.until("return to the original editor", lambda: focused() == left)
 
             # Scrollback editors are omitted from list-clients even though
             # their clients remain connected and can become the CLI target.
@@ -351,7 +352,7 @@ vim.cmd("wincmd h")
                 assert {row[0]: row[1] for row in listed_clients()} == client_focus, \
                     "Bare navigation changed another attached client's focus"
                 known_panes = {p["id"] for p in terminal.terminals()}
-                second_client.prefix(b"e")
+                second_client.action("edit-scrollback", "--ansi", "--pane-id", str(right))
                 terminal.until("scrollback editor hides its client from the pane listing", lambda:
                                len(listed_clients()) == 1 and
                                any(p["id"] not in known_panes for p in terminal.terminals()))
@@ -363,7 +364,7 @@ vim.cmd("wincmd h")
                 (work / "query-release").unlink()
                 (work / "query-armed").write_text("list-clients")
                 terminal.send(b"\x08")
-                terminal.until("navigation waits for client ownership", lambda:
+                terminal.until("hold the request while another client edits scrollback", lambda:
                                (work / "query-blocked").exists())
                 second_client.send(b"j")
                 (work / "query-release").touch()
@@ -429,6 +430,8 @@ finally:
             print("PASS: bare navigation works from foreground applications and preserves editor modes/zoom; "
                   "delayed requests cannot use inactive-tab focus or an omitted scrollback client.")
         except Exception:
+            print("Neovim messages:", editor("execute('messages')"))
+            print("Navigation results:", editor("get(g:, 'navigation_results', 0)"))
             print("Pane state:", terminal.panes())
             print("Focused screen:", terminal.action("dump-screen"))
             raise
@@ -436,7 +439,6 @@ finally:
             (work / "query-release").touch()
             subprocess.run([binary, "kill-session", name], env=env, capture_output=True, timeout=5)
             terminal.close()
-        nested_workflow(binary, env, work, init)
 
 
 if __name__ == "__main__":

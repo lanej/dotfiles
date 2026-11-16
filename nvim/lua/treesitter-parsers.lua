@@ -2,6 +2,7 @@
 return {
 	"lua",
 	"bash",
+	"bnf",
 	"rust",
 	"python",
 	"ruby",

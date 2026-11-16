@@ -1,0 +1,188 @@
+#!/usr/bin/env python3
+"""Install the pinned patched Git package without modifying system Git."""
+
+import argparse
+import hashlib
+import os
+from pathlib import Path
+import platform
+import re
+import shutil
+import shlex
+import subprocess
+import sys
+import tarfile
+import tempfile
+import tomllib
+import urllib.request
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def catalog():
+    with (ROOT / "bootstrap/tools.toml").open("rb") as stream:
+        return tomllib.load(stream)["tools"]["git-worktree-hooks"]
+
+
+def archive_name(recipe, *, generic=False):
+    system = platform.system()
+    os_name = {"Darwin": "darwin", "Linux": "linux"}.get(system)
+    if not os_name:
+        raise ValueError("Unsupported platform")
+    if system == "Linux" and not generic:
+        try:
+            release = platform.freedesktop_os_release()
+        except OSError:
+            release = {}
+        families = {release.get("ID", ""), *release.get("ID_LIKE", "").split()}
+        if families & {"rhel", "centos", "rocky", "almalinux", "ol"} and release.get("VERSION_ID", "").split(".")[0] == "8":
+            os_name = "linux-el8"
+    return f"git-{recipe['version']}-worktree-hooks-{os_name}-{platform.machine()}.tar.gz"
+
+
+def run_git(runtime, *arguments, home):
+    env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+    env.update(HOME=str(home), GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
+    try:
+        return subprocess.check_output([str(runtime / "bin/git"), *arguments], env=env, text=True, stderr=subprocess.STDOUT).strip()
+    except subprocess.CalledProcessError as error:
+        raise ValueError(f"Git runtime command failed (exit {error.returncode}): {error.output.strip()}") from error
+
+
+def validate(runtime, expected, home):
+    if run_git(runtime, "--version", home=home) != f"git version {expected}":
+        raise ValueError("Archive runtime version does not match the tool catalog")
+    actual_exec = Path(run_git(runtime, "--exec-path", home=home)).resolve()
+    if actual_exec != (runtime / "libexec/git-core").resolve():
+        raise ValueError("Git helpers did not relocate with the runtime")
+    if not os.access(runtime / "libexec/git-core/git-remote-http", os.X_OK):
+        raise ValueError("Archive is missing the HTTPS helper")
+    helper_env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+    helper_env.update(HOME=str(home), LC_ALL="C", GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
+    helper = subprocess.run([str(runtime / "libexec/git-core/git-remote-http")],
+                            env=helper_env, text=True, capture_output=True)
+    if helper.returncode != 1 or "usage: git remote-curl" not in helper.stderr:
+        raise ValueError(f"HTTPS helper cannot run on this machine: {helper.stderr.strip()}")
+    with tempfile.TemporaryDirectory(prefix="git-install-smoke-") as smoke:
+        run_git(runtime, "init", smoke, home=home)
+        if not (Path(smoke) / ".git/hooks/pre-commit.sample").is_file():
+            raise ValueError("Git templates did not relocate with the runtime")
+
+
+def managed_link(link, installs):
+    if not os.path.lexists(link):
+        return True
+    if not link.is_symlink():
+        return False
+    try:
+        target = link.resolve()
+    except (OSError, RuntimeError):
+        return False
+    return (target.parent.name == "bin" and target.name in {"git", "git-launcher"}
+            and target.parent.parent.parent == installs.resolve()
+            and (target.parent.parent / ".archive-sha256").is_file())
+
+
+def install(archive, home):
+    if not hasattr(tarfile, "data_filter"):
+        raise ValueError("Safe extraction requires Python 3.11.8+ or 3.12+")
+    recipe = catalog()
+    expected = recipe["runtime_version"]
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+", expected):
+        raise ValueError("Invalid runtime version in catalog")
+    installs = home / ".local/opt/git-worktree-hooks"
+    active = home / ".local/bin/git"
+    if not managed_link(active, installs):
+        raise ValueError(f"Refusing to replace user-managed executable or link: {active}")
+    if installs.is_symlink():
+        raise ValueError(f"Runtime directory must not be a symlink: {installs}")
+    destination = installs / expected
+    if archive is None and not os.path.lexists(destination):
+        basename = archive_name(recipe)
+        with tempfile.TemporaryDirectory(prefix="git-runtime-download-") as temporary:
+            archive = Path(temporary) / basename
+            for name in (basename + ".sha256", basename):
+                url = f"{recipe['release_url']}/{name}"
+                print(f"Downloading {url}", flush=True)
+                with urllib.request.urlopen(url, timeout=60) as source, (Path(temporary) / name).open("wb") as target:
+                    shutil.copyfileobj(source, target)
+            return install(archive, home)
+    digest = None
+    if archive is not None:
+        basename = archive_name(recipe)
+        if archive.name not in {basename, archive_name(recipe, generic=True)}:
+            raise ValueError(f"Expected platform archive {basename}")
+        lines = archive.with_name(archive.name + ".sha256").read_text().splitlines()
+        matching = [line.split() for line in lines if len(line.split()) == 2 and line.split()[1].lstrip("*") == archive.name]
+        if len(matching) != 1 or not re.fullmatch(r"[0-9a-fA-F]{64}", matching[0][0]):
+            raise ValueError("Checksum file must identify this archive exactly once")
+        with archive.open("rb") as stream:
+            digest = hashlib.file_digest(stream, "sha256").hexdigest()
+        if digest != matching[0][0].lower():
+            raise ValueError("Archive checksum mismatch")
+    if os.path.lexists(destination):
+        if destination.is_symlink() or not destination.is_dir():
+            raise ValueError(f"Existing runtime is not managed: {destination}")
+        installed_digest = (destination / ".archive-sha256").read_text().strip()
+        if not re.fullmatch(r"[0-9a-f]{64}", installed_digest) or (digest is not None and installed_digest != digest):
+            raise ValueError(f"Existing runtime is not the same managed archive: {destination}")
+        validate(destination, expected, home)
+    else:
+        if archive is None:
+            raise ValueError("No managed runtime installed; set DOTFILES_GIT_WORKTREE_HOOKS_ARCHIVE or pass --archive with a downloaded platform archive and its adjacent .sha256 file; see docs/git-worktree-hooks.md")
+        installs.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix=".install-", dir=installs) as temporary:
+            staged = Path(temporary) / "runtime"
+            staged.mkdir()
+            snapshot = Path(temporary) / "archive.tar.gz"
+            shutil.copyfile(archive, snapshot)
+            with snapshot.open("rb") as stream:
+                if hashlib.file_digest(stream, "sha256").hexdigest() != digest:
+                    raise ValueError("Archive changed before extraction")
+                stream.seek(0)
+                with tarfile.open(fileobj=stream, mode="r:gz") as source:
+                    source.extractall(staged, filter="data")
+            validate(staged, expected, home)
+            (staged / ".archive-sha256").write_text(digest + "\n")
+            staged.rename(destination)
+        try:
+            validate(destination, expected, home)
+        except Exception:
+            shutil.rmtree(destination)
+            raise
+    with tempfile.TemporaryDirectory(prefix=".git-launcher-", dir=destination / "bin") as temporary:
+        staged_launcher = Path(temporary) / "git-launcher"
+        staged_launcher.write_text(f'#!/bin/sh\nexec {shlex.quote(str(destination / "bin/git"))} "$@"\n')
+        staged_launcher.chmod(0o755)
+        os.replace(staged_launcher, destination / "bin/git-launcher")
+    active.parent.mkdir(parents=True, exist_ok=True)
+    if not managed_link(active, installs):
+        raise ValueError(f"Refusing to replace user-managed executable or link: {active}")
+    with tempfile.TemporaryDirectory(prefix=".git-link-", dir=active.parent) as temporary:
+        staged_link = Path(temporary) / "git"
+        staged_link.symlink_to(destination / "bin/git-launcher")
+        env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+        actual_exec = subprocess.check_output([str(staged_link), "--exec-path"], env=env, text=True).strip()
+        if Path(actual_exec).resolve() != (destination / "libexec/git-core").resolve():
+            raise ValueError("Installed Git entrypoint cannot locate its runtime helpers")
+        os.replace(staged_link, active)
+    print(f"Activated {active} -> {destination / 'bin/git-launcher'}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--archive", type=Path, help="Use a local platform archive and adjacent .sha256 instead of downloading the pinned package")
+    parser.add_argument("--home", default=Path.home(), type=Path)
+    parser.add_argument("--archive-name", action="store_true", help="Print this machine's package filename without installing")
+    options = parser.parse_args()
+    try:
+        if options.archive_name:
+            print(archive_name(catalog()))
+            return
+        install(options.archive.resolve() if options.archive else None, options.home.resolve())
+    except (OSError, ValueError, tarfile.TarError, subprocess.CalledProcessError) as error:
+        parser.exit(1, f"Git runtime install failed: {error}\n")
+
+
+if __name__ == "__main__":
+    main()

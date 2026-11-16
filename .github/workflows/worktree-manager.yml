@@ -1,0 +1,40 @@
+name: Worktree manager integration
+on:
+  pull_request:
+    paths: ['scripts/install-worktree-manager', 'scripts/test-worktree-manager.py', 'bin/git-worktree-policy', 'worktree-manager/**', 'config/sets/worktrees.toml', 'bootstrap/tools.toml', 'bootstrap.sh', 'scripts/dotfiles-config.py', 'scripts/make/config.sh', 'Makefile', '.github/workflows/worktree-manager.yml']
+  push:
+    branches: [master]
+    paths: ['scripts/install-worktree-manager', 'scripts/test-worktree-manager.py', 'bin/git-worktree-policy', 'worktree-manager/**', 'config/sets/worktrees.toml', 'bootstrap/tools.toml', 'bootstrap.sh', 'scripts/dotfiles-config.py', 'scripts/make/config.sh', 'Makefile', '.github/workflows/worktree-manager.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  integration:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Linux activity inspection
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y lsof
+      - name: Download pinned worktree package
+        run: |
+          version=$(python3 -c 'import tomllib; print(tomllib.load(open("bootstrap/tools.toml","rb"))["tools"]["worktree-manager"]["version"])')
+          HOME="$RUNNER_TEMP/manager" sh scripts/install-worktree-manager "$version"
+          python3 - "$RUNNER_TEMP/manager/.local/bin/worktree" <<'PY'
+          import hashlib,sys
+          from pathlib import Path
+          path=Path(sys.argv[1])
+          path.with_name(path.name+'.sha256').write_text(hashlib.sha256(path.read_bytes()).hexdigest()+'  '+path.name+'\n')
+          PY
+      - name: Download the existing patched Git runtime
+        run: python3 scripts/install-git-worktree-hooks.py --home "$RUNNER_TEMP/git"
+      - name: Verify opt-in behavior
+        run: python3 scripts/test-worktree-manager.py --binary "$RUNNER_TEMP/manager/.local/bin/worktree" --git "$RUNNER_TEMP/git/.local/bin/git"

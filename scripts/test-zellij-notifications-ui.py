@@ -92,7 +92,7 @@ for line in sys.stdin:
 
         try:
             client.grant_status_permissions()
-            client.until("notification bar ready", lambda: "!0 ●0 ✓0" in view())
+            client.until("notification bar ready", lambda: "0:Tab #0" in view() and "!?" not in screen.display[0])
             client.prefix(b"B")
             client.until("empty history remains readable", lambda:
                          "No notifications" in view() and "›" in view())
@@ -107,7 +107,7 @@ for line in sys.stdin:
             client.prefix(b"c")
             client.until("background the agent", lambda: len(client.tabs()) == 2)
             client.until("the new tab has initialized its notification bar", lambda:
-                         "1:Tab #1" in view() and "!0 ●1 ✓0" in screen.display[0])
+                         "1:Tab #1" in view() and "●1" in screen.display[0])
             def focused_pane():
                 active = next(tab["tab_id"] for tab in client.tabs() if tab["active"])
                 return next(p["id"] for p in client.terminals()
@@ -117,7 +117,9 @@ for line in sys.stdin:
             client.until("background question enters history", lambda:
                          any(row["level"] == "warn" for row in history()))
             client.until("urgent count and a notice are visible", lambda:
-                         " │ !1 ●0 ✓0" in view().splitlines()[0])
+                         " │ !1" in view().splitlines()[0] and "? 0:" in screen.display[0])
+            question = screen.buffer[0][screen.display[0].index("? 0:")]
+            assert (question.fg, question.bg, question.bold) == ("2e3440", "d08770", True)
             capture("notice")
             assert focused_pane() == focused
             client.send(b"echo notice-kept-keyboard-focus\r")
@@ -128,7 +130,7 @@ for line in sys.stdin:
                          any(row["title"] == "Deploy" and row["message"] == "Version ready"
                              for row in history()))
             client.action("paste", "--pane-id", f"terminal_{agent}", "done\n")
-            client.until("completion is separate from urgency", lambda: "!0 ●0 ✓1" in view())
+            client.until("completion is separate from urgency", lambda: "✓1" in view().splitlines()[0] and "!1" not in screen.display[0])
             client.until("completion retained in history", lambda:
                          any(row["level"] == "success" for row in history()))
             before = len(history())
@@ -174,7 +176,7 @@ for line in sys.stdin:
             decoder = codecs.getincrementaldecoder("utf-8")("replace")
             offset = 0
             client.grant_status_permissions()
-            client.until("narrow bar is ready", lambda: "!0 ●0" in view())
+            client.until("narrow bar is ready", lambda: "0:Tab #0" in view() and "!?" not in screen.display[0])
             client.prefix(b"B")
             client.until("narrow history opens with a full source preview", lambda:
                          "Notification history" in view() and "Build passed. Ready to deploy." in view())

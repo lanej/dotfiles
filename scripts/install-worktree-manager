@@ -1,0 +1,79 @@
+#!/bin/sh
+set -eu
+version=${1:?Usage: install-worktree VERSION}
+case "$version" in ''|*[!0-9.]*) printf '%s\n' 'Invalid worktree version' >&2; exit 1 ;; esac
+case $(uname -s) in Darwin) system=darwin ;; Linux) system=linux ;; *) printf '%s\n' 'Unsupported operating system' >&2; exit 1 ;; esac
+case $(uname -m) in arm64|aarch64) architecture=arm64 ;; x86_64|amd64) architecture=amd64 ;; *) printf '%s\n' 'Unsupported architecture' >&2; exit 1 ;; esac
+checksum() {
+    if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'
+    else shasum -a 256 "$1" | awk '{print $1}'; fi
+}
+validate() {
+    [ "$("$1" --version)" = "worktree $version" ]
+}
+destination="$HOME/.local/bin/worktree"
+receipt="$HOME/.local/share/worktree-manager/install-receipt"
+prior_digest=
+if [ -e "$destination" ] || [ -L "$destination" ]; then
+    if [ -L "$destination" ] || [ ! -f "$destination" ] || [ -L "$receipt" ] || [ ! -f "$receipt" ]; then
+        printf 'Refusing to replace unmanaged worktree binary: %s\n' "$destination" >&2
+        exit 1
+    fi
+    installed_version=$(sed -n '1p' "$receipt")
+    installed_digest=$(sed -n '2p' "$receipt")
+    case "$installed_version" in ''|*[!0-9.]*) installed_digest=invalid ;; esac
+    case "$installed_digest" in ''|*[!a-fA-F0-9]*) installed_digest=invalid ;; esac
+    prior_digest=$(checksum "$destination")
+    if [ "${#installed_digest}" -ne 64 ] || [ "$prior_digest" != "$installed_digest" ]; then
+        printf 'Refusing to replace modified worktree binary: %s\n' "$destination" >&2
+        exit 1
+    fi
+fi
+if [ -L "$receipt" ] || { [ -e "$receipt" ] && [ ! -f "$receipt" ]; }; then
+    printf 'Refusing to replace unmanaged worktree binary: %s\n' "$destination" >&2
+    exit 1
+fi
+if [ -z "${WORKTREE_INSTALL_BINARY:-}" ] && [ -n "$prior_digest" ] && [ -x "$destination" ]; then
+    if [ "$installed_version" = "$version" ] && validate "$destination"; then
+        printf 'Using installed worktree %s\n' "$version"
+        exit 0
+    fi
+fi
+mkdir -p "$HOME/.local/bin" "${receipt%/*}"
+stage=$(mktemp -d "$HOME/.local/bin/.worktree.XXXXXX")
+trap 'rm -rf "$stage"' EXIT HUP INT TERM
+name="worktree-$system-$architecture"
+if [ -n "${WORKTREE_INSTALL_BINARY:-}" ]; then
+    cp "$WORKTREE_INSTALL_BINARY" "$stage/$name"
+    cp "$WORKTREE_INSTALL_BINARY.sha256" "$stage/checksum"
+    expected_name=$(basename "$WORKTREE_INSTALL_BINARY")
+else
+    release="https://github.com/lanej/worktree-manager/releases/download/v$version"
+    curl -fLsS "$release/$name" -o "$stage/$name"
+    curl -fLsS "$release/$name.sha256" -o "$stage/checksum"
+    expected_name=$name
+fi
+expected=$(awk -v name="$expected_name" '$2 == name { hash=$1; count++ } END { if (count==1) print hash }' "$stage/checksum")
+case "$expected" in ''|*[!a-fA-F0-9]*) printf '%s\n' 'Invalid worktree checksum' >&2; exit 1 ;; esac
+if [ "${#expected}" -ne 64 ] || [ "$(checksum "$stage/$name")" != "$expected" ]; then
+    printf '%s\n' 'Worktree checksum mismatch' >&2
+    exit 1
+fi
+chmod 755 "$stage/$name"
+if ! validate "$stage/$name"; then
+    printf '%s\n' 'Worktree binary version or platform mismatch' >&2
+    exit 1
+fi
+if [ -n "$prior_digest" ]; then
+    if [ -L "$destination" ] || [ ! -f "$destination" ] || [ "$(checksum "$destination")" != "$prior_digest" ]; then
+        printf 'Refusing changed installation destination: %s\n' "$destination" >&2
+        exit 1
+    fi
+elif [ -e "$destination" ] || [ -L "$destination" ]; then
+    printf 'Refusing changed installation destination: %s\n' "$destination" >&2
+    exit 1
+fi
+printf '%s\n%s\n' "$version" "$expected" > "$stage/receipt"
+mv -f "$stage/$name" "$destination"
+mv -f "$stage/receipt" "$receipt"
+printf 'Installed worktree %s\n' "$version"

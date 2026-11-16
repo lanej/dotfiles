@@ -1,5 +1,8 @@
-sets = ["shell", "terminal", "editor", "development", "ai"]
+sets = ["editor", "development", "ai"]
 
 [tools]
+source-code = true
 mail = true
 quarto = true
+intent = true
+keylease = true

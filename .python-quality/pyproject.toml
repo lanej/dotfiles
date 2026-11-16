@@ -1,0 +1,17 @@
+[project]
+name = "source-code-python-quality"
+version = "1.0.0"
+requires-python = ">=3.11"
+dependencies = [
+  "ruff==0.17.5",
+  "ty==0.0.104",
+  "pip-audit==2.10.1",
+  "pytest==9.2.0",
+  "PyYAML==6.0.3",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = []

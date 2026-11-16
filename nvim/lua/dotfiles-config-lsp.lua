@@ -21,7 +21,8 @@ local function directory(path)
 end
 directory(vim.fs.joinpath(root, "config"))
 directory(vim.fs.joinpath(config_home, "dotfiles"))
-local machine = vim.fs.normalize(vim.fn.expand(vim.env.DOTFILES_CONFIG or vim.fs.joinpath(config_home, "dotfiles/config.toml")))
+local machine =
+	vim.fs.normalize(vim.fn.expand(vim.env.DOTFILES_CONFIG or vim.fs.joinpath(config_home, "dotfiles/config.toml")))
 associate(machine, "$")
 -- Match the resolver's canonical parent when the machine file is a symlink.
 directory(vim.fs.joinpath(vim.fs.dirname(vim.uv.fs_realpath(machine) or machine), "sets"))

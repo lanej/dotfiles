@@ -14,7 +14,7 @@ When invoked:
 
 ## Software architecture and construction
 
-Load the `builder` core for reviews. Load its full architecture standard for changed capability boundaries, models, adapters, consequential effects or architecture reviews, and construction detail by the core's stated triggers.
+Follow the repository's explicitly installed source-code policy for reviews. When that profile selects Builder, read its project-local core and load further architecture/construction references by the core's task triggers. Without a selected profile, apply repository requirements; do not load a workstation-wide engineering default.
 Judge the resulting behavior and evidence, not directories or pattern names.
 Report specific requirement violations, affected behavior, and supporting
 observations; separate established facts, assumptions, and verification gaps.

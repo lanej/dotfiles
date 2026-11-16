@@ -389,7 +389,7 @@ vim.g.jedi_auto_initialization = 0
 -- Source environment on directory change
 function _G.SourceEnvOnDirChange()
 	if vim.tbl_contains(vim.tbl_keys(vim.v.event), "cwd") then
-		local sources = SourceEnv()
+		local sources = _G.SourceEnv()
 		if sources then
 			print("reloaded env")
 		end
@@ -401,8 +401,7 @@ vim.g.dotenv_files = { ".env", ".env-build", ".env-runtime", ".env-override", ".
 -- Load all vim.g.dotenv_files in the current directory if present
 -- @param files table
 -- @return table
-function _G.SourceEnv(files)
-	files = files or vim.g.dotenv_files
+function _G.SourceEnv(_files)
 	local loaded = {}
 	for _, file in ipairs(vim.g.dotenv_files) do
 		if vim.fn.filereadable(file) == 1 then
@@ -443,7 +442,7 @@ vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter" }, {
 vim.api.nvim_create_autocmd("DirChanged", {
 	pattern = "*",
 	callback = function()
-		SourceEnvOnDirChange()
+		_G.SourceEnvOnDirChange()
 	end,
 })
 
@@ -451,7 +450,7 @@ vim.api.nvim_create_autocmd("DirChanged", {
 vim.api.nvim_create_autocmd("VimEnter", {
 	pattern = "*",
 	callback = function()
-		SourceEnv()
+		_G.SourceEnv()
 	end,
 })
 
@@ -758,6 +757,8 @@ if not (vim.uv or vim.loop).fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
+require("dotfiles-theme").setup()
+
 require("lazy").setup({
 	{
 		"m00qek/baleia.nvim",
@@ -773,35 +774,6 @@ require("lazy").setup({
 			-- Uses fs_event watchers by default (no polling)
 			silent = true,
 		},
-	},
-	{
-		"gbprod/nord.nvim",
-		config = function()
-			require("nord").setup({
-				transparent = true, -- Enable this to disable setting the background color
-				terminal_colors = true,
-				diff = { mode = "fg" },
-				borders = true, -- Enable the border between verticaly split windows visible
-				errors = { mode = "fg" }, -- Display mode for errors and diagnostics
-				styles = { comments = { italic = false } },
-				search = { theme = "vim" }, -- theme for highlighting search results
-				on_highlights = function(highlights, colors)
-					highlights["@symbol"] = { fg = colors.aurora.orange }
-					highlights["@string.special.symbol"] = highlights["@symbol"]
-					highlights["@variable.member"] = { fg = colors.frost.polar_water }
-					highlights["@variable.parameter"] = { fg = colors.aurora.purple }
-					highlights["@module"] = { fg = colors.frost.ice }
-					highlights["@error"] = { sp = colors.aurora.red, undercurl = true }
-					highlights["@constant"] = { fg = colors.aurora.purple }
-					highlights["@text.uri"] = { underline = true }
-					highlights["@error"] = { undercurl = true }
-					highlights["@spell.bad"] = { undercurl = true }
-
-					return highlights
-				end,
-			})
-			vim.api.nvim_command("colorscheme nord")
-		end,
 	},
 	{
 		"rachartier/tiny-inline-diagnostic.nvim",
@@ -1114,9 +1086,9 @@ require("lazy").setup({
 			require("lualine").setup({
 				options = {
 					icons_enabled = true,
-					theme = "nord",
-					component_separators = { left = "", right = "" },
-					section_separators = { left = "", right = "" },
+					theme = require("dotfiles-theme").lualine(),
+					component_separators = require("dotfiles-theme").lualine_options().component_separators,
+					section_separators = require("dotfiles-theme").lualine_options().section_separators,
 					disabled_filetypes = {
 						statusline = {},
 						winbar = {},
@@ -1262,7 +1234,11 @@ require("lazy").setup({
 			})
 			require("markdown-tables").setup_hover()
 		end,
-		dependencies = { "MunifTanjim/nui.nvim", "rcarriga/nvim-notify", "neovim/nvim-lspconfig" },
+		dependencies = {
+			"MunifTanjim/nui.nvim",
+			{ "rcarriga/nvim-notify", opts = { background_colour = "#000000" } },
+			"neovim/nvim-lspconfig",
+		},
 	},
 	{
 		"glepnir/lspsaga.nvim",
@@ -1369,6 +1345,7 @@ require("lazy").setup({
 	},
 	{
 		"numToStr/Navigator.nvim",
+		dependencies = { "lanej/zellij-client.nvim" },
 		config = function()
 			require("pane-navigation").setup()
 		end,
@@ -1637,6 +1614,7 @@ require("lazy").setup({
 		config = function()
 			require("octo").setup({
 				picker = "fzf-lua",
+				use_local_fs = false,
 				mappings = require("pr-reviews").octo_mappings,
 				picker_config = {
 					use_emojis = false,
@@ -1693,7 +1671,7 @@ require("lazy").setup({
 					-- You can customize some of the format options for the filetype (:help conform.format)
 					rust = { "rustfmt", lsp_format = "fallback" },
 					sh = { "shfmt" },
-					go = { "gofmt", "goimports", "gci" },
+					go = { "gofmt", "goimports", "gci", "golangci-lint" },
 					-- Conform will run the first available formatter
 					ruby = {
 						"prettierd",

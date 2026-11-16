@@ -1,5 +1,5 @@
 {
-  "format": "󰚩 {id:.8} {status} | {project}",
+  "format": "󰚩 {project}",
   "states": {
     "working": "",
     "ready": "",

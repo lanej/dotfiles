@@ -1,0 +1,48 @@
+name: Neovim BNF
+
+on:
+  pull_request:
+    paths: &bnf-paths
+      - 'nvim/grammars/bnf/**'
+      - 'nvim/lua/treesitter.lua'
+      - 'nvim/lua/treesitter-parsers.lua'
+      - 'nvim/lazy-lock.json'
+      - 'nvim/tests/bnf.lua'
+      - 'scripts/test-nvim-bnf.py'
+      - '.github/workflows/neovim-bnf.yml'
+  push:
+    branches: [master]
+    paths: *bnf-paths
+
+permissions:
+  contents: read
+
+jobs:
+  bnf:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install pinned Neovim and Tree-sitter CLI
+        shell: bash
+        run: |
+          case "$(uname -s)-$(uname -m)" in
+            Linux-x86_64) nvim_platform=linux-x86_64; ts_platform=linux-x64 ;;
+            Darwin-arm64) nvim_platform=macos-arm64; ts_platform=macos-arm64 ;;
+            Darwin-x86_64) nvim_platform=macos-x86_64; ts_platform=macos-x64 ;;
+            *) exit 1 ;;
+          esac
+          mkdir -p "$RUNNER_TEMP/bnf-tools/bin"
+          curl --fail --location --retry 3 "https://github.com/neovim/neovim/releases/download/v0.12.5/nvim-$nvim_platform.tar.gz" | tar -xz -C "$RUNNER_TEMP/bnf-tools"
+          curl --fail --location --retry 3 "https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.0/tree-sitter-$ts_platform.gz" | gzip -dc > "$RUNNER_TEMP/bnf-tools/bin/tree-sitter"
+          chmod +x "$RUNNER_TEMP/bnf-tools/bin/tree-sitter"
+          echo "$RUNNER_TEMP/bnf-tools/nvim-$nvim_platform/bin" >> "$GITHUB_PATH"
+          echo "$RUNNER_TEMP/bnf-tools/bin" >> "$GITHUB_PATH"
+      - run: python3 scripts/test-nvim-bnf.py

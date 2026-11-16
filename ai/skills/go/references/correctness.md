@@ -43,7 +43,7 @@ Keep concrete variants in the declaring package and handle nil explicitly when a
 
 ## Workflow and adoption
 
-Prefer `repo-bootstrap --go` for a new module or `repo-bootstrap --go-retrofit --pr-template none` for an existing repository. Bootstrap detects root modules, preserves existing config bytes and comments, merges YAML/JSON v2 policy into a separate strict layer, and retains the original lint gate. Existing configs or tracked Go source default to a ratchet; new projects default to strict. V1 configurations must be migrated first; TOML needs conversion.
+Prefer `source-code setup --go` for a new module or `source-code setup --go-retrofit --pr-template none` for an existing repository. Bootstrap detects root modules, preserves existing config bytes and comments, merges YAML/JSON v2 policy into a separate strict layer, and retains the original lint gate. Existing configs or tracked Go source default to a ratchet; new projects default to strict. V1 configurations must be migrated first; TOML needs conversion.
 
 Without dotfiles, copy the following files from this package's assets into a new project. Do not overwrite existing policy; use the installer when retrofitting.
 
@@ -62,6 +62,8 @@ For a retrofit, run `bash scripts/check-go.sh baseline` once, against committed 
 The baseline counts file/linter/message/source-excerpt signatures rather than line numbers. Report line numbers and known shadow-declaration references are normalized; other analyzers may still embed changing locations. Ordinary movement remains allowed; indistinguishable replacements can share its budget, and formatter findings may represent a whole file. Treat this as gradual adoption, not proof that all legacy code meets the guide. After fixes, `bash scripts/check-go.sh ratchet` removes resolved allowances; it cannot add new ones. Normal lint requires resolved allowances to be removed; commit that reduction with the fix. Manually enlarging a baseline is a policy weakening, not a way to fix a failed check.
 
 Existing custom rules and build context are merged with the added defaults. The added layer owns its checker settings and defaults, strict reporting, and exclusions; the original gate remains unchanged and runs with fixing disabled. If its config changes, rerun bootstrap to refresh the merged copy. Local mode hides copied files and the baseline; shared CI requires tracked files. Existing workflows remain subject to normal conflict protection.
+
+Every runner entrypoint selects the `go` directive from `go.mod` as its exact check toolchain, overriding an inherited `GOTOOLCHAIN`. A directive without a patch component selects `.0`; prerelease directives retain their version. This applies to direct script calls as well as Make and lifecycle wrappers.
 
 The runner pins golangci-lint 2.13.2 and govulncheck v1.9.0, verifies the official linter release SHA-256, and builds govulncheck separately from application dependencies. Tools are cached under `${XDG_CACHE_HOME:-$HOME/.cache}/go-quality`. Review upgrades rather than switching to `latest`; the vulnerability database remains live. Initial setup and scans need network access.
 

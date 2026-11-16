@@ -7,7 +7,7 @@
 # This path is documented by 1Password and matches the IdentityAgent config in ~/.ssh/config
 ONEPASSWORD_SSH_AGENT="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
 
-# WHY: Refresh mux panes without replacing a local 1Password agent.
+# Fresh remote logins publish their agent; every remote child selects its stable path.
 if [ -n "$SSH_CONNECTION" ]; then
     if [ -r "$HOME/.local/bin/fix-ssh" ]; then
         # shellcheck disable=SC1091
@@ -95,7 +95,7 @@ export ARCH=$(uname -m)
 export IRCNICK='lanej'
 export IRCSERVER='irc.freenode.net'
 export EDITORD=${EDITORD:-$EDITOR}
-# nord-ish
+# Named ANSI colors inherit the terminal palette.
 export JQ_COLORS="1;37:0;31:0;35:0;36:0;32:1;37:1;37"
 export XDG_CONFIG_HOME="$HOME/.config"
 export GIT_SSH="$HOME/.local/bin/git-ssh"
@@ -198,3 +198,8 @@ else
 fi
 
 [ -f "$HOME/.atuin/bin/env" ] && . "$HOME/.atuin/bin/env"
+
+# SEE: Generated native theme settings do not require a generator at shell startup.
+if [ -r "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/theme/shell.sh" ]; then
+    . "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/theme/shell.sh"
+fi

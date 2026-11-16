@@ -2,6 +2,7 @@
 neovim = true
 imagemagick = true
 stylua = true
+luacheck = true
 shfmt = true
 bash-language-server = true
 rust-analyzer = true

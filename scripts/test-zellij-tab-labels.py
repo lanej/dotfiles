@@ -25,7 +25,60 @@ Display = importlib.import_module("test-zellij-status").Display
 ROOT, Terminal, PROMPT = workflow.ROOT, workflow.Terminal, workflow.PROMPT
 
 
-def main():
+def fixed_title_controls(terminal, env, name, home, top_line, native_bar=False):
+    def label(position, title):
+        return title if native_bar else f"{position}:{title}"
+
+    first = next(tab for tab in terminal.tabs() if tab["active"])["tab_id"]
+    terminal.send(b"printf '\\033]2;first project\\007'; read title_done\r")
+    terminal.until("first pane supplies an automatic title", lambda:
+                   label(0, "first project") in top_line() and " " not in top_line())
+    terminal.prefix(b"r")
+    terminal.until("rename field remains unlocked", lambda:
+                   next(tab for tab in terminal.tabs() if tab["tab_id"] == first)["name"] == ""
+                   and " " not in top_line())
+    terminal.send(b"review\r")
+    terminal.until("fixed title shows its lock", lambda: " " + label(0, "review") in top_line())
+    first_pane = next(p for p in terminal.terminals() if p["tab_id"] == first)["id"]
+    terminal.send(b"done\rprintf '\\033]2;review\\007'; read title_done\r")
+    terminal.until("manual title already matches its pane title", lambda:
+                   next(p for p in terminal.terminals() if p["id"] == first_pane)["title"] == "review"
+                   and " " + label(0, "review") in top_line())
+
+    def clear(pane, *args):
+        result = subprocess.run([str(home / ".local/bin/zellij-auto-title"), "--clear", *args],
+                                env={**env, "ZELLIJ_SESSION_NAME": name, "ZELLIJ_PANE_ID": str(pane)},
+                                capture_output=True, text=True, timeout=10)
+        assert result.returncode == 0, f"Clear failed: {result.stderr}"
+
+    clear(first_pane)
+    terminal.until("clearing removes the lock even when the name stays the same", lambda:
+                   label(0, "review") in top_line() and " " not in top_line()
+                   and next(tab for tab in terminal.tabs() if tab["tab_id"] == first)["name"] == "review")
+    terminal.prefix(b"c")
+    terminal.until("second tab is ready", lambda: len(terminal.tabs()) == 2)
+    second = next(tab for tab in terminal.tabs() if tab["active"])["tab_id"]
+    terminal.send(b"printf '\\033]2;second project\\007'; read title_done\r")
+    terminal.until("second pane supplies its title", lambda: label(1, "second project") in top_line())
+    terminal.action("rename-tab-by-id", str(first), "first review")
+    terminal.action("rename-tab-by-id", str(second), "second review")
+    terminal.until("both fixed titles are locked", lambda:
+                   " " + label(0, "first review") in top_line()
+                   and " " + label(1, "second review") in top_line())
+    second_pane = next(p for p in terminal.terminals() if p["tab_id"] == second)["id"]
+    clear(second_pane)
+    terminal.until("current clear preserves another fixed title", lambda:
+                   " " + label(0, "first review") in top_line()
+                   and label(1, "second project") in top_line()
+                   and " " + label(1, "second project") not in top_line())
+    clear(second_pane, "--all")
+    terminal.until("session clear restores both automatic names", lambda:
+                   label(0, "review") in top_line() and label(1, "second project") in top_line()
+                   and " " not in top_line())
+    print("PASS: real terminal shows fixed-title locks; current and session clearing restore names without taking another tab's title.")
+
+
+def main(fixed_titles=False, native_bar=False):
     for name in ("zellij", "cargo", "fzf", "zsh", "git"):
         assert shutil.which(name), f"Install {name} before testing tab labels"
     scratch = tempfile.TemporaryDirectory(prefix="zj-labels-", dir="/tmp")
@@ -43,10 +96,17 @@ def main():
         workflow.preserve_rust_homes(env)
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
                     "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "ENV", "BASH_ENV",
-                    "FZF_DEFAULT_OPTS", "FZF_DEFAULT_OPTS_FILE", "FZF_DEFAULT_COMMAND"):
+                    "FZF_DEFAULT_OPTS", "FZF_DEFAULT_OPTS_FILE", "FZF_DEFAULT_COMMAND",
+                    "SSH_CONNECTION", "SSH_CLIENT", "SSH_TTY"):
             env.pop(key, None)
+        if fixed_titles:
+            env.pop("ZELLIJ_SOCKET_DIR", None)
         subprocess.run(["make", "--no-print-directory", "zellij-status", "zellij"], cwd=ROOT,
                        env=env, check=True, capture_output=True, text=True)
+        if native_bar:
+            layout = home / ".config/zellij/layouts/tmux.kdl"
+            layout.unlink()
+            layout.symlink_to(ROOT / "zellij/layouts/tmux-native.kdl")
         project = home / "project"
         project.mkdir()
         subprocess.run(["git", "init", "-q", "-b", "topic", str(project)], check=True)
@@ -74,9 +134,14 @@ def main():
             return terminal.action("dump-screen", "--pane-id", f"terminal_{pane['id']}") if pane else ""
 
         try:
-            terminal.grant_status_permissions()
-            terminal.until("first tab starts at zero", lambda:
-                           PROMPT in terminal.output and "0:Tab #0" in top_line())
+            if not native_bar:
+                terminal.grant_status_permissions()
+            terminal.until("first tab is ready", lambda:
+                           PROMPT in terminal.output and
+                           ("Tab #1" if native_bar else "0:Tab #0") in top_line())
+            if fixed_titles:
+                fixed_title_controls(terminal, env, name, home, top_line, native_bar)
+                return
             # Resize after startup (Terminal sets its initial PTY size in the
             # child), keeping all eleven full labels visible for this workflow.
             fcntl.ioctl(terminal.fd, termios.TIOCSWINSZ, struct.pack("HHHH", 32, 480, 0, 0))
@@ -119,63 +184,121 @@ def main():
             terminal.until("split has two tiled terminals", lambda:
                            len([pane for pane in terminal.terminals() if pane["tab_id"] == eleventh]) == 2)
             hook = home / ".local/share/zsh/zellij-auto-title.zsh"
-            terminal.send(("zsh -f\rsource " + shlex.quote(str(hook)) + "\rcd "
-                           + shlex.quote(str(project)) + "\r").encode())
+            terminal.send(("cd " + shlex.quote(str(project)) + "; exec zsh -f\rsource "
+                           + shlex.quote(str(hook)) + "\r").encode())
             terminal.until("directory/git hook titles the generated split tab", lambda:
-                           active()["name"] == "project [topic]" and "9:project [topic]" in top_line())
+                           active()["name"] == "project  topic" and "9:project  topic" in top_line())
             terminal.send(b"printf '\\033]2;application work\\007'; read application_done\r")
-            terminal.until("application title overlays the managed native directory name", lambda:
-                           active()["name"] == "project [topic]" and "9:application work" in top_line())
+            terminal.until("application title appears in its pane while the tab keeps the project", lambda:
+                           any(p["title"] == "application work" for p in terminal.terminals())
+                           and active()["name"] == "project  topic" and "9:project  topic" in top_line())
             terminal.send(b"done\r")
             terminal.until("prompt restores the directory pane title", lambda:
-                           "9:project [topic]" in top_line())
+                           "9:project  topic" in top_line())
             ownership_probe = home / "ownership.json"
-            terminal.send(('env -u ZELLIJ_SOCKET_DIR zellij-status view "$ZELLIJ_SESSION_NAME" > '
+            terminal.send(('zellij-status view "$ZELLIJ_SESSION_NAME" > '
                            + shlex.quote(str(ownership_probe)) + "\r").encode())
-            terminal.until("server ancestry identifies ownership without a socket override", lambda:
+            terminal.until("session socket override identifies title ownership", lambda:
                            ownership_probe.exists() and json.loads(ownership_probe.read_text())
-                           ["auto_titles"].get(str(eleventh)) == "project [topic]")
+                           ["auto_titles"].get(str(eleventh)) == "project  topic")
+            missing_override_probe = home / "ownership-without-override.json"
+            terminal.send(('env -u ZELLIJ_SOCKET_DIR zellij-status view "$ZELLIJ_SESSION_NAME" > '
+                           + shlex.quote(str(missing_override_probe)) + "\r").encode())
+            terminal.until("missing custom socket override grants no ownership", lambda:
+                           missing_override_probe.exists()
+                           and json.loads(missing_override_probe.read_text())["auto_titles"] == {})
             token = base64.urlsafe_b64encode(name.encode()).decode()
             preview = subprocess.run([str(home / ".local/bin/zellij-picker"), "--preview-session", token],
                                      env={**env, "ZELLIJ_SESSION_NAME": name}, check=True,
                                      capture_output=True, text=True, timeout=10)
-            assert "9: project [topic]" in preview.stdout, preview.stdout
+            assert "9: project  topic" in preview.stdout, preview.stdout
             source = next(pane for pane in terminal.terminals()
                           if pane["tab_id"] == eleventh and pane["is_focused"])
             terminal.action("rename-pane", "agent work", "--pane-id", f"terminal_{source['id']}")
             terminal.send(b"cd ..\r")
-            terminal.until("shell hook preserves explicit pane title", lambda: "9:agent work" in top_line())
-            other = Terminal(binary, env, name)
+            terminal.until("shell hook preserves explicit pane title", lambda: any(p["title"] == "agent work" for p in terminal.terminals()) and "9:project  topic" in top_line())
+
+            def frame_title_color():
+                top_line()  # Feed the latest terminal output into the screen.
+                row, left = source["pane_y"], source["pane_x"]
+                column = screen.display[row].find("agent work", left, left + source["pane_columns"])
+                return screen.buffer[row][column].fg if column >= 0 else None
+
+            def frame_border_colors():
+                top_line()
+                row, left = source["pane_y"], source["pane_x"]
+                return {screen.buffer[row][column].fg
+                        for column in range(left, left + source["pane_columns"])
+                        if screen.buffer[row][column].data in "─┌┐╭╮"}
+
+            terminal.until("focused pane title and full border are purple", lambda:
+                           frame_title_color() == "b48ead" and frame_border_colors() == {"b48ead"})
+            terminal.prefix(b"h")
+            terminal.until("unfocused pane title stays readable with a background-colored border", lambda:
+                           frame_title_color() == "d8dee9" and frame_border_colors() == {"2e3440"})
+            terminal.prefix(b"l")
+            terminal.until("returning to the pane restores the purple title and full border", lambda:
+                           frame_title_color() == "b48ead" and frame_border_colors() == {"b48ead"})
+            terminal.prefix(b"z")
+            terminal.until("zoom uses the expand glyph on a gold tab", lambda:
+                           "󰊓 9:" in top_line() and "FULLSCREEN" not in top_line()
+                           and screen.buffer[0][top_line().index("󰊓")].bg == "ebcb8b")
+            terminal.prefix(b"z")
+            terminal.until("restoring the split clears the zoom glyph", lambda: "󰊓" not in top_line())
+            other = Terminal(binary, {**env, "SSH_CONNECTION": "192.0.2.2 4000 192.0.2.1 22"}, name)
             other.grant_status_permissions()
+            other.until("remote client sees the SSH lock", lambda: "".encode() in other.output)
+            assert "" not in top_line(), "Remote attachment marked the local client as SSH"
             other.prefix(b"9")
             other.until("second attachment is ready", lambda: b"agent work" in other.output)
             other.prefix(b"h")
-            terminal.until("disagreeing client focus uses an unambiguous fallback", lambda:
+            terminal.until("both clients retain the same automatic tab title", lambda:
                            len([pane for pane in terminal.terminals()
                                 if pane["tab_id"] == eleventh and pane["is_focused"]]) == 2
-                           and "9:Tab #9" in top_line())
+                           and "9:project  topic" in top_line())
             preview = subprocess.run([str(home / ".local/bin/zellij-picker"), "--preview-session", token],
                                      env={**env, "ZELLIJ_SESSION_NAME": name}, check=True,
                                      capture_output=True, text=True, timeout=10)
-            assert "9: Tab #9" in preview.stdout, preview.stdout
+            assert "9: project  topic" in preview.stdout, preview.stdout
             # Use the real chooser's complete-snapshot read, including its
             # lifecycle ownership payload and attachment-readiness handling.
             # Caller stdin must not become a second, ownership-free request.
-            clients = subprocess.run([sys.executable, "-c",
-                                      "import json, runpy, sys; "
-                                      "print(json.dumps(runpy.run_path(sys.argv[1])['client_choices'](sys.argv[2])))",
-                                      str(home / ".local/bin/zellij-picker"), name], env=env, check=False,
+            clients = subprocess.run([str(home / ".local/bin/zellij-picker"), "client-snapshot"],
+                                     env={**env, "ZELLIJ_SESSION_NAME": name}, check=False,
                                      input="\n", capture_output=True, text=True, timeout=10)
             assert clients.returncode == 0, f"Client snapshot read failed:\n{clients.stderr}\n{clients.stdout}"
             rows = list(json.loads(clients.stdout).values())
-            assert {row.get("tab") for row in rows} == {"9: agent work", "9: Tab #9"}, rows
+            assert {row.get("tab") for row in rows} == {"9: project  topic"}, rows
             other.prefix(b"d")
+            peer = next(p for p in terminal.terminals() if p["tab_id"] == eleventh and p["id"] != source["id"])
+            terminal.action("rename-pane", "--pane-id", f"terminal_{peer['id']}", "oldest survivor")
+            terminal.action("new-pane", "--direction", "right", "--name", "project  topic", "--", "/bin/sh")
+            duplicate = terminal.until("second project pane opens", lambda: next(
+                (p for p in terminal.terminals() if p["tab_id"] == eleventh and p["title"] == "project  topic"), None))
+            terminal.action("close-pane", "--pane-id", f"terminal_{source['id']}")
+            terminal.until("remaining project pane keeps the label", lambda:
+                           all(p["id"] != source["id"] for p in terminal.terminals()) and active()["name"] == "project  topic")
+            terminal.action("close-pane", "--pane-id", f"terminal_{duplicate['id']}")
+            terminal.until("last provider exits and oldest pane supplies the title", lambda:
+                           active()["name"] == "oldest survivor" and "9:oldest survivor" in top_line())
             terminal.prefix(b"r")
+            terminal.until("rename field is empty", lambda: active()["name"] == "" and "9: " in top_line())
+            subprocess.run([str(home / ".local/bin/zellij-status"), "refresh-view", name],
+                           env=env, check=True, capture_output=True, timeout=10)
+            assert active()["name"] == "", "A background refresh filled in the manual rename field"
             terminal.send(b"manual work\r")
             terminal.send(("cd " + shlex.quote(str(project)) + "\r").encode())
             terminal.until("directory change preserves explicit tab title", lambda:
-                           active()["name"] == "manual work" and "9:manual work" in top_line())
-            print("PASS: tab positions, direct keys, picker, reorder, directory/git titles, and explicit names agree.")
+                           active()["name"] == "manual work" and " 9:manual work" in top_line())
+            target = next(p for p in terminal.terminals()
+                          if p["tab_id"] == eleventh and not p["is_floating"])
+            subprocess.run([str(home / ".local/bin/zellij-auto-title"), "--clear"],
+                           env={**env, "ZELLIJ_SESSION_NAME": name, "ZELLIJ_PANE_ID": str(target["id"])},
+                           check=True, capture_output=True, timeout=10)
+            terminal.until("clear restores the pane title and removes its lock", lambda:
+                           active()["name"] == "oldest survivor" and "9:oldest survivor" in top_line()
+                           and " 9:" not in top_line())
+            print("PASS: tab positions, direct keys, picker, reorder, directory/git titles, fixed-title locks, and clearing agree.")
         finally:
             subprocess.run([binary, "kill-session", name], env=env, capture_output=True, timeout=5)
             if other is not None:
@@ -196,4 +319,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    assert sys.argv[1:] in ([], ["--fixed-titles"], ["--fixed-titles", "--native-bar"]), (
+        "Usage: test-zellij-tab-labels.py [--fixed-titles [--native-bar]]")
+    main(fixed_titles="--fixed-titles" in sys.argv, native_bar="--native-bar" in sys.argv)

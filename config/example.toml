@@ -1,4 +1,4 @@
-# The native macos or linux baseline is automatic. Add tool and context bundles.
+# Git, the native OS baseline, shell, and terminal tools are defaults. Add optional bundles.
 sets = ["workstation", "easypost"]
 
 # Individual properties override the bundles.

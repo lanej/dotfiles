@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="708" height="224" viewBox="0 0 708 224" role="img" aria-label="fzf — captured native terminal cells">
+<rect width="100%" height="100%" fill="#2E3440"/>
+<g font-family="monospace" font-size="14" style="white-space:pre">
+<rect x="12" y="12" width="72" height="20" fill="#2e3440"/>
+<text x="12" y="27" fill="#88c0d0" font-weight="bold" font-style="normal" text-decoration="none" textLength="72" lengthAdjust="spacingAndGlyphs">Search &gt;</text>
+<rect x="84" y="12" width="9" height="20" fill="#2e3440"/>
+<rect x="93" y="12" width="603" height="20" fill="#2e3440"/>
+<rect x="12" y="32" width="675" height="20" fill="#2e3440"/>
+<text x="12" y="47" fill="#4c566a" font-weight="normal" font-style="normal" text-decoration="none" textLength="675" lengthAdjust="spacingAndGlyphs">───────────────────────────────────────────────────────────────────────────</text>
+<rect x="687" y="32" width="9" height="20" fill="#2e3440"/>
+<rect x="12" y="52" width="18" height="20" fill="#2e3440"/>
+<rect x="30" y="52" width="72" height="20" fill="#2e3440"/>
+<text x="30" y="67" fill="#88c0d0" font-weight="normal" font-style="normal" text-decoration="none" textLength="72" lengthAdjust="spacingAndGlyphs">Services</text>
+<rect x="102" y="52" width="594" height="20" fill="#2e3440"/>
+<rect x="12" y="72" width="9" height="20" fill="#434c5e"/>
+<text x="12" y="87" fill="#88c0d0" font-weight="bold" font-style="normal" text-decoration="none" textLength="9" lengthAdjust="spacingAndGlyphs">▌</text>
+<rect x="21" y="72" width="9" height="20" fill="#434c5e"/>
+<rect x="30" y="72" width="54" height="20" fill="#434c5e"/>
+<text x="30" y="87" fill="#eceff4" font-weight="bold" font-style="normal" text-decoration="none" textLength="54" lengthAdjust="spacingAndGlyphs">api OK</text>
+<rect x="84" y="72" width="612" height="20" fill="#2e3440"/>
+<rect x="12" y="92" width="9" height="20" fill="#434c5e"/>
+<rect x="21" y="92" width="9" height="20" fill="#2e3440"/>
+<rect x="30" y="92" width="108" height="20" fill="#2e3440"/>
+<text x="30" y="107" fill="#d8dee9" font-weight="normal" font-style="normal" text-decoration="none" textLength="108" lengthAdjust="spacingAndGlyphs">worker ERROR</text>
+<rect x="138" y="92" width="558" height="20" fill="#2e3440"/>
+<rect x="12" y="112" width="684" height="20" fill="#2e3440"/>
+<rect x="12" y="132" width="684" height="20" fill="#2e3440"/>
+<rect x="12" y="152" width="684" height="20" fill="#2e3440"/>
+<rect x="12" y="172" width="684" height="20" fill="#2e3440"/>
+<rect x="12" y="192" width="684" height="20" fill="#2e3440"/>
+</g></svg>

@@ -1,0 +1,24 @@
+name: Codex Octo submission
+
+on:
+  pull_request:
+    paths:
+      - bin/codex-octo-submit
+      - scripts/test-codex-octo-hook.py
+      - .github/workflows/codex-octo-submission.yml
+  push:
+    branches: [master]
+    paths:
+      - bin/codex-octo-submit
+      - scripts/test-codex-octo-hook.py
+      - .github/workflows/codex-octo-submission.yml
+
+permissions:
+  contents: read
+
+jobs:
+  hook:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make test-codex-octo-hook

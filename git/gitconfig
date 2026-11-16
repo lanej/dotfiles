@@ -90,6 +90,7 @@
 	default-branch = "!f() { remote=origin; if ! git remote get-url \"$remote\" >/dev/null 2>&1; then remote=$(git remote | head -n 1); fi; branch=; if [ -n \"$remote\" ]; then branch=$(git symbolic-ref --quiet --short \"refs/remotes/$remote/HEAD\" 2>/dev/null); branch=${branch#\"$remote/\"}; if [ -z \"$branch\" ]; then branch=$(git ls-remote --symref \"$remote\" HEAD | sed -n \"s@^ref: refs/heads/\\(.*\\)[[:space:]]HEAD\\$@\\1@p\") || return; fi; fi; if [ -z \"$branch\" ]; then for candidate in main master; do if git show-ref --verify --quiet \"refs/heads/$candidate\"; then branch=$candidate; break; fi; done; fi; if [ -z \"$branch\" ]; then echo \"Cannot determine the default branch.\" >&2; return 1; fi; printf \"%s\\n\" \"$branch\"; }; f"
 [core]
 	excludesfile = ~/.gitignore
+	attributesfile = ~/.gitattributes
 	whitespace = trailing-space,space-before-tab,blank-at-eol
 	editor = $EDITOR
 	pager = delta
@@ -145,15 +146,10 @@
 	noprefix = true
 	colorMoved = default
 [delta]
-	features = default
+	features = default dotfiles
 [delta "default"]
-	plus-empty-line-marker-style = normal "#263026"
-	plus-non-emph-style = syntax "#263026"
-	plus-style = syntax "#263026"
-	syntax-theme = Nord
 	line-numbers = true
 	colorMoved = default
-	whitespace-error-style = 22 bold red
 	zero-style = dim syntax
 	max-line-length = 4096
 	navigate = true
@@ -172,6 +168,9 @@
 [mergetool]
 	prompt = false
 	keepBackup = false
+[merge "mergiraf"]
+	name = syntax-aware merging with Mergiraf
+	driver = mergiraf merge --git %O %A %B -s %S -x %X -y %Y -p %P -l %L
 [mergetool "fugitive"]
 	cmd = nvim -f -c \"Gvdiffsplit!\" \"$MERGED\"
 [advice]
@@ -183,7 +182,25 @@
 	helper = /usr/local/bin/git-credential-cloudsmith easypost/easypost-rust
 [credential "https://github.com"]
 	helper = 
-	helper = !gh auth git-credential
+	helper = "!f() { PATH=\"$PATH:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin\" gh auth git-credential \"$@\"; }; f"
 [credential "https://gist.github.com"]
 	helper = 
-	helper = !gh auth git-credential
+	helper = "!f() { PATH=\"$PATH:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin\" gh auth git-credential \"$@\"; }; f"
+
+[include]
+	path = ~/.config/dotfiles/theme/delta.gitconfig
+
+[hook "worktree-policy-pre"]
+	enabled = false
+	event = pre-worktree
+	command = ~/.local/bin/git-worktree-policy-hook pre-worktree
+[hook "worktree-policy-post"]
+	enabled = false
+	event = post-worktree
+	command = ~/.local/bin/git-worktree-policy-hook post-worktree
+[hook "worktree-policy-checkout"]
+	enabled = false
+	event = post-checkout
+	command = ~/.local/bin/git-worktree-policy-hook post-checkout
+[include]
+	path = ~/.config/dotfiles/worktree-policy.gitconfig

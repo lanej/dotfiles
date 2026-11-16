@@ -69,13 +69,16 @@ class SharedResourceWorkflow(unittest.TestCase):
             home = Path(temporary).resolve()
             checkout = home / "checkout"
             for relative in ("bin/sync-codex-skills", "bin/sync-pi-resources",
+                             "bin/sync-agent-status-hooks",
                              "scripts/install-software-standard.py",
                              "ai/agents/code-reviewer.md", "ai/agents/reflection.md",
                              "ai/agents/github-pr-writer.md"):
                 target = checkout / relative
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(ROOT / relative, target)
-            shutil.copytree(ROOT / "ai/skills/builder", checkout / "ai/skills/builder")
+            for name in ("builder", "protobuf", "zellij"):
+                shutil.copytree(ROOT / "ai/skills" / name, checkout / "ai/skills" / name)
+            shutil.copyfile(ROOT / "ai/skills/project-only.json", checkout / "ai/skills/project-only.json")
             agent = home / ".pi/agent"
             prompts = agent / "prompts"
             prompts.mkdir(parents=True)
@@ -94,7 +97,9 @@ class SharedResourceWorkflow(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             install()
             shared = home / ".agents/skills/dotfiles/builder/SKILL.md"
-            self.assertEqual(shared.resolve(), home / ".local/share/software-standards/builder/SKILL.md")
+            self.assertFalse(shared.exists())
+            self.assertTrue((home / ".agents/skills/dotfiles/zellij/SKILL.md").is_file())
+            self.assertFalse((home / ".agents/skills/dotfiles/protobuf/SKILL.md").exists())
             role = prompts / "dotfiles-code-reviewer.md"
             self.assertIn(str(checkout / "ai/agents/code-reviewer.md"), role.read_text())
             self.assertIn("$ARGUMENTS", role.read_text())
@@ -105,7 +110,7 @@ class SharedResourceWorkflow(unittest.TestCase):
             self.assertEqual(local.read_text(), "My personal PR prompt.\n")
             self.assertEqual(settings.read_text(), '{"theme":"dark"}\n')
             self.assertIn("Keep my local project conventions.", guidance.read_text())
-            self.assertEqual(guidance.read_text().count("# Default software guidance: Builder"), 1)
+            self.assertNotIn("# Default software guidance: Builder", guidance.read_text())
             if NATIVE:
                 catalog = commands(home)
                 roles = [c for c in catalog if c["name"] == "dotfiles-code-reviewer"]
@@ -113,8 +118,8 @@ class SharedResourceWorkflow(unittest.TestCase):
                 self.assertEqual(roles[0]["source"], "prompt")
                 self.assertEqual(Path(roles[0]["sourceInfo"]["path"]), role)
                 skills = [c for c in catalog if c["name"] == "skill:builder"]
-                self.assertEqual(len(skills), 1, catalog)
-                self.assertEqual(skills[0]["source"], "skill")
+                self.assertEqual(len(skills), 0, catalog)
+                self.assertTrue(any(c["name"] == "skill:zellij" for c in catalog), catalog)
 
 
 if __name__ == "__main__":

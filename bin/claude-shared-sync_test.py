@@ -16,7 +16,15 @@ def test_make_claude_shared_migrates_links_and_preserves_local_entries(tmp_path)
     skill.mkdir(parents=True)
     instruction = skill / "SKILL.md"
     instruction.write_text("Shared instructions.\n")
+    obsolete = repo / "ai/skills/paseo-plugin"
+    obsolete.mkdir()
+    (obsolete / "SKILL.md").write_text("Retired instructions.\n")
     shutil.copytree(ROOT / "ai/skills/builder", repo / "ai/skills/builder")
+    for name in ("ship", "pull-request", ".maturity-profiles"):
+        shutil.copytree(ROOT / "ai/skills" / name, repo / "ai/skills" / name)
+    shutil.copyfile(ROOT / "ai/skills/project-only.json", repo / "ai/skills/project-only.json")
+    shutil.copytree(ROOT / "ai/skills/ui-review", repo / "ai/skills/ui-review")
+    shutil.copytree(ROOT / "ai/skills/data-pipeline", repo / "ai/skills/data-pipeline")
     (repo / "scripts").mkdir()
     (repo / "scripts/install-software-standard.py").symlink_to(ROOT / "scripts/install-software-standard.py")
     agents = repo / "ai/agents"
@@ -26,6 +34,8 @@ def test_make_claude_shared_migrates_links_and_preserves_local_entries(tmp_path)
     (agents / "reviewer.md").symlink_to(external)
     installed_skills = home / ".claude/skills"
     installed_skills.mkdir(parents=True)
+    stale_pipeline = installed_skills / "data-pipeline"
+    stale_pipeline.symlink_to(repo / "ai/skills/data-pipeline", target_is_directory=True)
     (installed_skills / "shared-workflow").symlink_to(repo / "claude/skills/shared-workflow")
     alias = installed_skills / "my-workflow"
     alias.symlink_to(repo / "claude/skills/shared-workflow")
@@ -44,6 +54,7 @@ def test_make_claude_shared_migrates_links_and_preserves_local_entries(tmp_path)
     (agents / "local.md").write_text("Other agent.\n")
     (repo / "bin").mkdir()
     (repo / "bin/sync-claude-shared").symlink_to(ROOT / "bin/sync-claude-shared")
+    (repo / "bin/sync-agent-status-hooks").symlink_to(ROOT / "bin/sync-agent-status-hooks")
     executables = tmp_path / "bin"
     executables.mkdir()
     (executables / "python3").symlink_to(sys.executable)
@@ -58,8 +69,15 @@ def test_make_claude_shared_migrates_links_and_preserves_local_entries(tmp_path)
     assert (installed_agents / "reviewer.md").readlink() == agents / "reviewer.md"
     assert (installed_agents / "reviewer.md").read_text() == external.read_text()
     assert not retired.is_symlink()
+    for name in ("builder", "ship", "pull-request", ".maturity-profiles"):
+        assert not (installed_skills / name).exists()
+        assert not (installed_skills / name).is_symlink()
+    assert not stale_pipeline.exists() and not stale_pipeline.is_symlink()
+    assert not (installed_skills / "ui-review").exists()
     assert local.read_text() == "Local instructions.\n"
     assert local_agent.read_text() == "Local agent.\n"
+    assert not (installed_skills / "paseo-plugin").exists()
+    assert (obsolete / "SKILL.md").read_text() == "Retired instructions.\n"
 
     instruction.write_text("Updated shared instructions.\n")
     subprocess.run(command, cwd=repo, env=env, check=True, capture_output=True, text=True)
@@ -67,3 +85,4 @@ def test_make_claude_shared_migrates_links_and_preserves_local_entries(tmp_path)
     assert alias.readlink() == skill
     assert local.read_text() == "Local instructions.\n"
     assert local_agent.read_text() == "Local agent.\n"
+    assert not (installed_skills / "paseo-plugin").exists()

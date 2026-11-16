@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$#" -ne 0 ]; then
+    printf 'Usage: %s\n' "$0" >&2
+    exit 2
+fi
+
+treehouse_revision=e4c17fdfa6778545c2e073d741e5e837ff19e6c4
+binary="$HOME/.local/bin/treehouse"
+stamp="$HOME/.local/.dotfiles-treehouse-install"
+identity="dev-cgo0-v1:$treehouse_revision"
+
+binary_digest() {
+    if command -v sha256sum >/dev/null; then
+        sha256sum "$1" | awk '{print $1}'
+    else
+        shasum -a 256 "$1" | awk '{print $1}'
+    fi
+}
+
+if [ -x "$binary" ] && [ -f "$stamp" ]; then
+    if [ "$(cat "$stamp")" = "$identity:$(binary_digest "$binary")" ] && [ "$("$binary" --version)" = dev ]; then
+        exit 0
+    fi
+fi
+
+stage=$(mktemp -d)
+trap 'rm -rf "$stage"' EXIT
+curl -fsSL "https://github.com/lanej/treehouse/archive/$treehouse_revision.tar.gz" -o "$stage/source.tar.gz"
+mkdir "$stage/source"
+tar -xzf "$stage/source.tar.gz" -C "$stage/source" --strip-components=1
+(
+    cd "$stage/source"
+    # WHY: A dev build disables both self-update and background update checks.
+    # CGO=0 keeps Linux builds independent of the build host's glibc version.
+    CGO_ENABLED=0 GOWORK=off GOFLAGS='' GOOS="$(go env GOHOSTOS)" GOARCH="$(go env GOHOSTARCH)" \
+        go build -trimpath -buildvcs=false -ldflags '-X main.version=dev' -o "$stage/treehouse" .
+)
+test "$("$stage/treehouse" --version)" = dev
+mkdir -p "$HOME/.local/bin"
+install -m 755 "$stage/treehouse" "$binary.new"
+mv -f "$binary.new" "$binary"
+printf '%s:%s\n' "$identity" "$(binary_digest "$binary")" > "$stamp"

@@ -38,8 +38,8 @@ SETTINGS = {
 SET_NAME = re.compile(r"[a-z0-9][a-z0-9_-]*")
 TOOL_FILE = ROOT / "bootstrap/tools.toml"
 TOOLS = tomllib.loads(TOOL_FILE.read_text())["tools"]
-INSTALLERS = {"package", "system", "config", "build", "rust", "go", "zellij", "font", "treehouse", "firstmate", "macos-window-tool", "npm"}
-HOOKS = {"github-auth", "bedrock-credentials", "agent-status-broker", "kitty-terminfo", "neovim", "atuin-sync", "sql-formatters", "zellij-status"}
+INSTALLERS = {"approval-cli", "package", "system", "config", "build", "rust", "go", "zellij", "font", "git-worktree-hooks", "worktree-policy", "worktree-manager", "treehouse", "firstmate", "macos-window-tool", "npm", "octo-manager"}
+HOOKS = {"directory-picker", "github-auth", "bedrock-credentials", "agent-status-broker", "kitty-terminfo", "neovim", "atuin-sync", "sql-formatters", "zellij-status", "zellij-copy-hop"}
 for tool, recipe in TOOLS.items():
     SETTINGS[f"tools.{tool}"] = {
         "type": bool,
@@ -82,7 +82,7 @@ def tool_plan(values, origins, specified, host):
             if any(hook not in HOOKS for hook in recipe.get(phase, [])):
                 raise ValueError(f"{TOOL_FILE}: unknown {phase} hook for {name}")
         visiting.append(name)
-        dependencies = recipe.get("requires", [])
+        dependencies = [*recipe.get("requires", []), *recipe.get(f"requires_{host}", [])]
         if name == "zellij" and values["zellij.source"] == "release":
             dependencies = []
         for dependency in dependencies:
@@ -173,7 +173,11 @@ def resolve(path, environment, explicit=False, host="linux"):
     apply(host)
     baseline_sets = applied.copy()
     baseline_keys = {key for key in specified if key.startswith("tools.")}
-    # A missing conventional file uses the baseline. An explicitly selected
+    # rationale: Shell and terminal tools are installation defaults; the Python-free
+    # baseline remains usable before optional binaries and plugins are installed.
+    apply("shell")
+    apply("terminal")
+    # A missing conventional file uses the defaults. An explicitly selected
     # DOTFILES_CONFIG must exist, so a typo cannot silently change policy.
     document = {}
     if path is not None and (path.exists() or explicit or "DOTFILES_CONFIG" in environment):
@@ -185,7 +189,7 @@ def resolve(path, environment, explicit=False, host="linux"):
     missing = SETTINGS.keys() - values.keys()
     if missing:
         raise ValueError("missing settings: " + ", ".join(sorted(missing)))
-    # Keep a native-only plan for inspection, with the machine's overrides.
+    # Keep the Git/native baseline separate from default shell and terminal tools.
     # The Python-free Make baseline is generated separately from built-in sets.
     baseline_values = {key: value if not key.startswith("tools.") or key in baseline_keys else False
                        for key, value in values.items()}
@@ -262,7 +266,7 @@ def main():
         for host, uname in (("macos", "Darwin"), ("linux", "Linux")):
             native = resolve(None, {}, host=host)
             print(f"DOTFILES_NATIVE_SET_{uname} := {host}")
-            print(f"DOTFILES_NATIVE_TARGETS_{uname} := {' '.join(native['setup'])}")
+            print(f"DOTFILES_NATIVE_TARGETS_{uname} := {' '.join(native['baseline']['setup'])}")
         print(f".PHONY: {' '.join(native['all_setup'])}")
         return
     directory = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config")))

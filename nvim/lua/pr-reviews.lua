@@ -484,18 +484,18 @@ local function review_command(command)
 end
 
 function M.start()
-	local session, active = context()
+	local session, active_review = context()
 	if not session then
 		return
 	end
-	local review = pending_review(session, active)
+	local review = pending_review(session, active_review)
 	if review then
 		vim.api.nvim_set_current_tabpage(review.layout.tabpage)
 	else
 		local current = require("octo.utils").get_current_buffer()
 		if not current or not current:isPullRequest() or current.node.id ~= session.pr.id then
 			local description
-			for bufnr, buffer in pairs(octo_buffers) do
+			for bufnr, buffer in pairs(_G.octo_buffers) do
 				if
 					vim.api.nvim_buf_is_loaded(bufnr)
 					and buffer:isPullRequest()

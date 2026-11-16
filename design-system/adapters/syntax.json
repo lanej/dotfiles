@@ -1,0 +1,15 @@
+{
+  "comment": "syntax.comment",
+  "string": "syntax.string",
+  "constant.numeric, constant.language": "syntax.number",
+  "keyword, storage": "syntax.keyword",
+  "entity.name.function, support.function": "syntax.function",
+  "entity.name.type, support.type, support.class": "syntax.type",
+  "variable": "syntax.variable",
+  "keyword.operator": "syntax.operator",
+  "constant.character.escape": "syntax.special",
+  "markup.heading": "heading",
+  "markup.inserted": "diff.add",
+  "markup.deleted": "diff.delete",
+  "invalid": "status.error"
+}

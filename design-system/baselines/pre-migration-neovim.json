@@ -1,0 +1,67 @@
+{
+  "Normal": {
+    "fg": 14212841
+  },
+  "NormalFloat": {
+    "fg": 14212841,
+    "bg": 3028032
+  },
+  "Visual": {
+    "bg": 4410462
+  },
+  "Search": {
+    "reverse": true,
+    "fg": 8962256,
+    "cterm": {
+      "reverse": true
+    }
+  },
+  "Comment": {
+    "fg": 6385288
+  },
+  "Function": {
+    "fg": 8962256
+  },
+  "String": {
+    "fg": 10731148
+  },
+  "Type": {
+    "fg": 8495553
+  },
+  "DiagnosticError": {
+    "fg": 12542314
+  },
+  "DiagnosticWarn": {
+    "fg": 15453067
+  },
+  "DiffAdd": {
+    "fg": 10731148,
+    "bg": 3883602
+  },
+  "DiffChange": {
+    "fg": 15453067,
+    "bg": 3883602
+  },
+  "DiffDelete": {
+    "fg": 12542314,
+    "bg": 3883602
+  },
+  "GitSignsAdd": {
+    "fg": 10731148
+  },
+  "GitSignsStagedAdd": {
+    "fg": 6714715
+  },
+  "GitSignsAddInline": {
+    "bg": 4543038
+  },
+  "@variable.member": {
+    "fg": 9419963
+  },
+  "@variable.parameter": {
+    "fg": 11833005
+  },
+  "@module": {
+    "fg": 8962256
+  }
+}

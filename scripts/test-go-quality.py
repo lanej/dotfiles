@@ -3,6 +3,8 @@
 
 from pathlib import Path
 import json
+import os
+import sys
 import subprocess
 import tempfile
 
@@ -71,7 +73,16 @@ func Write(writer io.Writer) error {
 '''
 TEST = '''package sample
 
-import "testing"
+import (
+	"runtime"
+	"testing"
+)
+
+func TestCheckToolchain(t *testing.T) {
+	if runtime.Version() != "go1.26.11" {
+		t.Fatalf("checks used %s instead of module toolchain", runtime.Version())
+	}
+}
 
 func TestTerminal(t *testing.T) {
 	done, err := Terminal(StateDone)
@@ -105,7 +116,7 @@ func TestConcurrent(t *testing.T) {
 
 
 def run(command, cwd, success=True):
-    result = subprocess.run(command, cwd=cwd, capture_output=True, text=True)
+    result = subprocess.run(command, cwd=cwd, capture_output=True, text=True, env={**os.environ, "GOTOOLCHAIN": "local", "PATH": str(Path(sys.executable).parent) + os.pathsep + os.environ["PATH"]})
     output = result.stdout + result.stderr
     if (result.returncode == 0) != success:
         raise AssertionError(f"{command}: exit {result.returncode}\n{output}")
@@ -114,9 +125,9 @@ def run(command, cwd, success=True):
 
 with tempfile.TemporaryDirectory(prefix="go-quality-acceptance-") as temporary:
     project = Path(temporary) / "Go project"
-    run([str(SOURCE / "bin/repo-bootstrap"), "--repo", str(project), "--init", "--go",
+    run([str(SOURCE / "bin/repo-bootstrap"), "--repo", str(project), "--authority", "owned", "--adoption", "new", "--init", "--go",
          "--skills", "go", "--agents", "codex", "--pr-template", "none"], SOURCE)
-    (project / "go.mod").write_text("module example.invalid/quality\n\ngo 1.26.2\n")
+    (project / "go.mod").write_text("module example.invalid/quality\n\ngo 1.26.11\n")
     (project / "state.go").write_text(CODE + "\nfunc Extra()int{return 1}\n")
     (project / "state_test.go").write_text(TEST)
     check = ["bash", "scripts/check-go.sh"]
@@ -124,8 +135,21 @@ with tempfile.TemporaryDirectory(prefix="go-quality-acceptance-") as temporary:
     assert "gofumpt" in output and "not properly formatted" in output, output
     (project / "state.go").write_text(CODE)
     run([*check, "fmt"], project)
-    run(check, project)
+    run(["python3", "scripts/check-source-code.py", "go"], project)
     clean = (project / "state.go").read_text()
+    policy_path = project / ".source-code.json"
+    policy = json.loads(policy_path.read_text())
+    policy["stage"] = "research"
+    policy_path.write_text(json.dumps(policy))
+    (project / "state_test.go").write_text(TEST + '\nfunc TestLifecycleFailure(t *testing.T) { t.Fatal("lifecycle detector") }\n')
+    run(["python3", "scripts/check-source-code.py", "go"], project)
+    policy["stage"] = "alpha"
+    policy_path.write_text(json.dumps(policy))
+    assert "lifecycle detector" in run(["python3", "scripts/check-source-code.py", "go"], project, success=False)
+    (project / "state_test.go").write_text(TEST)
+    run(["python3", "scripts/check-source-code.py", "go"], project)
+    policy["stage"] = "beta"
+    policy_path.write_text(json.dumps(policy))
 
     # New enum/union members must fail despite default branches. Discarded
     # errors must also fail, without splitting feedback across successive runs.
@@ -148,7 +172,7 @@ with tempfile.TemporaryDirectory(prefix="go-quality-acceptance-") as temporary:
     legacy = Path(temporary) / "existing Go project"
     legacy.mkdir()
     run(["git", "init", "--quiet"], legacy)
-    (legacy / "go.mod").write_text("module example.invalid/retrofit\n\ngo 1.26.2\n")
+    (legacy / "go.mod").write_text("module example.invalid/retrofit\n\ngo 1.26.11\n")
     original_config = '''# The team's comments and policy stay unchanged.
 version: "2"
 linters:
@@ -191,7 +215,7 @@ func Shadow(values []int) int {
     run(["git", "-c", "user.name=Go acceptance", "-c", "user.email=go@example.invalid",
          "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null",
          "commit", "-qm", "Existing source and policy"], legacy)
-    run([str(SOURCE / "bin/repo-bootstrap"), "--repo", str(legacy), "--go",
+    run([str(SOURCE / "bin/repo-bootstrap"), "--repo", str(legacy), "--authority", "shared", "--adoption", "hold", "--go",
          "--skills", "go", "--pr-template", "none"], SOURCE)
     assert (legacy / ".golangci.yaml").read_text() == original_config
     before_source = (legacy / "state.go").read_bytes()
@@ -257,7 +281,7 @@ func Shadow(values []int) int {
     # Changed team policy requires regenerating its merged layer explicitly.
     (legacy / ".golangci.yaml").write_text(original_config + "\n# Policy revision.\n")
     assert "existing lint policy changed" in run([*check, "lint"], legacy, success=False)
-    run([str(SOURCE / "bin/repo-bootstrap"), "--repo", str(legacy), "--go",
+    run([str(SOURCE / "bin/repo-bootstrap"), "--repo", str(legacy), "--authority", "shared", "--adoption", "hold", "--go",
          "--skills", "go", "--pr-template", "none"], SOURCE)
     run([*check, "lint"], legacy)
 

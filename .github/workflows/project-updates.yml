@@ -1,0 +1,30 @@
+name: Project updates
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: &update-paths
+      - 'bin/project-update'
+      - 'scripts/project-lifecycle.py'
+      - 'scripts/make/project-update.sh'
+      - 'scripts/test-project-update.py'
+      - 'config/project-updates.toml'
+      - '.github/workflows/project-updates.yml'
+  push:
+    branches: [master]
+    paths: *update-paths
+permissions:
+  contents: read
+jobs:
+  convention:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v6
+      - run: make test-project-update

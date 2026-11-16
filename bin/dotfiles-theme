@@ -1,0 +1,28 @@
+#!/usr/bin/env python3
+"""Show native CLI theme atoms. Generation is owned by make theme-generate."""
+
+import argparse
+import json
+import os
+from pathlib import Path
+import sys
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--color", choices=("auto", "always", "never"), default="auto")
+    args = parser.parse_args()
+    directory = Path(os.environ.get("DOTFILES_THEME_DIR", Path(__file__).resolve().parents[1] / "design-system/generated"))
+    colors = json.loads((directory / "colors.json").read_text())["roles"]
+    color = args.color == "always" or (args.color == "auto" and sys.stdout.isatty() and "NO_COLOR" not in os.environ and os.environ.get("TERM") != "dumb")
+    samples = [("text", "Native CLI atoms"), ("status.success", "OK       Complete"), ("status.warning", "WARN     Check result"), ("status.error", "ERROR    Failed"), ("status.attention", "!        Needs input"), ("status.info", "WORKING  In progress"), ("text.muted", "UNKNOWN  No observation"), ("keyhint", "Enter accept · Esc cancel")]
+    for role, text in samples:
+        if color:
+            rgb = ";".join(str(int(colors[role][i:i+2], 16)) for i in (1, 3, 5))
+            print(f"\033[38;2;{rgb}m{text}\033[0m")
+        else:
+            print(text)
+
+
+if __name__ == "__main__":
+    main()

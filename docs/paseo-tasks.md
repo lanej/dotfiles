@@ -2,13 +2,15 @@
 
 The implementation lives in [paseo-tasks](../paseo-tasks/). It uses official Paseo 0.15.1 and its plugin interface. The task manager is an ordinary Pi conversation; each task's primary worker is an independent Pi conversation. The Tasks screen and workspace context panel open those conversations directly using both their host and agent identity.
 
+Codex and Claude use their native agent tools for delegation and communication. Their configuration targets run `make paseo-agent-cleanup`, which disables Paseo terminal hooks, selects no bundled orchestration skills, disables the Codex and Claude providers and their Paseo tools, and removes Paseo skills from their discovery directories. Removed skill directories are retained outside discovery under `~/.local/share/dotfiles/retired-paseo-skills`. Pi's provider, extensions, and Paseo tools are preserved. Existing sessions can retain previously loaded skills and tools; start a new Codex or Claude session outside Paseo to load the cleaned configuration.
+
 ## Task contract
 
 Each execution host owns `<PASEO_HOME>/tasks/tasks.sqlite`. The durable task ID is a UUID, qualified by Paseo's authenticated `serverId`. A task records its desired outcome, success criteria, constraints, current approach, progress, evidence, blocker, next action, group, priority, worker address, checkout, optional GitHub links, and observations. The separate activity field never establishes task completion.
 
-Specified new coding work requires an explicit repository and base ref and receives a leased Treehouse checkout. Tasks resolves the primary Git checkout, requires its `.worktrees/.treehouse` pool to be ignored, and passes that task pool root, base ref, stable host-qualified lease holder and named `task/<UUID>` branch to the native CLI. It records the allocation intent before `get --lease --json`, then retains the path, lease ID, holder, acquisition time, base and branch. Paseo opens a directory workspace at that returned path. Investigations, plans, and unresolved decisions may use an existing directory. Adopted conversations keep their checkout, history and existing ownership without acquiring or claiming a lease. Drafts do not launch workers. The manager asks native questions for missing information. Workers revise their approach through task-scoped tools and propose material brief changes; accepting a proposal in the panel checks the record's revision. An explicit user instruction in the worker conversation can update that same brief with its recorded source message ID; automated prompts and imported GitHub input cannot serve as direct conversation authority. Replaying an already applied instruction preserves newer changes.
+Specified new coding work requires an explicit repository and base ref and receives a protected checkout from the native `worktree` manager at `<primary>/.worktrees/<provider>-<8-hex>/`. Tasks passes the exact resolved base commit, stable host-qualified owner identity and named `task/<UUID>` branch to `worktree create --json`. It persists allocation intent before mutation, then retains the full manager task ID, owner, path, branch and creation time in dedicated manager fields. A lost reply is reconciled through owner identity and `worktree status`; an attempted but unresolved allocation is never retried as a second checkout. Paseo opens a directory workspace at the verified path. Existing Treehouse reservations and leases retain separate fields and can recover only their existing lease; they never request another Treehouse checkout. Investigations, plans and adopted conversations keep their existing checkout and ownership. Drafts do not launch workers. Archiving retains the conversation, checkout and task protection; explicit finish/prune remains separate.
 
-Treehouse must be installed through the existing dotfiles installer on each execution host. Tasks explicitly selects `<primary>/.worktrees` as the CLI root for its pool without changing Treehouse's global settings. Treehouse accepts branch names and may prefer a locally ahead branch, so Tasks resolves the exact requested ref once and retains a `task-base/<UUID>` branch at that commit for allocation and pool recovery. The ref is resolved from this checkout's existing refs; refresh them before creating a task when needed. Allocation skips a further fetch after pinning that commit. Both the original ref and resolved commit remain in the task record. A missing tool, unignored pool, unresolved base, changed lease or ambiguous allocation remains a visible launch error. After a lost allocation response, recovery finds the exact holder and branch through native pool status; an absent or ambiguous receipt cannot trigger a second acquisition. Archiving retains the checkout, base branch and lease because the conversation is still directly accessible. Return only task-owned leases after preserving work and confirming no conversation, process or pending task needs them, using Treehouse's lease ID and holder guards.
+Install the pinned `worktree` release through dotfiles on each execution host. Tasks resolves the requested base from the selected checkout's existing refs and passes the resulting commit directly to the manager, without fetching or creating an intermediate base branch. Refresh refs before task creation when needed. Missing manager installation, an unignored destination, an unresolved base, changed ownership or ambiguous allocation is a visible launch error. Existing Treehouse allocations still require their original tool and exact lease/base identities for recovery; keep them until their conversation and pending work no longer need them. New manager task IDs and legacy lease IDs are never interchangeable.
 
 Pause and archive apply to service-generated dispatch at the next observed turn boundary. They preserve the conversation, checkout, queued feedback, and history. Resume uses the same worker. Human messages sent directly in Paseo remain native conversation inputs. Each bulk result states whether the operation applied, is pending, failed, or remains unknown. Reprioritization changes overview ordering; it does not preempt an active turn.
 
@@ -28,14 +30,14 @@ New assigned feedback or a new PR repair event reopens completed work or work aw
 
 ```sh
 npm --prefix ~/.files/paseo-tasks ci --ignore-scripts
-npm --prefix ~/.files/paseo-tasks run typecheck
+npm --prefix ~/.files/paseo-tasks run check
 make test-paseo-tasks
 make paseo-tasks-config
 ```
 
 The configuration target adds the shared question and router identity extensions plus the separate Sonnet router registry idempotently. It preserves the selected global Pi provider, model, thinking level, other extensions and AWS configuration. It neither enables plugins nor starts services. Run the same preparation on every execution host from that host's checkout.
 
-Inspect the target daemon's `pluginsEnabled` value before installing. A false or absent value requires the user's explicit permission under the [Paseo plugin skill](../ai/skills/paseo-plugin/SKILL.md). Plugins are trusted, unsandboxed code. After permission, preserve the daemon configuration, enable the root switch, enable the native Pi provider if necessary, set its command to the host's absolute `.files/bin/paseo-pi` wrapper, and enable `daemon.mcp.injectIntoAgents` for session-scoped task tools. Reload the configuration and install the reviewed source:
+Inspect the target daemon's `pluginsEnabled` value before installing. A false or absent value requires the user's explicit permission: plugins are trusted, unsandboxed code that can access the daemon machine's files, processes, credentials, and network services, and client contributions run inside the Paseo app. After permission, preserve the daemon configuration, enable the root switch, enable the native Pi provider if necessary, set its command to the host's absolute `.files/bin/paseo-pi` wrapper, and enable `daemon.mcp.injectIntoAgents` for session-scoped task tools. Reload the configuration and install the reviewed source:
 
 ```sh
 paseo reload --json
@@ -53,13 +55,57 @@ The default worker model is `pi/bedrock-sonnet-router/us.anthropic.claude-sonnet
 
 Each linked GitHub issue or PR has one task owner. The service polls comments, reviews, inline comments, discussion resolution, current head, base, mergeability and checks. It compares both head and base after collecting the observation. Check runs are reduced to the latest attempt per app and name; commit statuses retain the latest value per context, preventing an old failed status from overriding a successful retry. It stores event IDs and observations before delivery. The worker reads the original source, author, authority and revision through `task_inbox`; owner direction and review input remain distinct. Reviews never grant merge authority.
 
-Open PRs poll every 30 seconds while checks or mergeability are pending, then every two minutes while watching review input. The next poll time and observations survive restarts. The Tasks record shows this watch phase separately from work status and agent activity. No reported checks or unknown mergeability cannot establish passing CI. A newly observed failing check or merge conflict creates one durable repair event for that head, base and failure attempt. The existing worker verifies the current PR revisions, repairs the owned branch within its accepted scope, runs relevant checks and pushes. After pushing it records a decision while the service watches CI, then reviews; subsequent repairs and review comments return to that same conversation. Passive observations require no agent turn. Unchanged failures do not repeatedly wake a worker; the worker continues its repair until it reports a decision, blocker or question. Pause keeps these events queued; archive stops polling and retains them. Closed PRs receive no automatic repairs. Workers must preserve unrelated work and checks, ask about external blockers or material decisions, and obtain explicit authority to merge the PR.
+Open PRs poll every 30 seconds while checks or mergeability are pending, then every two minutes while watching review input. The next poll time and observations survive restarts. The Tasks record shows this watch phase separately from work status and agent activity. No reported checks or unknown mergeability cannot establish passing CI. A newly observed failing check or merge conflict creates one durable repair event for that head, base and failure attempt. Configured repositories try [programmatic conflict maintenance](#programmatic-conflict-maintenance) before dispatching that event. Accepted resolutions require no worker turn. Other failures, unresolved conflicts and review comments return to the existing worker, which verifies the current revisions, repairs within scope, runs relevant checks and pushes. After pushing it records a decision while the service watches CI, then reviews. Passive observations and unchanged failures do not repeatedly wake a worker. Pause keeps these events queued; archive stops polling and retains them. Closed PRs receive no automatic repairs. Workers must preserve unrelated work and checks, ask about external blockers or material decisions, and obtain explicit authority to merge the PR.
 
 Source replies use the host's existing GitHub authentication and Octokit. Inline replies stay in their original discussion; issue and review replies use the object's comment stream. A reply intent is durable before the POST. After a missing response, the same tool searches GitHub for the exact body, authenticated author and event marker. A not-yet-visible prior submission remains unknown and is not reposted automatically. Imported Firstmate reply markers remain valid.
 
 Prompt delivery follows the same distinction: queued, sending, accepted, unknown and handled. A crash while sending becomes unknown. Recovery inspects the worker's own timeline for its event marker before considering the prompt accepted. The bounded history search may be insufficient after substantial later activity; that limit appears in the task's error and requires inspecting the source conversation. Daemon acceptance does not claim the worker handled the feedback.
 
 Paseo 0.15.1 removes session MCP tool bindings when a plugin unloads. On startup, Tasks reopens its retained workers and labelled managers once at an idle boundary to attach the current service's tools. It preserves their native session, history, checkout, control and inbox; active turns and pending native questions defer this refresh. Unassigned conversations are untouched. A turn already running during unload can encounter unavailable tools until its next idle boundary.
+
+## Programmatic conflict maintenance
+
+The existing Tasks service runs deterministic resolution before asking the owning Pi conversation for help. It uses the same database, polling loop, task inbox and coordinator reports. A below-threshold result reaches the original worker with the attempted patch, checks and reason. Questions and handoffs continue through that task's existing conversation and coordinator.
+
+Configure each execution host in `$PASEO_TASKS_STATE/pr-maintenance.json`, defaulting to `$PASEO_HOME/tasks/pr-maintenance.json`. This file is host-owned policy outside the checked-out PR. No policy preserves the existing worker repair path. An entry authorizes updating linked, worker-owned PR branches in that repository using a merge commit; it grants no authority to merge the PR into its base. Keep repositories requiring linear history on the worker path.
+
+This conservative example enables clean Git merges. Set a resolver's score to a number to enable it; null disables it. Scores rank host-approved resolver strategies against minimumConfidence. They are policy inputs, not estimated probabilities of correctness. Choose or calibrate them for the repository; validation remains mandatory at every score.
+
+```json
+{
+  "version": 1,
+  "repositories": [{
+    "directory": "/absolute/path/to/repository",
+    "github": "owner/repository",
+    "remote": "origin",
+    "minimumConfidence": 1,
+    "confidence": {
+      "git": 1,
+      "rerere": null,
+      "mergiraf": null
+    },
+    "checks": [["make", "lint"], ["make", "test"]],
+    "timeoutSeconds": 120,
+    "maxChangedFiles": 50,
+    "maxDiffBytes": 524288
+  }]
+}
+```
+
+Checks are executable-and-argument arrays, without shell expansion. They run repository code with the host's permissions; configure only trusted repositories and commands. Mergiraf must already be installed on PATH when enabled. The program invokes it explicitly without changing global Git configuration. It can also reuse the repository's recorded rerere resolutions. Unscored, unresolved, unsupported or oversized results escalate. If several strategies contribute, the lowest contributing score governs acceptance.
+
+Resolution runs in a disposable detached Git worktree, with at most two background jobs so validation cannot block other task polling. The program verifies repository and branch ownership, fetches the observed head and base, runs every configured check, and rejects validation that modifies the candidate. timeoutSeconds bounds the full preparation attempt and each publication/readback command. It rechecks task control, worker activity, policy and current PR revisions before reserving publication. Publication uses the exact observed head as a remote lease and retains both histories. A pause before that reservation prevents publication; a pause afterward cannot retract an admitted push. The worker's checkout is untouched, so its next coding turn must fetch and reconcile any program-published commit.
+
+Attempts and candidate identities survive restart. A lost push response remains uncertain until remote readback confirms the candidate; it is never automatically pushed again. The worker can inspect task_pr_maintenance to resolve an exception. Routine acceptance leaves both worker and coordinator idle while the service watches the new revision.
+
+Other coding agents can submit an existing task's PR through the JSON CLI:
+
+```sh
+npm --prefix ~/.files/paseo-tasks run --silent maintain -- submit --json < request.json
+npm --prefix ~/.files/paseo-tasks run --silent maintain -- get --json < task.json
+```
+
+submit accepts serverId, taskId and the exact GitHub PR url; get accepts serverId and taskId. Submission links the PR to its existing durable task and returns that task. The host service continues after the submitting process exits. get returns saved attempts. Both commands use the existing authenticated Paseo connection and host routing; they do not start another service or configure policy. Manager and worker conversations have the corresponding task_pr_maintenance tool.
 
 ## Firstmate transfer
 
@@ -76,3 +122,7 @@ The focused detector exercises the typed tools against controlled Paseo/GitHub b
 Live acceptance requires a task on Mac, `dev`, and `dev2`; entry into each recorded worker conversation; worker progress with the manager closed; a GitHub feedback event and reply in its source thread; pause/resume with queued feedback; worker recovery with its original session; and actual mobile disconnect/reconnect while work continues. Check wide and compact layouts in both themes. Restart only the relay after implementation and verification for the user's final check; restarting the daemon can interrupt active agents.
 
 The separately invoked `make test-paseo-tasks-ui` detector uses an owned headless browser with `PASEO_TASKS_UI_URL`, ignored local authentication state in `PASEO_TASKS_UI_STATE`, an absolute Playwright module path in `PASEO_TASKS_PLAYWRIGHT_MODULE`, a private screenshot directory in `PASEO_TASKS_UI_OUTPUT`, and a JSON array of `{serverId, taskId, workspaceId}` acceptance records in `PASEO_TASKS_UI_CASES`. It checks wrapping, selection controls, the host-qualified workspace route, and the assigned task's actual chat in both themes at 1440 and 390 pixels. Set `PASEO_TASKS_UI_LOCAL_TLS=1` only for a known local test relay with a private certificate. This detector complements the Viewrule accessibility and visual review; it does not establish behavior on a phone.
+
+## TypeScript checks
+
+Run `npm run format` in `paseo-tasks` before committing. `npm run check` checks Biome formatting and recommended lint, type-aware promise handling and exhaustive switch coverage, and TypeScript strict checking with implicit returns, fallthrough and unreachable code checks. CI runs the same command. Exhaustiveness requires discriminated unions; a default branch does not satisfy missing union cases. Existing dynamic SDK/test boundaries remain explicitly typed as any until they can be narrowed.

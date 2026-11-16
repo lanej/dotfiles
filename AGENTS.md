@@ -1,5 +1,7 @@
 # Dotfiles Repository
 
+Read the installed [source-code policy](.agents/source-code.md) for this repository’s lifecycle stage and pinned project skills. Dotfiles-specific rules below remain authoritative.
+
 ## Project Overview
 
 This repository manages Josh Lane's personal configuration files ("dotfiles")
@@ -62,10 +64,7 @@ automated results.
 
 ## Maintaining agent instructions
 
-Before changing skills, commands, agents, or their supporting resources, read
-[the skill-maintenance policy](docs/skill-maintenance.md). It routes authoring
-through the installed Anthropic skill-creator workflow and defines
-this repository's focused regression checks and entrypoint size budget.
+Before changing skills, commands, agents, or their supporting resources, read [the skill-maintenance policy](docs/skill-maintenance.md). It routes authoring through the repository-owned skill-authoring workflow and defines this repository's focused regression checks and entrypoint size budget.
 
 ## Bug reports
 
@@ -83,8 +82,8 @@ Feature requests keep their existing workflows.
 
 ## Claude Commands & Agents Versioning Pattern
 
-New files under `claude/commands/` and `ai/{agents,skills}/` are gitignored by default; force-add deliberately with `git add -f` to version one. See the `claude-config-versioning` skill for the full workflow, symlink mechanics, and gitignore/clean-filter details.
+New files under `claude/commands/` and `ai/{agents,skills}/` are gitignored by default; force-add deliberately with `git add -f` to version one. Read [the agent configuration guide](docs/agent-configuration.md) for the workflow, symlink mechanics, and clean-filter details.
 
 ## Tech Radar
 
-Tool/tech decisions are tracked in [`docs/radar.md`](docs/radar.md) (four-ring model: Adopt/Trial/Assess/Hold). Edit the radar directly using the entry conventions documented there.
+Keep the [tech radar registry](docs/radar.yaml) current when tool or technology decisions change.

@@ -1,6 +1,3 @@
-import { realpath } from 'node:fs/promises';
-import { nativeCall } from '../../firstmate/github-feedback.mjs';
-
 const parameters = {
   type: 'object', additionalProperties: false, required: ['questions'],
   properties: { questions: {
@@ -68,17 +65,5 @@ export function registerQuestions(pi, requireOwner, active, audience = 'user') {
   } : undefined);
 }
 
-export default function firstmateQuestions(pi) {
-  const home = process.env.FM_HOME ?? process.env.FIRSTMATE_HOME;
-  if (!home || process.env.FM_TASK_ID || process.env.PASEO_TASK_ROLE) return;
-  let captain = false;
-  registerQuestions(pi, async signal => {
-    if (await nativeCall(home, 'owns-primary', [], { signal }) !== 'yes') {
-      throw new Error('The current session does not own the Firstmate captain lock');
-    }
-  }, () => captain, 'captain');
-  pi.on('session_start', async (_event, ctx) => {
-    captain = ctx.mode === 'rpc' && await realpath(ctx.cwd) === await realpath(home);
-  });
-  pi.on('session_shutdown', () => { captain = false; });
-}
+// Compatibility entrypoint for older settings; Paseo registers the shared tool explicitly.
+export default function retiredFirstmateQuestions() {}

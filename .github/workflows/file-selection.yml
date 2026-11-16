@@ -1,0 +1,44 @@
+name: Neovim file selection acceptance
+
+on:
+  pull_request:
+    paths: &editor-paths
+      - 'scripts/file-history.py'
+      - 'scripts/test-nvim-file-picker.py'
+      - 'nvim/lua/file-picker.lua'
+      - 'nvim/lua/fzfconfig.lua'
+      - 'nvim/lua/navigation-ui.lua'
+      - 'nvim/tests/file-picker.lua'
+      - 'nvim/lazy-lock.json'
+      - 'zsh/zlogin'
+      - '.github/scripts/install-file-selection-tools.sh'
+      - '.github/scripts/prepare-file-selection-plugins.py'
+      - '.github/workflows/file-selection.yml'
+  push:
+    branches: [master]
+    paths: *editor-paths
+
+permissions:
+  contents: read
+
+jobs:
+  editor:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Lint editor fixture setup
+        run: uvx --from ruff==0.17.5 ruff check --isolated .github/scripts/prepare-file-selection-plugins.py
+      - name: Install editor test tools
+        run: bash .github/scripts/install-file-selection-tools.sh editor
+      - name: Prepare locked editor plugins
+        run: python3 .github/scripts/prepare-file-selection-plugins.py "$RUNNER_TEMP/file-picker-plugins"
+      - name: Verify mapped editor selection
+        env:
+          NVIM_TEST_PLUGIN_ROOT: ${{ runner.temp }}/file-picker-plugins
+        run: python3 scripts/test-nvim-file-picker.py --check editor

@@ -18,6 +18,28 @@ Runtime installation and configuration are separate operations. Configuration al
 
 Restart existing session servers after changing the runtime or loaded plugins. Replacing an executable or WASM file does not update a running instance. Keep `$HOME/.local/bin` ahead of package-manager binaries. Preserve malformed permission caches for diagnosis rather than replacing them silently.
 
+## Native host helpers
+
+All Zellij runtime helpers live in the [native Rust CLI](../zellij/cli/src/main.rs). Existing `bin/zellij-*` commands and Claude/Codex title hooks link directly to `zellij/target/release/lane-zellij`, which selects the command from its invocation name. This preserves the caller environment without starting a shell. The [image-hint adapter](../bin/zellij-image-hints) checks and refreshes the native helper before opening Kitty's picker. `zssh` delegates to `zellij-helper ssh`, and Zsh retains only hook/widget registration and shell-local editor state.
+
+Build explicitly with `make zellij-helpers` after pulling an update. The image shortcut also rebuilds a missing helper or changed CLI, protocol, or build inputs through the same [build script](../scripts/build-zellij-helpers.sh). A successful build records its start time so source deletions and edits during compilation remain detectable even when Cargo reuses the executable. Full installation builds the helper for every selected runtime, including the legacy release. Configuration-only commands and minimal bootstrap only create links. An automatic image-helper rebuild needs installed Cargo, uses the current checkout, and reports failure without executing the previous binary. The tool installers, configuration provisioning, test harnesses, and Neovim/Zsh integration glue retain their host languages; interactive operations need no Python interpreter or `jq`.
+
+For Kitty image hints, the launcher publishes `dotfiles-hints-building` at the terminal cursor while rebuilding. Kitty extends its startup wait to five minutes, then uses the existing ticket and pane geometry handshake when the native helper is ready. `dotfiles-hints-error` stops the picker and leaves an interactive build error open until Enter. Sessions without the launcher retain the ordinary five-second fallback to native Kitty hyperlinks.
+
+| Rust module | Responsibility |
+| --- | --- |
+| [session](../zellij/cli/src/session.rs), [agent](../zellij/cli/src/agent.rs) | Attach, SSH, shared popup, shutdown confirmation, forwarded-agent recovery |
+| [context](../zellij/cli/src/context.rs), [panes](../zellij/cli/src/panes.rs), [navigation](../zellij/cli/src/navigation.rs) | Session inspection, shared pane views and captures, nearest multiplexer, and client-aware pane navigation |
+| [titles](../zellij/cli/src/titles.rs), [auto_title](../zellij/cli/src/auto_title.rs), [agent_titles](../zellij/cli/src/agent_titles.rs) | Shared ownership records, shell titles, Claude/Codex lifecycle titles |
+| [picker](../zellij/cli/src/picker.rs), [preview](../zellij/cli/src/preview.rs) | Tab/session/client choices, pane moves, swaps, safe viewport previews |
+| [balance](../zellij/cli/src/balance.rs) | Bounded native boundary resizing and layout revalidation |
+| [clipboard](../zellij/cli/src/clipboard.rs), [notify](../zellij/cli/src/notify.rs) | Private copy buffers and bounded notification history |
+| [status](../zellij/cli/src/status.rs), [protocol](../zellij/protocol/src/lib.rs) | Status/config/reload commands and shared host/plugin contracts |
+
+Notification and title files retain their existing formats. Automatic title ownership still includes the live socket incarnation. Notification writes, title updates and pane balancing use file locks released by the OS when a process exits; replacing a helper does not transfer ownership to a new server lifetime. Pane transfers and resizes remain single-shot, with inspection after mutations and no retry on uncertain results.
+
+`zellij-context inspect` reports panes, tabs, clients, and verified caller context; `--json` preserves the native metadata with `available`, `selection_required`, or `unavailable` status. It never selects a session automatically from the session list. `zellij-pane open`, `image`, and `capture` accept explicit session and target IDs, validate the current server identity, and preserve focus. Open/image return a verified pane ID and keep an interactive shell after completion so the installed navigation plugin can leave the view. Image uses an installed `kitten` or `kitty` with streaming transfer and does not install a viewer. Capture preserves raw terminal text and optional ANSI/scrollback; it does not capture pixels. Queries and mutations are sequential observations, not an atomic session snapshot.
+
 ## Feature ownership
 
 The [status plugin](../zellij/status/src/main.rs) renders the top bar, observes native attention, and coordinates client-specific helpers. Its background receiver routes paste and attention bindings to the invoking client. The [navigation plugin](../zellij/navigation/README.md) owns bare pane-navigation keys. The [command-prompt plugin](../zellij/command-prompt/README.md) owns private prompt, command-history, and new-session routing.
@@ -30,9 +52,9 @@ The [picker](../bin/zellij-picker) preserves live panes when moving or swapping.
 
 ## Forwarded-agent and session safety
 
-The attach workflow maintains owner-only session-specific SSH-agent links keyed by persistent native session identity. Renaming or reusing a display name does not retarget an existing session. The shared popup follows its selected outer session's managed link; arbitrary symlinks, follower chains, self-reference, and loops are rejected. Raw agent sockets remain the ordinary session-refresh input.
+Remote programs share `~/.ssh/dotfiles-agent/forwarded.sock`, a per-user link inside an owner-only directory. Each fresh forwarded SSH login atomically selects its owned raw socket. Mux children only select the stable path, so stale inherited sockets cannot roll back a newer login. Session names, server identity, and popup ownership do not affect the selection. The latest forwarded login serves every session on the host.
 
-Recovery identifies the target session's server through a short unfocused native command. It needs no Python or SQLite client at runtime. Failure falls back to ordinary attachment with the incoming socket rather than blocking attachment. No private key material is copied.
+The SSH login hook updates the link before launching programs, without running a command inside Zellij or discovering a server through parent processes. Missing or invalid incoming sockets fail visibly and leave the selected agent unchanged. No private key material is copied.
 
 Shutdown validates the owning Unix socket again before ending a session. The client-detach chooser uses fresh attachment identities and receiver ownership, rejecting observed stale selections rather than falling back to detaching every other viewer.
 
@@ -42,6 +64,8 @@ Choose checks for the affected feature, following [the verification guide](verif
 
 ```sh
 zellij setup --check
+make test-zellij-helpers
+make test-zellij-pane
 make test-zellij
 make test-zellij-notifications
 make test-zellij-notifications-ui
@@ -57,9 +81,11 @@ make test-zellij-command-prompt
 make test-zellij-session-keys
 ```
 
+`make test-zellij-helpers` runs Rust formatting, Clippy with warnings denied, unit tests, and native CLI checks with controlled external-command responses. These validate command contracts and file behavior without claiming a live Zellij integration.
+
 The real-terminal detectors install into private temporary homes and sessions. They exercise configured prefix keys, preserve process and scrollback identity, and clean up only their own sessions. Some checks require Neovim, fzf, Rust, or installed navigation artifacts. Runtime installation has its own cache and upstream-download boundary; orchestration tests do not establish live release availability.
 
-Run `make test-ssh-agent` for local-agent, tmux, and attachment-failure checks and `python3 scripts/test-zellij-agent-update.py` for pinned-runtime reconnects, popup survival, and unsafe-source rejection. These use real temporary agents but do not open a real SSH connection or authenticate against 1Password.
+Run `make test-ssh-agent` for local-agent preservation, shell startup, direct attachment, and invalid-source checks and `python3 scripts/test-zellij-agent-update.py` for pinned-runtime reconnects, popup survival, and unsafe-source rejection. These use real temporary agents but do not open a real SSH connection or authenticate against 1Password.
 
 The notification detector validates fixed-width wide and narrow layouts and colored source previews. A previous live-resize check disrupted input; whether that came from the runtime or the test harness remains unresolved. Do not treat fixed-width checks as proof of live-resize behavior.
 

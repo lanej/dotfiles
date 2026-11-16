@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="708" height="224" viewBox="0 0 708 224" role="img" aria-label="delta — captured native terminal cells">
+<rect width="100%" height="100%" fill="#2E3440"/>
+<g font-family="monospace" font-size="14" style="white-space:pre">
+<rect x="12" y="12" width="684" height="20" fill="#2E3440"/>
+<text x="12" y="27" fill="#81A1C1" font-weight="normal" font-style="normal" text-decoration="none" textLength="684" lengthAdjust="spacingAndGlyphs">────────────────────────────────────────────────────────────────────────────</text>
+<rect x="12" y="32" width="684" height="20" fill="#2E3440"/>
+<rect x="12" y="52" width="36" height="20" fill="#2E3440"/>
+<text x="12" y="67" fill="#81A1C1" font-weight="normal" font-style="normal" text-decoration="none" textLength="36" lengthAdjust="spacingAndGlyphs">───┐</text>
+<rect x="48" y="52" width="648" height="20" fill="#2E3440"/>
+<rect x="12" y="72" width="9" height="20" fill="#2E3440"/>
+<text x="12" y="87" fill="#81A1C1" font-weight="normal" font-style="normal" text-decoration="none" textLength="9" lengthAdjust="spacingAndGlyphs">1</text>
+<rect x="21" y="72" width="18" height="20" fill="#2E3440"/>
+<text x="21" y="87" fill="#D8DEE9" font-weight="normal" font-style="normal" text-decoration="none" textLength="9" lengthAdjust="spacingAndGlyphs">:</text>
+<rect x="39" y="72" width="9" height="20" fill="#2E3440"/>
+<text x="39" y="87" fill="#81A1C1" font-weight="normal" font-style="normal" text-decoration="none" textLength="9" lengthAdjust="spacingAndGlyphs">│</text>
+<rect x="48" y="72" width="648" height="20" fill="#2E3440"/>
+<rect x="12" y="92" width="36" height="20" fill="#2E3440"/>
+<text x="12" y="107" fill="#81A1C1" font-weight="normal" font-style="normal" text-decoration="none" textLength="36" lengthAdjust="spacingAndGlyphs">───┘</text>
+<rect x="48" y="92" width="648" height="20" fill="#2E3440"/>
+<rect x="12" y="112" width="45" height="20" fill="#2E3440"/>
+<text x="12" y="127" fill="#81a1c1" font-weight="normal" font-style="normal" text-decoration="none" textLength="45" lengthAdjust="spacingAndGlyphs">local</text>
+<rect x="57" y="112" width="81" height="20" fill="#2E3440"/>
+<text x="66" y="127" fill="#d8dee9" font-weight="normal" font-style="normal" text-decoration="none" textLength="63" lengthAdjust="spacingAndGlyphs">service</text>
+<rect x="138" y="112" width="9" height="20" fill="#2E3440"/>
+<text x="138" y="127" fill="#81a1c1" font-weight="normal" font-style="normal" text-decoration="none" textLength="9" lengthAdjust="spacingAndGlyphs">=</text>
+<rect x="147" y="112" width="9" height="20" fill="#2E3440"/>
+<rect x="156" y="112" width="45" height="20" fill="#2E3440"/>
+<text x="156" y="127" fill="#a3be8c" font-weight="normal" font-style="normal" text-decoration="none" textLength="45" lengthAdjust="spacingAndGlyphs">&quot;api&quot;</text>
+<rect x="201" y="112" width="495" height="20" fill="#2E3440"/>
+<rect x="12" y="132" width="45" height="20" fill="#453b47"/>
+<text x="12" y="147" fill="#81a1c1" font-weight="normal" font-style="normal" text-decoration="none" textLength="45" lengthAdjust="spacingAndGlyphs">local</text>
+<rect x="57" y="132" width="81" height="20" fill="#453b47"/>
+<text x="66" y="147" fill="#d8dee9" font-weight="normal" font-style="normal" text-decoration="none" textLength="63" lengthAdjust="spacingAndGlyphs">retries</text>
+<rect x="138" y="132" width="9" height="20" fill="#453b47"/>
+<text x="138" y="147" fill="#81a1c1" font-weight="normal" font-style="normal" text-decoration="none" textLength="9" lengthAdjust="spacingAndGlyphs">=</text>
+<rect x="147" y="132" width="9" height="20" fill="#453b47"/>
+<rect x="156" y="132" width="9" height="20" fill="#5a424d"/>
+<text x="156" y="147" fill="#b48ead" font-weight="bold" font-style="normal" text-decoration="none" textLength="9" lengthAdjust="spacingAndGlyphs">2</text>
+<rect x="165" y="132" width="531" height="20" fill="#453b47"/>
+<rect x="12" y="152" width="45" height="20" fill="#414a4c"/>
+<text x="12" y="167" fill="#81a1c1" font-weight="normal" font-style="normal" text-decoration="none" textLength="45" lengthAdjust="spacingAndGlyphs">local</text>
+<rect x="57" y="152" width="81" height="20" fill="#414a4c"/>
+<text x="66" y="167" fill="#d8dee9" font-weight="normal" font-style="normal" text-decoration="none" textLength="63" lengthAdjust="spacingAndGlyphs">retries</text>
+<rect x="138" y="152" width="9" height="20" fill="#414a4c"/>
+<text x="138" y="167" fill="#81a1c1" font-weight="normal" font-style="normal" text-decoration="none" textLength="9" lengthAdjust="spacingAndGlyphs">=</text>
+<rect x="147" y="152" width="9" height="20" fill="#414a4c"/>
+<rect x="156" y="152" width="9" height="20" fill="#515d57"/>
+<text x="156" y="167" fill="#b48ead" font-weight="bold" font-style="normal" text-decoration="none" textLength="9" lengthAdjust="spacingAndGlyphs">3</text>
+<rect x="165" y="152" width="531" height="20" fill="#414a4c"/>
+<rect x="12" y="172" width="54" height="20" fill="#2E3440"/>
+<text x="12" y="187" fill="#81a1c1" font-weight="normal" font-style="normal" text-decoration="none" textLength="54" lengthAdjust="spacingAndGlyphs">return</text>
+<rect x="66" y="172" width="153" height="20" fill="#2E3440"/>
+<text x="75" y="187" fill="#d8dee9" font-weight="normal" font-style="normal" text-decoration="none" textLength="144" lengthAdjust="spacingAndGlyphs">service, retries</text>
+<rect x="219" y="172" width="477" height="20" fill="#2E3440"/>
+<rect x="12" y="192" width="684" height="20" fill="#2E3440"/>
+</g></svg>

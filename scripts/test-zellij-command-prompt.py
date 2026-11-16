@@ -10,10 +10,13 @@ status/navigation plugin from the user's environment is loaded.
 import argparse
 import codecs
 import importlib
+import json
 import os
 from pathlib import Path
 import re
 import shutil
+import shlex
+import time
 import subprocess
 import sys
 import tempfile
@@ -53,6 +56,7 @@ def configuration(session_keys=False):
         'default_layout "test"', 'show_startup_tips false',
         'show_release_notes false', 'session_serialization false',
         'pane_frames true', 'mouse_mode false',
+        re.search(r'^nested_session_handling.*$', source, re.M).group(),
         'plugins { ' + alias + '\n}', 'load_plugins { ' + load + '\n}',
         'keybinds clear-defaults=true {', block(bindings, r'\blocked\s*\{'),
         'tmux {', *keys, 'bind "Esc" { SwitchToMode "Locked"; }', '}',
@@ -106,14 +110,14 @@ def screen(terminal):
 def check_decoder():
     # Reproduce CI's metadata after a dialog render, including chunk boundaries
     # inside ESC/ST and UTF-8. The message must neither draw nor move the cursor.
-    rendered = '\x1b[12;32HZellij command :\x1b[12;32H'
+    rendered = '\x1b[12;32H: rename-tab\x1b[12;32H'
     metadata = '\x1bP26661nCh0KF2NvbW1hbmQ=\x1b\\'
     data = (rendered + metadata + '\x1b[14;32H→ editable').encode()
     for size in (1, 7, len(data)):
         decoder = Decoder()
         for offset in range(0, len(data), size):
             decoder.feed(data[offset:offset + size])
-        assert decoder.display.display[11][31:47] == 'Zellij command :'
+        assert decoder.display.display[11][31:43] == ': rename-tab'
         assert decoder.display.display[13][31:41] == '→ editable'
         assert '26661n' not in '\n'.join(decoder.display.display)
 
@@ -122,23 +126,93 @@ def text(terminal):
     return '\n'.join(screen(terminal))
 
 
+def capture(terminal, name):
+    """Retain the actual decoded terminal grid for visual review."""
+    destination = os.environ.get('ZELLIJ_TEST_ARTIFACTS')
+    if not destination:
+        return
+    screen(terminal)
+    display = terminal.command_display.display
+    cells = [[{'text': display.buffer[y][x].data, 'fg': display.buffer[y][x].fg,
+               'bg': display.buffer[y][x].bg, 'bold': display.buffer[y][x].bold,
+               'underscore': display.buffer[y][x].underscore}
+              for x in range(display.columns)] for y in range(display.lines)]
+    directory = Path(destination) / 'command-palette'
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / (name + '.json')).write_text(json.dumps(cells, ensure_ascii=False))
+
+
+def assert_match_underlines(terminal, label, matched):
+    lines = screen(terminal)
+    display = terminal.command_display.display
+    top, left, width, height = prompt_frame(terminal)
+    y = next(y for y in range(top + 2, top + height - 1)
+             if label in lines[y][left + 1:left + width - 1])
+    x = lines[y].index(label, left + 1)
+    for i in range(len(label)):
+        cell = display.buffer[y][x + i]
+        assert cell.underscore == (i in matched), f'Unexpected underline at {label!r}[{i}]'
+        assert cell.bg == display.buffer[y][x].bg, 'Match changed the row background'
+
+
+def prompt_frame(terminal):
+    lines = screen(terminal)
+    try:
+        top = next(row for row, line in enumerate(lines) if re.search(r'╭─+╮', line))
+        left = lines[top].index('╭')
+        right = lines[top].index('╮', left)
+        bottom = next(row for row in range(top + 1, len(lines))
+                      if lines[row][left] == '╰' and lines[row][right] == '╯')
+        return top, left, right - left + 1, bottom - top + 1
+    except (StopIteration, ValueError):
+        return None  # Native resize and redraw can span multiple PTY reads.
+
+
+def command_line(terminal):
+    frame = prompt_frame(terminal)
+    if frame is None:
+        return ''
+    top, left, width, _ = frame
+    return screen(terminal)[top + 1][left + 1:left + width - 1]
+
+
+def prompt_text(terminal):
+    frame = prompt_frame(terminal)
+    if frame is None:
+        return ''
+    top, left, width, height = frame
+    return '\n'.join(line[left + 1:left + width - 1]
+                     for line in screen(terminal)[top + 1:top + height - 1])
+
+
+def command_ready(terminal):
+    return command_line(terminal).lstrip().startswith(':')
+
+
 def open_prompt(terminal):
-    # Esc and accepted actions close asynchronously. A stale title must not
-    # satisfy the next open and let its keystrokes enter the previous dialog.
-    terminal.until("previous command dialog closes", lambda: "Zellij command" not in text(terminal))
+    # Wait for asynchronous closure so new keys cannot enter a stale popup.
+    terminal.until("previous command dialog closes", lambda: prompt_frame(terminal) is None)
     original_terminals = {p['id'] for p in terminal.terminals()}
     terminal.prefix(b":")
-    try:
-        terminal.until("Ctrl-f : opens native input", lambda: "Zellij command" in text(terminal))
-    except AssertionError:
-        print("Decoded prompt screen:\n" + text(terminal), flush=True)
-        raise
-    title_rows = [row for row, line in enumerate(screen(terminal)) if "Zellij command" in line]
-    assert title_rows and all(7 <= row <= 23 for row in title_rows), 'Prompt is not vertically centered'
-    assert all(10 <= screen(terminal)[row].index('Zellij command') <= 90
-               for row in title_rows), 'Prompt is not horizontally centered'
-    # A native prompt renders over the existing panes; it must not create a
-    # shell popup or reveal a suppressed plugin pane.
+    terminal.until("Ctrl-f : opens input or first-use file browsing consent", lambda:
+                   command_ready(terminal) or '(y/n)' in text(terminal).lower())
+    if '(y/n)' in text(terminal).lower():
+        terminal.send(b'y')
+    terminal.until("Ctrl-f : renders compact command input", lambda: command_ready(terminal))
+    terminal.until("command popup settles after permission/resize updates", lambda:
+                   prompt_frame(terminal) is not None
+                   and abs(prompt_frame(terminal)[1] * 2 + prompt_frame(terminal)[2] - 120) <= 2)
+    top, left, width, height = prompt_frame(terminal)
+    assert width <= 64 and 3 <= height <= 8, f'Command popup is oversized: {width}x{height}'
+    assert abs(left * 2 + width - 120) <= 2, 'Command popup is not horizontally centered'
+    assert 4 <= top <= 12, f'Command popup is not near the upper third: {top}'
+    assert 'Zellij command' not in text(terminal) and 'COMMAND / VALUE' not in text(terminal) and 'suggestions' not in text(terminal), (
+        'Command entry includes browsing chrome')
+    assert all(screen(terminal)[row][left + 1:left + width - 1] == '─' * (width - 2)
+               for row in (top, top + height - 1)), 'Command entry includes labels in its frame'
+    assert all('├' not in line[left:left + width] and '┤' not in line[left:left + width]
+               for line in screen(terminal)[top + 1:top + height - 1]), 'Command entry includes an extra divider'
+    # A native overlay must not create shells or reveal suppressed plugin panes.
     assert {p['id'] for p in terminal.terminals()} == original_terminals, 'Prompt opened a shell pane'
 
 
@@ -237,8 +311,7 @@ def exercise(first, second, home):
         first.until(command + " is displayed", lambda: result in text(first))
         unchanged()
         first.send(b'\r')
-        guidance = 'Review the command' if command == 'history' else 'Add arguments'
-        first.until(command + ' selection returns to editable input', lambda: guidance in text(first))
+        first.until(command + ' selection returns to editable input', lambda: command_ready(first))
         unchanged()
         first.send(b'\x1b')
     submit(first, 'rename-tab "reopened successfully"', second)
@@ -246,28 +319,145 @@ def exercise(first, second, home):
     unchanged()
     # CLI-only variants must return an error instead of panicking in run_action.
     for command, message in (
-        ('rename-pane --pane-id 9999 blocked', 'CLI-only actions'),
+        ('rename-pane --pane-id 9999 blocked', 'unavailable through the plugin API'),
         ('new-pane --near-current-pane', 'terminal-pane origin'),
         ('new-tab --initial-plugin file:/not-a-plugin.wasm', 'external plugins'),
         ('definitely-not-a-command', 'Unknown or unsupported command'),
     ):
         submit(first, command, second)
-        first.until('unsupported variant remains editable: ' + command, lambda: message in text(first))
+        first.until('unsupported variant remains editable: ' + command, lambda: message in ' '.join(prompt_text(first).split()))
         unchanged()
+        if command == 'new-pane --near-current-pane':
+            first.send(b'\x04')
+            first.until('full error details are available', lambda: not command_ready(first)
+                        and message in ' '.join(prompt_text(first).split()))
+            first.send(b'\x1b')
+            first.until('error details return to the original command', lambda:
+                        'new-pane --near-current-pane' in command_line(first) and command_ready(first))
         first.send(b'\x1b')
     submit(first, 'rename-pane --help', second)
     first.until('native action help is displayed', lambda: 'Usage:' in text(first))
     first.send(b'\x1b')
+    # Help returns to the editable command so it can be corrected in place.
+    first.until('help returns to command', lambda: command_ready(first))
+    first.send(b'\x1b')
     open_prompt(first)
     first.send(b'\r')
-    first.until('empty input closes', lambda: 'Zellij command' not in text(first))
+    first.until('empty input closes', lambda: prompt_frame(first) is None)
     unchanged()
 
+    open_prompt(first)
+    command_anchor = prompt_frame(first)[:2]
+    original_height = prompt_frame(first)[3]
+    first.send(b'rename-ta')
+    first.until('inline command suggestions shrink the dropdown', lambda:
+                'rename-tab' in prompt_text(first) and prompt_frame(first) is not None
+                and prompt_frame(first)[3] < original_height)
+    assert prompt_frame(first)[:2] == command_anchor, 'Completion moved the command line'
+    first.send(b'\t')
+    first.until('Tab completes the action', lambda: 'rename-tab ' in text(first))
+    first.send(b'\t')
+    first.until('rename offers the current name', lambda: 'reopened successfully' in text(first))
+    first.send(b'\x1b')
+
+    open_prompt(first)
+    first.send(b'new-pane --dir\t ')
+    first.until('native flag completion and direction choices', lambda:
+                'new-pane --direction' in command_line(first)
+                and {'left', 'right', 'up', 'down'} <= {line.strip() for line in prompt_text(first).splitlines()})
+    capture(first, 'completion')
+    first.send(b'r\t')
+    first.until('direction completion shrinks to one choice', lambda:
+                'new-pane --direction right' in command_line(first)
+                and prompt_frame(first) is not None and prompt_frame(first)[3] <= 4)
+    first.send(b'\x15rename-tab "no completion requested"')
+    first.until('free-form input collapses to a single command line', lambda:
+                prompt_frame(first) is not None and prompt_frame(first)[3] == 3
+                and prompt_text(first).strip() == ': rename-tab "no completion requested"')
+    capture(first, 'input')
+    first.send(b'\x1b')
+    unchanged()
+
+    submit(first, 'list-panes', second)
+    first.until('pane query is a searchable table', lambda: command_line(first).lstrip().startswith('/') and 'other client' in prompt_text(first))
+    first.send(b'\t')
+    first.until('Tab selects without leaving the query', lambda: command_line(first).lstrip().startswith('/'))
+    capture(first, 'pane-query')
+    first.send(b'other client')
+    first.until('pane table filters by title', lambda: command_line(first).strip() == '/ other client'
+                and len([line for line in prompt_text(first).splitlines()[1:] if line.strip()]) == 1
+                and 'other client' in prompt_text(first).splitlines()[1])
+    first.send(b'\r')
+    submit(first, 'rename-pane "selected through query"', second)
+    first.until('query jumps by stable pane ID', lambda: pane(other_id)['title'] == 'selected through query')
+    submit(first, 'go-to-tab 1', second)
+
+    open_prompt(first)
+    first.send(b'go-to-tab-name "second\t')
+    first.until('quoted live tab-name completion', lambda: 'second named tab' in text(first))
+    first.send(b'\r')
+    submit(first, 'rename-pane "completed tab target"', second)
+    first.until('quoted completion executes against selected tab', lambda: any(
+        p['tab_id'] == other_tab and p['title'] == 'completed tab target' for p in first.terminals()))
+    submit(first, 'go-to-tab 1', second)
+
+    # Reopen while a tab switch can still be completing, with the other client
+    # active. The private binding must survive each transition without retries.
+    for position in (2, 1, 2, 1, 2, 1):
+        submit(first, f'go-to-tab {position}', second)
+        open_prompt(first)
+        first.send(b'\x1b')
+
+    submit(first, 'list-tabs', second)
+    first.until('tab query opens', lambda: command_line(first).lstrip().startswith('/') and 'second named tab' in prompt_text(first))
+    submit(second, 'rename-tab "live renamed target"', first)
+    first.until('open query updates from live state', lambda: 'live renamed target' in text(first))
+    capture(first, 'tab-query')
+    first.send(b'live renamed\r')
+    submit(first, 'rename-pane "live tab selected"', second)
+    first.until('updated tab selection uses its stable ID', lambda: any(
+        p['tab_id'] == other_tab and p['title'] == 'live tab selected' for p in first.terminals()))
+    submit(first, 'go-to-tab 1', second)
+
+    open_prompt(first)
+    first.send(b'\x10')
+    first.until('Ctrl-p recalls a command without running it', lambda: 'go-to-tab 1' in text(first))
+    first.send(b'\x0e')
+    first.until('Ctrl-n restores the draft', lambda: 'go-to-tab 1' not in command_line(first))
+    first.send(b'\x1b')
+
+    open_prompt(first)
+    long_name = 'wide-' + '界' * 40 + '-cafe\u0301-👩‍💻'
+    first.send(b'\x1b[200~' + ('rename-tab "' + long_name + '"').encode() + b'\x1b[201~')
+    assert tabs()[initial_tab]['name'] == 'reopened successfully', 'Paste submitted a command'
+    first.send(b'\x01\x05\x1b[D!\r')
+    try:
+        first.until('pasted Unicode command survives scrolling and cursor editing', lambda:
+                    tabs()[initial_tab]['name'] == long_name + '!')
+    except AssertionError:
+        print('Tab names after Unicode edit: ' + json.dumps(tabs(), ensure_ascii=False), flush=True)
+        raise
+    first.until('Unicode paste popup closes', lambda: prompt_frame(first) is None)
+    assert 'rename-tab \"wide-' not in text(first), 'Paste leaked into the underlying shell'
+    submit(first, 'rename-tab \"typed 界é👩‍💻\"', second)
+    first.until('typed Unicode key events preserve complete characters', lambda:
+                tabs()[initial_tab]['name'] == 'typed 界é👩‍💻')
+
+    # A parse failure keeps the original line, allowing a real correction.
+    submit(first, 'move-focus sideways', second)
+    first.until('invalid argument stays editable', lambda:
+                'sideways' in command_line(first) and 'invalid value' in prompt_text(first))
+    capture(first, 'validation')
+    first.send(b'\x15rename-tab "corrected inline"\r')
+    first.until('inline correction executes', lambda: tabs()[initial_tab]['name'] == 'corrected inline')
+
     submit(second, 'history', first)
-    second.until('history belongs to second client', lambda: 'second named tab' in text(second))
+    second.until('history belongs to second client', lambda: 'live renamed target' in text(second))
     assert 'toggle-floating-panes' not in text(second), 'History leaked from first client'
     second.send(b'\x1b')
-    second.until('history dialog closes before reload', lambda: 'Zellij command' not in text(second))
+    second.until('history returns to editable command', lambda: command_ready(second))
+    second.send(b'\x1b')
+    second.until('history dialog closes before reload', lambda: prompt_frame(second) is None)
 
     # Reload an observable ordinary binding in both clients, then verify the
     # plugin's private binding is restored independently for both of them.
@@ -334,6 +524,91 @@ def exercise(first, second, home):
           'cancel/error/reopen/help/history, and hidden floats with two attached clients.')
 
 
+def exercise_files(first, second, home):
+    """Exercise file lookups and ordinary editing through the native prefix binding."""
+    second.until('file-test bystander is attached', lambda: PROMPT.decode().strip() in text(second))
+    if '(y/n)' in text(second).lower():
+        second.send(b'y')
+    before = {tab['tab_id'] for tab in first.tabs()}
+    second.prefix(b'c')
+    other_tab = first.until('file-test bystander has a separate tab', lambda:
+                            {tab['tab_id'] for tab in first.tabs()} - before).pop()
+    open_prompt(first)
+    first.send(b'move-focus rt')
+    first.until('fuzzy argument matches arrive', lambda: 'right' in prompt_text(first))
+    assert_match_underlines(first, 'right', {0, 4})
+    capture(first, 'fuzzy-command')
+    first.send(b'\x1b')
+    fixture = home / 'completion dir'
+    fixture.mkdir()
+    for name in ('notes one.txt', 'notes two.txt', 'notes café.txt'):
+        (fixture / name).write_text('completion fixture')
+    (fixture / 'notes folder').mkdir()
+    link = home / 'completion-link'
+    link.symlink_to(fixture, target_is_directory=True)
+    for directory in (fixture, link, fixture / '..' / 'completion dir'):
+        open_prompt(first)
+        first.send(('edit --floating ' + shlex.quote(str(directory / 'notes')) + '\t').encode())
+        first.until('file candidates preserve spaces, flags and directory aliases', lambda:
+                    'notes one.txt' in prompt_text(first) and 'notes two.txt' in prompt_text(first))
+        assert 'notes one.txt' not in prompt_text(second), 'File candidates leaked to the other client'
+        assert_match_underlines(first, 'notes one.txt', set(range(5)))
+        first.send(b'\t')
+        first.until('Tab inserts a quoted file argument', lambda: 'notes ' in command_line(first))
+        first.send(b'\x1b')
+    changed = home / 'completion-cwd-ready'
+    first.until('file prompt closes before changing cwd', lambda: prompt_frame(first) is None)
+    first.send(('cd ' + shlex.quote(str(fixture)) + ' && touch ' + shlex.quote(str(changed)) + '\r').encode())
+    first.until('focused shell enters completion directory', changed.exists)
+    open_prompt(first)
+    first.send(b'edit notes\t')
+    first.until('relative filename candidates arrive', lambda: 'notes one.txt' in prompt_text(first))
+    assert ': edit notes' in command_line(first), 'Example hides the command or query'
+    assert_match_underlines(first, 'notes one.txt', set(range(5)))
+    for name, icon in [('notes one.txt', '\uf15b'), ('notes folder', '\uf07b')]:
+        line = next(line for line in screen(first) if name in line)
+        assert line.index(icon) < line.index(name), 'Type icon must precede the filename'
+    capture(first, 'file-completion')
+    first.send(b'\x1b')
+    open_prompt(first)
+    first.send(('edit ' + shlex.quote(str(fixture / 'notes café')) + '\t').encode())
+    first.until('Unicode filenames arrive intact', lambda: 'notes café.txt' in prompt_text(first))
+    assert_match_underlines(first, 'notes café.txt', set(range(5)) | set(range(6, 10)))
+    first.send(b'\t')
+    first.until('Unicode filename completion is quoted in editable input', lambda:
+                "notes café.txt'" in command_line(first))
+    first.send(b'\x1b')
+    open_prompt(first)
+    first.send(('new-pane --cwd ' + shlex.quote(str(fixture / 'notes')) + '\t').encode())
+    first.until('cwd candidates contain directories only', lambda: 'notes folder' in prompt_text(first))
+    assert 'notes one.txt' not in prompt_text(first)
+    first.send(b'\x1b')
+    open_prompt(first)
+    first.send(('edit ' + shlex.quote(str(fixture / 'notes')) + '\tX').encode())
+    first.until('typing continues while lookup is pending', lambda: "notes'X" in command_line(first))
+    first.drain(0.4)
+    assert "notes'X" in command_line(first), 'A stale lookup replaced newer input'
+    first.send(b'\x1b')
+    open_prompt(first)
+    expected = 'rename-tab "'
+    first.send(expected.encode())
+    latencies = []
+    for index, character in enumerate('paced-typing-under-live-updates'):
+        if index % 5 == 0:
+            second.action('rename-tab', '--tab-id', str(other_tab), 'live-' + str(index))
+        expected += character
+        started = time.monotonic()
+        os.write(first.fd, character.encode())
+        first.until('paced typing remains responsive during live state updates', lambda:
+                    expected in command_line(first))
+        latencies.append(time.monotonic() - started)
+    first.send(b'\x7f\x1b[D!')
+    first.until('cursor editing retains the draft', lambda: 'live-updat!e' in command_line(first))
+    assert max(latencies) < 1, f'Paced typing stalled: {max(latencies):.2f}s'
+    first.send(b'\x1b')
+    print(f'PASS: native file/directory completion, Unicode filenames, flags, spaces, symlinks, parent paths, stale results, client isolation, and paced editing under live updates (max {max(latencies):.2f}s).')
+
+
 def sessions(client):
     result = subprocess.run([client.binary, 'list-sessions', '--short', '--no-formatting'],
                             env=client.env, capture_output=True, text=True, timeout=5)
@@ -351,7 +626,7 @@ def exercise_session_keys(first, second, home, clients):
     def grant_bar(client):
         # A switching PTY still contains its earlier command-plugin consent.
         # Inspect the current screen rather than that stale output history.
-        ready = lambda: re.search(r'!\d+ ●\d+', text(client))
+        ready = lambda: re.search(r' \d+:[^\s]', text(client).split('\n', 1)[0])
         client.until('current session status consent or live bar', lambda:
                      '(y/n)' in text(client).lower() or ready())
         if '(y/n)' in text(client).lower():
@@ -378,13 +653,15 @@ def exercise_session_keys(first, second, home, clients):
     assert old_cwd == str(focused)
     original_panes = {p['id'] for p in first.terminals()}
 
-    def create(client, bystander, label):
+    def create(client, bystander, label, *, ordinary=True):
+        if ordinary:
+            client.settle_ordinary_navigation()
         before = sessions(client)
         # Keep the other client active around the asynchronous private dispatch.
         bystander.send(b'\x15')
         os.write(client.fd, b'\x06C')
         bystander.send(b'\x15')
-        created = client.until('Ctrl-f C immediately creates an unnamed session',
+        created = client.until('Ctrl-f C creates an unnamed session',
                                lambda: sessions(client) - before)
         assert len(created) == 1, created
         name = created.pop()
@@ -445,8 +722,8 @@ def exercise_session_keys(first, second, home, clients):
     for invalid in ('', 'bad/name', original):
         first.prefix(b'w')
         first.send(invalid.encode() + b'\r')
-        first.until('invalid/colliding name displays native error', lambda: 'Could not rename session' in text(first))
-        assert 'RENAME SESSION:' not in text(first)
+        first.until('invalid/colliding name displays native error outside rename mode', lambda:
+                    'Could not rename session' in text(first) and 'RENAME SESSION:' not in text(first))
         assert sessions(first) == (before - {created}) | {renamed}, 'Invalid/colliding rename changed names'
         # Dismiss the native rejection notice before the next rename.
         first.send(b'\x1b')
@@ -455,25 +732,37 @@ def exercise_session_keys(first, second, home, clients):
     assert client_count(original) == 1 and client_count(renamed) == 2
     os.kill(old_pid, 0)
 
-    # Start the actual popup launcher on its own PTY to inspect its client
-    # directly, without adding a second nested terminal decoder. Its layout
-    # overlay is exactly the one used when Ctrl-f P launches it in a float.
-    popup_env = {**first.env, 'ZELLIJ_SESSION_NAME': renamed}
-    popup = Terminal(first.binary, popup_env, 'dotfiles-popup',
-                     [str(ROOT / 'bin/zellij-popup')], install_navigation=False)
-    clients.append(popup)
-    popup.until('popup shell starts', lambda: PROMPT.decode().strip() in text(popup))
-    if '(y/n)' in text(popup).lower():
-        popup.send(b'y')
+    # The launcher marks its attachment as nested, so exercise it inside the
+    # real containing session that supplies the native ancestry handshake.
+    log = Path(first.env['TMPDIR']) / f'zellij-{os.getuid()}/zellij-log/zellij.log'
+    log_offset = log.stat().st_size if log.exists() else 0
+    first.prefix(b'P')
+    first.until('popup shell starts', lambda:
+                client_count('pop-up') == 1 and PROMPT.decode().strip() in
+                first.action('dump-screen', session='pop-up'))
+
+    def popup_registered():
+        if not log.exists():
+            return False
+        with log.open('rb') as handle:
+            handle.seek(log_offset)
+            output = handle.read().decode(errors='replace')
+        return ('nested session handshake complete: this session is nested inside ancestry '
+                f'["{renamed}"]') in output
+
+    first.until('popup registers its containing session', popup_registered)
+    popup = first
+    popup.name = 'pop-up'
     grant_bar(popup)
     popup.prefix(b'j')
-    _, popup_pid, _ = shell_probe(popup, 'popup-shell')
-    popup_name, regular_pid, _ = create(popup, second, 'created-from-popup')
-    assert client_count('dotfiles-popup') == 0
+    actual, popup_pid, _ = shell_probe(popup, 'popup-shell')
+    assert actual == 'pop-up', 'Popup keys reached the containing shell'
+    popup_name, regular_pid, _ = create(popup, second, 'created-from-popup', ordinary=False)
+    assert client_count('pop-up') == 0
     os.kill(popup_pid, 0)
     popup.prefix(b'P')
     popup.until('new session uses regular P launcher, not popup detach override', lambda:
-                any(p['is_floating'] for p in popup.terminals()) and client_count('dotfiles-popup') == 1)
+                any(p['is_floating'] for p in popup.terminals()) and client_count('pop-up') == 1)
     # Native list-clients lists visible-pane focus, not every attachment: a
     # descended host can have no rows. Check the actual requesting PTY and its
     # original regular shell instead of treating guest focus as a detach.
@@ -491,6 +780,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--session-keys', action='store_true',
                         help='exercise direct new-session and native rename keys independently')
+    parser.add_argument('--files-only', action='store_true', help='exercise file completion and editing independently')
     args = parser.parse_args()
     check_decoder()
     binary = shutil.which('zellij')
@@ -506,8 +796,9 @@ def main():
                'XDG_STATE_HOME': str(work / 'state'), 'XDG_RUNTIME_DIR': str(runtime),
                'ZELLIJ_SOCKET_DIR': str(runtime), 'TMPDIR': str(temporary)}
         workflow.preserve_rust_homes(env)
-        for key in ('ZELLIJ', 'ZELLIJ_SESSION_NAME', 'ZELLIJ_PANE_ID', 'ZELLIJ_CONFIG_DIR',
-                    'ZELLIJ_CONFIG_FILE', 'TMUX', 'TMUX_PANE', 'ENV', 'BASH_ENV'):
+        for key in ('ZELLIJ', 'ZELLIJ_SESSION_NAME', 'ZELLIJ_PANE_ID', 'ZELLIJ_NESTED_ATTACH', 'ZELLIJ_CONFIG_DIR',
+                    'ZELLIJ_CONFIG_FILE', 'SSH_CONNECTION', 'SSH_TTY',
+                    'TMUX', 'TMUX_PANE', 'ENV', 'BASH_ENV'):
             env.pop(key, None)
         build_cache = os.environ.get('ZELLIJ_TEST_BUILD_CACHE')
         if build_cache:
@@ -562,8 +853,15 @@ def main():
             clients.append(second)
             if args.session_keys:
                 exercise_session_keys(first, second, home, clients)
+            elif args.files_only:
+                exercise_files(first, second, home)
             else:
                 exercise(first, second, home)
+                exercise_files(first, second, home)
+        except Exception:
+            for index, client in enumerate(clients):
+                capture(client, 'failure-client-' + str(index))
+            raise
         finally:
             names = (sessions(first) | {client.name for client in clients}
                      if args.session_keys and clients else {name})

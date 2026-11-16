@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="708" height="304" viewBox="0 0 708 304" role="img" aria-label="glow — captured native terminal cells">
+<rect width="100%" height="100%" fill="#2E3440"/>
+<g font-family="monospace" font-size="14" style="white-space:pre">
+<rect x="12" y="12" width="684" height="20" fill="#2E3440"/>
+<rect x="12" y="32" width="18" height="20" fill="#2E3440"/>
+<rect x="30" y="32" width="180" height="20" fill="#88c0d0"/>
+<text x="39" y="47" fill="#2e3440" font-weight="bold" font-style="normal" text-decoration="none" textLength="162" lengthAdjust="spacingAndGlyphs">Service inspection</text>
+<rect x="210" y="32" width="432" height="20" fill="#2E3440"/>
+<rect x="642" y="32" width="54" height="20" fill="#2E3440"/>
+<rect x="12" y="52" width="18" height="20" fill="#2E3440"/>
+<rect x="30" y="52" width="612" height="20" fill="#2E3440"/>
+<rect x="642" y="52" width="54" height="20" fill="#2E3440"/>
+<rect x="12" y="72" width="18" height="20" fill="#2E3440"/>
+<rect x="30" y="72" width="72" height="20" fill="#2E3440"/>
+<text x="30" y="87" fill="#d8dee9" font-weight="normal" font-style="normal" text-decoration="none" textLength="63" lengthAdjust="spacingAndGlyphs">Inspect</text>
+<rect x="102" y="72" width="27" height="20" fill="#2E3440"/>
+<text x="102" y="87" fill="#d8dee9" font-weight="bold" font-style="normal" text-decoration="none" textLength="27" lengthAdjust="spacingAndGlyphs">api</text>
+<rect x="129" y="72" width="513" height="20" fill="#2E3440"/>
+<text x="138" y="87" fill="#d8dee9" font-weight="normal" font-style="normal" text-decoration="none" textLength="279" lengthAdjust="spacingAndGlyphs">before accepting the selection.</text>
+<rect x="642" y="72" width="54" height="20" fill="#2E3440"/>
+<rect x="12" y="92" width="18" height="20" fill="#2E3440"/>
+<rect x="30" y="92" width="612" height="20" fill="#2E3440"/>
+<rect x="642" y="92" width="54" height="20" fill="#2E3440"/>
+<rect x="12" y="112" width="18" height="20" fill="#2E3440"/>
+<rect x="30" y="112" width="612" height="20" fill="#2E3440"/>
+<text x="30" y="127" fill="#d8dee9" font-weight="normal" font-style="normal" text-decoration="none" textLength="126" lengthAdjust="spacingAndGlyphs">• OK: complete</text>
+<rect x="642" y="112" width="54" height="20" fill="#2E3440"/>
+<rect x="12" y="132" width="18" height="20" fill="#2E3440"/>
+<rect x="30" y="132" width="612" height="20" fill="#2E3440"/>
+<text x="30" y="147" fill="#d8dee9" font-weight="normal" font-style="normal" text-decoration="none" textLength="135" lengthAdjust="spacingAndGlyphs">• ERROR: failed</text>
+<rect x="642" y="132" width="54" height="20" fill="#2E3440"/>
+<rect x="12" y="152" width="18" height="20" fill="#2E3440"/>
+<rect x="30" y="152" width="612" height="20" fill="#2E3440"/>
+<rect x="642" y="152" width="54" height="20" fill="#2E3440"/>
+<rect x="12" y="172" width="18" height="20" fill="#2E3440"/>
+<rect x="30" y="172" width="612" height="20" fill="#2E3440"/>
+<text x="30" y="187" fill="#d8dee9" font-weight="normal" font-style="normal" text-decoration="none" textLength="279" lengthAdjust="spacingAndGlyphs">│ Missing data remains unknown.</text>
+<rect x="642" y="172" width="54" height="20" fill="#2E3440"/>
+<rect x="12" y="192" width="684" height="20" fill="#2E3440"/>
+<rect x="12" y="212" width="684" height="20" fill="#2E3440"/>
+<rect x="12" y="232" width="684" height="20" fill="#2E3440"/>
+<rect x="12" y="252" width="684" height="20" fill="#2E3440"/>
+<rect x="12" y="272" width="684" height="20" fill="#2E3440"/>
+</g></svg>

@@ -3,27 +3,12 @@
 
 if [[ -n "$ZELLIJ" && -n "$ZELLIJ_SESSION_NAME" ]] &&
    (( $+commands[zellij-context] )) &&
-   [[ $(command zellij-context provider 2>/dev/null) == zellij ]]; then
-
-	_zellij_auto_title() {
-		# Redirected shell output must not leak terminal control sequences.
-		[[ -t 1 ]] || return 0
-		local title=${PWD:t} branch
-		[[ -n $title ]] || title=/
-		if git rev-parse --git-dir >/dev/null 2>&1; then
-			branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
-			[[ -z $branch ]] || title+=" [$branch]"
-		fi
-		# Directory names can contain BEL/ESC/newlines. Keep them title data.
-		title=${title//[[:cntrl:]]/ }
-		printf '\e]2;%s\a' "$title"
-	}
+   _zellij_title_context=$(command zellij-context title-context 2>/dev/null); then
 
 	_zellij_auto_tab_title() {
 		# Like tmux, preserve the editor's title when returning to the shell.
 		if [[ "$_zellij_last_cmd" != nvim && "$_zellij_last_cmd" != vim ]]; then
-			_zellij_auto_title
-			command zellij-auto-title >/dev/null 2>&1
+			ZELLIJ_TITLE_CONTEXT="$_zellij_title_context" command zellij-auto-title --shell "$@" 2>/dev/null
 		fi
 		return 0
 	}

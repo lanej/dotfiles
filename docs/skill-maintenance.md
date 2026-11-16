@@ -4,12 +4,7 @@ Follow the proportionate testing policy in [AGENTS.md](../AGENTS.md): focused pr
 
 ## Authoring
 
-For a substantive change to instructional behavior, load the enabled Anthropic
-**skill-creator:skill-creator** through the runtime's installed catalog. Use the
-parts of its authoring guidance relevant to the change, within the owner's
-proportionate testing policy. Do not edit plugin caches or update
-installed plugins as a side effect. If the workflow is unavailable, report the
-validation limit without claiming it was followed.
+For a substantive change to instructional behavior, read the repository-owned [skill-authoring workflow](../ai/skills/skill-authoring/SKILL.md). It defines the shared authoring contract for Codex and Claude, including host adaptation, proportionate checks, and independent behavioral trials when warranted. No external authoring plugin is required. Do not edit plugin caches or update installed plugins as a side effect.
 
 Routine configuration, documentation, and small script maintenance do not
 require an authoring workflow, paired model evaluation, or evidence bundle.

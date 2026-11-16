@@ -56,7 +56,7 @@ def migrate_skills_directory(directory):
             raise
 
 
-def managed_guidance(original, path):
+def managed_guidance(original, path, project_only=False):
     """Replace either managed name in place; reject ambiguous or broken blocks."""
     blocks = []
     for name in (NAME, LEGACY_NAME):
@@ -73,11 +73,11 @@ def managed_guidance(original, path):
         start, end = blocks[0]
         before, rest = original.split(start, 1)
         _, after = rest.split(end, 1)
-        return before + GUIDANCE.rstrip("\n") + after
-    return GUIDANCE + "\n" + original
+        return before + ("" if project_only else GUIDANCE.rstrip("\n")) + after
+    return original if project_only else GUIDANCE + "\n" + original
 
 
-def install(source, home):
+def install(source, home, project_only=False):
     source = source.resolve()
     home = home.resolve()
     for relative in ("SKILL.md", "references/standard.md",
@@ -107,15 +107,16 @@ def install(source, home):
     rule = rules_directory / f"{NAME}.md"
     # A directory-wide link exposes the regular source entry. After migration
     # it will be an individual link, so validate its intended target here.
-    if not (migrate_skills and claude_skill.resolve() in {source, package.resolve()}):
-        check_link(claude_skill, {source, package})
-    check_link(codex_skill, {source, package})
-    check_link(rule, {package / "references/instructions.md"})
+    if not project_only:
+        if not (migrate_skills and claude_skill.resolve() in {source, package.resolve()}):
+            check_link(claude_skill, {source, package})
+        check_link(codex_skill, {source, package})
+        check_link(rule, {package / "references/instructions.md"})
     global_file = home / ".codex/AGENTS.md"
     if global_file.is_symlink():
         raise ValueError(f"preserving linked global instructions: {global_file}")
     original = global_file.read_text() if global_file.exists() else ""
-    guidance = managed_guidance(original, global_file)
+    guidance = managed_guidance(original, global_file, project_only)
 
     # Migrate only the old installer's package and known dotfiles links.
     # An unrelated local skill/rule under the former name is not ours to remove.
@@ -172,9 +173,15 @@ def install(source, home):
             raise
     cache.mkdir(parents=True, exist_ok=True)
     link(cache, catalog)
-    link(package, claude_skill)
-    link(package, codex_skill)
-    link(package / "references/instructions.md", rule)
+    if project_only:
+        for path, targets in ((claude_skill, {source, package}), (codex_skill, {source, package}),
+                              (rule, {package / "references/instructions.md"})):
+            if path.is_symlink() and path.resolve() in {target.resolve() for target in targets}:
+                path.unlink()
+    else:
+        link(package, claude_skill)
+        link(package, codex_skill)
+        link(package / "references/instructions.md", rule)
     global_file.parent.mkdir(parents=True, exist_ok=True)
     if guidance != original:
         global_file.write_text(guidance)
@@ -199,9 +206,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, default=Path(__file__).resolve().parents[1] / "ai/skills" / NAME)
     parser.add_argument("--home", type=Path, default=Path.home())
+    parser.add_argument("--project-only", action="store_true", help="retire managed global discovery and default guidance; retain explicit package references")
     args = parser.parse_args()
     try:
-        install(args.source.expanduser(), args.home.expanduser().absolute())
+        install(args.source.expanduser(), args.home.expanduser().absolute(), args.project_only)
     except (OSError, ValueError) as error:
         parser.exit(1, f"software-standard: {error}\n")
 

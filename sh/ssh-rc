@@ -1,0 +1,19 @@
+#!/bin/sh
+# OpenSSH runs this before the user shell, with the fresh forwarding socket.
+status=0
+if [ -x "$HOME/.local/bin/zellij-agent" ]; then
+    "$HOME/.local/bin/zellij-agent" publish-login || status=$?
+fi
+
+# A user rc replaces sshd's system rc / xauth step. Preserve that behavior.
+# See https://man.openbsd.org/sshd.8#SSHRC
+if [ -f /etc/ssh/sshrc ]; then
+    /bin/sh /etc/ssh/sshrc || status=$?
+elif [ -n "${DISPLAY:-}" ] && read -r protocol cookie; then
+    case "$DISPLAY" in
+        localhost:*) display="unix:${DISPLAY#localhost:}" ;;
+        *) display=$DISPLAY ;;
+    esac
+    printf 'add %s %s %s\n' "$display" "$protocol" "$cookie" | xauth -q - || status=$?
+fi
+exit "$status"

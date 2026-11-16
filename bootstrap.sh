@@ -522,6 +522,7 @@ install_zellij_runtime() {
 		main) install_zellij_from_main ;;
 		release) install_zellij_from_release 0.45.1 ;;
 	esac || return 1
+	make -C "$dotfiles_root" zellij-helpers || return 1
 	python3 "$dotfiles_root/scripts/install-zellij-navigation.py" || return 1
 	if [ "$DOTFILES_ZELLIJ_SOURCE" != release ]; then
 		python3 "$dotfiles_root/scripts/install-zellij-command-prompt.py" || return 1
@@ -616,6 +617,10 @@ install_git-delta_from_release() {
 	cargo install git-delta -q --locked --version "$1"
 }
 
+install_mergiraf_from_release() {
+	cargo install mergiraf -q --locked --version "$1"
+}
+
 install_bat_from_release() {
 	cargo install bat -q --locked --version "$1"
 }
@@ -695,53 +700,20 @@ install_firstmate_release() (
 		shasum -a 256 -c selected.sha256 || exit 1
 	fi
 	tar -xzf "$archive" || exit 1
-	if ! "./$tool" --version; then
-		if [ "$tool" != treehouse ] || [ "$release_os" != linux ]; then
-			echo "Downloaded $tool cannot run on this host" >&2
-			exit 1
-		fi
-		# WHY: Upstream Linux releases may require a newer glibc than this host.
-		echo "Building Treehouse v$version from source for this host"
-		curl -fsSL "https://github.com/kunchenguid/treehouse/archive/refs/tags/v$version.tar.gz" -o source.tar.gz || exit 1
-		mkdir source || exit 1
-		tar -xzf source.tar.gz -C source --strip-components=1 || exit 1
-		(cd source && CGO_ENABLED=0 go build -buildvcs=false -ldflags "-X main.version=v$version" -o "$stage/$tool" .) || exit 1
-		"./$tool" --version || exit 1
-	fi
+	"./$tool" --version || exit 1
 	mkdir -p "$HOME/.local/bin" || exit 1
 	install -m 755 "$tool" "$HOME/.local/bin/$tool"
 )
-
-install_treehouse_from_release() {
-	install_firstmate_release treehouse "$1"
-}
 
 install_no-mistakes_from_release() {
 	install_firstmate_release no-mistakes "$1"
 }
 
 install_treehouse_tools() {
-	install_package_version treehouse 3.1.6 || return 1
+	bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-treehouse" || return 1
 	make -C "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" treehouse-config
 }
 
-install_firstmate_tools() {
-	install_package_version no-mistakes 1.84.0 || return 1
-	local tool version tool_version firstmate_checkout
-	firstmate_checkout=${FIRSTMATE_HOME:-"$HOME/src/firstmate"}
-	for tool_version in gh-axi:0.1.44 tasks-axi:0.2.6 quota-axi:0.1.68 chrome-devtools-axi:0.1.45 lavish-axi:0.1.93; do
-		tool=${tool_version%:*}
-		version=${tool_version#*:}
-		if ! command -v "$tool" >/dev/null || ! semver_ge "$(installed_semver "$tool")" "$version"; then
-			npm install --global --prefix "$HOME/.local" "$tool@$version" || return 1
-		fi
-	done
-	if [ ! -e "$firstmate_checkout" ]; then
-		mkdir -p "$(dirname "$firstmate_checkout")" || return 1
-		git clone https://github.com/kunchenguid/firstmate "$firstmate_checkout" || return 1
-	fi
-	make -C "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" "FIRSTMATE_HOME=$firstmate_checkout" firstmate-config
-}
 
 claude-code_current_semver() {
 	current_heuristic_semver claude
@@ -760,8 +732,35 @@ install_pi_from_release() {
 }
 
 install_stylua_from_release() {
-	install_package_version node 24
-	npm install -g "@johnnymorganz/stylua-bin@$1"
+	if [ "$os" = linux ]; then
+		# Release binaries require newer glibc than some supported development VMs.
+		cargo install stylua --locked --version "$1" --features lua54,luajit,luau || return 1
+		# An older npm wrapper on NVM's PATH can shadow the source-built executable.
+		if npm list -g --depth=0 @johnnymorganz/stylua-bin >/dev/null 2>&1; then
+			npm uninstall -g @johnnymorganz/stylua-bin || return 1
+		fi
+		hash -r
+	else
+		install_package_version node 24 || return 1
+		npm install -g "@johnnymorganz/stylua-bin@$1"
+	fi
+}
+
+install_luacheck_package() {
+	if command -v brew >/dev/null; then
+		brew install luacheck
+	elif command -v apt-get >/dev/null; then
+		sudo apt-get install -y lua-check
+	elif command -v pacman >/dev/null; then
+		sudo pacman -S --noconfirm luacheck
+	elif command -v dnf >/dev/null; then
+		sudo dnf install -y luarocks lua-devel || return 1
+		luarocks install --tree "$HOME/.local" luacheck || return 1
+		"$HOME/.local/bin/luacheck" --version
+	else
+		printf 'Install Luacheck with LuaRocks, then rerun make install; automatic installation supports Homebrew, APT, Pacman, and DNF.\n' >&2
+		return 1
+	fi
 }
 
 install_bash-language-server_from_release() {
@@ -1102,11 +1101,37 @@ setup_neovim() (
 		-c 'lua dofile(vim.env.DOTFILES_NVIM_BOOTSTRAP)'
 )
 
+configure_python_ca_trust() {
+	[ "$os" = linux ] || return 0
+	# Preserve explicitly selected trust stores, including directory-only setups.
+	[ "${SSL_CERT_FILE+x}" != x ] && [ "${SSL_CERT_DIR+x}" != x ] || return 0
+	local certificate_file
+	certificate_file=$(python3 - <<'PY'
+from pathlib import Path
+import ssl
+
+if ssl.get_default_verify_paths().cafile is None:
+    for candidate in (
+        "/etc/pki/tls/certs/ca-bundle.crt",
+        "/etc/ssl/certs/ca-certificates.crt",
+        "/etc/ssl/ca-bundle.pem",
+    ):
+        if Path(candidate).is_file():
+            print(candidate)
+            break
+PY
+	) || return 1
+	if [ -n "$certificate_file" ]; then
+		export SSL_CERT_FILE="$certificate_file"
+	fi
+}
+
 install_config_runtime() {
 	# The configuration parser needs Python 3.11+ even on older system images.
 	install_package_version uv 0.12.11 || return 1
 	uv python install 3.12 --default || return 1
 	hash -r
+	configure_python_ca_trust
 }
 
 install_rust_runtime() {
@@ -1155,8 +1180,26 @@ install_dependencies() {
 				;;
 			zellij) install_zellij_runtime || return 1 ;;
 			font) install_hack_nerd_font || return 1 ;;
+			worktree-manager)
+				sh "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-worktree-manager" "$version" || return 1
+				;;
+			worktree-policy)
+				sh "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-worktree-policy" "$version" || return 1
+				;;
+			git-worktree-hooks)
+				local git_archive_args=()
+				if [ -n "${DOTFILES_GIT_WORKTREE_HOOKS_ARCHIVE:-}" ]; then
+					git_archive_args=(--archive "$DOTFILES_GIT_WORKTREE_HOOKS_ARCHIVE")
+				fi
+				python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-git-worktree-hooks.py" "${git_archive_args[@]}" || return 1
+				;;
+			approval-cli)
+				python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-approval-cli.py" "$tool" || return 1
+				;;
+			octo-manager)
+				python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-octo-manager.py" || return 1
+				;;
 			treehouse) install_treehouse_tools || return 1 ;;
-			firstmate) install_firstmate_tools || return 1 ;;
 			macos-window-tool) install_macos_window_tool "$tool" || return 1 ;;
 			*) echo "Unknown tool installer: $installer" >&2; return 1 ;;
 		esac
@@ -1187,6 +1230,7 @@ run_configured_hooks() {
 	local hooks=$1 hook
 	for hook in ${hooks//,/ }; do
 		case "$hook" in
+			directory-picker) make -C "$configuration_root" directory-picker || return 1 ;;
 			github-auth) setup_gh_auth || return 1 ;;
 			bedrock-credentials) setup_bedrock_credentials || return 1 ;;
 			agent-status-broker) make -C "$HOME/.files" agent-status-broker || return 1 ;;
@@ -1197,6 +1241,11 @@ run_configured_hooks() {
 				if [ "$DOTFILES_ZELLIJ_SOURCE" != release ]; then
 					make -C "$configuration_root" zellij-status || return 1
 					make -C "$configuration_root" zellij-config || return 1
+				fi
+				;;
+			zellij-copy-hop)
+				if [ "$DOTFILES_ZELLIJ_SOURCE" = patched ]; then
+					make -C "$configuration_root" zellij-copy-hop || return 1
 				fi
 				;;
 			sql-formatters) make -C "$HOME/.files" sql-formatters UV="$(command -v uv)" || return 1 ;;

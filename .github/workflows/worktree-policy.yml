@@ -1,0 +1,54 @@
+name: Native worktree policy
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['tools/worktree-policy/**', 'scripts/build-worktree-policy.sh', 'scripts/install-worktree-policy', 'scripts/test-install-worktree-policy.py', 'bin/git-worktree-policy', 'bin/git-worktree-policy-hook', 'bootstrap/tools.toml', '.github/workflows/worktree-policy.yml']
+  push:
+    branches: [master]
+    paths: ['tools/worktree-policy/**', 'scripts/build-worktree-policy.sh', 'scripts/install-worktree-policy', 'scripts/test-install-worktree-policy.py', 'bin/git-worktree-policy', 'bin/git-worktree-policy-hook', 'bootstrap/tools.toml', '.github/workflows/worktree-policy.yml']
+permissions:
+  contents: read
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-22.04-arm, macos-15, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: tools/worktree-policy/go.mod
+          cache: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Build standalone binary
+        run: scripts/build-worktree-policy.sh "$RUNNER_TEMP/policy"
+      - name: Check native installation
+        run: python3 scripts/test-install-worktree-policy.py --binary "$RUNNER_TEMP/policy/git-worktree-policy"
+      - name: Check Enterprise Linux 8 execution
+        if: runner.os == 'Linux'
+        run: docker run --rm -v "$RUNNER_TEMP/policy:/policy:ro" rockylinux:8 /policy/git-worktree-policy --version
+      - uses: actions/upload-artifact@v4
+        with:
+          name: worktree-policy-${{ runner.os }}-${{ runner.arch }}
+          path: ${{ runner.temp }}/policy/git-worktree-policy-*
+          if-no-files-found: error
+  quality:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: tools/worktree-policy/go.mod
+          cache: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: bash tools/worktree-policy/scripts/check-go.sh

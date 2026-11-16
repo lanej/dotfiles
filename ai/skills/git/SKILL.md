@@ -12,9 +12,7 @@ the failure modes on this machine that have actually cost time.
 
 - Write commit messages directly from the staged diff and relevant context.
   `/git:commit [context]` provides the commit workflow.
-- **All GitHub PR titles and descriptions go through the `github-pr-writer` agent**, including
-  `gh pr create` you run yourself: review-ready spec, links a teammate can open, screenshots for
-  visual changes. Open it with `gh-pr-create-from <file>`; a hook blocks raw `gh pr create`.
+- For PR drafting, publication, and title/body revisions, use the [pull-request workflow](../pull-request/SKILL.md). It selects Octo when required or selected and otherwise uses the native review-platform workflow; writers remain separate from publication.
 - Format: Commitizen conventional, `<type>(<scope>): <subject>`, subject ≤ 50 chars.
 - AI attribution trailers (`Co-Authored-By: Claude`) in commits are fine.
 - Atomic commits; the message explains *why*.
@@ -23,18 +21,17 @@ the failure modes on this machine that have actually cost time.
 
 ## Pull requests
 
-Follow [the shared PR guidance](../../../docs/pull-requests.md) when creating or
-updating a PR. Use `github-pr-writer` for GitHub titles and bodies, and
-`pull-request-writer` for other review platforms. Lead with the
-outcome and why, include screenshots when useful, and add context only when
-the diff and checks do not supply it. Do not reproduce automated test results.
-Use `--body-file` for multiline descriptions and verify the rendered result.
+Before preparing a change for review or assessing merge readiness, read [the project review procedure](references/review.md). It governs independent review, scoped repair, and exact-head validation for this installed profile; repository-specific instructions and publication authority remain binding.
+
+Follow the [pull-request workflow](../pull-request/SKILL.md) for repository templates, writing, publication, and verification of saved content. Creating or updating a PR does not authorize merging it.
 
 ## Branch naming
 
 `feature/`, `fix/`, `hotfix/`, `refactor/`, `docs/`, `test/` + a descriptive slug.
 
 ## Safety rules
+
+Commit coherent, finished, verified project changes unless the task forbids it; preserve the user’s publication authority for pushes and PRs. Review the complete staged snapshot and avoid path-based commits that sweep in unrelated unstaged content. Never restore or reset someone else’s diff; inspect current history and ownership first. Use a task-owned WIP commit for a baseline check rather than the stash shared by worktrees.
 
 1. Never force-push to `main`/`master` — warn instead.
 2. Never `--no-verify` unless explicitly requested.
@@ -98,3 +95,5 @@ your commit.
 -p0` against an extracted patch), commit with a bare `git commit` against the index, and verify with
 `git show --stat` before pushing. Recovery if it already landed: `git reset --soft HEAD^` (working
 tree untouched), then hand-stage the intended hunks.
+
+Read [worktree lessons](references/worktrees.md) before operating on an assigned worktree, and [Git/GitHub verification lessons](references/verification-lessons.md) before accepting delegated commits, branch comparisons, or remote changes.

@@ -2,6 +2,8 @@
 
 My Zellij setup uses **Ctrl-f** as the prefix, Vim-style navigation, and one top tab bar. Start with the [keybinding map](zellij-keybinds.mdx), or choose a feature below.
 
+The built-in [Nord preset](design-system/nord.mdx) documents the palette and current native theme examples.
+
 ## Start a session
 
 Enable Zellij in your [machine settings](../README.md#configuration-sets), then install the selected tools with `make install`. The guides below describe the managed modern configuration.
@@ -10,6 +12,8 @@ Enable Zellij in your [machine settings](../README.md#configuration-sets), then 
 zj
 zj work
 ```
+
+After pulling helper or status plugin updates, run `make zellij-status zellij` to rebuild the commands and status plugin and refresh their links. Full `make install` includes this step for the patched and main runtimes.
 
 `zj` attaches to or creates `main`; `zj work` chooses a session named `work`. **Ctrl-f d** detaches and keeps programs running. Run the same command to return.
 
@@ -49,7 +53,7 @@ The [keybinding map](zellij-keybinds.mdx) lists shortcuts, aliases, and keys ins
 | Feature | Use it to… |
 | --- | --- |
 | [Shared popup](zellij/shared-popup.mdx) | Keep a scratch shell across tabs and sessions |
-| [Command prompt](zellij/command-prompt.mdx) | Run a Zellij action without a shell command |
+| [Command palette](zellij/command-prompt.mdx) | Complete and run actions, or find a live pane, tab, or session |
 | [Create and rename sessions](zellij/sessions.mdx) | Open or name a workspace |
 | [Detach one client](zellij/detach-client.mdx) | Disconnect a selected view while leaving programs running |
 | [Shut down a session](zellij/shutdown.mdx) | Deliberately end one session with confirmation |
@@ -75,6 +79,8 @@ Use [SSH and forwarded agents](zellij/ssh-agent.mdx) to open remote workspaces a
 Detaching preserves running programs. After a session exits, the session manager may offer to reconstruct its layout and rerun commands; that does not restore program memory. The fuzzy session picker lists running sessions only.
 
 Scrollback keeps up to 100,000 live lines per pane and up to 10,000 lines for recovery. A crash can lose recent output. The shared popup does not restore its running work after a server exit or reboot.
+
+The patched runtime supports `hide_scroll_indicator_when_idle`, which defaults to `false` to preserve upstream behavior. This configuration sets it to `true`, hiding the `SCROLL` counter on active and inactive panes at live output. Scrolling back shows the position; returning to the bottom hides it again. Floating-pane pin controls are unchanged. After updating, run `make zellij-runtime` and restart existing session servers to load the new runtime. The option can then be changed by reloading configuration. Release and main runtime choices keep their upstream display.
 
 ## Differences that remain
 

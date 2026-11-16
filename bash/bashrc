@@ -1,5 +1,11 @@
 #!/bin/sh
 
+# Select the forwarded agent even for noninteractive remote commands.
+if [ -n "${SSH_CONNECTION:-}" ] && [ -r "$HOME/.local/bin/fix-ssh" ]; then
+    # shellcheck disable=SC1091
+    . "$HOME/.local/bin/fix-ssh"
+fi
+
 # set PATH so it includes user's private bin if it exists
 if [[ -d "$HOME/bin" ]]; then
 	PATH="$HOME/bin:$PATH"

@@ -1,0 +1,25 @@
+schema_version = 1
+stage = "beta"
+kind = "tool"
+skill_storage = "linked"
+authority = "owned"
+adoption = "new"
+mode = "shadow"
+agents = "both"
+pr_template = "none"
+skills = ["builder", "architecture", "octo-manager", "github-actions", "ui-review"]
+detect_languages = true
+
+[checks.go]
+enabled = false
+
+[checks.typescript]
+enabled = false
+
+[checks.protobuf]
+enabled = false
+
+# The tracked standalone profile owns Python scope and gates in .python-quality.json.
+# Make and CI run its all gate; shadow setup installs guidance only.
+[checks.python]
+enabled = false

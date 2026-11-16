@@ -1,0 +1,3 @@
+# Explicitly opt into the local service and native Codex tracking/receipt hooks.
+[tools]
+octo-manager = true

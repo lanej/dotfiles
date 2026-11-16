@@ -36,6 +36,8 @@ pub struct Clipboard {
 }
 
 impl Clipboard {
+    pub fn bindings_installed(&self) -> bool { self.binding_installed }
+
     pub fn route_bindings(&mut self, bindings_changed: bool) {
         let ids = get_plugin_ids();
         if !bindings_changed && self.binding_installed { return; }
@@ -45,8 +47,13 @@ impl Clipboard {
         // This receiver is suppressed and survives tab closure, so its ID
         // never needs an asynchronous handoff between visible status bars.
         let attention = crate::attention::MESSAGE;
+        let highest = crate::attention::HIGHEST;
         let config = format!(r#"keybinds {{
             tmux {{
+                bind "a" {{
+                    MessagePluginId {plugin} {{ name "{highest}"; payload "{client}"; }}
+                    SwitchToMode "Locked"
+                }}
                 bind "Ctrl a" {{
                     MessagePluginId {plugin} {{ name "{attention}"; payload "{client}"; }}
                     SwitchToMode "Locked"
@@ -126,7 +133,7 @@ impl Clipboard {
         self.publish_notice(&text);
     }
 
-    fn publish_notice(&self, text: &str) {
+    pub fn publish_notice(&self, text: &str) {
         // The receiver has no visible pane. Existing ordinary bars select
         // their own client's notice; no URL lookup can launch an extra pane.
         pipe_message_to_plugin(MessageToPlugin::new(NOTICE)

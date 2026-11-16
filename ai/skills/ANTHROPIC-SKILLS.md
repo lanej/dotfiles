@@ -6,6 +6,8 @@ from https://github.com/anthropics/skills on 2026-01-17 and untracked on
 
 Install them from the source instead:
 
+Repository instruction maintenance uses the independent `skill-authoring` skill. Anthropic's optional `skill-creator` plugin is not a prerequisite for authoring or validating shared skills.
+
 - `skill-creator`, `frontend-design`: enabled as `claude-plugins-official`
   plugins in `.claude/settings.json`.
 - Everything else (`pdf`, `docx`, `pptx`, `xlsx-python`, `algorithmic-art`,

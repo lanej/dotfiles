@@ -37,18 +37,17 @@ class Terminal:
     def __init__(self, binary, env, name, command=None, *, install_navigation=True, columns=120):
         self.binary, self.env, self.name = binary, env, name
         self.output = bytearray()
-        command_prompt = Path(env["HOME"]) / ".local/share/zellij/plugins/command-prompt.wasm"
         config = Path(env["HOME"]) / ".config/zellij/config.kdl"
-        if config.exists() and not command_prompt.exists():
-            # Other feature detectors need neither this optional plugin's build
-            # nor its consent dialog. Keep the real binding, but omit its startup
-            # node in their private config. Its own detector installs and tests it.
-            contents = config.read_text()
-            without_prompt = re.sub(r"(?m)^\s*command-prompt\s*$", "", contents)
-            if without_prompt != contents:
-                if config.is_symlink():
-                    config.unlink()
-                config.write_text(without_prompt)
+        for plugin in ("command-prompt", "copy-hop"):
+            installed = Path(env["HOME"]) / f".local/share/zellij/plugins/{plugin}.wasm"
+            if config.exists() and not installed.exists():
+                # rationale(tests): Each detector loads only the optional plugin it exercises.
+                contents = config.read_text()
+                without_plugin = re.sub(rf"(?m)^\s*{re.escape(plugin)}\s*$", "", contents)
+                if without_plugin != contents:
+                    if config.is_symlink():
+                        config.unlink()
+                    config.write_text(without_plugin)
         if install_navigation:
             navigation = Path.home() / ".local/share/zellij/plugins/pane-navigation.wasm"
             assert navigation.exists(), "Install pane navigation with scripts/install-zellij-navigation.py"
@@ -83,6 +82,10 @@ class Terminal:
         os.write(self.fd, value)
         self.drain()
 
+    def settle_ordinary_navigation(self):
+        """Allow the three-second discovery grace for a known ordinary attachment."""
+        self.drain(3.1)
+
     def prefix(self, key):
         self.send(b"\x06" + key)
 
@@ -93,7 +96,7 @@ class Terminal:
         # grant. Further sessions in this private HOME share the saved grant.
         self.until("status permission request or remembered grant", lambda:
                    b"(y/n)" in self.output.lower()
-                   or re.search(rb"!\d+ \xe2\x97\x8f\d+", self.output))
+                   or re.search(rb" \d+:[^\s\x1b]", self.output))
         if b"(y/n)" in self.output.lower():
             self.prefix(b"k")
             self.send(b"y")
@@ -119,9 +122,11 @@ class Terminal:
                 except subprocess.TimeoutExpired:
                     continue
             if command.returncode:
-                raise subprocess.CalledProcessError(
+                error = subprocess.CalledProcessError(
                     command.returncode, command.args, stdout, stderr
                 )
+                error.add_note(f"Zellij stdout: {stdout}\nZellij stderr: {stderr}")
+                raise error
             return stdout
 
     def panes(self, session=None):
@@ -370,6 +375,9 @@ def check_move_picker(terminal, home, clients):
     for pane in terminal.terminals():
         if pane["tab_id"] == source_tab and pane["id"] != source_id:
             terminal.action("close-pane", "--pane-id", f"terminal_{pane['id']}")
+    terminal.until("only the source working pane remains and has focus", lambda:
+                   [p["id"] for p in terminal.terminals() if p["tab_id"] == source_tab] == [source_id]
+                   and source_pane()["is_focused"])
     open_picker()
     terminal.send(b"\r")
     terminal.until("single working pane moves to New Tab", lambda:
@@ -632,56 +640,139 @@ def check_move_all_picker(terminal, home, clients, source_id):
         raise AssertionError(
             f"Gather fixture focus precondition failed: requester {requester_id} must own terminal_{source_id}; "
             f"one bystander must own terminal_{bystander}.\nClients:\n{before_clients}\n{diagnostics}")
-    # Lose the mutation CLI reply after the real native transfer completes.
-    # The actual picker must retain its anchor, reconcile rather than replay,
-    # and only then exit. This wrapper changes transport timing, not Zellij.
-    wrapper = home / ".local/bin/zellij"
-    assert not wrapper.exists()
-    wrapper.write_text("#!/usr/bin/env python3\n" +
-        "import json, os, subprocess, sys, time\n" +
-        "from pathlib import Path\n" +
-        f"binary = {terminal.binary!r}\n" +
-        f"log = Path({str(home / 'gather-transport')!r})\n" +
-        "args = sys.argv[1:]\n" +
-        "if 'lane-move-pane' in args or 'lane-move-status' in args:\n" +
-        "    with log.open('a') as stream: stream.write(('move' if 'lane-move-pane' in args else 'status') + '\\n')\n" +
-        "if 'lane-move-pane' in args:\n" +
-        "    request = json.loads(args[-1])\n" +
-        "    origin = {key: request[key] for key in ('source', 'source_tab', 'picker', 'destination')}\n" +
-        "    origin['client_id'] = request['token']['client_id']\n" +
-        "    log.with_name('gather-request.json').write_text(json.dumps(origin))\n" +
-        "    result = subprocess.run([binary, *args], capture_output=True)\n" +
-        "    time.sleep(6)\n" +
-        "    sys.stdout.buffer.write(result.stdout); sys.stderr.buffer.write(result.stderr)\n" +
-        "    sys.exit(result.returncode)\n" +
-        "os.execv(binary, [binary, *args])\n")
-    wrapper.chmod(0o755)
-    open_picker()
-    terminal.send(b"destination")
-    terminal.until("M destination filtered", lambda: "1/" in screen())
-    terminal.send(b"\r")
-    last_transfer_state = {}
+    # Lose the native mutation reply after the real transfer completes, then
+    # verify that the picker reconciles its status instead of replaying it.
+    import hashlib
+    import shlex
+    import socket
+    import sqlite3
+    import threading
+    from zellij_ipc_fixture import fields
 
-    def transferred():
-        panes, tabs = all_terminals(), terminal.tabs()
-        last_transfer_state.update(
-            expected_ids=sorted(all_ids), working_ids=sorted(working_ids),
-            source_tab=source_tab, destination_tab=target["tab_id"],
-            panes=[{key: p[key] for key in ("id", "tab_id", "is_suppressed", "is_floating", "exited")}
-                   for p in panes],
-            tabs=[{key: t[key] for key in ("tab_id", "position", "name")} for t in tabs])
-        return (all(p["tab_id"] == target["tab_id"] and not p["exited"]
-                    for p in panes if p["id"] in working_ids)
-                and {p["id"] for p in panes} == all_ids
-                and all(t["tab_id"] != source_tab for t in tabs))
+    context = subprocess.run([str(ROOT / "bin/zellij-context"), "socket"],
+                             env={**terminal.env, "ZELLIJ_SESSION_NAME": terminal.name},
+                             check=True, capture_output=True, text=True)
+    native_socket = Path(json.loads(context.stdout)[0])
+    proxy_files = tempfile.TemporaryDirectory(prefix="zj-pipe-", dir="/tmp")
+    proxy_root = Path(proxy_files.name)
+    proxy_socket = proxy_root / "contract_version_1" / native_socket.name
+    proxy_socket.parent.mkdir()
+    # The proxy has its own socket namespace, so discovery needs its matching index.
+    check = subprocess.run([terminal.binary, "setup", "--check"], env=terminal.env,
+                           check=True, capture_output=True, text=True)
+    cache = Path(next(line.removeprefix("[CACHE DIR]: ")
+                      for line in check.stdout.splitlines() if line.startswith("[CACHE DIR]: "))) / "contract_version_1"
+    def index_for(namespace):
+        digest = hashlib.sha256(os.fsencode(namespace)).hexdigest()[:12]
+        return cache / f"session_index-{digest}.sqlite"
+    proxy_index = index_for(proxy_socket.parent)
+    with sqlite3.connect(f"file:{index_for(native_socket.parent)}?mode=ro", uri=True) as source:
+        with sqlite3.connect(proxy_index) as destination:
+            source.backup(destination)
+    listener = socket.socket(socket.AF_UNIX)
+    listener.bind(str(proxy_socket))
+    listener.listen()
+    listener.settimeout(0.05)
+    stopped, errors, transport, connections = threading.Event(), [], [], []
 
-    try:
-        terminal.until("M transfers every live source pane and closes helper", transferred)
-    except AssertionError as error:
-        raise AssertionError(f"{error}\nLast gather state: {json.dumps(last_transfer_state, sort_keys=True)}") from error
+    def relay(connection):
+        def frame(stream):
+            def receive(length):
+                data = b""
+                while len(data) < length:
+                    chunk = stream.recv(length - len(data))
+                    if not chunk:
+                        raise EOFError("Native picker proxy received an incomplete frame")
+                    data += chunk
+                return data
+            header = receive(4)
+            size = struct.unpack("<I", header)[0]
+            assert size <= 4 * 1024 * 1024
+            return header, receive(size)
+
+        try:
+            with connection, socket.socket(socket.AF_UNIX) as upstream:
+                connection.settimeout(6)
+                upstream.settimeout(6)
+                header, request = frame(connection)
+                action = fields(fields(fields(request)[9])[1])
+                pipe = fields(action[84]) if 84 in action else {}
+                name = pipe.get(2, b"").decode()
+                lose_reply = name == "lane-move-pane"
+                if name in ("lane-move-pane", "lane-move-status"):
+                    transport.append("move" if lose_reply else "status")
+                if lose_reply:
+                    payload = json.loads(pipe[3])
+                    origin = {key: payload[key] for key in ("source", "source_tab", "picker", "destination")}
+                    origin["client_id"] = payload["token"]["client_id"]
+                    (home / "gather-request.json").write_text(json.dumps(origin))
+                upstream.connect(str(native_socket))
+                upstream.sendall(header + request)
+                while True:
+                    header, response = frame(upstream)
+                    tags = fields(response)
+                    if not lose_reply:
+                        connection.sendall(header + response)
+                    if (set(tags) & {3, 5, 6}) or (8 in tags if pipe else 2 in tags):
+                        return
+        except Exception as error:
+            errors.append(error)
+
+    def accept():
+        while not stopped.is_set():
+            try:
+                connection, _ = listener.accept()
+            except socket.timeout:
+                continue
+            worker = threading.Thread(target=relay, args=(connection,))
+            connections.append(worker)
+            worker.start()
+
+    server = threading.Thread(target=accept)
+    server.start()
+    wrapper = home / ".local/bin/zellij-picker"
+    original_helper = wrapper.readlink()
     wrapper.unlink()
-    transport = (home / "gather-transport").read_text().splitlines()
-    assert transport.count("move") == 1 and "status" in transport
+    wrapper.write_text("#!/bin/sh\nexec env " + shlex.quote("ZELLIJ_SOCKET_DIR=" + str(proxy_root)) +
+                       " " + shlex.quote(str(ROOT / "bin/zellij-helper")) + ' picker "$@"\n')
+    wrapper.chmod(0o755)
+    try:
+        open_picker()
+        terminal.send(b"destination")
+        terminal.until("M destination filtered", lambda: "1/" in screen())
+        terminal.send(b"\r")
+        last_transfer_state = {}
+
+        def transferred():
+            panes, tabs = all_terminals(), terminal.tabs()
+            last_transfer_state.update(
+                expected_ids=sorted(all_ids), working_ids=sorted(working_ids),
+                source_tab=source_tab, destination_tab=target["tab_id"],
+                panes=[{key: p[key] for key in ("id", "tab_id", "is_suppressed", "is_floating", "exited")}
+                       for p in panes],
+                tabs=[{key: t[key] for key in ("tab_id", "position", "name")} for t in tabs])
+            return (all(p["tab_id"] == target["tab_id"] and not p["exited"]
+                        for p in panes if p["id"] in working_ids)
+                    and {p["id"] for p in panes} == all_ids
+                    and all(t["tab_id"] != source_tab for t in tabs))
+
+        try:
+            terminal.until("M transfers every live source pane and closes helper", transferred)
+        except AssertionError as error:
+            raise AssertionError(f"{error}\nLast gather state: {json.dumps(last_transfer_state, sort_keys=True)}") from error
+    finally:
+        wrapper.unlink()
+        wrapper.symlink_to(original_helper)
+        stopped.set()
+        server.join(timeout=2)
+        listener.close()
+        for connection in connections:
+            connection.join(timeout=7)
+        proxy_files.cleanup()
+        proxy_index.unlink()
+    assert not server.is_alive() and all(not thread.is_alive() for thread in connections)
+    assert not errors, errors
+    assert transport.count("move") == 1 and "status" in transport, transport
     after_clients = terminal.action("list-clients")
     focused = {row.split()[0]: row.split()[1] for row in after_clients.splitlines()[1:]}
     expected_focus = {f"terminal_{source_id}", f"terminal_{bystander}"}
@@ -736,7 +827,7 @@ def main():
                "PATH": str(home / ".local/bin") + os.pathsep + os.environ["PATH"]}
         preserve_rust_homes(env)
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
-                    "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "FZF_DEFAULT_OPTS",
+                    "ZELLIJ_CONFIG_FILE", "ZELLIJ_NESTED_ATTACH", "TMUX", "TMUX_PANE", "FZF_DEFAULT_OPTS",
                     "FZF_DEFAULT_OPTS_FILE", "FZF_DEFAULT_COMMAND", "ENV", "BASH_ENV"):
             env.pop(key, None)
         subprocess.run(["make", "--no-print-directory", "zellij-status", "zellij"], cwd=ROOT, env=env,
@@ -870,7 +961,8 @@ def main():
                     colored_lines=[line for line in colored.splitlines() if "SCREEN" in line],
                 )
                 attributes = r"(?:\x1b\[(?:[1-9]|2[1-9]|59)m)*"
-                red = re.search(r"\x1b\[(?:31|38;5;1)m(?:\x1b\[49m)?"
+                # WHY: fzf may resolve a default preview background to its theme surface.
+                red = re.search(r"\x1b\[(?:31|38;5;1)m(?:\x1b\[(?:49|48;2;\d+;\d+;\d+|48;5;\d+)m)?"
                                 + attributes + "LEFT SCREEN:", colored)
                 green_on_blue = re.search(
                     r"\x1b\[38;2;80;190;120m\x1b\[(?:44|48;5;4)m"

@@ -1,0 +1,114 @@
+name: Patched Git worktree hooks
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'bootstrap.sh'
+      - 'bootstrap/tools.toml'
+      - 'scripts/dotfiles-config.py'
+      - 'scripts/install-git-worktree-hooks.py'
+      - 'scripts/test-install-git-worktree-hooks.py'
+      - 'bin/git-worktree-policy'
+      - 'bin/git-worktree-policy-hook'
+      - 'tools/worktree-policy/**'
+      - 'scripts/build-worktree-policy.sh'
+      - 'git/gitconfig'
+      - 'scripts/test-git-worktree-policy.py'
+      - 'scripts/test-treehouse-worktree-policy.py'
+      - 'scripts/install-treehouse'
+      - 'patches/git-worktree-hooks/**'
+      - 'scripts/build-git-worktree-hooks.sh'
+      - '.github/workflows/git-worktree-hooks.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'bootstrap.sh'
+      - 'bootstrap/tools.toml'
+      - 'scripts/dotfiles-config.py'
+      - 'scripts/install-git-worktree-hooks.py'
+      - 'scripts/test-install-git-worktree-hooks.py'
+      - 'bin/git-worktree-policy'
+      - 'bin/git-worktree-policy-hook'
+      - 'tools/worktree-policy/**'
+      - 'scripts/build-worktree-policy.sh'
+      - 'git/gitconfig'
+      - 'scripts/test-git-worktree-policy.py'
+      - 'scripts/test-treehouse-worktree-policy.py'
+      - 'scripts/install-treehouse'
+      - 'patches/git-worktree-hooks/**'
+      - 'scripts/build-git-worktree-hooks.sh'
+      - '.github/workflows/git-worktree-hooks.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  runtime:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-22.04-arm, macos-15, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y build-essential libcurl4-openssl-dev libexpat1-dev zlib1g-dev lsof
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/worktree-policy/go.mod
+          cache: false
+      - name: Build native policy
+        run: |
+          scripts/build-worktree-policy.sh "$RUNNER_TEMP/native-policy"
+          echo "GIT_WORKTREE_POLICY_BINARY=$RUNNER_TEMP/native-policy/git-worktree-policy" >> "$GITHUB_ENV"
+      - name: Check stock Git policy fallback
+        run: python3 scripts/test-git-worktree-policy.py
+      - name: Build, test and package runtime
+        run: scripts/build-git-worktree-hooks.sh "$RUNNER_TEMP/git-artifacts"
+      - name: Check optional runtime installer
+        run: python3 scripts/test-install-git-worktree-hooks.py --archive "$RUNNER_TEMP"/git-artifacts/*.tar.gz
+      - name: Extract patched runtime
+        run: |
+          mkdir "$RUNNER_TEMP/git-runtime"
+          tar -xzf "$RUNNER_TEMP"/git-artifacts/*.tar.gz -C "$RUNNER_TEMP/git-runtime"
+      - name: Install pinned Treehouse fork for integration
+        run: |
+          bash scripts/install-treehouse
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Check native Treehouse against patched Git
+        run: python3 scripts/test-treehouse-worktree-policy.py --git "$RUNNER_TEMP/git-runtime/bin/git"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: git-worktree-hooks-${{ runner.os }}-${{ runner.arch }}
+          path: ${{ runner.temp }}/git-artifacts/*
+          if-no-files-found: error
+
+  el8-runtime:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-22.04-arm]
+    runs-on: ${{ matrix.os }}
+    container: rockylinux:8
+    timeout-minutes: 25
+    steps:
+      - name: Install Enterprise Linux 8 build dependencies
+        run: |
+          dnf install -y gcc make git curl tar xz perl python3.12 diffutils findutils libcurl-devel expat-devel zlib-devel
+          ln -s /usr/bin/python3.12 /usr/local/bin/python3
+      - uses: actions/checkout@v4
+      - name: Build, test and package Enterprise Linux 8 runtime
+        run: scripts/build-git-worktree-hooks.sh "$RUNNER_TEMP/git-el8-artifacts"
+      - name: Check Enterprise Linux 8 runtime installer
+        run: python3 scripts/test-install-git-worktree-hooks.py --archive "$RUNNER_TEMP"/git-el8-artifacts/*.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: git-worktree-hooks-EL8-${{ runner.arch }}
+          path: ${{ runner.temp }}/git-el8-artifacts/*
+          if-no-files-found: error

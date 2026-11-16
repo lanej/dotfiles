@@ -5,22 +5,13 @@ description: Use DuckDB for analytical SQL over local CSV, JSON, Parquet, and Ex
 
 # DuckDB
 
-SQL over local files with no import step. Standard SQL and DuckDB's file-reading functions work as
-documented; this file covers tool selection, local database locations, and the Python API traps.
+SQL over local files with no import step. Standard SQL and DuckDB's file-reading functions work as documented; this file covers tool selection, file access, concurrency, and Python API traps.
 
 ## When to reach for it
 
-**Yes**: aggregations, GROUP BY, window functions, joins across datasets, percentiles and summary
-statistics, profiling, transformations before export.
+**Yes**: aggregations, GROUP BY, window functions, joins across datasets, percentiles and summary statistics, profiling, transformations before export.
 
-**No**: viewing a file (`xsv`, `xlsx`, `cat`), single-row lookups (`grep`, `jq`), simple column
-filtering (`xsv` is less ceremony).
-
-## Local databases in this workspace
-
-- `areas/staffing/staffing.duckdb` — org headcount (use the `staffing` skill)
-- `data/slack_qa.duckdb` — Slack Q&A pipeline storage
-- `data/*.duckdb` — project-specific pipeline databases
+**No**: viewing a file (`xsv`, `xlsx`, `cat`), single-row lookups (`grep`, `jq`), simple column filtering (`xsv` is less ceremony).
 
 ## Reading files
 
@@ -32,8 +23,7 @@ SELECT * FROM 'data/*.parquet';
 DESCRIBE SELECT * FROM 'data.csv';   -- inspect inferred types before trusting them
 ```
 
-Parquet is fastest (columnar, predicate pushdown). Convert large CSVs once if you'll query them
-repeatedly: `COPY (SELECT * FROM 'big.csv') TO 'big.parquet' (FORMAT PARQUET);`
+Parquet is fastest (columnar, predicate pushdown). Convert large CSVs once if you'll query them repeatedly: `COPY (SELECT * FROM 'big.csv') TO 'big.parquet' (FORMAT PARQUET);`
 
 ## Piping
 
@@ -48,27 +38,13 @@ duckdb -c "COPY (SELECT * FROM 'local.csv' WHERE important) TO 'important.csv'" 
 
 ## Concurrency: a read-write connection takes an exclusive file lock
 
-Opening a `.duckdb` file in read-write mode (the default for `duckdb.connect(path)` and any
-wrapper class that always opens rw) takes an exclusive OS-level lock on that file — a second
-process cannot open **any** connection to it concurrently, not even a read-only one, until the
-first connection closes. This bit a multi-agent dispatch plan in `usps-local-route-detection`:
-`GeocodeCache` opened a shared `data/geocode_cache.duckdb` read-write on every connection, so
-running cache-import/backtest steps for multiple metros in parallel (as the original task
-dependency graph assumed) would have hit lock conflicts. Caught by reading the accessor's code
-before dispatching, not from any DuckDB doc.
-
-Before parallelizing sub-agent tasks that touch a shared `.duckdb` file, check whether the
-accessor opens it read-write unconditionally — if so, serialize those specific steps instead of
-running them concurrently, even if the rest of the plan's tasks are otherwise independent. Open
-with `read_only=True` explicitly wherever a step only needs to read.
+Opening a `.duckdb` file in read-write mode (the default for `duckdb.connect(path)` and any wrapper class that always opens rw) takes an exclusive OS-level lock on that file — a second process cannot open **any** connection to it concurrently, not even a read-only one, until the first connection closes. Before parallelizing sub-agent tasks that touch a shared `.duckdb` file, check whether the accessor opens it read-write unconditionally — if so, serialize those specific steps instead of running them concurrently, even if the rest of the plan's tasks are otherwise independent. Open with `read_only=True` explicitly wherever a step only needs to read.
 
 ## Python API gotchas
 
 ### `rowcount` is always negative for UPDATE/DELETE
 
-`con.execute("UPDATE ...")` then `.rowcount` returns `-1` (or a negative multiple in a loop), not
-the affected row count. The statement *did* run. To report a count, run the equivalent
-`SELECT COUNT(*)` with the same WHERE clause first:
+`con.execute("UPDATE ...")` then `.rowcount` returns `-1` (or a negative multiple in a loop), not the affected row count. The statement *did* run. To report a count, run the equivalent `SELECT COUNT(*)` with the same WHERE clause first:
 
 ```python
 affected = con.execute(
@@ -104,5 +80,4 @@ row = {
 }
 ```
 
-Pass `allow_nan=False` to `json.dumps` as a safety net — it raises on a leftover NaN rather than
-silently emitting invalid `NaN`.
+Pass `allow_nan=False` to `json.dumps` as a safety net — it raises on a leftover NaN rather than silently emitting invalid `NaN`.

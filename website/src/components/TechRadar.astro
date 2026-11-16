@@ -1,0 +1,90 @@
+---
+import { base } from '../../site.config.mjs';
+import { layoutRadar } from './radar-layout.mjs';
+import type { RadarRing } from './radar-layout.mjs';
+
+interface Props { rings: RadarRing[] }
+const { rings } = Astro.props;
+const count = rings.reduce((total, ring) => total + ring.entries.length, 0);
+const { rings: plotted, center, size } = layoutRadar(rings);
+const firstPoint = plotted.flatMap((ring) => ring.entries)[0];
+---
+<figure class="tech-radar" aria-label="Technology decisions by ring">
+  <div class="radar-topline"><span>My working environment</span><span>{count} decisions · 4 rings</span></div>
+  <label class="radar-zoom"><input type="checkbox" /> Full-size diagram</label>
+  <div class="radar-viewport" role="region" aria-label="Radar diagram" tabindex="0" style={`--radar-size: ${size}px`} data-first-x={firstPoint?.x ?? center} data-first-y={firstPoint?.y ?? center}>
+  <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} aria-labelledby="radar-title radar-description">
+    <title id="radar-title">Tech radar</title>
+    <desc id="radar-description">From the center outward: Adopt, Trial, Assess, Hold. Each tool icon links to its decision. Position within a ring has no additional meaning.</desc>
+    {plotted.toReversed().map((ring) => <circle class={`band ${ring.key}`} cx={center} cy={center} r={ring.radius} />)}
+    {plotted.map((ring) => <text class="ring-label" x={center} y={center - ring.radius + 23} text-anchor="middle">{ring.name}</text>)}
+    {plotted.map((ring) => ring.entries.map((entry) => (
+      <a href={`#${entry.anchor}`} aria-label={`${entry.name} — ${ring.name}`} class={`blip ${ring.key}`} data-tool-id={entry.id}>
+        <title>{entry.name} — {ring.name}</title>
+        <circle class="target" cx={entry.x} cy={entry.y} r="29" />
+        <circle class="point" cx={entry.x} cy={entry.y} r="25" />
+        <image href={`${base}/radar/${entry.icon}`} x={entry.x - 18} y={entry.y - 18} width="36" height="36" aria-hidden="true" />
+      </a>
+    )))}
+  </svg>
+  </div>
+  <figcaption>Select a point or a tool below to read the decision. Enable the full-size diagram to pan across larger radars. Rings show adoption status; placement within each ring is for readability.</figcaption>
+  <div class="radar-key">
+    {plotted.map((ring) => (
+      <section class={ring.key} aria-label={`${ring.name} decisions`}>
+        <div class="key-heading"><strong>{ring.name}</strong><span>{ring.entries.length}</span></div>
+        {ring.entries.length ? <ul>{ring.entries.map((entry) => <li><a href={`#${entry.anchor}`}><img src={`${base}/radar/${entry.icon}`} width="24" height="24" alt="" aria-hidden="true" /><span>{entry.name}</span></a></li>)}</ul> : <p>No tools here yet.</p>}
+      </section>
+    ))}
+  </div>
+</figure>
+<script>
+  for (const radar of document.querySelectorAll<HTMLElement>('.tech-radar')) {
+    const toggle = radar.querySelector<HTMLInputElement>('.radar-zoom input');
+    const viewport = radar.querySelector<HTMLElement>('.radar-viewport');
+    if (!toggle || !viewport) continue;
+    toggle.addEventListener('change', () => {
+      requestAnimationFrame(() => viewport.scrollTo({
+        left: toggle.checked ? Number(viewport.dataset.firstX) - viewport.clientWidth / 2 : 0,
+        top: toggle.checked ? Number(viewport.dataset.firstY) - viewport.clientHeight / 2 : 0,
+      }));
+    });
+  }
+</script>
+<style>
+  .tech-radar { margin: 2rem 0; --adopt: #acc8b7; --trial: #a3c1d9; --assess: #c9bf99; --hold: #bbaec7; }
+  :global([data-theme='light']) .tech-radar { --adopt: #365c47; --trial: #345c7b; --assess: #685a2e; --hold: #695279; }
+  .radar-topline { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; border-block: 1px solid var(--sl-color-gray-5); padding: .7rem 0; font-size: .875rem; color: var(--sl-color-gray-2); }
+  svg { display: block; width: 100%; max-width: 38rem; height: auto; margin: .5rem auto; overflow: visible; }
+  .radar-zoom { display: flex; align-items: center; gap: .5rem; width: fit-content; min-height: 44px; font-size: .875rem; color: var(--sl-color-gray-2); }
+  .radar-zoom input { margin: 0; accent-color: var(--sl-color-text-accent); }
+  .radar-viewport { overflow: auto; }
+  .tech-radar:has(.radar-zoom input:checked) .radar-viewport { max-height: 70vh; }
+  .tech-radar:has(.radar-zoom input:checked) svg { width: var(--radar-size); max-width: none; margin: 0; }
+  .adopt { --ring-color: var(--adopt); }
+  .trial { --ring-color: var(--trial); }
+  .assess { --ring-color: var(--assess); }
+  .hold { --ring-color: var(--hold); }
+  .band { fill: color-mix(in srgb, var(--ring-color) 5%, var(--sl-color-bg)); stroke: var(--sl-color-gray-4); stroke-width: 1; }
+  .band.assess { stroke-dasharray: 4 5; }
+  .ring-label { fill: var(--sl-color-gray-2); font: 24px var(--sl-font); }
+  .blip { color: var(--ring-color); }
+  .target { fill: transparent; }
+  .point { fill: var(--sl-color-bg); stroke: currentColor; stroke-width: 2; }
+  .blip image { pointer-events: none; }
+  .blip:hover .point, .blip:focus-visible .point { stroke-width: 4; }
+  figcaption { font-size: .875rem; color: var(--sl-color-gray-2); line-height: 1.6; }
+  .radar-key { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem 2rem; margin-top: 1.5rem; }
+  .radar-key > section { margin: 0; }
+  .radar-key .adopt, .radar-key .hold { grid-column: 1 / -1; }
+  .radar-key .adopt ul, .radar-key .hold ul { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 1rem; }
+  .key-heading { display: flex; align-items: center; justify-content: space-between; border-top: 2px solid var(--ring-color); padding-top: .65rem; color: var(--ring-color); }
+  .key-heading span { font-variant-numeric: tabular-nums; }
+  .radar-key ul { list-style: none; padding: 0; margin: .5rem 0 0; }
+  .radar-key li { margin: 0; }
+  .radar-key a { display: flex; align-items: center; gap: .65rem; padding: .35rem 0; text-decoration: none; line-height: 1.5; }
+  .radar-key a:hover { text-decoration: underline; }
+  .radar-key img { flex: 0 0 24px; width: 24px; height: 24px; object-fit: contain; margin: 0; }
+  .radar-key p { margin-top: .85rem; color: var(--sl-color-gray-2); font-size: .875rem; }
+  @media (max-width: 30rem) { .radar-key { grid-template-columns: 1fr; gap: 1rem; } .radar-key .adopt ul, .radar-key .hold ul { grid-template-columns: 1fr; } }
+</style>

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Exercise installed directory-title shell hooks; Zellij rendering is separate."""
 
+import hashlib
 import os
 from pathlib import Path
 import pty
@@ -8,6 +9,8 @@ import shlex
 import shutil
 import subprocess
 import tempfile
+import sys
+from zellij_ipc_fixture import fields, message
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -22,7 +25,15 @@ def main():
         executables = work / "bin"
         executables.mkdir()
         context = executables / "zellij-context"
-        context.write_text('#!/bin/sh\n[ "$PROVIDER" != failure ] || exit 1\nprintf "%s\\n" "$PROVIDER"\n')
+        context.write_text('''#!/bin/sh
+if [ "$1" = title-context ]; then
+  [ "$PROVIDER" = zellij ] || exit 1
+  printf '{}\\n'
+else
+  [ "$PROVIDER" != failure ] || exit 1
+  printf '%s\\n' "$PROVIDER"
+fi
+''')
         context.chmod(0o755)
         tmux = executables / "tmux"
         tmux.write_text('''#!/bin/sh
@@ -34,7 +45,7 @@ case "$*" in
 esac
 ''')
         tmux.chmod(0o755)
-        env = {**os.environ, "HOME": str(home), "PATH": f"{executables}:{os.environ['PATH']}",
+        env = {**os.environ, "HOME": str(home), "PATH": f"{executables}:{ROOT / 'bin'}:{os.environ['PATH']}",
                "ZELLIJ": "1", "ZELLIJ_PANE_ID": "7", "ZELLIJ_SESSION_NAME": "fixture", "TMUX": "outer-session",
                "PROVIDER": "zellij", "TMUX_LOG": str(work / "tmux.log"),
                "TMPDIR": str(work)}
@@ -89,9 +100,9 @@ cd {shlex.quote(str(plain))}
 cd {shlex.quote(str(unsafe))}
 '''
         observed = run(script)
-        assert observed == (b"\x1b]2;project with spaces [topic]\x07"
-                               b"\x1b]2;project with spaces [other]\x07"
-                               b"\x1b]2;plain\x07\x1b]2;bad   name\x07"), repr(observed)
+        assert observed == ("\x1b]2;project with spaces  topic\x07"
+                               "\x1b]2;project with spaces  other\x07"
+                               "\x1b]2;plain\x07\x1b]2;bad   name\x07").encode(), repr(observed)
         assert not (work / "tmux.log").exists(), "inner Zellij renamed outer tmux"
         cd = f"cd {shlex.quote(str(plain))}\n"
         assert run(cd, terminal=False) == b""
@@ -107,7 +118,83 @@ def ownership_lifecycle():
     import json
     import socket
     import sqlite3
-    import sys
+    import struct
+    import threading
+    from contextlib import contextmanager, ExitStack
+
+    # Independent wire fixture for Action(9), ListPanes(98), RenameTabById(103)
+    # and Log(5)/UnblockInputThread(2) from the pinned protobuf contract.
+    @contextmanager
+    def server(listener, state):
+        stopped, errors = threading.Event(), []
+        listener.listen()
+        listener.settimeout(0.05)
+
+        def serve():
+            try:
+                while not stopped.is_set():
+                    try:
+                        connection, _ = listener.accept()
+                    except socket.timeout:
+                        continue
+                    with connection:
+                        connection.settimeout(1)
+
+                        def receive(length):
+                            data = b""
+                            while len(data) < length:
+                                part = connection.recv(length - len(data))
+                                assert part, "Client disconnected before completing its request"
+                                data += part
+                            return data
+
+                        length = struct.unpack("<I", receive(4))[0]
+                        request = fields(fields(receive(length))[9])
+                        assert request.get(2) in (None, 7, 999) and request[4] == 1
+                        action = fields(request[1])
+                        tab = json.loads(state.read_text())
+                        ack = message(2, b"")
+                        if 104 in action:
+                            tabs = [{"tab_id": tab["tab_id"], "name": tab["name"]}]
+                            if "other_name" in tab:
+                                tabs.append({"tab_id": 2, "name": tab["other_name"]})
+                            if "loading_name" in tab:
+                                tabs.append({"tab_id": 5, "name": tab["loading_name"]})
+                            response = message(5, message(1, json.dumps(tabs).encode()))
+                            connection.sendall(struct.pack("<I", len(ack)) + ack)
+                        elif 98 in action:
+                            assert fields(action[98])[6] == 1
+                            panes = [{"id": 7, "tab_id": tab["tab_id"], "tab_name": tab["name"],
+                                      "title": tab.get("title", ""),
+                                      "is_plugin": False, "is_focused": True}]
+                            if "other_name" in tab:
+                                panes.append({"id": 8, "tab_id": 2, "tab_name": tab["other_name"],
+                                              "title": tab.get("other_title", ""),
+                                              "is_plugin": False, "is_focused": False})
+                            response = message(5, message(1, json.dumps(panes).encode()))
+                            connection.sendall(struct.pack("<I", len(ack)) + ack)
+                        else:
+                            rename = fields(action[103])
+                            target = rename.get(1, 0)
+                            assert target in (tab["tab_id"], 2)
+                            tab["name" if target == tab["tab_id"] else "other_name"] = rename[2].decode()
+                            state.write_text(json.dumps(tab))
+                            response = ack
+                        frame = struct.pack("<I", len(response)) + response
+                        connection.sendall(frame[:2])
+                        connection.sendall(frame[2:])
+            except Exception as error:
+                errors.append(error)
+
+        worker = threading.Thread(target=serve)
+        worker.start()
+        try:
+            yield
+        finally:
+            stopped.set()
+            worker.join(timeout=2)
+            assert not worker.is_alive(), "Fixture server failed to stop"
+            assert not errors, errors
 
     with tempfile.TemporaryDirectory(prefix="zj-title-state-", dir="/tmp") as temporary:
         work = Path(temporary)
@@ -115,82 +202,119 @@ def ownership_lifecycle():
         executables.mkdir()
         sockets = work / "run" / "contract_version_1"
         sockets.mkdir(parents=True)
-        cache = work / "cache" / "contract_version_1"
+        cache_root = (work / "home/Library/Caches/org.Zellij-Contributors.Zellij" if sys.platform == "darwin"
+                      else work / "cache/zellij")
+        cache = cache_root / "contract_version_1"
         cache.mkdir(parents=True)
-        with sqlite3.connect(cache / "session_index.sqlite") as db:
-            db.execute("CREATE TABLE sessions (name TEXT PRIMARY KEY, id TEXT)")
-            db.execute("INSERT INTO sessions VALUES ('fixture', 'abc123')")
+        index_name = "session_index-" + hashlib.sha256(os.fsencode(sockets)).hexdigest()[:12] + ".sqlite"
+        with sqlite3.connect(cache / index_name) as db:
+            db.execute("CREATE TABLE sessions (name TEXT PRIMARY KEY, id TEXT, created_at INTEGER)")
+            db.execute("INSERT INTO sessions VALUES ('fixture', 'abc123', 123)")
         state = work / "native.json"
         state.write_text(json.dumps({"tab_id": 4, "name": "Tab #5"}))
         fake = executables / "zellij"
-        fake.write_text('''#!/usr/bin/env python3
-import json, os, pathlib, sys
-state = pathlib.Path(os.environ["NATIVE_STATE"])
-args = sys.argv[1:]
-if args == ["setup", "--check"]:
-    print('[Version]: "0.46.0"\\n[CACHE DIR]: ' + os.environ["XDG_CACHE_HOME"])
-elif "list-panes" in args:
-    print(json.dumps([{"id": 7, "tab_id": 4, "tab_name": json.loads(state.read_text())["name"],
-                       "is_plugin": False, "is_focused": True}]))
-elif "list-tabs" in args:
-    print('[' + state.read_text() + ']')
-elif "rename-tab" in args:
-    assert args[args.index("--tab-id") + 1] == "4"
-    tab = json.loads(state.read_text())
-    tab["name"] = args[-1]
-    state.write_text(json.dumps(tab))
-else:
-    raise SystemExit(1)
-''')
+        fake.write_text("#!/bin/sh\nexit 99\n")
         fake.chmod(0o755)
         ps = executables / "ps"
-        # The controlled ancestry boundary identifies this test process as the
-        # nearest server; real ancestry is exercised by the native workflow.
-        ps.write_text(f'#!/bin/sh\nprintf "%s 1 zellij\\n" {os.getpid()}\n')
+        ps.write_text("#!/bin/sh\nexit 99\n")
         ps.chmod(0o755)
-        env = {**os.environ, "PATH": f"{executables}:{os.environ['PATH']}",
+        env = {**os.environ, "PATH": f"{executables}:{ROOT / 'bin'}:{os.environ['PATH']}",
                "ZELLIJ_SESSION_NAME": "fixture", "ZELLIJ_PANE_ID": "7",
                "ZELLIJ_SOCKET_DIR": str(work / "run"), "NATIVE_STATE": str(state),
+               "HOME": str(work / "home"), "FIXTURE_ZELLIJ_CACHE": str(cache_root),
                "XDG_CACHE_HOME": str(work / "cache"), "XDG_STATE_HOME": str(work / "state"),
                "PWD": str(work / "project")}
 
         def rename():
-            subprocess.run([sys.executable, ROOT / "bin/zellij-auto-title"],
-                           cwd=work, env=env, check=True, timeout=5)
+            directory = Path(env["PWD"])
+            directory.mkdir(exist_ok=True)
+            subprocess.run([ROOT / "bin/zellij-auto-title"],
+                           cwd=directory, env=env, check=True, timeout=5)
             return json.loads(state.read_text())["name"]
 
         def owned():
-            result = subprocess.run([sys.executable, ROOT / "bin/zellij-status", "view", "fixture"],
+            result = subprocess.run([ROOT / "bin/zellij-status", "view", "fixture"],
                                     env=env, check=True, capture_output=True, text=True, timeout=5)
             return json.loads(result.stdout)["auto_titles"]
 
-        with socket.socket(socket.AF_UNIX) as original, socket.socket(socket.AF_UNIX) as replacement:
+        with socket.socket(socket.AF_UNIX) as original, socket.socket(socket.AF_UNIX) as replacement, ExitStack() as servers:
             address = sockets / "abc123"
             original.bind(str(address))
+            servers.enter_context(server(original, state))
+            env["ZELLIJ_TITLE_CONTEXT"] = subprocess.check_output(
+                [ROOT / "bin/zellij-context", "title-context"], env=env, text=True).strip()
             assert rename() == "project"
             assert owned() == {"4": "project"}
             env["PWD"] = str(work / "next")
-            assert rename() == "next"
-            assert owned() == {"4": "next"}
+            assert rename() == "project"
+            assert owned() == {"4": "project"}
             state.write_text(json.dumps({"tab_id": 4, "name": "manual"}))
             assert rename() == "manual", "explicit title was overwritten"
-            # A resurrected session may reuse its ID and the exact old title.
-            # Its new socket must prevent old ownership transferring to it.
+            # Restore a recorded automatic name after replacing the server.
             address.unlink()
             replacement.bind(str(address))
-            state.write_text(json.dumps({"tab_id": 4, "name": "next"}))
+            servers.enter_context(server(replacement, state))
+            state.write_text(json.dumps({"tab_id": 0, "name": "project"}))
             env["PWD"] = str(work / "new-session")
             assert owned() == {}, "stale ownership survived socket replacement"
-            assert rename() == "next", "new session's explicit title was overwritten"
-            state.write_text(json.dumps({"tab_id": 4, "name": "Tab #5"}))
-            assert rename() == "new-session", "generated title did not resume ownership"
-            assert owned() == {"4": "new-session"}
-            record = next((work / "state/zellij-auto-titles").glob("*.json"))
+            assert rename() == "project", "new session's explicit title was overwritten"
+            state.write_text(json.dumps({"tab_id": 0, "name": "Tab #1"}))
+            assert rename() == "Tab #1", "cached context crossed server lifetimes"
+            state.write_text(json.dumps({"tab_id": 0, "name": "project"}))
+            env["ZELLIJ_TITLE_CONTEXT"] = subprocess.check_output(
+                [ROOT / "bin/zellij-context", "title-context"], env=env, text=True).strip()
+            state.write_text(json.dumps({"tab_id": 0, "name": "project", "loading_name": "pending"}))
+            assert rename() == "project", "partial resurrection reconciled title records"
+            assert next((work / "state/zellij-auto-titles").glob("*-4.json")).exists()
+            state.write_text(json.dumps({"tab_id": 0, "name": "project"}))
+            assert rename() == "new-session", "restored automatic title did not resume ownership"
+            assert owned() == {"0": "new-session"}
+            state.write_text(json.dumps({"tab_id": 3, "name": "project"}))
+            assert rename() == "project", "obsolete title record took over a fresh manual tab"
+            state.write_text(json.dumps({"tab_id": 0, "name": "manual"}))
+            assert rename() == "manual", "restored manual name was overwritten"
+            state.write_text(json.dumps({"tab_id": 0, "name": "new-session"}))
+            record = next((work / "state/zellij-auto-titles").glob("*-0.json"))
             record.write_text(json.dumps("new-session"))
             env["PWD"] = str(work / "legacy")
             assert owned() == {}
             assert rename() == "new-session", "legacy record claimed unproven ownership"
-        print("PASS: native title ownership, explicit names, socket recreation, and legacy state (controlled CLI, real sockets/index).")
+            state.write_text(json.dumps({"tab_id": 0, "name": "Tab #1"}))
+            assert rename() == "legacy"
+            third = servers.enter_context(socket.socket(socket.AF_UNIX))
+            address.unlink()
+            third.bind(str(address))
+            servers.enter_context(server(third, state))
+            state.write_text(json.dumps({"tab_id": 0, "name": "legacy", "other_name": "legacy"}))
+            env["PWD"] = str(work / "ambiguous")
+            env["ZELLIJ_TITLE_CONTEXT"] = subprocess.check_output(
+                [ROOT / "bin/zellij-context", "title-context"], env=env, text=True).strip()
+            assert rename() == "legacy", "ambiguous restored name claimed ownership"
+            assert owned() == {}
+            state.write_text(json.dumps({"tab_id": 0, "name": "review", "title": "current project",
+                                         "other_name": "logs", "other_title": "log project"}))
+            env["ZELLIJ_TITLE_CONTEXT"] = '{"session":"obsolete"}'
+            subprocess.run([ROOT / "bin/zellij-auto-title", "--clear"],
+                           env=env, check=True, timeout=5)
+            assert json.loads(state.read_text())["name"] == "current project"
+            assert json.loads(state.read_text())["other_name"] == "logs", "clear renamed another tab"
+            assert owned() == {"0": "current project"}
+            failed = subprocess.run([ROOT / "bin/zellij-auto-title", "--clear"],
+                                    env={**env, "ZELLIJ_PANE_ID": "999"},
+                                    capture_output=True, text=True, timeout=5)
+            assert failed.returncode != 0 and "Cannot find" in failed.stderr, failed
+            assert json.loads(state.read_text())["other_name"] == "logs"
+            state.write_text(json.dumps({"tab_id": 0, "name": "current project", "title": "changed program",
+                                         "other_name": "logs", "other_title": "log project"}))
+            subprocess.run([ROOT / "bin/zellij-auto-title", "--clear", "--all"],
+                           env=env, check=True, timeout=5)
+            assert json.loads(state.read_text())["name"] == "current project", "clear lost an automatic provider"
+            assert json.loads(state.read_text())["other_name"] == "log project"
+            assert owned() == {"0": "current project", "2": "log project"}
+            subprocess.run([ROOT / "bin/zellij-auto-title", "--clear", "--all"],
+                           env=env, check=True, timeout=5)
+            assert owned() == {"0": "current project", "2": "log project"}, "clear was not idempotent"
+        print("PASS: protobuf title ownership, explicit names, socket recreation, and legacy state (real sockets/index).")
 
 
 if __name__ == "__main__":

@@ -77,7 +77,67 @@ def main():
                                  capture_output=True, text=True, timeout=30)
         assert minimal.returncode == 0, minimal.stdout + minimal.stderr
         assert (minimal_home / ".bashrc").resolve() == repo / "bash/bashrc"
+        ssh_rc = minimal_home / ".ssh/rc"
+        assert ssh_rc.resolve() == repo / "sh/ssh-rc"
+        ssh_rc.unlink()
+        ssh_rc.write_text("# Existing host login setup\n")
+        repeated_shell = subprocess.run([*command, "shell"], cwd=repo, env=minimal_env,
+                                        capture_output=True, text=True, timeout=30)
+        assert repeated_shell.returncode == 0, repeated_shell.stderr
+        assert ssh_rc.read_text() == "# Existing host login setup\n"
+        assert "publish-login" in repeated_shell.stderr, "Custom hook needs an integration instruction"
         assert (minimal_home / ".gitconfig").resolve() == repo / "git/gitconfig"
+        assert (minimal_home / ".gitattributes").resolve() == repo / "git/gitattributes"
+        assert not (minimal_home / ".local/bin/source-code").exists()
+        assert not (minimal_home / ".local/bin/repo-bootstrap").exists()
+        source_setup = subprocess.run([*command, "source-code-config"], cwd=repo, env=minimal_env,
+                                      capture_output=True, text=True, timeout=30)
+        assert source_setup.returncode == 0, source_setup.stdout + source_setup.stderr
+        assert (minimal_home / ".local/bin/source-code").resolve() == repo / "bin/source-code"
+        assert (minimal_home / ".local/bin/repo-bootstrap").resolve() == repo / "bin/repo-bootstrap"
+        assert not (minimal_home / ".agents").exists(), "Workstation command setup must not select a project policy"
+        merger = executables / "mergiraf"
+        merger.write_text("#!/bin/sh\nprintf '%s\\n' '*.toml merge=mergiraf'\n")
+        merger.chmod(0o755)
+        activated = subprocess.run([*command, "mergiraf-config"], cwd=repo, env=minimal_env,
+                                   capture_output=True, text=True, timeout=30)
+        assert activated.returncode == 0, activated.stdout + activated.stderr
+        attributes = minimal_home / ".gitattributes"
+        active_contents = attributes.read_text()
+        assert "*.toml merge=mergiraf" in active_contents
+        assert (repo / "git/gitattributes").read_text() in active_contents
+        merger.write_text("#!/bin/sh\nexit 1\n")
+        failed = subprocess.run([*command, "mergiraf-config"], cwd=repo, env=minimal_env,
+                                capture_output=True, text=True, timeout=30)
+        assert failed.returncode != 0
+        assert attributes.read_text() == active_contents
+        merger.unlink()
+        missing = subprocess.run([*command, "mergiraf-config"], cwd=repo, env=minimal_env,
+                                 capture_output=True, text=True, timeout=30)
+        assert missing.returncode != 0 and "Missing dependency: mergiraf" in missing.stderr
+        disabled = subprocess.run([*command, "git"], cwd=repo, env=minimal_env,
+                                  capture_output=True, text=True, timeout=30)
+        assert disabled.returncode == 0, disabled.stdout + disabled.stderr
+        assert attributes.resolve() == repo / "git/gitattributes"
+
+        linked = temporary / "linked-dotfiles"
+        git_command = [shutil.which("git"), "-C", str(repo)]
+        subprocess.run([*git_command, "-c", "core.hooksPath=/dev/null", "-c", "user.name=Setup fixture",
+                        "-c", "user.email=setup@example.invalid", "commit", "--allow-empty", "-qm", "fixture"],
+                       check=True, capture_output=True)
+        subprocess.run([*git_command, "worktree", "add", "--detach", str(linked)],
+                       check=True, capture_output=True)
+        shutil.copytree(repo, linked, symlinks=True, dirs_exist_ok=True,
+                        ignore=shutil.ignore_patterns(".git", "__pycache__", "target"))
+        linked_home = temporary / "linked-home"
+        linked_home.mkdir()
+        linked_base = subprocess.run([*command, "base"], cwd=linked,
+                                     env={**env, "HOME": str(linked_home)},
+                                     capture_output=True, text=True, timeout=30)
+        assert linked_base.returncode == 0, linked_base.stdout + linked_base.stderr
+        assert (linked / ".git").is_file()
+        assert (linked_home / ".gitconfig").resolve() == linked / "git/gitconfig"
+        assert (repo / ".git/hooks/pre-commit").resolve() == linked / "git/hooks/pre-commit"
 
         dry_run = subprocess.run([*command, "-n", "base"], cwd=repo, env=env,
                                  capture_output=True, text=True, timeout=30)
@@ -93,7 +153,8 @@ def main():
         assert machine_config.is_file(), "make base must initialize the machine TOML."
         platform_set = "macos" if sys.platform == "darwin" else "linux"
         assert tomllib.loads(machine_config.read_text()) == {"sets": [platform_set]}
-        assert not (home / ".bashrc").exists()
+        assert (home / ".gitconfig").resolve() == repo / "git/gitconfig"
+        assert (home / ".bashrc").is_symlink()
         assert not (home / ".config/nvim").exists()
 
         # NOTE: Minimal setup preserves selected sets for the configuration stage.
@@ -105,6 +166,8 @@ def main():
         assert machine_config.read_bytes() == local_config
 
         (executables / "python3").symlink_to(sys.executable)
+        merger.write_text("#!/bin/sh\nprintf '%s\\n' '*.toml merge=mergiraf'\n")
+        merger.chmod(0o755)
         # Plain make must also configure completions for installed tools.
         fd = executables / "fd"
         fd.write_text('#!/bin/sh\n[ "$*" = "--gen-completions zsh" ] || exit 7\n'
@@ -114,22 +177,23 @@ def main():
         completion_cache.write_text("stale completion cache")
         # NOTE: Plain make must apply the chosen bundles to that same baseline.
         configure = command
+        before_preview = snapshot(home)
         selected_preview = subprocess.run([*configure, "-n"], cwd=repo, env=env,
                                           capture_output=True, text=True, timeout=30)
         assert selected_preview.returncode == 0, selected_preview.stdout + selected_preview.stderr
         assert machine_config.read_bytes() == local_config
-        assert not (home / ".bashrc").exists(), "make -n applied selected configuration"
+        assert snapshot(home) == before_preview, "make -n applied selected configuration"
         selected_only = subprocess.run(configure, cwd=repo, env=env,
                                        capture_output=True, text=True, timeout=30)
         assert (home / ".bashrc").is_symlink(), selected_only.stdout + selected_only.stderr
         assert "Installed fd completion" in (home / ".zsh/completions/_fd").read_text()
         assert not completion_cache.exists(), "default setup left a stale completion cache"
         assert not (home / ".config/nvim").exists()
-        assert not (home / ".tmux.conf").exists()
+        assert (home / ".tmux.conf").resolve() == repo / "rc/tmux.conf"
         assert not (home / "broker-installed").exists()
         machine_config.write_text('sets = ["workstation"]\n')
 
-        # The opt-in multiplexer can be configured before its binary is
+        # The default multiplexer can be configured before its binary is
         # installed, without pulling in tmux plugins or unrelated integrations.
         bare_env = {**env, "ZELLIJ_STATUS_WASM": str(temporary / "not-built.wasm")}
         bare = subprocess.run([*command, "zellij"], cwd=repo, env=bare_env,
@@ -145,7 +209,7 @@ def main():
         assert (home / ".config/zellij/layouts/tmux.kdl").resolve() == repo / "zellij/layouts/tmux.kdl"
         assert (home / ".config/zellij/plugins/lane-status.wasm").resolve() == plugin
         picker = home / ".local/bin/zellij-picker"
-        assert picker.resolve() == repo / "bin/zellij-picker" and os.access(picker, os.X_OK)
+        assert picker.is_symlink() and picker.resolve() == (repo / "bin/zellij-picker").resolve()
 
         # Missing required source is an incomplete step, not a successful skip.
         # The actual setup runner must still complete independent configuration.
@@ -206,17 +270,11 @@ def main():
         assert (home / ".codex/AGENTS.md").read_bytes() == expected_guidance
         skill = home / ".agents/skills/dotfiles/builder"
         source = repo / "ai/skills/builder"
-        assert (skill / "SKILL.md").read_bytes() == (source / "SKILL.md").read_bytes()
-        assert (skill / "references/standard.md").read_bytes() == (repo / "docs/pragmatic-hexagonal-architecture.md").read_bytes()
-        assert (skill / "references/construction.md").read_bytes() == (repo / "docs/software-construction.md").read_bytes()
-        assert (skill / "scripts/check_examples.py").is_file()
+        assert not skill.exists() and not skill.is_symlink()
         package = home / ".local/share/software-standards/builder"
-        claude_skill = home / ".claude/skills/builder"
-        rule = home / ".claude/rules/builder.md"
-        assert skill.resolve() == package
-        assert claude_skill.resolve() == package
-        assert not (package / "references/standard.md").is_symlink()
-        assert rule.read_bytes() == (source / "references/instructions.md").read_bytes()
+        assert (package / "references/construction.md").read_bytes() == (repo / "docs/software-construction.md").read_bytes()
+        assert not (home / ".claude/skills/builder").exists()
+        assert not (home / ".claude/rules/builder.md").exists()
         # Guidance installs even while optional tools and network are absent.
         assert (home / ".codex/agents/code-reviewer.toml").is_file()
         assert not (home / ".tmux/plugins/tpm").exists()

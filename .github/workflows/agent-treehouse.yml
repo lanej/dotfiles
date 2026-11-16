@@ -1,11 +1,11 @@
-name: Agent Treehouse launchers
+name: Agent worktree launchers
 on:
   workflow_dispatch:
   pull_request:
-    paths: ['bin/agent-treehouse', 'bin/codex-wrapper', 'bin/claude-wrapper', 'bin/codex-worktree-exit-hook', 'sh/alias', 'scripts/test-agent-treehouse.py', '.github/workflows/agent-treehouse.yml']
+    paths: ['bin/agent-treehouse', 'bin/agent-worktree', 'bin/codex-wrapper', 'bin/claude-wrapper', 'bin/codex-worktree-exit-hook', 'sh/alias', 'scripts/test-agent-treehouse.py', 'scripts/test-agent-worktree.py', 'scripts/install-worktree-manager', 'bootstrap/tools.toml', '.github/workflows/agent-treehouse.yml']
   push:
     branches: [master]
-    paths: ['bin/agent-treehouse', 'bin/codex-wrapper', 'bin/claude-wrapper', 'bin/codex-worktree-exit-hook', 'sh/alias', 'scripts/test-agent-treehouse.py', '.github/workflows/agent-treehouse.yml']
+    paths: ['bin/agent-treehouse', 'bin/agent-worktree', 'bin/codex-wrapper', 'bin/claude-wrapper', 'bin/codex-worktree-exit-hook', 'sh/alias', 'scripts/test-agent-treehouse.py', 'scripts/test-agent-worktree.py', 'scripts/install-worktree-manager', 'bootstrap/tools.toml', '.github/workflows/agent-treehouse.yml']
 permissions:
   contents: read
 jobs:
@@ -16,13 +16,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
       - run: sudo apt-get update && sudo apt-get install -y lsof zsh shellcheck
-      - name: Install native Treehouse
-        working-directory: ${{ runner.temp }}
+      - name: Install pinned worktree manager
         run: |
-          curl -fsSLO https://github.com/kunchenguid/treehouse/releases/download/v3.1.7/treehouse-v3.1.7-linux-amd64.tar.gz
-          curl -fsSLO https://github.com/kunchenguid/treehouse/releases/download/v3.1.7/checksums.txt
-          awk '$2 == "treehouse-v3.1.7-linux-amd64.tar.gz"' checksums.txt | sha256sum -c -
-          tar -xzf treehouse-v3.1.7-linux-amd64.tar.gz treehouse
-          sudo install -m 755 treehouse /usr/local/bin/treehouse
+          version=$(python3 -c 'import tomllib; print(tomllib.load(open("bootstrap/tools.toml", "rb"))["tools"]["worktree-manager"]["version"])')
+          sh scripts/install-worktree-manager "$version"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - run: shellcheck bin/codex-wrapper bin/claude-wrapper
-      - run: make test-agent-treehouse
+      - run: make test-agent-worktree

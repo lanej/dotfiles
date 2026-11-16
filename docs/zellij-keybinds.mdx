@@ -21,7 +21,7 @@ Most commands return immediately to your application. **Esc**, **Enter**, or **C
 | [Open or hide the shared popup](zellij/shared-popup.mdx) | **Ctrl-f P** |
 | [Copy text from scrollback](zellij/copy-paste.mdx) | **Ctrl-f e** |
 | Paste the session's last Neovim yank | **Ctrl-f p** |
-| [Visit a tab needing attention](zellij/attention.mdx) | **Ctrl-f Ctrl-a** |
+| [Jump to the highest-ranked activity tab](zellij/attention.mdx) | **Ctrl-f a** |
 | [Open notification history](zellij/notifications.mdx) | **Ctrl-f B** |
 | Detach, leaving programs running | **Ctrl-f d** |
 
@@ -92,6 +92,7 @@ Layout cycling offers columns, rows, stacked, and equalize. The [equalize layout
 | `Ctrl-q` | [Confirm shutdown of this session](zellij/shutdown.mdx) |
 | `P` | [Open or hide the shared popup](zellij/shared-popup.mdx) |
 | `F` | Show or hide other floating panes |
+| `E` (Shift-e) | Move the focused pane between floating and tiled in the same tab |
 | `u` | Focus the containing Zellij session |
 | `i` | Focus the nested Zellij session in this pane |
 | `I` | Open or close the session manager/card |
@@ -99,18 +100,21 @@ Layout cycling offers columns, rows, stacked, and equalize. The [equalize layout
 
 The popup uses the same keys as a regular session. Inside it, **Ctrl-f P** hides the view. See [shared popup keys](#shared-popup-keys) and [remote sessions](zellij/ssh-agent.mdx).
 
+To tile the shared popup's outer pane, first press **Ctrl-f u** to focus the containing session, then **Ctrl-f Shift-e**.
+
 ## Text and attention
 
 | Key after Ctrl-f | Action |
 | --- | --- |
-| `e` | [Open scrollback in Neovim for selection](zellij/copy-paste.mdx) |
+| `e` | [Enter native keyboard copy mode](zellij/copy-paste.mdx) |
 | `p` | Paste the session's last Neovim yank |
-| `[` | Enter Scroll mode |
+| `[` | Enter native keyboard copy mode |
 | `/` | Enter a scrollback search query |
-| `Ctrl-a` | [Visit another local tab needing you, otherwise activity/bell](zellij/attention.mdx) |
+| `a` | [Jump to the highest-ranked local activity tab](zellij/attention.mdx) |
+| `Ctrl-a` | [Cycle through other local tabs needing you, otherwise activity/bell](zellij/attention.mdx) |
 | `b` | Open or close the inbox/session card |
 | `B` | [Search recorded notifications with source-pane previews](zellij/notifications.mdx) |
-| `a` | Toggle watching the focused pane |
+| `A` | Toggle watching the focused pane |
 | `U` | Toggle muting the focused pane |
 | `f` | Send a literal Ctrl-f to the application |
 | `Esc` / `Enter` / `Ctrl-c` | Cancel the prefix |
@@ -119,7 +123,7 @@ The popup uses the same keys as a regular session. Inside it, **Ctrl-f P** hides
 
 ## Keys inside modes
 
-Enter a mode once, then use bare keys. In Scroll and Search modes, **Ctrl-f** pages down rather than starting another prefix command.
+Enter a mode once, then use bare keys. In Copy, Scroll, and Search modes, **Ctrl-f** pages down rather than starting another prefix command.
 
 ### Resize mode: Ctrl-f Ctrl-r
 
@@ -133,23 +137,25 @@ Enter a mode once, then use bare keys. In Scroll and Search modes, **Ctrl-f** pa
 
 For example, **Ctrl-f Ctrl-r**, **h**, **h**, **Enter** grows left twice, then exits. `=` inside this mode means increase size, not equalize.
 
-### Scroll mode: Ctrl-f [
+### Copy mode: Ctrl-f [ or Ctrl-f e
 
 | Key | Action |
 | --- | --- |
-| `j` / `Down`, `k` / `Up` | Scroll down / up |
+| `h/j/k/l` or arrows | Move the copy cursor |
+| `w/b/e`, `W/B/E` | Move by word or whitespace-delimited word |
+| `0`, `^`, `$` | Start of row, first nonblank character, last character |
+| `gg`, `G`, `42G` | First row, last row, or a numbered retained display row |
+| `10j`, `3w` | Repeat a motion |
 | `Ctrl-f` / `PageDown`, `Ctrl-b` / `PageUp` | Page down / up |
-| `d` / `Ctrl-d`, `u` / `Ctrl-u` | Half-page down / up |
-| `g` / `Home`, `G` / `End` | Top / bottom |
-| `[` / `]` | Previous / next shell prompt |
-| `/` / `s` | Enter a search query |
-| `m` | Select the command at the scroll position |
-| `y` | Copy an existing selection and return |
-| `c` | Copy the last command output and return |
-| `e` | Open scrollback in Neovim |
-| `Esc` / `Enter` / `q` / `Ctrl-c` | Return to the application |
+| `Ctrl-d`, `Ctrl-u` | Half-page down / up |
+| `v` / `Space`, `V` | Toggle character selection or whole logical-line selection |
+| `y` | Copy the selection to the system clipboard and return |
+| `Esc` | Cancel the selection, then leave on a second press |
+| `Enter` / `q` / `Ctrl-c` | Return to the application |
 
-Prompt jumps and command copying depend on support from the running application. `y` does not begin arbitrary visual selection; use **e** to select text in Neovim.
+The pane frame shows the copy cursor's row and whether character or line selection is active. Copied text rejoins soft-wrapped rows. **Ctrl-h/j/k/l** moves to another pane and leaves copy mode.
+
+Native Scroll mode remains available when leaving search entry. There, **v** or **e** enters Copy mode, **[** / **]** jumps between shell prompts, **m** selects a marked command, and **c** copies the last command output. Prompt actions depend on shell integration.
 
 ### Search entry and Search mode: Ctrl-f /
 
@@ -165,7 +171,7 @@ Type a query and press **Enter**. **Esc** or **Ctrl-c** while entering the query
 | `c` | Toggle case sensitivity |
 | `w` | Toggle wrapping |
 | `o` | Toggle whole-word matching |
-| `e` | Open scrollback in Neovim |
+| `e` | Enter native keyboard copy mode |
 | `Esc` / `Enter` / `q` / `Ctrl-c` | Return to the application |
 
 `c` changes search options here; it does not copy command output.
@@ -186,7 +192,7 @@ Move and Tab modes have no direct prefix shortcut. To enter them deliberately, r
 
 ## Shared popup keys
 
-The [shared popup](zellij/shared-popup.mdx) uses the same keymap, including navigation, splits, tabs, copying, and search. Its one difference is **Ctrl-f P**: inside the popup, that key hides the view. **Ctrl-f d** also detaches the view without stopping its shells.
+The [shared popup](zellij/shared-popup.mdx) uses the same keymap, including navigation, splits, tabs, copying, and search. Inside the popup, **Ctrl-f P**, **Ctrl-f d**, and **Ctrl-f D** hide the view without stopping its shells.
 
 ## Legacy configuration
 
@@ -197,13 +203,13 @@ If your installed keys differ, you may be using the older configuration. Modern-
 | Tab positions | Start at 0 | Start at 1; `0` and `1` both choose the first tab |
 | Session creation / rename: `C` / `w` | Direct actions | Open the session manager |
 | Balance / golden ratio: `=` / `g` / `G` | Available | Unbound |
-| Local attention: `Ctrl-a` | Available | Unbound |
-| Inbox / history / watch / mute: `b` / `B` / `a` / `U` | Available | Unbound |
+| Local attention: `a` / `Ctrl-a` | Direct jump / cycle | Unbound |
+| Inbox / history / watch / mute: `b` / `B` / `A` / `U` | Available | Unbound |
 | Session card: `I` | Available | Unbound |
 | Client chooser: `D` | Available | Unbound |
 | Session paste: `p` | Available | Unbound |
 | Gather panes: `M` | Available | Unbound |
-| Scrollback editor: `e` | Keeps terminal colors | Plain text |
+| Scrollback selection: `e` | Native keyboard copy mode | Opens a plain-text editor |
 | Mouse interaction | Disabled | Enabled |
 
 The legacy configuration still assigns `m` and `W`, but their custom pickers require a modern installation. A key appearing in a configuration is not a guarantee that its feature is available on an older runtime.
