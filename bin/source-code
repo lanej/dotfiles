@@ -179,6 +179,7 @@ CORE_SKILLS = (
     "testing",
     "source-code-lifecycle",
     "code-comments",
+    "cli",
 )
 SKILLS = DEFAULT_SKILLS + (
     "pr-writer",
@@ -200,6 +201,7 @@ SKILLS = DEFAULT_SKILLS + (
     "data-pipeline",
     "ui-acceptance",
     "ui-review",
+    "cli",
 )
 STAGES = ("research", "alpha", "beta", "production")
 KINDS = ("service", "library", "tool")

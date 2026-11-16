@@ -64,6 +64,21 @@
       "kind": "file",
       "sha256": "59b22ac5adb5d10e943d9402e1ced8b3842b7130018c66368e00958ce1ee3f37"
     },
+    ".agents/skills/cli/SKILL.md": {
+      "executable": false,
+      "kind": "file",
+      "sha256": "0a76ef2b44a84047d5e9ef3d6120893f3b71bbd43114f672896c60e22e9c2bce"
+    },
+    ".agents/skills/cli/references/agent-discovery.md": {
+      "executable": false,
+      "kind": "file",
+      "sha256": "4603d5113cdd20105a34b8cfb2f920a3cb9f94457b07c011836b0af62852fe3b"
+    },
+    ".agents/skills/cli/references/interface.md": {
+      "executable": false,
+      "kind": "file",
+      "sha256": "c549c1dc1fb6ad7cb98c5dc03bd3eb1de5d4e7978493f29d23d2f4e47cd93406"
+    },
     ".agents/skills/code-comments/SKILL.md": {
       "executable": false,
       "kind": "file",
@@ -282,7 +297,7 @@
     ".agents/skills/source-code-lifecycle/SKILL.md": {
       "executable": false,
       "kind": "file",
-      "sha256": "ef5b319b33c52caa12aad1b2f38e88670f1a889d443d75342b6961ffea3a904f"
+      "sha256": "6fb504a72534f1c55f2f5979a0f4d812a7af7bf1f723fd6c877f902297fcc4fe"
     },
     ".agents/skills/source-code-lifecycle/assets/check-source-code.py": {
       "executable": false,
@@ -292,7 +307,7 @@
     ".agents/skills/source-code-lifecycle/references/kinds.md": {
       "executable": false,
       "kind": "file",
-      "sha256": "2ed9cd39f7ddb337e020c0fdc7b589dd36fb6a135c4b651c1fe978428a9924ac"
+      "sha256": "0f8e2a13a9503e417ec1bdfb143f0d04f6c29f9fef12cda9245accfe6e759341"
     },
     ".agents/skills/source-code-lifecycle/references/languages.json": {
       "executable": false,
@@ -312,7 +327,7 @@
     ".agents/skills/source-code-lifecycle/references/tool-choices.md": {
       "executable": false,
       "kind": "file",
-      "sha256": "f4928951f0f09e85f38164ec39e88a7b0735d341912b57cbc41b7075a403ccb4"
+      "sha256": "55d5d2501444e799320770c3d31ada8c9d3a94c4601b1e2a6a57d3d029af5fa6"
     },
     ".agents/skills/testing/SKILL.md": {
       "executable": false,
@@ -392,12 +407,12 @@
     ".agents/source-code-versions.json": {
       "executable": false,
       "kind": "file",
-      "sha256": "55cde3028f4d7c6c23863615e706e8a05eaf2d0c12b4d8391371e2a46f5dab66"
+      "sha256": "e2ad585b40f0d642fc217a39ba4c8253c148f349f9745531c5f3b4f2c946f1b2"
     },
     ".agents/source-code.md": {
       "executable": false,
       "kind": "file",
-      "sha256": "01619132d3b41fe8e2643e2f114c3da5bcab672a500c8307ff5858ac78d30cfa"
+      "sha256": "32de383a1d85284edb18d94bec1e9ad34c9d8292e6e6c6c7f6f0e9ed0773004c"
     },
     ".claude/rules/source-code.md": {
       "executable": false,
@@ -411,6 +426,10 @@
     ".claude/skills/builder": {
       "kind": "link",
       "target": "../../.agents/skills/builder"
+    },
+    ".claude/skills/cli": {
+      "kind": "link",
+      "target": "../../.agents/skills/cli"
     },
     ".claude/skills/code-comments": {
       "kind": "link",
@@ -505,7 +524,7 @@
     ".source-code.json": {
       "executable": false,
       "kind": "file",
-      "sha256": "ab902bd9fe7e1dbe462f69f66684a4da4db20859e1133a6c3d23759bf528ecd5"
+      "sha256": "d67ce9c803c58b69f044ae2cd316061fcd459c93664f6a8a3fcfa1ab2dd1ea50"
     },
     "AGENTS.override.md": {
       "executable": false,
@@ -533,6 +552,7 @@
   "skill_versions": {
     "architecture": "1.2.0",
     "builder": "1.1.0",
+    "cli": "1.0.0",
     "code-comments": "1.0.0",
     "data-change-planning": "1.0.0",
     "git": "1.1.0",
@@ -543,7 +563,7 @@
     "octo-manager": "1.0.1",
     "python": "1.1.0",
     "rust": "1.1.0",
-    "source-code-lifecycle": "1.2.1",
+    "source-code-lifecycle": "1.2.2",
     "testing": "1.0.0",
     "typescript": "1.1.1",
     "ui-acceptance": "1.0.0",
@@ -552,6 +572,7 @@
   "skills": [
     "architecture",
     "builder",
+    "cli",
     "code-comments",
     "data-change-planning",
     "git",
@@ -568,7 +589,7 @@
     "ui-acceptance",
     "ui-review"
   ],
-  "source_revision": "cf2c3bb2c82b176345daa038600f38fc173b67db",
+  "source_revision": "5a571f0633480a280fb532e51e6d01759bf78d2f",
   "stage": "beta",
   "version": 1
 }

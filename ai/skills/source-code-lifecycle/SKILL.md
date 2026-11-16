@@ -11,6 +11,8 @@ When the policy selects a `kind`, read [project kind guidance](references/kinds.
 
 Before choosing application libraries, API protocols, or migration scope, read [the tool-choice policy](references/tool-choices.md). Apply its authority and adoption settings at every stage, including research proofs of concept. Tool choices are binding agent guidance, not an automated dependency gate.
 
+When creating, extending, or reviewing a CLI, read [CLI construction](../cli/SKILL.md). It owns the language-tool routing and required `skill` / `skill --topic` discovery contract, subject to project authority, adoption, and compatibility.
+
 Apply optional `data-pipeline` and `ui-acceptance` guidance only when listed in the installed skill pins. They are selected explicitly; language detection and workstation tool availability do not opt a project into domain architecture or UI gates.
 
 Apply the selected stage consistently across [Builder](../builder/SKILL.md), [testing](../testing/SKILL.md), [comments](../code-comments/SKILL.md), and installed language guidance. Run `python3 scripts/check-source-code.py LANGUAGE` locally and in CI for the selected stage's generated language gate. Explicit project gates remain binding at every stage.

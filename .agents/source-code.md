@@ -15,6 +15,7 @@ Paths in this policy are relative to the repository root. The authoritative pins
 | --- | --- |
 | architecture | 1.2.0 |
 | builder | 1.1.0 |
+| cli | 1.0.0 |
 | code-comments | 1.0.0 |
 | data-change-planning | 1.0.0 |
 | git | 1.1.0 |
@@ -25,7 +26,7 @@ Paths in this policy are relative to the repository root. The authoritative pins
 | octo-manager | 1.0.1 |
 | python | 1.1.0 |
 | rust | 1.1.0 |
-| source-code-lifecycle | 1.2.1 |
+| source-code-lifecycle | 1.2.2 |
 | testing | 1.0.0 |
 | typescript | 1.1.1 |
 | ui-acceptance | 1.0.0 |

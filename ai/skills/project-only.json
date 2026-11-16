@@ -20,5 +20,6 @@
   "testing",
   "typescript",
   "ui-acceptance",
-  "ui-review"
+  "ui-review",
+  "cli"
 ]

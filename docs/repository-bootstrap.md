@@ -73,7 +73,11 @@ source-code setup --repo ~/src/app --mode tracked --pr-template none
 source-code setup --repo ~/src/app --mode tracked --pr-template local
 ```
 
-`--skills` accepts the names listed by `source-code setup --help`, comma-separated. The core includes Builder, architecture, data/interface planning, Git/PR workflow, testing, lifecycle, and shared comments. Language guidance covers Go, TypeScript, JavaScript, Python, Rust, and Protobuf; `gh-pr-stack`, `github-actions`, `just`, `data-pipeline`, `ui-acceptance`, and `ui-review` are available explicitly. These are curated portable packages, not an automatic copy of workstation skills. Language detection selects matching guidance; root Go modules retain their existing automatic check-profile behavior.
+`--skills` accepts the names listed by `source-code setup --help`, comma-separated. The core includes Builder, architecture, data/interface planning, Git/PR workflow, CLI construction, testing, lifecycle, and shared comments. Language guidance covers Go, TypeScript, JavaScript, Python, Rust, and Protobuf; `gh-pr-stack`, `github-actions`, `just`, `data-pipeline`, `ui-acceptance`, and `ui-review` are available explicitly. These are curated portable packages, not an automatic copy of workstation skills. Language detection selects matching guidance; root Go modules retain their existing automatic check-profile behavior.
+
+## CLI construction
+
+The project-only `cli` skill is part of the core engineering profile and applies when building or reviewing command-line interfaces. It routes to the canonical language tool catalog and requires a compact Markdown `TOOL skill` entrypoint with task guidance available through `TOOL skill --topic NAME`. Discovery reads bundled resources without loading project configuration, resolving credentials, contacting services, or running application setup. Authority, adoption, established command meanings, and migration scope remain binding. This is implementation/review guidance; an automated application-compliance gate remains separate follow-up work.
 
 ## Policy inspection and agent discovery
 

@@ -16,13 +16,14 @@
     "pr-writer": "1.0.2",
     "python": "1.1.0",
     "rust": "1.1.0",
-    "source-code-lifecycle": "1.2.1",
+    "source-code-lifecycle": "1.2.2",
     "testing": "1.0.0",
     "typescript": "1.1.1",
     "octo-manager": "1.0.1",
     "protobuf": "1.0.0",
     "data-pipeline": "1.0.1",
     "ui-acceptance": "1.0.0",
-    "ui-review": "1.0.0"
+    "ui-review": "1.0.0",
+    "cli": "1.0.0"
   }
 }
