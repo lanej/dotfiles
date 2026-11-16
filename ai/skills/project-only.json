@@ -10,9 +10,10 @@
   "javascript",
   "just",
   "library-code-comments",
-  "pr-writer",
+  "pull-request",
   "python",
   "rust",
+  "ship",
   "source-code-lifecycle",
   "testing",
   "typescript"

@@ -1,6 +1,7 @@
 schema_version = 1
 stage = "beta"
 kind = "tool"
+skill_storage = "linked"
 
 [checks.python]
 enabled = true

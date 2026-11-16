@@ -13,7 +13,10 @@ from typing import cast
 
 def plan(root: Path, language: str) -> tuple[str, list[list[str]]]:
     policy = json.loads((root / ".source-code.json").read_text())
-    rules = json.loads((root / ".agents/skills/source-code-lifecycle/references/stages.json").read_text())
+    rules_path = root / ".source-code-stages.json"
+    if not rules_path.is_file():
+        rules_path = root / ".agents/skills/source-code-lifecycle/references/stages.json"
+    rules = json.loads(rules_path.read_text())
     if not isinstance(policy, dict) or not isinstance(rules, dict):
         raise ValueError("source-code policy and rules must be objects")
     if (

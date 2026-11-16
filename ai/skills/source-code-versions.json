@@ -13,10 +13,11 @@
     "javascript": "1.0.0",
     "just": "1.0.0",
     "library-code-comments": "1.0.0",
-    "pr-writer": "1.0.0",
+    "pull-request": "1.0.0",
     "python": "1.0.0",
     "rust": "1.0.0",
-    "source-code-lifecycle": "1.0.0",
+    "ship": "1.0.0",
+    "source-code-lifecycle": "1.0.1",
     "testing": "1.0.0",
     "typescript": "1.0.0"
   }
