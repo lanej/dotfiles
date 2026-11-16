@@ -3,6 +3,7 @@
   "builder",
   "code-comments",
   "data-change-planning",
+  "data-pipeline",
   "gh-pr-stack",
   "git",
   "github-actions",
@@ -10,11 +11,14 @@
   "javascript",
   "just",
   "library-code-comments",
+  "octo-manager",
+  "protobuf",
   "pull-request",
   "python",
   "rust",
   "ship",
   "source-code-lifecycle",
   "testing",
-  "typescript"
+  "typescript",
+  "ui-acceptance"
 ]

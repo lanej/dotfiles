@@ -5,6 +5,8 @@ description: Use when creating, modifying, testing, or reviewing Python code, or
 
 # Python / uv
 
+Before selecting application tools or an API protocol, read [the project tool-choice policy](../source-code-lifecycle/references/tool-choices.md). Apply the declared authority and adoption at every lifecycle stage, including research; preserve external providers’ protocols and established stacks according to that policy.
+
 Read the project’s stage through [source-code lifecycle](../source-code-lifecycle/SKILL.md) and use [testing](../testing/SKILL.md) for proportionate evidence. Language detection installs guidance only. Opt into the strict profile with `source-code setup --python` or `[checks.python] enabled = true`. Read [the strict profile](references/strict-profile.md) before adoption or when running its gates. It provides pinned Ruff, strict ty and annotation checks, project tests, and dependency auditing, with lifecycle-selected commands. Preserve existing repository gates and root configuration.
 
 `uv` replaces pip, virtualenv, poetry, and pyenv. Standard `uv` subcommands work as documented;

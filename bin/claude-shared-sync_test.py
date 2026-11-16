@@ -23,6 +23,8 @@ def test_make_claude_shared_migrates_links_and_preserves_local_entries(tmp_path)
     for name in ("ship", "pull-request"):
         shutil.copytree(ROOT / "ai/skills" / name, repo / "ai/skills" / name)
     shutil.copyfile(ROOT / "ai/skills/project-only.json", repo / "ai/skills/project-only.json")
+    shutil.copytree(ROOT / "ai/skills/ui-review", repo / "ai/skills/ui-review")
+    shutil.copytree(ROOT / "ai/skills/data-pipeline", repo / "ai/skills/data-pipeline")
     (repo / "scripts").mkdir()
     (repo / "scripts/install-software-standard.py").symlink_to(ROOT / "scripts/install-software-standard.py")
     agents = repo / "ai/agents"
@@ -32,6 +34,8 @@ def test_make_claude_shared_migrates_links_and_preserves_local_entries(tmp_path)
     (agents / "reviewer.md").symlink_to(external)
     installed_skills = home / ".claude/skills"
     installed_skills.mkdir(parents=True)
+    stale_pipeline = installed_skills / "data-pipeline"
+    stale_pipeline.symlink_to(repo / "ai/skills/data-pipeline", target_is_directory=True)
     (installed_skills / "shared-workflow").symlink_to(repo / "claude/skills/shared-workflow")
     alias = installed_skills / "my-workflow"
     alias.symlink_to(repo / "claude/skills/shared-workflow")
@@ -68,6 +72,8 @@ def test_make_claude_shared_migrates_links_and_preserves_local_entries(tmp_path)
     for name in ("builder", "ship", "pull-request"):
         assert not (installed_skills / name).exists()
         assert not (installed_skills / name).is_symlink()
+    assert not stale_pipeline.exists() and not stale_pipeline.is_symlink()
+    assert (installed_skills / "ui-review/SKILL.md").is_file()
     assert local.read_text() == "Local instructions.\n"
     assert local_agent.read_text() == "Local agent.\n"
     assert not (installed_skills / "paseo-plugin").exists()

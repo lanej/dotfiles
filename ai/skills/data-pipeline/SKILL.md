@@ -1,9 +1,11 @@
 ---
 name: data-pipeline
-description: Data pipeline architecture patterns and best practices, including medallion/three-layer architecture (Raw/Staging/Enriched or Bronze/Silver/Gold), YAML-based schema management, and ETL workflow patterns. Use when designing or implementing data pipelines, working with data warehouse layers, or managing table schemas in YAML.
+description: Use when designing or implementing data pipelines in a project that selects this source-code capability, including warehouse layers, schema management, and ETL workflows.
 ---
 
 # Data Pipeline Patterns
+
+This is optional project engineering guidance installed through `source-code setup --skills data-pipeline`. Read [source-code lifecycle](../source-code-lifecycle/SKILL.md) for the selected stage, authority, and adoption. Preserve established pipeline architecture under hold/new and follow project agreement for shared/upstream changes; this package does not authorize a warehouse migration.
 
 Architecture patterns and best practices for data pipeline design, with focus on the medallion architecture (Raw → Staging → Enriched) and declarative schema management.
 
@@ -15,7 +17,7 @@ The three-layer pattern for organizing data warehouses:
 - **Staging / Silver:** Cleaned, deduplicated, conformed data
 - **Enriched / Gold:** Business-ready, joined, aggregated data
 
-See [references/medallion-architecture.md](references/medallion-architecture.md) for:
+Read [references/medallion-architecture.md](references/medallion-architecture.md) for:
 - Layer definitions and purposes
 - Deduplication patterns
 - View vs materialized table choices
@@ -32,7 +34,7 @@ Prefer YAML files over inline SQL DDL or JSON for schema definitions:
 - Separation of concerns (schema vs infrastructure)
 - Consistent across upload scripts, docs, and IaC
 
-See [references/yaml-schema-patterns.md](references/yaml-schema-patterns.md) for:
+Read [references/yaml-schema-patterns.md](references/yaml-schema-patterns.md) for:
 - YAML structure examples
 - Terraform integration via `jsonencode(yamldecode(file()))`
 - Schema evolution patterns (safe vs unsafe changes)

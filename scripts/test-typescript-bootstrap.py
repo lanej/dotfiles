@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Exercise TypeScript adoption through the real repository installer, offline."""
 import json
+import os
+import re
+import shlex
 from pathlib import Path
 import subprocess
 import tempfile
@@ -34,6 +37,7 @@ class TypeScriptBootstrap(unittest.TestCase):
 
     def install(self, *args, ok=True):
         return command(self.root, "python3", str(SOURCE / "bin/source-code"), "setup", "--repo", str(self.root),
+                       "--authority", "owned", "--adoption", "new",
                        "--skills", "typescript", "--no-go", "--agents", "codex", "--pr-template", "none",
                        "--typescript", *args, ok=ok)
 
@@ -54,6 +58,40 @@ class TypeScriptBootstrap(unittest.TestCase):
         self.install("--typescript-rollout", "strict")
         self.assertTrue((self.root / ".agents/skills/library-code-comments/SKILL.md").is_file())
         self.assertEqual(json.loads((self.root / ".typescript-quality.json").read_text())["rollout"], "strict")
+
+    def test_bun_adoption_installs_the_declared_runtime_and_preserves_application_lock(self):
+        package = {"packageManager": "bun@1.4.4", "scripts": {"test": "bun test", "lint": "echo project lint"}}
+        (self.root / "package.json").write_text(json.dumps(package))
+        lock = self.root / "bun.lock"
+        lock.write_text("fixture application lock\n")
+        before = lock.read_bytes()
+        self.install()
+        settings = json.loads((self.root / ".typescript-quality.json").read_text())
+        self.assertEqual(settings["commands"]["test"], ["bun", "run", "test"])
+        self.assertEqual(settings["commands"]["audit"], ["bun", "audit"])
+        workflow = (self.root / ".github/workflows/typescript-quality.yml").read_text()
+        steps = re.findall(r"^      - run: (.+)$", workflow, re.MULTILINE)
+        install = next(shlex.split(step) for step in steps if shlex.split(step)[0] == "bun")
+        binary = self.root / "bin"
+        binary.mkdir()
+        (binary / "bun").write_text("#!/bin/sh\nprintf '%s\\n' \"$@\"\n")
+        (binary / "bun").chmod(0o755)
+        result = subprocess.run(install, cwd=self.root, env={**os.environ, "PATH": str(binary)}, text=True, capture_output=True, check=True)
+        self.assertEqual(result.stdout.splitlines(), ["install", "--frozen-lockfile", "--ignore-scripts"])
+        self.assertEqual(lock.read_bytes(), before)
+        self.assertFalse((self.root / "package-lock.json").exists())
+        self.assertIn("already current", self.install().stdout)
+
+    def test_go_profile_provisions_bun_for_mixed_runtime_tests(self):
+        package = {"packageManager": "bun@1.4.4", "scripts": {"test": "bun test", "lint": "echo project lint"}}
+        (self.root / "package.json").write_text(json.dumps(package))
+        (self.root / "go.mod").write_text("module example.invalid/mixed\n\ngo 1.26.0\n")
+        self.install("--go", "--go-rollout", "strict")
+        workflow = (self.root / ".github/workflows/go-quality.yml").read_text()
+        steps = re.findall(r"^      - run: (.+)$", workflow, re.MULTILINE)
+        install = next(shlex.split(step) for step in steps if shlex.split(step)[0] == "bun")
+        self.assertEqual(install, ["bun", "install", "--frozen-lockfile", "--ignore-scripts"])
+        self.assertIn("already current", self.install("--go").stdout)
 
     def test_local_install_hides_generated_baseline_and_lock(self):
         self.install("--mode", "local")

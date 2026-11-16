@@ -1,6 +1,6 @@
 # Octo Manager
 
-Octo publishes GitHub PRs through a recorded writer and publication checks, monitors enrolled PRs, and returns actionable checks and review feedback to the owning Codex session. Install it explicitly before using [the required PR publication command](octo-pr-submission.md). Neither the default configuration nor the `ai` and `workstation` sets enable Octo's local service or native hooks; configuration does not install software automatically.
+Octo publishes caller-written GitHub PRs through local format validation and a durable pending receipt, without requiring the daemon. Its optional daemon monitors enrolled PRs and returns actionable checks and review feedback to the owning session. Install it explicitly before using [repository-selected PR publication](octo-pr-submission.md). Neither the default configuration nor the `ai` and `workstation` sets enable Octo's local service or native hooks; configuration does not install software automatically.
 
 ## Enable
 
@@ -52,13 +52,21 @@ macOS uses launchd; Linux uses `octo-manager.service` under the selected configu
 
 The launcher is `~/.local/bin/octo-manager`, state is `~/.local/state/octo-manager`, installed releases are under `~/.local/share/octo-manager/releases`, and the macOS service is `com.lanej.octo-manager`. Hook/config installation backups remain under Octo's state directory. Platform-specific source/dependencies live under `$XDG_CACHE_HOME/dotfiles/octo-manager` (default `~/.cache/dotfiles/octo-manager`). An existing different-owner PR remains assigned to that owner.
 
+Persist the default worker model in `workerModel` under `~/.config/octo-manager/config.json`; `serve --model` overrides it. These settings survive reinstalling Octo. Provider-qualified selections such as `amazon-bedrock/us.anthropic.claude-sonnet-5-5` use native Bedrock authentication without copying credentials or requiring a Codex login. Supply the service's existing AWS environment separately; on Linux, keep custom environment setup in a user-owned systemd drop-in so regeneration of the managed unit preserves it.
+
 ```sh
-octo-manager tracked --json
-octo-manager inbox --agent-id AGENT_ID --applicable-only
+octo-manager pr list --json
+octo-manager agent inbox --agent-id AGENT_ID --applicable-only
 ```
 
-PR attachment is the automatic enrollment path. CLI-only sessions or unattached PRs can enroll explicitly with `octo-manager track --url URL --thread-id THREAD_ID`. Receipt means the host received context; it does not accept or resolve actions or authorize repairs or merges.
+PR attachment is the automatic enrollment path. CLI-only sessions or unattached PRs can enroll explicitly with `octo-manager pr track --url URL --thread-id THREAD_ID`. Receipt means the host received context; it does not accept or resolve actions or authorize repairs or merges.
 
 ## Disable future installation
 
 Set `tools.octo-manager = false` or remove the optional set. This prevents future installation; it does not uninstall an existing release or stop its service. Stop a running macOS service with `launchctl bootout gui/$(id -u)/com.lanej.octo-manager`, or a Linux service with `systemctl --user disable --now octo-manager.service`. Remove only the three Octo commands from the configured Codex hooks file when retiring that integration; preserve unrelated commands and retained Octo state.
+
+## Repository notification policy
+
+When the source-code project profile selects Octo, setup seeds `octo-manager.toml` without overwriting an existing file. Its state-specific instructions refer to installed project guidance. `merging.auto_merge = "project_stage"` follows the effective stage in `.source-code.json`: research and alpha enable inherited auto-merge; beta, production, and unknown stages disable it. Literal `true` or `false` selects a repository-wide default. Per-PR `--on` and `--off` override inheritance; `pr auto-merge PR --inherit --agent-id AGENT` resumes it. Promotion updates inherited PRs and invalidates readiness when the effective switch changes.
+
+The coordinator reloads local policy on its scheduler cadence without GitHub requests. Enrollment binds a verified checkout to the PR’s repository. Invalid or unavailable policy suspends inherited automatic merging and retains last-valid instructions; explicit switches and already-submitted operations retain their separate authority and reconciliation. Authored policy is preserved by source-code upgrades, and shadow setup excludes the seeded file locally.

@@ -82,6 +82,7 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     builder = repo / "ai/skills/builder"
     shutil.copytree(ROOT / "ai/skills/builder", builder)
     shutil.copyfile(ROOT / "ai/skills/project-only.json", repo / "ai/skills/project-only.json")
+    shutil.copytree(ROOT / "ai/skills/ui-review", repo / "ai/skills/ui-review")
     project_names = json.loads((repo / "ai/skills/project-only.json").read_text())
     for name in project_names:
         directory = repo / "ai/skills" / name
@@ -107,6 +108,7 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
     (home / ".local").symlink_to(data, target_is_directory=True)
     cache = home / ".codex/dotfiles-skills"
     cache.mkdir(parents=True)
+    stale_pipeline = home / ".codex/dotfiles-skills/data-pipeline"
     global_file = home / ".codex/AGENTS.md"
     previous_guidance = (
         "Keep my leading preferences.\n"
@@ -181,6 +183,8 @@ def test_make_codex_skills_exposes_linked_entrypoint_and_preserves_local_skills(
         for name in project_names:
             assert not (base / name).exists() and not (base / name).is_symlink()
     assert not builder_installed.exists() and not builder_installed.is_symlink()
+    assert (home / ".agents/skills/dotfiles/ui-review/SKILL.md").is_file()
+    assert not stale_pipeline.exists() and not stale_pipeline.is_symlink()
     assert local.read_text() == "Local instructions.\n"
     assert not (home / ".agents/skills/dotfiles/paseo-plugin").exists()
     assert not (home / ".claude/skills/paseo-plugin").exists()

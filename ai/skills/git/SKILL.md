@@ -21,6 +21,8 @@ the failure modes on this machine that have actually cost time.
 
 ## Pull requests
 
+Before preparing a change for review or assessing merge readiness, read [the project review procedure](references/review.md). It governs independent review, scoped repair, and exact-head validation for this installed profile; repository-specific instructions and publication authority remain binding.
+
 Follow the [pull-request workflow](../pull-request/SKILL.md) for repository templates, writing, publication, and verification of saved content. Creating or updating a PR does not authorize merging it.
 
 ## Branch naming

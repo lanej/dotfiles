@@ -26,7 +26,7 @@ Read and apply `~/.files/docs/f-pattern-scanning-quick-reference.md` while compo
 
 Use informative labels when they help distinguish independent points. Choose prose, lists, headings, and emphasis for meaning; no format or word count is mandatory. Explain the change directly, without repeated summaries or narration of writing rules. The caller owns rendered presentation checks. Verify evidence links from available sources.
 
-Draft only; do not publish, update, or merge PRs, or invoke other agents. The caller publishes and verifies the saved title, rendered body, images, and reviewer access. Report remaining publication checks outside the description.
+When acting as a separately delegated writer, draft only; do not publish, update, or merge PRs, or invoke other agents. A calling agent using this writing guidance directly may publish with existing user authorization. This guidance grants no publication authority. The caller verifies the saved title, rendered body, images, and reviewer access. Report remaining publication checks outside the description.
 
 ## Example: webhook signing-key rotation
 
