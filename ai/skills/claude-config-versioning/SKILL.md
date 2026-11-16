@@ -30,7 +30,7 @@ This repository uses a selective versioning pattern for Claude commands, agents,
 
 Run `make claude`. Symlinks `settings.json`, commands, agents, skills, workflows, and CLAUDE.md into `~/.claude/`, and wires MCP servers into `~/.claude.json` via `jq`. Use `make claude-shared` to refresh only shared skills and agents.
 
-EP-specific skills live in `~/src/ep-dotfiles/`. Run `make link-skills` from there after cloning to symlink them into `~/.files/ai/skills/`.
+Keep organization-specific skills in their owning organization or project configuration. Do not link them into this personal dotfiles source tree.
 
 ## Workflow
 
