@@ -17,5 +17,7 @@
   "document-consistency",
   "source-code",
   "zellij",
-  "worktree"
+  "worktree",
+  "quarto",
+  "matplotlib"
 ]

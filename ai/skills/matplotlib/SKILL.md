@@ -1,6 +1,6 @@
 ---
 name: matplotlib
-description: Figure engineering patterns, gotchas, and reusable helpers for matplotlib. Use when directly building standalone figure scripts, diagram generators, or canvas visuals outside the epq render pipeline — e.g., generate_layer_icons.py, vision project banners, morning-brief charts, competitive analysis figures. Covers shape boundary math, arrow/edge geometry, series consistency, font registration, zorder, Unicode rendering, and canvas clipping. Distinct from the epq skill (which covers the Quarto/LaTeX analysis pipeline). Load alongside epq when figure work involves both the pipeline and standalone diagram construction.
+description: Use when building standalone Matplotlib figures, diagram generators, or geographic charts, including geometry, layout, fonts, series consistency, and visual verification. Load alongside quarto when figures are embedded in QMD documents.
 ---
 
 # Matplotlib

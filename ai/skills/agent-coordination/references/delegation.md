@@ -31,7 +31,7 @@ A delegate doing work beyond its brief has deviated from scope. Inspect the extr
 
 ## Skill-mapped dispatch
 
-A task that maps to a known dedicated `subagent_type` (`reflection`, `easypost-research`, `epq-report-author`, etc.) needs that `subagent_type` set explicitly on the `Agent` call — a slash command or skill name does not automatically bind to a same-named agent type when dispatched via `Agent` rather than the `Skill` tool, and omitting it silently defaults to `general-purpose`. The failure is invisible: the call still succeeds and returns plausible prose, just without the specialized agent's own baked-in procedure. Check this before dispatch, not after reading a suspiciously generic result. (detail: memory "feedback_reflection_dispatch_missing_subagent_type")
+A task that maps to a known dedicated `subagent_type` (for example, `reflection` or `code-reviewer`) needs that `subagent_type` set explicitly on the `Agent` call — a slash command or skill name does not automatically bind to a same-named agent type when dispatched via `Agent` rather than the `Skill` tool, and omitting it silently defaults to `general-purpose`. The failure is invisible: the call still succeeds and returns plausible prose, just without the specialized agent's own baked-in procedure. Check this before dispatch, not after reading a suspiciously generic result. (detail: memory "feedback_reflection_dispatch_missing_subagent_type")
 
 
 
