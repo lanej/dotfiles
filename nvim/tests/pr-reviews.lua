@@ -6,6 +6,7 @@ if not vim.env.PR_REVIEW_TEST_CHILD then
 	vim.fn.mkdir(temporary .. "/bin", "p")
 	vim.fn.mkdir(temporary .. "/cache/nvim", "p")
 	vim.fn.mkdir(temporary .. "/config", "p")
+	vim.fn.writefile({ "[features]", "nvim_ghlite = true" }, temporary .. "/dotfiles.toml")
 	assert(vim.uv.fs_symlink(checkout .. "/nvim", temporary .. "/config/nvim"))
 	vim.fn.writefile(vim.fn.readfile(checkout .. "/nvim/lazy-lock.json"), temporary .. "/lazy-lock.json")
 	vim.fn.writefile({ "normal" }, temporary .. "/mode")
@@ -18,6 +19,46 @@ if not vim.env.PR_REVIEW_TEST_CHILD then
 	vim.fn.setfperm(temporary .. "/bin/gh", "rwx------")
 	vim.fn.writefile({ "#!/bin/sh", "exit 1" }, temporary .. "/bin/tmux")
 	vim.fn.setfperm(temporary .. "/bin/tmux", "rwx------")
+	for _, config in ipairs({ {}, { "[features]", "nvim_ghlite = false" } }) do
+		vim.fn.writefile(config, temporary .. "/default.toml")
+		local fallback = vim.system({
+			vim.fn.exepath("nvim"),
+			"--headless",
+			"-u",
+			checkout .. "/nvim/init.lua",
+			"-i",
+			"NONE",
+			"-n",
+			"--cmd",
+			"let g:prosession_on_startup = 0",
+			"-c",
+			"lua dofile(" .. vim.inspect(checkout .. "/nvim/tests/pr-review-octo.lua") .. ")",
+		}, {
+			text = true,
+			env = {
+				PR_REVIEW_FIXTURE = temporary,
+				PATH = temporary .. "/bin:" .. vim.env.PATH,
+				XDG_STATE_HOME = temporary .. "/state",
+				XDG_CACHE_HOME = temporary .. "/cache",
+				XDG_CONFIG_HOME = temporary .. "/config",
+				DOTFILES_CONFIG = temporary .. "/default.toml",
+				DOTFILES_NVIM_BOOTSTRAP_LOCK = temporary .. "/lazy-lock.json",
+				TMUX = "",
+				TMUX_PANE = "",
+			},
+		}):wait(60000)
+		io.stdout:write(fallback.stdout or "")
+		io.stderr:write(fallback.stderr or "")
+		if fallback.code ~= 0 then
+			vim.fn.delete(temporary, "rf")
+			vim.cmd("cquit 1")
+			return
+		end
+	end
+	for _, file in ipairs({ "attempts", "requests", "pending-review" }) do
+		vim.fn.delete(temporary .. "/" .. file)
+	end
+	vim.fn.writefile(vim.fn.readfile(checkout .. "/nvim/lazy-lock.json"), temporary .. "/lazy-lock.json")
 	local result = vim.system({
 		checkout .. "/bin/nvim-gh-review",
 		"--headless",
@@ -45,6 +86,7 @@ if not vim.env.PR_REVIEW_TEST_CHILD then
 			XDG_STATE_HOME = temporary .. "/state",
 			XDG_CACHE_HOME = temporary .. "/cache",
 			XDG_CONFIG_HOME = temporary .. "/config",
+			DOTFILES_CONFIG = temporary .. "/dotfiles.toml",
 			DOTFILES_NVIM_BOOTSTRAP_LOCK = temporary .. "/lazy-lock.json",
 			TMUX = "",
 			TMUX_PANE = "",

@@ -35,9 +35,18 @@ Add `!` to `:PRReviews` or `:PRReviewsAll` to force refresh.
 
 Picker actions and `,oq` preserve the originating queue.
 Directory changes and local checkout keep that scope.
-Selecting a PR loads its current revision with ghlite. If you are already in that revision's checkout, comments load in your existing source buffer. Otherwise, its description opens in the current window; use `,ol` to open a detached review worktree without changing your original checkout.
+Selecting a PR loads its current revision with the selected review backend. With ghlite enabled, comments load in your existing source buffer when you are already in that revision's checkout. Otherwise, its description opens in the current window; use `,ol` to open a detached review worktree without changing your original checkout.
 
 ## Inline review
+
+Octo remains the default review UI. To opt into ghlite, add the following to your machine configuration (`~/.config/dotfiles/config.toml`, or the file selected by `DOTFILES_CONFIG`), then restart Neovim:
+
+```toml
+[features]
+nvim_ghlite = true
+```
+
+Neovim reads the resolved settings at startup, including composed sets and machine overrides. Omitting the feature or setting it to `false` keeps Octo's remote review buffers, diff layout, and existing shortcuts. The inline workflow below applies when the feature is enabled.
 
 For the PR on your current branch, run `:PRReviewCurrent` or press `,gP`. Review threads appear as diagnostics in ordinary source buffers, alongside your usual navigation and language-server features. Start or resume a pending review with `,or`; adding inline feedback with `,oc` also starts or resumes one automatically. These actions use the current tab and do not open a diff layout.
 
@@ -67,6 +76,12 @@ The checkout must match the loaded PR head. Inline comments are refused when the
 Submission uses ghlite's native review actions. Failed submission retains the pending review for retry. Use `,oq` to return, then refresh with **Ctrl-R** to hide PRs reviewed at their current head. Select the next PR yourself.
 
 The native `:GHLitePR*` commands remain available. Optional diff views are available through `:GHLitePRDiff`; they are not part of the default inline flow.
+
+## Default Octo reviews
+
+With `features.nvim_ghlite` disabled, selecting a PR opens its remote Octo description. Press `,or` to start or resume its remote diff review, `,oc` to comment or reply, and `,oS` to suggest on the current or selected diff lines. Save comment buffers with `:write`, then use `,os` to open Octo's submission window. In that window, `,oa` approves, `,oc` comments, and `,or` requests changes. Native `:Octo` commands remain available.
+
+Octo uses remote files by default. Its `,ol` checkout opens local files in a separate tab for code exploration; leave review feedback in the remote Octo review.
 
 ## Local files
 

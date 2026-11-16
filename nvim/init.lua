@@ -6,6 +6,8 @@
 -- |___|_| \_|___| |_(_)_|\__,_|\__,_|
 --
 
+local use_ghlite = require("dotfiles-config").enabled("features.nvim_ghlite")
+
 vim.opt.autoread = true
 vim.opt.autoindent = true
 vim.opt.backspace = { "indent", "eol", "start" }
@@ -1595,7 +1597,41 @@ require("lazy").setup({
 		opts = {},
 	},
 	{
+		"pwntester/octo.nvim",
+		enabled = not use_ghlite,
+		dependencies = {
+			"nvim-lua/plenary.nvim",
+			"ibhagwan/fzf-lua",
+			"nvim-tree/nvim-web-devicons",
+		},
+		cmd = { "Octo", "PRReviews", "PRReviewsAll", "PRReviewCheckout", "PRReviewCleanup" },
+		keys = {
+			{
+				"<leader>gR",
+				function()
+					require("pr-reviews").pick()
+				end,
+				desc = "PR review requests",
+			},
+		},
+		config = function()
+			require("octo").setup({
+				picker = "fzf-lua",
+				use_local_fs = false,
+				mappings = require("pr-reviews").octo_mappings,
+				picker_config = {
+					use_emojis = false,
+					mappings = {
+						open_in_browser = { lhs = "<C-b>", desc = "open issue in browser" },
+					},
+				},
+			})
+			require("pr-reviews").setup()
+		end,
+	},
+	{
 		"daliusd/ghlite.nvim",
+		enabled = use_ghlite,
 		dependencies = {
 			"lewis6991/async.nvim",
 			"ibhagwan/fzf-lua",

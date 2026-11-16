@@ -17,7 +17,7 @@ Tool and technology decisions, organized by ring.
 
 ### Neovim
 
-[Neovim](neovim-pr-reviews.md): my editor for code navigation, editing, diagnostics, and pull request review. FzfLua provides fuzzy finding inside the editor; ghlite adds GitHub review threads and pending feedback in ordinary source buffers.
+[Neovim](neovim-pr-reviews.md): my editor for code navigation, editing, diagnostics, and pull request review. FzfLua provides fuzzy finding inside the editor; Octo is the default review UI, with ghlite available through a machine feature for review threads and pending feedback in ordinary source buffers.
 
 ### Git
 

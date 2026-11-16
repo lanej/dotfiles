@@ -6,6 +6,8 @@ local repo = temporary .. "/clone with spaces"
 local remote
 vim.fn.mkdir(temporary .. "/bin", "p")
 vim.fn.mkdir(repo, "p")
+vim.fn.writefile({ "[features]", "nvim_ghlite = true" }, temporary .. "/dotfiles.toml")
+vim.env.DOTFILES_CONFIG = temporary .. "/dotfiles.toml"
 temporary = assert(vim.uv.fs_realpath(temporary))
 repo, remote = temporary .. "/clone with spaces", temporary .. "/remote.git"
 local real_git = vim.fn.exepath("git")
