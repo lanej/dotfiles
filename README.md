@@ -203,7 +203,7 @@ source = "release"
 | `terminal` | Tmux, Zellij, terminal configuration, font, and monitoring; selected by default |
 | `editor` | Neovim, formatters, language servers, and parser tooling |
 | `development` | Language runtimes, Rust maintenance, and development cache configuration |
-| `ai` | Claude, Codex, Treehouse, Firstmate, and agent status |
+| `ai` | Claude, Codex, worktree manager, and agent status |
 | `octo-manager` | Opt-in Octo service with Codex tracking and receipt hooks |
 | `worktrees` | Standalone worktree manager with task protection, tracking, optional limits, and explicit safe pruning |
 | `workstation` | Adds editor, development, AI tools, and source-code project setup, plus mail and Quarto configuration |
