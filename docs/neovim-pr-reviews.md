@@ -35,54 +35,44 @@ Add `!` to `:PRReviews` or `:PRReviewsAll` to force refresh.
 
 Picker actions and `,oq` preserve the originating queue.
 Directory changes and local checkout keep that scope.
-Selecting a PR reloads its clean Octo description and discussion.
+Selecting a PR loads its current revision with ghlite. If you are already in that revision's checkout, comments load in your existing source buffer. Otherwise, its description opens in the current window; use `,ol` to open a detached review worktree without changing your original checkout.
 
-In PR and review buffers, `,o` opens the which-key review menu.
-In ordinary code buffers, `,o` retains Treesitter selection.
+## Inline review
+
+For the PR on your current branch, run `:PRReviewCurrent` or press `,gP`. Review threads appear as diagnostics in ordinary source buffers, alongside your usual navigation and language-server features. Start or resume a pending review with `,or`; adding inline feedback with `,oc` also starts or resumes one automatically. These actions use the current tab and do not open a diff layout.
+
+In an active review's source buffers and PR description, `,o` opens the which-key review menu. Outside those buffers, `,o` retains Treesitter selection. The previous `,rs`, `,rp`, `,rv`, `,rq`, and `,rl` shortcuts remain available.
 
 | Review menu | Action |
 | --- | --- |
-| `,or` | Start or resume review |
-| `,oc` | Add a comment or reply |
-| `,oS` | Suggest on current or selected diff lines |
-| `,of` | Pick changed files; toggle panel in diff review |
+| `,or` | Start or resume a pending GitHub review |
+| `,oc` | Add an inline comment or reply; visual mode comments on selected lines |
+| `,oh` | Read the thread at the current line |
+| `,of` | Open the file picker in the review checkout |
 | `,ov` | Toggle file viewed |
-| `,op` | View pending comments |
-| `,os` | Open native submission window |
-| `,oq` | Return to the originating queue |
-| `,ol` | Open a local worktree |
-| `,ob` | Open PR in browser from description buffer |
-| `,ot` | Resolve thread |
-| `,oT` | Reopen thread |
+| `,op` | Load review comments, including pending comments, into quickfix |
+| `,os` | Submit the pending review |
+| `,oa` | Approve the PR, including pending feedback |
+| `,ox` | Request changes, including pending feedback |
+| `,oq` | Return to the originating review queue |
+| `,ol` | Open a local review worktree |
+| `,ob` | Open the PR in the browser |
+| `,ot` | Resolve the thread at the current line |
+| `,oT` | Reopen the thread at the current line |
 
-The previous `,rs`, `,rp`, `,rv`, `,rq`, and `,rl` shortcuts remain available.
+Comment entry uses a temporary buffer in the current window. Press **Ctrl-S** in normal or insert mode to save it to the pending review and return to the source buffer. Inline feedback remains unpublished until you submit the review. Pending reviews are stored on GitHub and can be resumed after restarting Neovim. The review shortcuts use ghlite's GitHub review mode explicitly.
 
-Use Octo’s remote diffs, inline comments, and suggestions.
-Remote review buffers are the default, including when the checkout matches the PR branch. Opening local source files can activate language servers; Rust analysis can execute build scripts, proc macros, and Cargo overrides from that checkout. Review contributor-controlled changes remotely unless you trust the checkout to execute code.
-Enter `:Octo review` to open the review layout, then use `,oc` on the current line or a linewise visual selection to add pending feedback.
-For a checkout you explicitly trust, enable local-file mode with `:lua require("octo.config").values.use_local_fs = true` before opening the review. Restore remote mode with `:lua require("octo.config").values.use_local_fs = false` before reviewing another checkout. This setting changes buffer selection; it does not sandbox language servers or establish trust.
-Opening a PR does not start a review.
-Save inline comment buffers with `:write` before submitting.
+The checkout must match the loaded PR head. Inline comments are refused when the current source file has unsaved edits or differs from that revision on disk, so shifted local lines cannot be mistaken for PR lines. Opening source files uses your normal editor configuration, including language servers and project-local tooling.
 
-In the submission window’s normal mode, `,oa` approves, `,oc` comments, and `,or` requests changes.
-**Ctrl-A**, **Ctrl-M**, and **Ctrl-R** perform the same actions.
+Submission uses ghlite's native review actions. Failed submission retains the pending review for retry. Use `,oq` to return, then refresh with **Ctrl-R** to hide PRs reviewed at their current head. Select the next PR yourself.
 
-Submission uses installed Octo behavior, without added stale-head checks or outcome reconciliation.
-Successful submission closes the review layout.
-
-Use `,oq` to return, then refresh with **Ctrl-R** to hide reviews at the current head.
-Select the next PR yourself.
+The native `:GHLitePR*` commands remain available. Optional diff views are available through `:GHLitePRDiff`; they are not part of the default inline flow.
 
 ## Local files
 
-Run `:PRReviewCheckout [clone-path]` from a queued PR; the path is optional.
-Choose a matching clone under `~/src`, or supply its path when prompted.
-Checkout creates a detached worktree under `<primary-checkout>/.worktrees/`, which must be ignored.
-Local files open in a separate tab; leave feedback in the remote Octo review.
+Run `:PRReviewCheckout [clone-path]` from a queued PR; the path is optional. Choose a matching clone under `~/src`, or supply its path when prompted. Checkout creates a detached worktree under `<primary-checkout>/.worktrees/`, which must be ignored. Its files open in the current tab, with inline feedback attached to the selected PR.
 
-Run `:PRReviewCleanup` to remove an owned review worktree.
-Cleanup retains active worktrees, uncommitted work, and ignored artifacts.
-It preserves the review commit on a named retention branch.
+Run `:PRReviewCleanup` to remove an owned review worktree after leaving its working directory and unloading its source buffers. Cleanup retains active worktrees, uncommitted work, and ignored artifacts. It preserves the review commit on a named retention branch.
 
 ## Workflow detectors
 

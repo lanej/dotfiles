@@ -1595,14 +1595,49 @@ require("lazy").setup({
 		opts = {},
 	},
 	{
-		"pwntester/octo.nvim",
+		"daliusd/ghlite.nvim",
 		dependencies = {
-			"nvim-lua/plenary.nvim",
+			"lewis6991/async.nvim",
 			"ibhagwan/fzf-lua",
-			"nvim-tree/nvim-web-devicons",
 		},
-		cmd = { "Octo", "PRReviews", "PRReviewsAll", "PRReviewCheckout", "PRReviewCleanup" },
+		cmd = {
+			"PRReviews",
+			"PRReviewsAll",
+			"PRReviewCurrent",
+			"PRReviewCheckout",
+			"PRReviewCleanup",
+			"GHLitePRSelect",
+			"GHLitePRView",
+			"GHLitePRLoadComments",
+			"GHLitePRAddComment",
+			"GHLitePRStartReview",
+			"GHLitePRSubmitReview",
+			"GHLitePRApprove",
+			"GHLitePRRequestChanges",
+			"GHLitePRList",
+			"GHLitePRCheckout",
+			"GHLitePRMerge",
+			"GHLitePRDiscardReview",
+			"GHLitePRDiff",
+			"GHLitePRDiffview",
+			"GHLitePRAddPRComment",
+			"GHLitePRResolveComment",
+			"GHLitePRUnresolveComment",
+			"GHLitePRToggleFileViewed",
+			"GHLitePRUpdateComment",
+			"GHLitePROpenComment",
+			"GHLitePRDeleteComment",
+			"GHLitePRExportComments",
+			"GHLiteCommitView",
+		},
 		keys = {
+			{
+				"<leader>gP",
+				function()
+					require("pr-reviews").review_current()
+				end,
+				desc = "Review current PR inline",
+			},
 			{
 				"<leader>gR",
 				function()
@@ -1612,17 +1647,7 @@ require("lazy").setup({
 			},
 		},
 		config = function()
-			require("octo").setup({
-				picker = "fzf-lua",
-				use_local_fs = false,
-				mappings = require("pr-reviews").octo_mappings,
-				picker_config = {
-					use_emojis = false,
-					mappings = {
-						open_in_browser = { lhs = "<C-b>", desc = "open issue in browser" },
-					},
-				},
-			})
+			require("pr-review-ghlite").setup()
 			require("pr-reviews").setup()
 		end,
 	},

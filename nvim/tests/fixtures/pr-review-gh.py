@@ -123,16 +123,49 @@ if args[:2] == ["auth", "status"]:
     print("Logged in to github.com account reviewer\nToken scopes: 'repo', 'read:org'")
     sys.exit(0)
 
+if args[:2] == ["pr", "view"]:
+    number = int(args[2]) if len(args) > 2 and args[2].isdigit() else 1
+    repo = os.environ.get("GH_REPO", "example/repo")
+    node = dict(pr(number, "first request" if number == 1 else "newer personal"),
+                headRefName="feature", baseRefName="main", baseRefOid=base,
+                labels=[], comments=[], reviews=[], commits=[], changedFiles=1,
+                statusCheckRollup=[])
+    node["url"] = f"https://github.com/{repo}/pull/{number}"
+    emit(node)
+
 if args[:2] == ["repo", "view"]:
+    if len(args) > 2 and args[2] == "--json":
+        print(os.environ.get("GH_REPO", "example/repo"))
+        sys.exit(0)
     if args[2] != "https://github.com:443/example/repo.git":
         fail("Repository fallback did not select the explicit origin")
     if os.environ.get("GH_REPO"):
         fail("Repository fallback inherited GH_REPO")
     emit({"nameWithOwner": "example/repo", "url": "https://github.com/example/repo"})
 
+
+def ghlite_thread():
+    saved = json.loads((root / "inline-saved").read_text()) if (root / "inline-saved").exists() else None
+    node = dict(comment, databaseId=1, updatedAt="2026-01-01T00:00:00Z",
+                body=saved["body"] if saved else "Inline feedback",
+                state="SUBMITTED" if (root / "submitted").exists() else "PENDING")
+    return dict(thread, line=int(saved["line"]) if saved else 1,
+                startLine=int(saved["startLine"]) if saved and saved.get("startLine") else None,
+                comments={"nodes": [node]})
+
 if query:
     with (root / "requests").open("a") as log:
         log.write(json.dumps({"query": query, "variables": variables, "fields": fields}) + "\n")
+    if "pullRequest(number: $number)" in query:
+        connection_name = "files" if "files(first:" in query else "reviewThreads"
+        nodes = [{"path": "sample.txt", "viewerViewedState": "UNVIEWED"}] if connection_name == "files" else ([ghlite_thread()] if (root / "inline-saved").exists() else [])
+        emit({"data": {"repository": {"pullRequest": {"id": "PR1", connection_name: connection(nodes)}}}})
+    if "addPullRequestReviewThread(" in query and "$reviewId" in query:
+        (root / "inline-saved").write_text(json.dumps(fields))
+        emit({"data": {"addPullRequestReviewThread": {"thread": ghlite_thread()}}})
+    if "resolveReviewThread(" in query or "unresolveReviewThread(" in query:
+        emit({"data": {"resolveReviewThread": {"thread": {"id": "THREAD1", "isResolved": True}},
+                       "unresolveReviewThread": {"thread": {"id": "THREAD1", "isResolved": False}}}})
     if "PRReviewSearch" in query:
         if (root / "slow-discovery").exists():
             time.sleep(0.5)
@@ -220,6 +253,33 @@ if "/contributors" in endpoint:
 if "/compare/" in endpoint:
     print(base)
     sys.exit(0)
+if "/reviews/" in endpoint and endpoint.endswith("/events"):
+    with (root / "attempts").open("a") as log:
+        log.write(json.dumps(fields) + "\n")
+    if mode == "submit-rejected":
+        fail("Review submission rejected")
+    (root / "submitted").write_text(head)
+    (root / "pending-review").unlink(missing_ok=True)
+    emit({"id": 1, "state": "COMMENTED"})
+if endpoint.endswith("/reviews"):
+    if "POST" in args:
+        (root / "pending-review").write_text("yes")
+        emit({"id": 1, "node_id": "REVIEW1", "state": "PENDING"})
+    emit([{"id": 1, "node_id": "REVIEW1", "state": "PENDING"}] if (root / "pending-review").exists() else [])
+if endpoint.endswith("/comments"):
+    comments = []
+    if (root / "submitted").exists() and (root / "inline-saved").exists():
+        saved = json.loads((root / "inline-saved").read_text())
+        comments = [{"id": 1, "path": "sample.txt", "line": int(saved["line"]),
+                     "start_line": int(saved["startLine"]) if saved.get("startLine") else None,
+                     "original_line": int(saved["line"]), "original_start_line": None,
+                     "body": saved["body"], "user": {"login": "reviewer"},
+                     "updated_at": "2026-01-01T00:00:00Z", "html_url": comment["url"],
+                     "diff_hunk": comment["diffHunk"], "commit_id": head, "original_commit_id": head}]
+    if "-i" in args:
+        print("HTTP/2.0 200 OK\r\n\r\n" + json.dumps(comments))
+        sys.exit(0)
+    emit(comments)
 if endpoint.endswith("/files"):
     files = [{"filename": "sample.txt", "patch": "@@ -1,3 +1,3 @@\n-old\n+new\n context\n context2", "status": "modified",
               "additions": 1, "deletions": 1, "changes": 2}]

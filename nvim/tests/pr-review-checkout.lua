@@ -1,4 +1,4 @@
--- One optional-checkout workflow using installed Octo/fzf and a temporary Git remote.
+-- One optional-checkout workflow using installed ghlite/fzf and a temporary Git remote.
 -- nvim --headless -u NONE -i NONE -n -l nvim/tests/pr-review-checkout.lua
 local checkout = vim.fn.getcwd()
 local temporary = vim.fn.tempname()
@@ -36,10 +36,11 @@ local before = git(repo, "status", "--short", "--untracked-files=all")
 
 vim.opt.rtp:prepend(checkout .. "/nvim")
 local plugins = vim.fn.stdpath("data") .. "/lazy/"
-for _, name in ipairs({ "fzf-lua", "nvim-web-devicons", "plenary.nvim", "octo.nvim" }) do
+for _, name in ipairs({ "fzf-lua", "nvim-web-devicons", "ghlite.nvim", "async.nvim" }) do
 	local pinned = vim.env.PR_REVIEW_PLUGIN_ROOT
 	vim.opt.rtp:append(
-		pinned and (name == "fzf-lua" or name == "octo.nvim") and pinned .. "/" .. name or plugins .. name
+		pinned and (name == "fzf-lua" or name == "ghlite.nvim" or name == "async.nvim") and pinned .. "/" .. name
+			or plugins .. name
 	)
 end
 vim.env.PR_REVIEW_FIXTURE = temporary
@@ -69,15 +70,24 @@ vim.fn.writefile({
 }, temporary .. "/bin/git")
 vim.fn.setfperm(temporary .. "/bin/gh", "rwx------")
 vim.fn.setfperm(temporary .. "/bin/git", "rwx------")
+-- The fixture lives under /tmp; inaccessible VM tracefs is unrelated to its file holders.
+if vim.fn.has("linux") == 1 then
+	local lsof = vim.fn.exepath("lsof")
+	vim.fn.writefile(
+		{ "#!/bin/sh", "exec " .. vim.fn.shellescape(lsof) .. ' -e /sys/kernel/debug/tracing "$@"' },
+		temporary .. "/bin/lsof"
+	)
+	vim.fn.setfperm(temporary .. "/bin/lsof", "rwx------")
+end
 vim.env.PATH = temporary .. "/bin:" .. vim.env.PATH
-vim.g.mapleader, vim.g.octo_viewer = ",", "reviewer"
+vim.g.mapleader = ","
 vim.o.columns, vim.o.lines = 180, 50
 local messages = {}
 vim.notify = function(message)
 	messages[#messages + 1] = message
 end
 require("fzf-lua").setup({ fzf_bin = "fzf" })
-require("octo").setup({ picker = "fzf-lua", default_to_projects_v2 = false, gh_env = { PR_REVIEW_FIXTURE = temporary } })
+require("pr-review-ghlite").setup()
 require("pr-reviews").setup()
 local function wait_for(predicate, message)
 	if not vim.wait(15000, predicate, 20) then
@@ -113,9 +123,10 @@ local function workflow()
 		repository = { nameWithOwner = "example/repo" },
 	})
 	wait_for(function()
-		local buffer = require("octo.utils").get_current_buffer()
-		return buffer and buffer.ready
-	end, "Octo description did not open")
+		return vim.api.nvim_buf_get_name(0):find("PR View: 1", 1, true)
+			and vim.fn.maparg(",ol", "n", false, true).callback
+	end, "ghlite description did not open")
+	local original_tabs = #vim.api.nvim_list_tabpages()
 	vim.cmd("PRReviewCheckout " .. vim.fn.fnameescape(repo))
 	wait_for(function()
 		local win = picker()
@@ -129,7 +140,7 @@ local function workflow()
 		git(destination, "rev-parse", "HEAD") == head and git(destination, "branch", "--show-current") == "",
 		"Worktree is not detached at selected head"
 	)
-	assert(vim.uv.fs_realpath(vim.fn.getcwd()) == destination, "Local tab did not receive its own cwd")
+	assert(vim.uv.fs_realpath(vim.fn.getcwd()) == destination, "Current tab did not receive the review cwd")
 	vim.api.nvim_chan_send(vim.b[picker().fzf_bufnr].terminal_job_id, "sample")
 	wait_for(function()
 		local win = picker()
@@ -143,25 +154,22 @@ local function workflow()
 	require("fzf-lua").win.close()
 	assert(
 		vim.t.pr_review_id == "PR1" and vim.fn.maparg(",rq", "n", false, true).callback,
-		"Local file selection lost remote review association"
+		"Local file selection lost review association"
 	)
 	cleanup()
 	wait_for(function()
 		return table.concat(messages, "\n"):find("active tab", 1, true)
 	end, "Cleanup removed active local review")
-	local local_tab = vim.api.nvim_get_current_tabpage()
 	vim.fn.maparg(",rs", "n", false, true).callback()
 	wait_for(function()
-		local review = require("octo.reviews").get_current_review()
-		return review and review.id == "REVIEW1" and review.layout.files[1]
-	end, "Starting from detached local files did not open the selected remote review")
-	local review = require("octo.reviews").get_current_review()
-	assert(review.pull_request.id == "PR1", "Local files started another PR's review")
-	review.layout:close()
-	vim.api.nvim_set_current_tabpage(local_tab)
+		return require("ghlite.state").pending_reviews[1]
+	end, "Starting from detached local files did not start the selected pending review")
+	assert(#vim.api.nvim_list_tabpages() == original_tabs, "Detached review opened an extra tab")
+	assert(not vim.wo.diff, "Detached review enabled a diff layout")
 	vim.fn.writefile({ "valuable" }, destination .. "/artifact.log")
 	local local_buffer = vim.api.nvim_get_current_buf()
-	vim.cmd("tabclose")
+	vim.cmd.enew()
+	vim.cmd("tcd " .. vim.fn.fnameescape(repo))
 	vim.api.nvim_buf_delete(local_buffer, { force = false })
 	cleanup()
 	wait_for(function()
@@ -212,7 +220,7 @@ local function workflow()
 	)
 	assert(not git(repo, "worktree", "list", "--porcelain"):find(destination, 1, true), "Cleanup left a registration")
 	print(
-		"PR checkout workflow passed: detached revision, local tab association, original dirty files and safe retention/cleanup"
+		"PR checkout workflow passed: detached revision, current tab association, original dirty files and safe retention/cleanup"
 	)
 end
 local ok, err = xpcall(workflow, debug.traceback)

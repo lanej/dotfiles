@@ -1,10 +1,12 @@
--- One workflow through the full configuration, launcher, picker, Octo and gh.
+-- One workflow through the full configuration, launcher, picker, ghlite and gh.
 -- nvim --headless -u NONE -i NONE -n -l nvim/tests/pr-reviews.lua
 local checkout = vim.fn.getcwd()
 local temporary = vim.env.PR_REVIEW_FIXTURE or vim.fn.tempname()
 if not vim.env.PR_REVIEW_TEST_CHILD then
 	vim.fn.mkdir(temporary .. "/bin", "p")
 	vim.fn.mkdir(temporary .. "/cache/nvim", "p")
+	vim.fn.mkdir(temporary .. "/config", "p")
+	assert(vim.uv.fs_symlink(checkout .. "/nvim", temporary .. "/config/nvim"))
 	vim.fn.writefile(vim.fn.readfile(checkout .. "/nvim/lazy-lock.json"), temporary .. "/lazy-lock.json")
 	vim.fn.writefile({ "normal" }, temporary .. "/mode")
 	vim.fn.writefile({
@@ -42,6 +44,7 @@ if not vim.env.PR_REVIEW_TEST_CHILD then
 			PATH = temporary .. "/bin:" .. vim.env.PATH,
 			XDG_STATE_HOME = temporary .. "/state",
 			XDG_CACHE_HOME = temporary .. "/cache",
+			XDG_CONFIG_HOME = temporary .. "/config",
 			DOTFILES_NVIM_BOOTSTRAP_LOCK = temporary .. "/lazy-lock.json",
 			TMUX = "",
 			TMUX_PANE = "",
@@ -55,18 +58,9 @@ if not vim.env.PR_REVIEW_TEST_CHILD then
 end
 vim.fn.writefile({ "normal" }, temporary .. "/mode")
 vim.g.mapleader = ","
-vim.g.octo_viewer = "reviewer"
 vim.o.columns, vim.o.lines = 180, 50
 local notifications = {}
-require("octo").setup({
-	picker = "fzf-lua",
-	mappings = require("pr-reviews").octo_mappings,
-	gh_env = { PR_REVIEW_FIXTURE = temporary },
-	use_local_fs = false,
-	reviews = { auto_show_threads = false },
-	default_to_projects_v2 = false,
-	enable_builtin = true,
-})
+require("ghlite")
 local completed = {}
 local github = require("pr-review-github")
 local original_discover = github.discover
@@ -81,9 +75,12 @@ end
 local project, other_project = temporary .. "/project", temporary .. "/other-project"
 local function make_project(path, name)
 	vim.fn.mkdir(path, "p")
+	vim.fn.writefile({ "new", "context", "context2" }, path .. "/sample.txt")
 	for _, args in ipairs({
 		{ "init", "-b", "main" },
 		{ "remote", "add", "origin", "https://github.com/" .. name .. ".git" },
+		{ "add", "sample.txt" },
+		{ "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-m", "fixture" },
 	}) do
 		local result = vim.system(vim.list_extend({ "git", "-C", path }, args), { text = true }):wait()
 		assert(result.code == 0, result.stderr)
@@ -137,11 +134,6 @@ end
 local function searches()
 	return select(2, table.concat(requests(), "\n"):gsub("query PRReviewSearch", ""))
 end
-local function summary_action(key)
-	local map = vim.fn.maparg(key, "n", false, true)
-	assert(type(map.callback) == "function", "Native summary action missing: " .. key)
-	map.callback()
-end
 local function menu_action(key, mode)
 	local rendered
 	vim.defer_fn(function()
@@ -155,7 +147,7 @@ local function menu_action(key, mode)
 	end, 100)
 	vim.fn.maparg(",o", mode or "n", false, true).callback()
 	vim.api.nvim_feedkeys("", "x", false)
-	assert(rendered and rendered:find("comment", 1, true), "Octo menu did not render review actions")
+	assert(rendered and rendered:find("comment", 1, true), "PR review menu did not render review actions")
 end
 local function workflow()
 	wait_for(function()
@@ -375,207 +367,145 @@ local function workflow()
 	wait_for(function()
 		return preview():find("example/repo#1", 1, true) and not terminal():find("refreshing", 1, true)
 	end, "Warm picker did not reopen")
-	-- The cached queue is now older than the selected PR. Octo must fetch the
-	-- current revision without requiring another discovery of the whole list.
-	vim.fn.writefile({ string.rep("e", 40) }, temporary .. "/head")
+	-- Selecting a cached PR loads the current revision without another queue search.
+	local project_head =
+		vim.trim(vim.system({ "git", "-C", project, "rev-parse", "HEAD" }, { text = true }):wait().stdout)
+	vim.fn.writefile({ project_head }, temporary .. "/head")
 	send("\r")
 	wait_for(function()
-		local buffer = require("octo.utils").get_current_buffer()
-		return buffer and buffer.ready and buffer.number == 1 and vim.fn.maparg(",or", "n", false, true).callback
-	end, "Selecting a PR did not open its installed Octo description")
-	assert(attempts() == 0 and not require("octo.reviews").get_current_review(), "Opening created a review")
+		return vim.api.nvim_buf_get_name(0):find("PR View: 1", 1, true)
+			and vim.fn.maparg(",ol", "n", false, true).callback
+	end, "Selecting a PR did not open its installed ghlite description")
+	assert(attempts() == 0 and not vim.uv.fs_stat(temporary .. "/pending-review"), "Opening created a review")
+	assert(require("ghlite.state").selected_PR.headRefOid == project_head, "Cached queue loaded stale PR revision")
 	local description = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
 	assert(description:find("Description of first request", 1, true), description)
-	assert(
-		vim.fn.maparg(",o", "x", false, true).buffer == 0,
-		"Description replaced visual Treesitter selection with an empty menu"
-	)
+	local tab, tabs = vim.api.nvim_get_current_tabpage(), #vim.api.nvim_list_tabpages()
+	vim.cmd("tcd " .. vim.fn.fnameescape(project))
+	vim.cmd("edit " .. vim.fn.fnameescape(project .. "/sample.txt"))
+	wait_for(function()
+		return vim.fn.maparg(",oc", "n", false, true).callback
+	end, "Source buffer did not receive review actions")
+	local source = vim.api.nvim_get_current_buf()
 	menu_action("r")
 	wait_for(function()
-		local review = require("octo.reviews").get_current_review()
-		return review
-			and review.layout.files[1]
-			and review.layout.files[1].right_bufid
-			and vim.fn.maparg(",os", "n", false, true).callback
-	end, "Octo remote review did not start")
-	local review = require("octo.reviews").get_current_review()
-	assert(review.pull_request.right.commit == string.rep("e", 40), "Cached queue started review of stale code")
-	local file = review.layout.files[1]
-	assert(file.right_lines[1] == "new" and file.left_lines[1] == "old", "Remote diff content missing")
-	vim.api.nvim_set_current_win(review.layout.right_winid)
-	local code = vim.api.nvim_create_buf(false, true)
-	vim.bo[code].filetype = "lua"
-	vim.api.nvim_win_set_buf(review.layout.right_winid, code)
-	wait_for(function()
-		return vim.fn.maparg(",rs", "n", false, true).buffer == 1
-	end, "Review context did not attach to a local code buffer")
+		return require("ghlite.state").pending_reviews[1]
+	end, "Pending review did not start")
 	assert(
-		vim.fn.maparg(",o", "n", false, true).buffer == 0 and vim.fn.maparg(",o", "x", false, true).buffer == 0,
-		"Review context replaced ordinary code's Treesitter selection"
+		vim.api.nvim_get_current_buf() == source and #vim.api.nvim_list_tabpages() == tabs,
+		"Starting review changed the source buffer or tabs"
 	)
-	vim.api.nvim_win_set_buf(review.layout.right_winid, file.right_bufid)
-	wait_for(function()
-		return vim.fn.maparg(",o", "x", false, true).buffer == 1
-	end, "Visual inline-feedback menu did not attach")
+	assert(not vim.wo.diff, "Starting review enabled diff mode")
+	-- A selected line range becomes a pending GitHub thread via native ghlite.
 	vim.api.nvim_win_set_cursor(0, { 1, 0 })
-	vim.cmd("normal! V")
-	menu_action("c", "x")
+	vim.cmd("normal! Vj")
+	vim.fn.maparg(",oc", "x", false, true).callback()
 	wait_for(function()
-		local buffer = require("octo.utils").get_current_buffer()
-		return buffer and buffer.kind == "reviewthread" and buffer.commentsMetadata[1]
-	end, "Octo did not create a pending inline comment buffer")
-	vim.cmd.stopinsert()
-	local buffer = require("octo.utils").get_current_buffer()
-	local mark = vim.api.nvim_buf_get_extmark_by_id(
-		0,
-		require("octo.constants").OCTO_COMMENT_NS,
-		buffer.commentsMetadata[1].extmark,
-		{ details = true }
-	)
-	vim.api.nvim_buf_set_lines(0, mark[1] + 1, mark[3].end_row - 1, false, { "Inline feedback" })
-	local thread_buf = vim.api.nvim_get_current_buf()
-	vim.cmd.write()
-	wait_for(function()
-		return buffer.commentsMetadata[1].savedBody == "Inline feedback"
-	end, "Octo inline feedback was not saved to the pending review")
-	vim.api.nvim_set_current_win(review.layout.right_winid)
-	vim.fn.maparg(",op", "n", false, true).callback()
-	wait_for(function()
-		return terminal():find("sample.txt:1:1", 1, true) and preview():find("Inline feedback", 1, true)
-	end, "Native Octo pending-comment picker did not open")
-	send("\3")
-	wait_for(function()
-		return not picker()
-	end, "Pending-comment picker did not close")
-	-- Returning to the cached queue keeps Octo's pending review and scope.
-	vim.g.pr_review_default_scope = nil
-	vim.cmd("cd " .. vim.fn.fnameescape(other_project))
-	local before_return = searches()
-	vim.fn.maparg(",oq", "n", false, true).callback()
-	wait_for(function()
-		return terminal():find("All repositories", 1, true)
-	end, "Return mapping changed to the current directory's project")
-	assert(searches() == before_return, "Returning to a warm queue repeated discovery")
-	send("\21newer personal")
-	wait_for(function()
-		return preview():find("example/repo#10", 1, true)
-	end, "Queue did not filter to another PR")
-	send("\r")
-	wait_for(function()
-		local visible = require("octo.utils").get_current_buffer()
-		return visible and visible.ready and visible.number == 10 and vim.fn.maparg(",os", "n", false, true).callback
-	end, "Second description did not open")
-	assert(not require("octo.reviews").get_current_review(), "Second PR inherited the first review")
+		return vim.api.nvim_buf_get_name(0):find("PR comment", 1, true)
+	end, "Inline comment editor did not open")
 	assert(
-		vim.api.nvim_tabpage_is_valid(review.layout.tabpage) and vim.api.nvim_buf_is_valid(file.right_bufid),
-		"Queue selection damaged the pending review"
+		vim.api.nvim_get_current_tabpage() == tab and #vim.api.nvim_list_tabpages() == tabs,
+		"Commenting created a review tab"
 	)
-	local second_description = vim.api.nvim_get_current_buf()
-	vim.fn.maparg(",os", "n", false, true).callback()
-	assert(vim.api.nvim_get_current_buf() == second_description, "Second PR opened the first PR's summary")
-	vim.api.nvim_set_current_tabpage(review.layout.tabpage)
-	vim.fn.maparg(",os", "n", false, true).callback()
-	local summary = vim.api.nvim_get_current_buf()
-	assert(vim.api.nvim_win_get_config(0).relative == "editor", "Native Octo summary did not open")
+	vim.api.nvim_buf_set_lines(0, 1, -1, false, { "Inline feedback" })
+	vim.fn.maparg("<C-s>", "n", false, true).callback()
 	wait_for(function()
-		return vim.fn.maparg(",oa", "n", false, true).buffer == 1
-	end, "Summary review actions did not attach")
-	vim.api.nvim_buf_set_lines(summary, 0, -1, false, { "Summary feedback" })
+		return vim.uv.fs_stat(temporary .. "/inline-saved")
+	end, "Pending inline feedback was not saved")
+	local saved = vim.json.decode(table.concat(vim.fn.readfile(temporary .. "/inline-saved"), "\n"))
+	assert(
+		saved.path == "sample.txt" and saved.startLine == "1" and saved.line == "2" and saved.reviewId == "REVIEW1",
+		"Selection lost its path, range or pending review"
+	)
+	vim.api.nvim_set_current_buf(source)
+	vim.cmd.GHLitePRLoadComments()
+	wait_for(function()
+		return #vim.diagnostic.get(source) > 0
+	end, "Review feedback did not appear in the ordinary source buffer")
+	assert(vim.diagnostic.get(source)[1].message:find("Inline feedback", 1, true), "Inline thread text missing")
+	assert(not vim.wo.diff and #vim.api.nvim_list_tabpages() == tabs, "Loading comments opened a diff or tab")
+	-- Refuse shifted source lines rather than attaching feedback to the wrong revision.
+	vim.api.nvim_buf_set_lines(source, 0, 0, false, { "local edit" })
+	vim.fn.maparg(",oc", "n", false, true).callback()
+	assert(vim.api.nvim_get_current_buf() == source, "Modified source opened a misleading comment editor")
+	vim.cmd.undo()
+	vim.bo.modified = false
+	-- Native submission failure retains the review for a retry.
+	vim.ui.select = function(items, _, callback)
+		callback(items[1])
+	end
+	local function save_summary()
+		wait_for(function()
+			return vim.api.nvim_buf_get_name(0):find("PR Review Submit:", 1, true)
+		end, "Native submission summary did not open")
+		vim.api.nvim_buf_set_lines(0, 1, -1, false, { "Review summary" })
+		vim.fn.maparg("<C-s>", "n", false, true).callback()
+	end
 	vim.fn.writefile({ "submit-rejected" }, temporary .. "/mode")
-	summary_action(",oc")
+	vim.fn.maparg(",os", "n", false, true).callback()
+	save_summary()
 	wait_for(function()
-		return table.concat(notifications, "\n"):find("Review submission rejected", 1, true)
-	end, "Octo did not report the submission failure")
-	assert(attempts() == 1 and vim.fn.filereadable(temporary .. "/submitted") == 0, "Rejected review was submitted")
-	assert(
-		vim.api.nvim_get_current_buf() == summary
-			and review.id == "REVIEW1"
-			and vim.api.nvim_tabpage_is_valid(review.layout.tabpage),
-		"Native failure discarded the pending review or summary"
-	)
+		return attempts() == 1
+	end, "Submission failure was not exercised")
+	wait_for(function()
+		return table.concat(notifications, "\n"):find("Failed to submit", 1, true)
+	end, "Submission failure was not reported")
+	assert(require("ghlite.state").pending_reviews[1], "Rejected submission discarded pending review")
 	vim.fn.writefile({ "normal" }, temporary .. "/mode")
-	summary_action(",oc")
+	vim.fn.maparg(",os", "n", false, true).callback()
+	save_summary()
 	wait_for(function()
-		return not vim.api.nvim_tabpage_is_valid(review.layout.tabpage)
-	end, "Native submission did not close the completed review")
-	assert(attempts() == 2, "Native retry did not submit the pending review")
-	local submitted = vim.json.decode(vim.fn.readfile(temporary .. "/attempts")[2])
+		return attempts() == 2
+			and not require("ghlite.state").pending_reviews[1]
+			and table.concat(notifications, "\n"):find("Review submitted.", 1, true)
+	end, "Pending review could not be retried")
 	assert(
-		submitted.review == "REVIEW1" and submitted.event == "COMMENT" and submitted.body == "Summary feedback",
-		"Native submission lost the review ID or summary"
-	)
-	assert(vim.fn.filereadable(temporary .. "/inline-saved") == 1, "Submission lost inline comments")
-	assert(
-		not picker() and not require("octo.reviews").get_current_review(),
-		"Submission automatically opened a queue or review"
-	)
-	local returned = require("octo.utils").get_current_buffer()
-	assert(
-		returned and (returned.number == 1 or returned.number == 10),
-		"Native submission did not return to an existing PR"
+		vim.api.nvim_get_current_buf() == source and vim.api.nvim_get_current_tabpage() == tab,
+		"Submission left the source buffer"
 	)
 	vim.fn.maparg(",oq", "n", false, true).callback()
 	wait_for(function()
-		return terminal():find("All repositories", 1, true)
-	end, "Native submission lost the originating queue")
+		return picker() and terminal():find("example/repo#1", 1, true)
+	end, "Manual return lost the cached queue")
 	send("\18")
 	wait_for(function()
-		return terminal():find("newer personal", 1, true)
-			and not terminal():find("first request", 1, true)
-			and not terminal():find("refreshing", 1, true)
-	end, "Refreshing did not omit the natively submitted review at this head")
-	vim.cmd("cd " .. vim.fn.fnameescape(project))
-	vim.cmd("PRReviews!")
+		return not terminal():find("refreshing", 1, true) and not terminal():find("example/repo#1", 1, true)
+	end, "Refresh did not hide the PR reviewed at this head")
+	require("fzf-lua").win.close()
+	-- Description buffers are reused by number; another repository's PR #1 must
+	-- not inherit this repository's review context.
+	require("pr-reviews").open({
+		id = "OTHER_PR1",
+		number = 1,
+		headRefOid = project_head,
+		repository = { nameWithOwner = "another/project" },
+	}, "another/project")
 	wait_for(function()
-		return terminal():find("example/repo ·", 1, true)
-			and terminal():find("newer personal", 1, true)
-			and not terminal():find("first request", 1, true)
-			and not terminal():find("refreshing", 1, true)
-	end, "Project refresh did not update native review history")
-	vim.cmd.PRReviewsAll()
-	wait_for(function()
-		return terminal():find("All repositories", 1, true)
-	end, "Global queue did not reopen")
-	send("\3")
-	wait_for(function()
-		return not picker()
-	end, "Picker cancel failed")
-	vim.fn.writefile({ "repeat-review" }, temporary .. "/mode")
-	vim.cmd("PRReviewsAll!")
-	wait_for(function()
-		return preview():find(string.rep("d", 40), 1, true)
-	end, "New head did not reappear in the queue")
-	send("\r")
-	wait_for(function()
-		local visible = require("octo.utils").get_current_buffer()
-		return visible
-			and visible.ready
-			and visible.node.headRefOid == string.rep("d", 40)
-			and vim.fn.maparg(",or", "n", false, true).callback
-	end, "Cached Octo description did not reload the new revision")
-	vim.fn.maparg(",or", "n", false, true).callback()
-	wait_for(function()
-		local next_review = require("octo.reviews").get_current_review()
-		return next_review
-			and next_review.id == "REVIEW2"
-			and next_review.layout.files[1]
-			and vim.fn.maparg(",os", "n", false, true).callback
-	end, "Same PR could not start another pending review")
-	local next_review = require("octo.reviews").get_current_review()
-	assert(next_review.pull_request.right.commit == string.rep("d", 40), "Repeat review showed stale code")
-	vim.fn.maparg(",os", "n", false, true).callback()
-	assert(vim.api.nvim_get_current_buf() ~= summary, "New review reused the previous native summary")
-	assert(vim.api.nvim_win_get_config(0).relative == "editor", "Shortcut did not open native submission window")
-	assert(type(vim.fn.maparg("<C-a>", "n", false, true).callback) == "function", "Native approval action missing")
+		return table
+			.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+			:find("URL: https://github.com/another/project/pull/1", 1, true) and vim.b.pr_review_id == "OTHER_PR1"
+	end, "Same-number PR in another repository reused the original context")
 	assert(
-		type(vim.fn.maparg("<C-r>", "n", false, true).callback) == "function",
-		"Native request-changes action missing"
+		require("pr-review-ghlite").current().pr.repository.nameWithOwner == "another/project",
+		"Description retained another repository's backend"
 	)
-	vim.cmd.close()
-	next_review.layout:close()
-	assert(vim.api.nvim_buf_is_valid(thread_buf) or vim.fn.filereadable(temporary .. "/inline-saved") == 1)
+	vim.api.nvim_set_current_buf(source)
+	vim.fn.maparg(",gP", "n", false, true).callback()
+	wait_for(function()
+		local session = require("pr-review-ghlite").current()
+		return session
+			and session.pr.repository.nameWithOwner == "example/repo"
+			and session.loading == false
+			and require("ghlite.state").pending_reviews_checked[1]
+			and #vim.diagnostic.get(source) > 0
+	end, "Current-PR shortcut did not restore threads in the existing source buffer")
+	assert(
+		vim.api.nvim_get_current_buf() == source and #vim.api.nvim_list_tabpages() == tabs and not vim.wo.diff,
+		"Current-PR shortcut changed buffers, tabs or layout"
+	)
+	assert(not require("ghlite.state").pending_reviews[1], "Loading current PR created a review")
 	io.stdout:write(
-		"PR review workflow passed: full startup, scoped cached discovery, ranking, native Octo feedback and submission, failure retry and manual picker return\n"
+		"PR review workflow passed: full startup, scoped cached discovery, ranking, source-buffer threads, selected-line pending feedback and submission retry without review tabs\n"
 	)
 end
 
