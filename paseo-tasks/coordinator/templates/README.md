@@ -9,6 +9,7 @@ The filesystem here is the coordinator's memory. A new session reads, in order:
 5. `bin/` — reusable scripts (merge sequencer and its conflict helpers).
 
 ## Update protocol
+
 - After any meaningful change (worker dispatched/finished, PR opened/merged/failed, human decision or new instruction), edit `STATE.md` (replace, do not append history) and the relevant initiative file.
 - New standing instruction from the human -> `INSTRUCTIONS.md`. A mistake or discovery -> `LESSONS.md` (one entry: what happened, cause, rule).
 - Prune: delete resolved items; keep each file short enough to read in one pass.
