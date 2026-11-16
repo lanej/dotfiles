@@ -74,7 +74,8 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     view = json.loads(run([str(cli), "explain", "--repo", str(defaults), "--json"]))
     assert view["desired"]["mode"] == "local" and view["desired"]["skill_storage"] == "linked"
     run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(defaults), "--dry-run"])
-    assert tree(defaults) == before
+    after = tree(defaults)
+    assert after == before, {path: {"before": before.get(path), "after": after.get(path)} for path in before.keys() | after.keys() if before.get(path) != after.get(path)}
     run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(defaults)])
     assert (defaults / ".agents/skills/builder").is_symlink()
     assert (defaults / ".agents/skills/ship/SKILL.md").is_file()
