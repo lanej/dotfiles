@@ -57,7 +57,9 @@ else
         printf '%s\n' 'Beads archive checksum mismatch' >&2
         exit 1
     fi
-    tar -xOzf "$stage/archive.tar.gz" ./bd > "$stage/$name"
+    member=$(tar -tzf "$stage/archive.tar.gz" | awk '$0 == "bd" || $0 == "./bd" { name=$0; count++ } END { if (count==1) print name }')
+    case "$member" in bd|./bd) ;; *) printf '%s\n' 'Expected exactly one Beads binary in archive' >&2; exit 1 ;; esac
+    tar -xOzf "$stage/archive.tar.gz" "$member" > "$stage/$name"
     printf '%s  %s\n' "$(checksum "$stage/$name")" "$name" > "$stage/checksum"
     expected_name=$name
 fi
