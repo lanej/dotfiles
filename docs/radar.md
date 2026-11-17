@@ -123,6 +123,10 @@ The [project tool-choice policy](../ai/skills/source-code-lifecycle/references/t
 
 Strict Protobuf compilation, lint, formatting, and compatibility checks through the reusable [source-code profile](repository-bootstrap.md#protobuf-correctness-profile), with a small native Buf check plugin rejecting string fields ending in `_json`.
 
+### Ogen
+
+[Ogen](https://ogen.dev/) is the preferred Go client generator for OpenAPI-described JSON APIs in the shared [contract-first workflow](../ai/skills/contract-first/SKILL.md). Generate from authoritative specifications, pin generator versions, and preserve established project tools unless a migration is authorized.
+
 ### Project-scoped engineering guidance
 
 [Source-code profiles](repository-bootstrap.md#optional-project-capabilities) own PR review and merge assessment, optional data-pipeline architecture, and optional UI acceptance. User-level guidance retains authorization, tool operation, and personal feedback. Viewrule installation does not impose application design policy or gates; project profiles preserve their selected lifecycle, authority, adoption, and existing conventions.
