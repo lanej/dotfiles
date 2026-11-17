@@ -4,6 +4,10 @@ The implementation lives in [paseo-tasks](../paseo-tasks/). It uses official Pas
 
 Codex and Claude use their native agent tools for delegation and communication. Their configuration targets run `make paseo-agent-cleanup`, which disables Paseo terminal hooks, selects no bundled orchestration skills, disables the Codex and Claude providers and their Paseo tools, and removes Paseo skills from their discovery directories. Removed skill directories are retained outside discovery under `~/.local/share/dotfiles/retired-paseo-skills`. Pi's provider, extensions, and Paseo tools are preserved. Existing sessions can retain previously loaded skills and tools; start a new Codex or Claude session outside Paseo to load the cleaned configuration.
 
+## Beads task records
+
+The optional [Beads authority integration](beads-tasks.md) makes the dedicated Mac task repository authoritative for enrolled task content while preserving this service's runtime and delivery records. Native `bd` inspection does not require Paseo. Embedded mode is the default; remote hosts use authenticated access to the same authority, with distributed replicas deferred.
+
 ## Task contract
 
 Each execution host owns `<PASEO_HOME>/tasks/tasks.sqlite`. The durable task ID is a UUID, qualified by Paseo's authenticated `serverId`. A task records its desired outcome, success criteria, constraints, current approach, progress, evidence, blocker, next action, group, priority, worker address, checkout, optional GitHub links, and observations. The separate activity field never establishes task completion.

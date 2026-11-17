@@ -19,6 +19,7 @@
     "@getpaseo/client": "0.15.1",
     "@getpaseo/plugin": "0.15.1",
     "@octokit/rest": "^22.0.1",
+    "commander": "14.0.2",
     "zod": "^4.4.3"
   },
   "devDependencies": {

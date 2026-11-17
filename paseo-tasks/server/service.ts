@@ -244,11 +244,13 @@ export class TaskService {
     let value = this.store.get(id);
     if (
       value.worker ||
+      value.status !== "active" ||
       !ready(value) ||
       value.migration ||
       value.control !== "running"
     )
       return;
+    this.store.claim(id, id);
     value = this.store.change(id, (current) => {
       current.launch = "reserved";
     });
@@ -333,7 +335,12 @@ export class TaskService {
         }
       }
       const current = this.store.get(id);
-      if (current.control !== "running" || !ready(current)) return;
+      if (
+        current.control !== "running" ||
+        current.status !== "active" ||
+        !ready(current)
+      )
+        return;
       const workspace = await this.paseo.workspaces.create({
         workspaceId: taskWorkspaceId(value.taskId),
         idempotencyKey: `task-workspace:${value.taskId}`,
@@ -529,6 +536,7 @@ export class TaskService {
             throw new Error(
               "Worker activity is unavailable; control outcome remains unknown",
             );
+          if (input.action === "resume") this.store.assertOwner(current.taskId);
           if (input.action === "resume" && handle.archivedAt) {
             unknown = false;
             throw new Error(
@@ -588,6 +596,7 @@ export class TaskService {
             }
           }
         });
+        if (input.action === "resume") this.store.assertOwner(current.taskId);
         if (input.action === "resume" && value.status === "active") {
           this.store.addEvent(
             value.taskId,
@@ -817,6 +826,7 @@ export class TaskService {
       value.status === "complete"
     )
       return;
+    this.store.assertOwner(value.taskId);
     if (!(await this.restoreTools(value.worker.agentId))) return;
     const handle = this.paseo.agents.ref(value.worker.agentId);
     const refreshed = await handle.refresh();
@@ -849,6 +859,7 @@ export class TaskService {
         .some((item) => item.delivery === "sending")
     )
       return;
+    this.store.assertOwner(value.taskId);
     const unknown = this.store
       .events(value.taskId)
       .find((item) => item.delivery === "unknown");
@@ -901,6 +912,7 @@ export class TaskService {
       );
     if (!queued.length) return;
     const entry = queued[0];
+    this.store.assertOwner(value.taskId);
     // WHY: No await between checking durable control and reserving dispatch; pause sees this reservation.
     this.store.saveEvent({ ...entry, delivery: "sending" });
     try {
@@ -942,6 +954,7 @@ export class TaskService {
       current.status === "active" &&
       outcome.kind === "completed"
     ) {
+      this.store.assertOwner(current.taskId);
       const completion = await completedPiTurn(
         this.paseo.agents.ref(agentId),
       ).catch(() => null);
@@ -987,6 +1000,7 @@ export class TaskService {
           if (!value.worker && ready(value) && value.control === "running")
             await this.start(value.taskId);
           if (value.worker) {
+            this.store.assertOwner(value.taskId);
             const handle = this.paseo.agents.ref(value.worker.agentId);
             await this.restoreTools(value.worker.agentId);
             const observed = await handle.refresh();

@@ -149,6 +149,10 @@ pi-config: pi-resources
 
 
 
+.PHONY: beads-coordinator-init
+beads-coordinator-init:
+	@sh "$(DOTFILES)/scripts/init-beads-coordinator" "$(or $(BEADS_COORDINATOR_DIR),$(HOME)/.local/share/paseo-coordinator)" "$(or $(BEADS_STORAGE_MODE),embedded)"
+
 .PHONY: test-paseo-tasks test-paseo-task-import test-paseo-task-router test-paseo-tasks-ui paseo-tasks-config
 test-paseo-tasks:
 	@npm --prefix "$(DOTFILES)/paseo-tasks" test

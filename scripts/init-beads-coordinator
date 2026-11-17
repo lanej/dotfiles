@@ -1,0 +1,60 @@
+#!/bin/sh
+# Explicitly initialize the dedicated task authority without installing agent hooks.
+set -eu
+directory=${1:-$HOME/.local/share/paseo-coordinator}
+mode=${2:-embedded}
+case "$mode" in embedded|server) ;; *) printf '%s\n' 'Mode must be embedded or server' >&2; exit 1 ;; esac
+command -v bd >/dev/null 2>&1 || { printf '%s\n' 'Install Beads first: enable tools.beads and run make install' >&2; exit 1; }
+command -v python3 >/dev/null 2>&1 || { printf '%s\n' 'Python 3 is required' >&2; exit 1; }
+mkdir -p "$directory"
+directory=$(cd "$directory" && pwd -P)
+lock="$directory/.beads-setup-lock"
+mkdir "$lock" || { printf '%s\n' 'Coordinator initialization is already locked; inspect the owning operation before retrying' >&2; exit 1; }
+trap 'rm -rf "$lock"' EXIT
+trap 'exit 1' HUP INT TERM
+export BEADS_DIR="$directory/.beads"
+if [ ! -e "$directory/.git" ]; then git -C "$directory" init -q -b main; fi
+if [ ! -e "$BEADS_DIR/metadata.json" ]; then
+    if [ "$mode" = server ]; then
+        (cd "$directory" && bd init --server --prefix tasks --skip-agents --skip-hooks --non-interactive)
+    else
+        (cd "$directory" && bd init --prefix tasks --skip-agents --skip-hooks --non-interactive)
+    fi
+fi
+python3 - "$BEADS_DIR/metadata.json" "$mode" <<'PY'
+import json, sys
+with open(sys.argv[1]) as source:
+    metadata = json.load(source)
+if metadata.get('backend') != 'dolt' or metadata.get('dolt_mode') != sys.argv[2]:
+    raise SystemExit('Existing Beads storage differs from requested mode; preserve it and reconcile explicitly')
+PY
+if ! (cd "$directory" && bd --json --sandbox kv get paseo.authority) > "$lock/authority.json"; then
+    # WHY: Native bd exits 1 for an absent key; other failures must not create a new authority.
+    python3 - "$lock/authority.json" <<'PY_CHECK'
+import json, sys
+with open(sys.argv[1]) as source:
+    value = json.load(source)
+if value.get('found') is not False or value.get('key') != 'paseo.authority' or 'error' in value:
+    raise SystemExit('Cannot inspect existing Beads authority; initialization stopped')
+PY_CHECK
+fi
+authority=$(python3 - "$lock/authority.json" <<'PY'
+import json, sys, uuid
+with open(sys.argv[1]) as source:
+    value = json.load(source)
+if value.get('found'):
+    print(uuid.UUID(value['value']))
+else:
+    print(uuid.uuid4())
+PY
+)
+if ! python3 - "$lock/authority.json" <<'PY'
+import json, sys
+with open(sys.argv[1]) as source:
+    raise SystemExit(0 if json.load(source).get('found') else 1)
+PY
+then
+    (cd "$directory" && bd --json --sandbox kv set paseo.authority "$authority") > /dev/null
+fi
+printf 'PASEO_TASKS_BEADS_DIR=%s\nPASEO_TASKS_BEADS_AUTHORITY=%s\n' "$directory" "$authority"
+printf '%s\n' 'Use bd list, bd show and bd history from this repository; Paseo is not required.'

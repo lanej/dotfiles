@@ -5,6 +5,7 @@ import { defineRpc } from "@getpaseo/plugin";
 import type { PluginServerContext } from "@getpaseo/plugin/server";
 import { z } from "zod";
 import { Connection } from "./server/connection";
+import { Beads } from "./server/beads";
 import { Feedback, GitHub } from "./server/github";
 import {
   candidate,
@@ -61,7 +62,25 @@ export default function contribute(server: PluginServerContext) {
   let stopped = false;
   let pending: Promise<void> | null = null;
   const ready = connection.open().then(({ serverId, paseo }) => {
-    const store = new Store(join(state, "tasks.sqlite"), serverId);
+    const beadsDir = process.env.PASEO_TASKS_BEADS_DIR;
+    const beadsAuthority = process.env.PASEO_TASKS_BEADS_AUTHORITY;
+    if (!!beadsDir !== !!beadsAuthority)
+      throw new Error(
+        "Set both PASEO_TASKS_BEADS_DIR and PASEO_TASKS_BEADS_AUTHORITY",
+      );
+    const store = new Store(
+      join(state, "tasks.sqlite"),
+      serverId,
+      undefined,
+      beadsDir
+        ? new Beads(
+            beadsDir,
+            beadsAuthority!,
+            "bd",
+            process.env.PASEO_TASKS_BEADS_SSH_HOST,
+          )
+        : null,
+    );
     const github = new GitHub();
     service = new TaskService(
       store,
@@ -90,6 +109,25 @@ export default function contribute(server: PluginServerContext) {
         pending = null;
       });
   }, 10000);
+  server.handle(
+    defineRpc({ name: "tasks.beads_migrate", input: address, output: task }),
+    async (input) => {
+      const value = await ready;
+      value.assertHost(input.serverId);
+      const current = value.store.get(input.taskId);
+      if (current.worker) {
+        const handle = value.paseo.agents.ref(current.worker.agentId);
+        if (
+          !(await handle.refresh()) ||
+          handle.activeTurn ||
+          handle.status !== "idle" ||
+          handle.pendingPermissions?.length
+        )
+          throw new Error("Worker must be verifiably idle before migration");
+      }
+      return value.store.migrateBeads(input.taskId);
+    },
+  );
   server.handle(listRpc, async ({ aggregate }) =>
     (await ready).list(aggregate),
   );

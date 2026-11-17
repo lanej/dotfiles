@@ -1,7 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
 import { chmodSync, mkdirSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { type Beads, beadId, taskContent } from "./beads";
 import {
   type Brief,
   event,
@@ -19,9 +20,10 @@ import {
 export class Store {
   readonly db: DatabaseSync;
   constructor(
-    file: string,
+    readonly file: string,
     readonly serverId: string,
     readonly now = () => new Date().toISOString(),
+    readonly beads: Beads | null = null,
   ) {
     mkdirSync(dirname(file), { recursive: true, mode: 0o700 });
     this.db = new DatabaseSync(file);
@@ -32,6 +34,7 @@ export class Store {
       CREATE TABLE IF NOT EXISTS tasks (id TEXT PRIMARY KEY, revision INTEGER NOT NULL, record TEXT NOT NULL);
       CREATE UNIQUE INDEX IF NOT EXISTS worker_owner ON tasks(json_extract(record,'$.worker.agentId'))
         WHERE json_extract(record,'$.worker.agentId') IS NOT NULL;
+      CREATE TABLE IF NOT EXISTS beads_tasks (id TEXT PRIMARY KEY, bead TEXT NOT NULL UNIQUE);
       CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, task TEXT NOT NULL, record TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS objects (url TEXT PRIMARY KEY, record TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS replies (event TEXT PRIMARY KEY, record TEXT NOT NULL);
@@ -89,12 +92,90 @@ export class Store {
         "SELECT record FROM tasks ORDER BY json_extract(record,'$.priority') DESC",
       )
       .all()
-      .map((row) => task.parse(JSON.parse(row.record as string)));
+      .map((row) => this.project(task.parse(JSON.parse(row.record as string))))
+      .sort((a, b) => b.priority - a.priority);
   }
   get(id: string): Task {
     const row = this.db.prepare("SELECT record FROM tasks WHERE id=?").get(id);
     if (!row) throw new Error(`Unknown task ${id}`);
-    return task.parse(JSON.parse(row.record as string));
+    return this.project(task.parse(JSON.parse(row.record as string)));
+  }
+  private enrolled(id: string): boolean {
+    return !!this.db.prepare("SELECT id FROM beads_tasks WHERE id=?").get(id);
+  }
+  private project(value: Task): Task {
+    if (!this.enrolled(value.taskId)) return value;
+    if (!this.beads)
+      throw new Error(
+        "Beads authority unavailable for enrolled task; refusing stale SQLite content",
+      );
+    const observed = this.beads.read(value);
+    if (JSON.stringify(taskContent(value)) === JSON.stringify(observed))
+      return value;
+    const apply = () => {
+      Object.assign(value, observed);
+      value.revision++;
+      value.updatedAt = this.now();
+      this.queueCoordinatorReport(value);
+      this.db
+        .prepare("UPDATE tasks SET revision=?,record=? WHERE id=?")
+        .run(value.revision, JSON.stringify(task.parse(value)), value.taskId);
+      return value;
+    };
+    return this.db.isTransaction ? apply() : this.transaction(apply);
+  }
+  migrateBeads(id: string): Task {
+    if (!this.beads)
+      throw new Error("Configure the shared Beads authority before migration");
+    if (this.enrolled(id)) return this.get(id);
+    const captured = this.get(id);
+    if (
+      captured.control !== "paused" ||
+      !["unknown", "idle", "closed"].includes(captured.activity)
+    )
+      throw new Error(
+        "Pause the task at a verified idle boundary before Beads migration",
+      );
+    const directory = join(dirname(this.file), "backups");
+    mkdirSync(directory, { recursive: true, mode: 0o700 });
+    const snapshot = join(
+      directory,
+      `before-beads-${id}-${randomUUID()}.sqlite`,
+    );
+    this.db.prepare("VACUUM INTO ?").run(snapshot);
+    chmodSync(snapshot, 0o600);
+    return this.transaction(() => {
+      const value = this.get(id);
+      if (value.revision !== captured.revision)
+        throw new Error(
+          "Task changed while backing up; retry migration from current state",
+        );
+      if (
+        value.control !== "paused" ||
+        !["unknown", "idle", "closed"].includes(value.activity)
+      )
+        throw new Error(
+          "Pause the task at a verified idle boundary before Beads migration",
+        );
+      this.beads!.create(value);
+      this.db
+        .prepare("INSERT INTO beads_tasks VALUES (?,?)")
+        .run(id, beadId(id));
+      return this.get(id);
+    });
+  }
+  assertOwner(id: string) {
+    if (this.enrolled(id)) {
+      if (!this.beads) throw new Error("Beads authority unavailable");
+      this.beads.assertOwner(this.get(id));
+    }
+  }
+  claim(id: string, worker: string) {
+    const value = this.get(id);
+    if (this.enrolled(id)) {
+      if (!this.beads) throw new Error("Beads authority unavailable");
+      this.beads.claim(value, worker);
+    }
   }
   forAgent(agentId: string): Task | undefined {
     return this.list().find((value) => value.worker?.agentId === agentId);
@@ -108,6 +189,10 @@ export class Store {
       Pick<Task, "migration" | "github" | "nextAction" | "coordinator">
     > = {},
   ): Task {
+    if (!this.db.isTransaction)
+      return this.transaction(() =>
+        this.create(value, group, id, control, initial),
+      );
     const at = this.now();
     const record = task.parse({
       ...value,
@@ -137,9 +222,14 @@ export class Store {
       migration: null,
       ...initial,
     });
+    if (this.beads) this.beads.create(record);
     this.db
       .prepare("INSERT INTO tasks VALUES (?,?,?)")
       .run(id, 1, JSON.stringify(record));
+    if (this.beads)
+      this.db
+        .prepare("INSERT INTO beads_tasks VALUES (?,?)")
+        .run(id, beadId(id));
     return record;
   }
   change(
@@ -154,7 +244,11 @@ export class Store {
         throw new Error(
           "Task changed; refresh before applying this instruction",
         );
+      const before = structuredClone(value);
       fn(value);
+      task.parse(value);
+      if (this.enrolled(id))
+        Object.assign(value, this.beads!.update(before, value));
       value.revision++;
       value.updatedAt = this.now();
       this.queueCoordinatorReport(value, options.notifyCoordinator === false);
@@ -327,6 +421,7 @@ export class Store {
       .run(entry.report.id, JSON.stringify(entry));
   }
   workerUpdate(id: string, agentId: string, patch: Update): Task {
+    this.assertOwner(id);
     return this.change(id, (value) => {
       if (value.worker?.agentId !== agentId)
         throw new Error("Worker is not assigned to this task");
@@ -354,6 +449,17 @@ export class Store {
     });
   }
   bind(id: string, agentId: string, workspaceId: string, cwd: string): Task {
+    const existing = this.get(id);
+    if (existing.worker && existing.worker.agentId !== agentId)
+      throw new Error("Task already has a primary conversation");
+    if (!existing.worker) {
+      if (existing.status === "draft" && ready(existing, true))
+        this.change(id, (value) => {
+          value.status = "active";
+        });
+      this.claim(id, agentId);
+    }
+    this.assertOwner(id);
     return this.change(id, (value) => {
       if (value.worker && value.worker.agentId !== agentId)
         throw new Error("Task already has a primary conversation");
@@ -403,9 +509,12 @@ export class Store {
         (kind === "feedback" ||
           (kind === "github" && record.payload.type !== "state"))
       ) {
+        const before = structuredClone(value);
         value.status = "active";
         value.nextAction =
           "Handle newly assigned feedback within the existing task brief";
+        if (this.enrolled(id))
+          Object.assign(value, this.beads!.update(before, value));
         value.revision++;
         value.updatedAt = this.now();
         this.queueCoordinatorReport(value);

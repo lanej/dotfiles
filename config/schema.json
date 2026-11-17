@@ -394,6 +394,10 @@
         "keylease": {
           "type": "boolean",
           "description": "Install the Keylease credential broker; preserve active brokers and leases."
+        },
+        "beads": {
+          "type": "boolean",
+          "description": "Install the Beads task CLI; task repositories and servers remain explicit."
         }
       }
     }

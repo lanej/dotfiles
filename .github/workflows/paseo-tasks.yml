@@ -3,10 +3,10 @@ name: Paseo tasks
 on:
   workflow_dispatch:
   pull_request:
-    paths: ['paseo-tasks/**', 'scripts/install-worktree-manager', 'bootstrap/tools.toml', 'pi/extensions/paseo-questions.mjs', 'pi/extensions/firstmate-questions.mjs', 'pi/extensions/paseo-router.mjs', 'pi/paseo-tasks.models.json', 'scripts/paseo-tasks-config.mjs', '.github/workflows/paseo-tasks.yml']
+    paths: ['paseo-tasks/**', 'scripts/install-beads', 'scripts/test-beads-install.py', 'scripts/init-beads-coordinator', 'scripts/install-worktree-manager', 'bootstrap/tools.toml', 'pi/extensions/paseo-questions.mjs', 'pi/extensions/firstmate-questions.mjs', 'pi/extensions/paseo-router.mjs', 'pi/paseo-tasks.models.json', 'scripts/paseo-tasks-config.mjs', '.github/workflows/paseo-tasks.yml']
   push:
     branches: [master]
-    paths: ['paseo-tasks/**', 'scripts/install-worktree-manager', 'bootstrap/tools.toml', 'pi/extensions/paseo-questions.mjs', 'pi/extensions/firstmate-questions.mjs', 'pi/extensions/paseo-router.mjs', 'pi/paseo-tasks.models.json', 'scripts/paseo-tasks-config.mjs', '.github/workflows/paseo-tasks.yml']
+    paths: ['paseo-tasks/**', 'scripts/install-beads', 'scripts/test-beads-install.py', 'scripts/init-beads-coordinator', 'scripts/install-worktree-manager', 'bootstrap/tools.toml', 'pi/extensions/paseo-questions.mjs', 'pi/extensions/firstmate-questions.mjs', 'pi/extensions/paseo-router.mjs', 'pi/paseo-tasks.models.json', 'scripts/paseo-tasks-config.mjs', '.github/workflows/paseo-tasks.yml']
 
 permissions:
   contents: read
@@ -37,6 +37,12 @@ jobs:
           version=$(python3 -c 'import tomllib; print(tomllib.load(open("bootstrap/tools.toml", "rb"))["tools"]["worktree-manager"]["version"])')
           sh scripts/install-worktree-manager "$version"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - run: python3 scripts/test-beads-install.py
+      - name: Install pinned Beads for native task acceptance
+        run: |
+          version=$(python3 -c 'import tomllib; print(tomllib.load(open("bootstrap/tools.toml", "rb"))["tools"]["beads"]["version"])')
+          sh scripts/install-beads "$version"
+          echo "PASEO_TASKS_NATIVE_BEADS=$HOME/.local/bin/bd" >> "$GITHUB_ENV"
       - run: npm run check
         working-directory: paseo-tasks
       - run: make test-paseo-tasks

@@ -369,3 +369,10 @@ requires = ["git", "go"]
 description = "Install the Keylease credential broker; preserve active brokers and leases."
 installer = "approval-cli"
 requires = ["git", "go", "build"]
+
+[tools.beads]
+description = "Install the Beads task CLI; task repositories and servers remain explicit."
+installer = "package"
+package = "bd"
+requires = ["git"]
+version = "1.3.4"
