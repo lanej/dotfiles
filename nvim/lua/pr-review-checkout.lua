@@ -87,11 +87,17 @@ local function trees(output)
 end
 
 local function open_tab(path, pr)
-	vim.cmd.tabnew()
-	vim.cmd("tcd " .. vim.fn.fnameescape(path))
-	vim.t.pr_review_id = pr.id
-	require("fzf-lua").files({ cwd = path })
-	notify("Local files: " .. path .. ". Leave feedback in the remote Octo review.")
+	local reviews = require("pr-reviews")
+	if reviews.local_files then
+		reviews.local_files(pr, path)
+		notify("Review files: " .. path .. ". Use ,oc to leave inline feedback.")
+	else
+		vim.cmd.tabnew()
+		vim.cmd("tcd " .. vim.fn.fnameescape(path))
+		vim.t.pr_review_id = pr.id
+		require("fzf-lua").files({ cwd = path })
+		notify("Local files: " .. path .. ". Leave feedback in the remote Octo review.")
+	end
 end
 
 local function create(path, pr, remote)
@@ -397,7 +403,12 @@ function M.cleanup()
 											or result.code > 1
 											or vim.trim(result.stderr or "") ~= ""
 										then
-											retained("active process or incomplete process inspection")
+											retained(
+												"active process or incomplete process inspection: "
+													.. vim.trim(result.stderr or "")
+													.. " "
+													.. vim.trim(result.stdout or "")
+											)
 											return
 										end
 										local current_use = active(path)

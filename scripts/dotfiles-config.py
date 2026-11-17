@@ -18,6 +18,10 @@ except ImportError:
 ROOT = Path(__file__).resolve().parents[1]
 # One field definition drives runtime validation, exports, and the editor schema.
 SETTINGS = {
+    "features.nvim_ghlite": {
+        "type": bool,
+        "description": "Use ghlite for inline Neovim PR reviews instead of the default Octo review UI.",
+    },
     "codex.github_enabled": {
         "type": bool,
         "variable": "DOTFILES_CODEX_GITHUB_ENABLED",
