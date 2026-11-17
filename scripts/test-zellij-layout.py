@@ -130,7 +130,7 @@ sys.exit(result.returncode)
                 terminal.until("original PID", lambda: (home / f"pid-{pid}").exists())
                 pids[pid] = (home / f"pid-{pid}").read_text().strip()
             assert len(set(pids.values())) == 3
-            assert widths() == [60, 30, 30], widths()
+            terminal.until("initial split geometry", lambda: widths() == [60, 30, 30])
             invoke(b"=")
             assert widths() == [42, 36, 42], widths()
             invoke(b"g")
