@@ -125,7 +125,7 @@ Strict Protobuf compilation, lint, formatting, and compatibility checks through 
 
 ### Ogen
 
-[Ogen](https://ogen.dev/) is the preferred Go client generator for OpenAPI-described JSON APIs in the shared [contract-first workflow](../ai/skills/contract-first/SKILL.md). Generate from authoritative specifications, pin generator versions, and preserve established project tools unless a migration is authorized.
+[Ogen](https://ogen.dev/) is the preferred Go client generator for OpenAPI-described JSON APIs in the shared [Go guidance](../ai/skills/go/references/common.md#api-client-generation). Generate from authoritative specifications, pin generator versions, and preserve established project tools unless a migration is authorized.
 
 ### Project-scoped engineering guidance
 

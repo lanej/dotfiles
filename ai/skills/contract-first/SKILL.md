@@ -19,7 +19,7 @@ When reuse is unsuitable, generate from sourced authoritative contracts. For app
 
 Derive types, clients, server bindings, serialization, validation, command/help definitions and reference material from their authoritative owners where supported. Prefer one contract with generated consumers over manually synchronized representations. Do not create a new schema layer for behavior already owned by a suitable SDK or existing project source.
 
-For Go client generation from OpenAPI-described JSON APIs, prefer [Ogen](https://ogen.dev/). Source the authoritative OpenAPI specification, whether encoded as JSON or YAML, and pin the generator version. JSON samples or a standalone JSON Schema do not supply the full HTTP contract; establish the missing operations and protocol semantics before generation. Document a concrete compatibility constraint and a revisit condition when selecting another generator. Preserve established project tools unless a migration is authorized.
+For HTTP APIs, source the authoritative specification. JSON samples or a standalone JSON Schema do not supply the full HTTP contract; establish the missing operations and protocol semantics before generation. Follow the target language guidance for generator selection.
 
 Use the project's pinned tools and generation commands. Never edit generated output by hand. Review changes to the authoritative input and the generated diff together; preserve compatibility and verify that regeneration reproduces the output. Generated validation must be invoked where the tool requires it; generated types alone do not prove runtime validation.
 
