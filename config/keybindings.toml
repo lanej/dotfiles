@@ -389,8 +389,8 @@ description = "Close the window with confirmation using Ctrl and Shift."
 id = "kitty.close-tab"
 app = "kitty"
 chord = "cmd+w"
-action = "close_tab"
-description = "Close the current tab."
+action = "kitten close_tab_with_confirmation.py"
+description = "Close the current tab with confirmation (defaults to No)."
 
 [[binding]]
 id = "kitty.shift-enter"
