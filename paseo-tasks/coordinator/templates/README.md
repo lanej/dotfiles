@@ -2,11 +2,12 @@
 
 The filesystem here is the coordinator's memory. A new session reads, in order:
 
-1. `INSTRUCTIONS.md` — standing rules, authority limits, conventions, procedures.
-2. `STATE.md` — the current snapshot (what is running, queued, open, pending). Pruned to the present; history lives in git.
-3. `LESSONS.md` — curated mistakes and fixes; read before dispatching or merging.
-4. `initiatives/*.md` — one short file per multi-step effort (goal, status, next step, links).
-5. `bin/` — reusable scripts (merge sequencer and its conflict helpers).
+1. `PR-WORKFLOW.md` — managed OctoManager lifecycle and worker follow-up requirements.
+2. `INSTRUCTIONS.md` — standing rules, authority limits, conventions, procedures.
+3. `STATE.md` — the current snapshot (what is running, queued, open, pending). Pruned to the present; history lives in git.
+4. `LESSONS.md` — curated mistakes and fixes; read before dispatching or merging.
+5. `initiatives/*.md` — one short file per multi-step effort (goal, status, next step, links).
+6. `bin/commit-state` — record memory updates in Git.
 
 ## Update protocol
 
