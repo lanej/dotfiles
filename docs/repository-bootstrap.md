@@ -4,7 +4,7 @@ Use `source-code setup` to bring the shared Builder, architecture, and pull-requ
 
 The command needs Python 3.11+ and Git 2.31+ on macOS or Linux. Run `~/.files/bin/source-code setup` directly, or use `source-code setup` after `make source-code-config` has linked the commands into `~/.local/bin`.
 
-`repo-bootstrap` remains a compatibility alias for `source-code setup`, accepting its existing flags. Existing `.agents/repo-bootstrap.json` manifests, exclusion markers, and backup paths retain their names so either command can safely update an existing installation.
+`repo-bootstrap` remains a compatibility alias for `source-code setup` and also requires `--authority` and `--adoption` on every invocation. Existing `.agents/repo-bootstrap.json` manifests, exclusion markers, and backup paths retain their names so either command can safely update an existing installation.
 
 ## Bootstrap a new repository
 
@@ -68,10 +68,10 @@ Choose a subset or template independently:
 source-code setup --repo ~/src/app --authority owned --adoption new --skills architecture --agents codex --pr-template none
 
 # Keep an existing team PR template while sharing the skills.
-source-code setup --repo ~/src/app --mode tracked --pr-template none
+source-code setup --repo ~/src/app --authority owned --adoption new --mode tracked --pr-template none
 
 # Keep a private drafting template alongside an existing GitHub template.
-source-code setup --repo ~/src/app --mode tracked --pr-template local
+source-code setup --repo ~/src/app --authority owned --adoption new --mode tracked --pr-template local
 ```
 
 `--skills` accepts the names listed by `source-code setup --help`, comma-separated. The core includes Builder, architecture, data/interface planning, Git/PR workflow, CLI construction, testing, lifecycle, and shared comments. Language guidance covers Go, TypeScript, JavaScript, Python, Rust, and Protobuf; `gh-pr-stack`, `github-actions`, `just`, `data-pipeline`, `ui-acceptance`, and `ui-review` are available explicitly. These are curated project skills, selected independently of workstation skills. Language detection selects matching guidance; root Go modules retain their existing automatic check-profile behavior.
@@ -96,7 +96,7 @@ The Git guidance includes the `ship` skill in new project setups. Existing insta
 
 Canonical skill contents and their release versions follow the source immediately. `validate` and `explain` resolve current versions from the linked registry rather than treating setup-time observations as pins. The override lists selected skills without freezing their versions. Project stage, policy version, generated checks, and check dependencies remain project configuration: review and apply their changes with setup or upgrade. A canonical policy-version change requires reconciliation with each project's installed runtime; live skill links do not silently migrate generated checks.
 
-Existing copied installations retain copied storage. Preview `source-code setup --skill-storage linked --dry-run` to migrate explicitly. Migration preserves customized or unmanaged package content, rejects tracked artifacts that would need removal, and only replaces unchanged installer-owned files. The command never untracks files. Remove copied packages from the index separately if their removal is intended. The reverse `--skill-storage copied` materializes portable packages without writing through the links. CLI overrides do not rewrite authored TOML; set `skill_storage = "copied"` there to retain that selection.
+Existing copied installations retain copied storage. Preview `source-code setup --authority AUTHORITY --adoption ADOPTION --skill-storage linked --dry-run` to migrate explicitly. Migration preserves customized or unmanaged package content, rejects tracked artifacts that would need removal, and only replaces unchanged installer-owned files. The command never untracks files. Remove copied packages from the index separately if their removal is intended. The reverse `--skill-storage copied` materializes portable packages without writing through the links. CLI overrides do not rewrite authored TOML; set `skill_storage = "copied"` there to retain that selection.
 
 ## CLI construction
 
@@ -180,7 +180,7 @@ The `workstation` set selects `tools.source-code`, whose setup target links `sou
 ```sh
 source-code detect --repo ~/src/project --json
 source-code setup --repo ~/src/project --authority owned --adoption new --stage alpha --mode shadow
-source-code setup --repo ~/src/project --no-detect-languages
+source-code setup --repo ~/src/project --authority owned --adoption new --no-detect-languages
 ```
 
 Basic detection uses manifests and source-file extensions for Go, TypeScript, JavaScript, Python, Rust, and Protobuf, including nested projects. Git supplies tracked and unignored files; pre-Git directories use a pruned directory walk that skips dependency/build directories. Installed managed files do not classify their own implementation language as application code. Results include a small set of evidence paths and are read-only. Detection is heuristic, not an exhaustive language census; select additional skills explicitly when needed.
@@ -202,7 +202,7 @@ The installed Git profile owns [review and merge assessment](../ai/skills/git/re
 
 ## Authority and tool adoption
 
-Declare `authority = "owned" | "shared" | "upstream"` and `adoption = "hold" | "new" | "backfill"` in authored TOML, or pass `--authority` and `--adoption`. These selections follow CLI → TOML → saved-state precedence and are independent of lifecycle stage and project kind. Setup and upgrade require both when no configured or saved value exists; inspection can show unset values without writes. Existing installations remain usable, and validation reports missing legacy selections. Public/open-source visibility does not establish authority.
+Every `source-code setup` invocation requires `--authority owned|shared|upstream` and `--adoption hold|new|backfill`, including `--dry-run` and repeated setup when authored TOML or saved state contains these choices. Missing flags produce a usage error before configuration loading or installation. Upgrade resolves these choices from CLI → TOML → saved state and requires explicit flags when neither configured nor saved values exist. These selections are independent of lifecycle stage and project kind; explain can show unset values without writes. Existing installations remain usable, and validation reports missing legacy selections. Public/open-source visibility does not establish authority.
 
 Owned projects choose their stack; shared projects require project agreement, and upstream contributions follow maintainer conventions. Hold preserves the existing stack. New applies the required catalog to new independent surfaces while retaining established implementations. Backfill also records migration direction, but migration execution requires an explicitly agreed task scope. Shared/upstream adoption settings do not themselves grant authority; record the relevant project agreement before changing conventions. Shadow installation does not count as agreement.
 
@@ -216,8 +216,8 @@ Source-code engineering skills are project-only; the `source-code` management sk
 
 ```sh
 source-code setup --repo ~/src/experiment --authority owned --adoption new --go --stage research --mode shadow --pr-template none
-source-code setup --repo ~/src/experiment --stage alpha --dry-run
-source-code setup --repo ~/src/experiment --stage alpha
+source-code setup --repo ~/src/experiment --authority owned --adoption new --stage alpha --dry-run
+source-code setup --repo ~/src/experiment --authority owned --adoption new --stage alpha
 python3 scripts/check-source-code.py go
 ```
 
@@ -330,7 +330,7 @@ The single acceptance workflow exercises the real command: bootstrap and clone a
 
 ## Protobuf correctness profile
 
-Setup and upgrades automatically select the Protobuf profile for detected project `.proto` files or Buf workspace files, including nested directories. Explicitly select it with `source-code setup --protobuf` or `[checks.protobuf] enabled = true`; save an opt-out with `--no-protobuf` or `enabled = false`. Disabling language detection prevents automatic selection. The portable [profile guide](../ai/skills/protobuf/references/correctness.md) describes the pinned Buf tools, strict lint, check-only formatting, explicit compatibility baseline, and a native Buf check plugin rejecting `string *_json` fields. Project Buf workspace, dependency, and code-generation configuration is preserved.
+Setup and upgrades automatically select the Protobuf profile for detected project `.proto` files or Buf workspace files, including nested directories. Explicitly select it with `source-code setup --authority owned --adoption new --protobuf` or `[checks.protobuf] enabled = true`; save an opt-out with `--no-protobuf` or `enabled = false`. Disabling language detection prevents automatic selection. The portable [profile guide](../ai/skills/protobuf/references/correctness.md) describes the pinned Buf tools, strict lint, check-only formatting, explicit compatibility baseline, and a native Buf check plugin rejecting `string *_json` fields. Project Buf workspace, dependency, and code-generation configuration is preserved.
 
 Run `python3 scripts/check-protobuf.py tools` explicitly, then `python3 scripts/check-source-code.py protobuf`. Configure a real compatibility baseline through `PROTOBUF_AGAINST` or `.protobuf-quality.json` for beta/production; alpha adds lint/format to research's compile and JSON string field checks. The generated CI uses the official Buf Action for CLI setup and the PR base or previous push SHA for compatibility. Go builds the small native plugin from its pinned SDK module. The custom rule checks only `string` fields ending in `_json`; it does not ban generic payload names or dynamic types, and cannot prove arbitrary application code never serializes JSON into an innocently named string. `--no-protobuf` retains installed checks. Setup previews, validation, upgrades, tracked installs, and shadow installs use the same profile contract as the other languages.
 

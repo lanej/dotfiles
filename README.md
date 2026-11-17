@@ -262,14 +262,14 @@ and event mapping.
 Bootstrap or retrofit a repository with portable Builder, architecture, and PR-writer skills, plus a PR template. Preview first; choose shareable files or a locally excluded installation:
 
 ```sh
-~/.files/bin/source-code setup --repo ~/src/new-project --init --dry-run
-~/.files/bin/source-code setup --repo ~/src/new-project --init
-~/.files/bin/source-code setup --repo ~/src/existing-project --mode local
+~/.files/bin/source-code setup --repo ~/src/new-project --authority owned --adoption new --init --dry-run
+~/.files/bin/source-code setup --repo ~/src/new-project --authority owned --adoption new --init
+~/.files/bin/source-code setup --repo ~/src/existing-project --authority shared --adoption hold --mode local
 ```
 
 The `workstation` set installs `source-code`; `make source-code-config` links it explicitly. `source-code detect --json` reports basic language evidence, and setup selects matching project skills. Root Go modules retain automatic Go check setup; TypeScript checks remain opt-in. Use `--stage research|alpha|beta|production` to select engineering effort and generated CI gates; beta retains the full checks by default. Builder, testing, comments, and language guidance are project-installed skills, excluded from the default user catalog. `--mode shadow` keeps them private. The installer preserves project instructions and local edits, supports Codex and Claude Code discovery, and safely updates unchanged managed files on rerun. It does not stage or publish changes. See the [source-code setup guide](docs/repository-bootstrap.md) for subsets, template choices, conflict handling, and upgrades. `source-code validate` checks skill structure and version pins; `source-code upgrade --dry-run` previews updates while preserving project selections. The generated `AGENTS.override.md` records the stage and versions and routes to the existing shared instructions. `repo-bootstrap` remains a compatibility alias for `source-code setup`.
 
-Go modules also receive a strict correctness profile: exhaustive enums and sum types, error/resource/security checks, race tests, and vulnerability analysis. Use `source-code setup --go` before creating a new module; root `go.mod` files are detected automatically. The committed `scripts/check-go.sh` runs the same pinned checks locally and in CI. Use `source-code setup --go-retrofit --pr-template none` to merge an existing config and adopt a shrinking lint baseline. See [my Go style guide](docs/go-style.md) for defaults, examples, and rollout tradeoffs.
+Go modules also receive a strict correctness profile: exhaustive enums and sum types, error/resource/security checks, race tests, and vulnerability analysis. Use `source-code setup --authority owned --adoption new --go` before creating a new module; root `go.mod` files are detected automatically. The committed `scripts/check-go.sh` runs the same pinned checks locally and in CI. Use `source-code setup --authority owned --adoption new --go-retrofit --pr-template none` to merge an existing config and adopt a shrinking lint baseline. See [my Go style guide](docs/go-style.md) for defaults, examples, and rollout tradeoffs.
 
 ## SSH approval on the Mac
 

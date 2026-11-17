@@ -63,6 +63,29 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     shutil.copytree(SOURCE / "ai", source / "ai", symlinks=True)
     shutil.copytree(SOURCE / "docs", source / "docs", symlinks=True)
     cli = source / "bin/source-code"
+
+    def reject_incomplete_setup(target):
+        before = tree(target)
+        paths_before = set(target.rglob("*"))
+        existed = target.exists()
+        for entrypoint in ([str(cli), "setup"], [str(source / "bin/repo-bootstrap")]):
+            for preview in ([], ["--dry-run"]):
+                for flags, missing in (
+                    ([], "--authority, --adoption"),
+                    (["--authority", "owned"], "--adoption"),
+                    (["--adoption", "new"], "--authority"),
+                ):
+                    result = subprocess.run(
+                        [*entrypoint, "--repo", str(target), "--init", *preview, *flags],
+                        text=True, capture_output=True,
+                    )
+                    assert result.returncode == 2, (result.stdout, result.stderr)
+                    assert not result.stdout
+                    assert "usage:" in result.stderr
+                    assert "the following arguments are required: " + missing in result.stderr
+                    assert tree(target) == before and set(target.rglob("*")) == paths_before
+                    assert target.exists() == existed
+
     # Default setup is entirely local: clones inherit no settings or skill links.
     defaults = workspace / "default shadow setup"
     defaults.mkdir()
@@ -247,7 +270,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         git(staged_testing, "init", "--quiet")
         (staged_testing / "source-code.toml").write_text('schema_version = 1\nauthority = "owned"\nadoption = "new"\nmode = "shadow"\nskill_storage = "' + storage + '"\nskills = ' + json.dumps(maturity_skills) + '\ndetect_languages = false\npr_template = "none"\n')
         for stage in ("research", "alpha", "beta", "production", "research"):
-            command = [str(cli), "setup", "--repo", str(staged_testing), "--stage", stage]
+            command = [str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(staged_testing), "--stage", stage]
             if stage == "alpha":
                 command += ["--skills", "just"]
             run(command)
@@ -267,7 +290,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
                 original = entrypoint.read_bytes()
                 entrypoint.write_bytes(original + b"\nLocal project guidance.\n")
                 before = tree(staged_testing)
-                run([str(cli), "setup", "--repo", str(staged_testing), "--stage", "alpha", "--conflict", "skip"], expected=1)
+                run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(staged_testing), "--stage", "alpha", "--conflict", "skip"], expected=1)
                 assert tree(staged_testing) == before
                 entrypoint.write_bytes(original)
 
@@ -277,6 +300,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     invalid_context = workspace / "discovery-only"
     invalid_context.mkdir()
     (invalid_context / "source-code.toml").write_text("not valid TOML [[[\n")
+    reject_incomplete_setup(invalid_context)
     before = tree(invalid_context)
     run([str(cli), "skill"], cwd=invalid_context)
     for topic in ("inspection", "setup", "validation"):
@@ -311,11 +335,11 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     assert "library-code-comments" in explained["desired"]["skills"]
     overridden = json.loads(run([str(cli), "explain", "--skill-storage", "copied", "--repo", str(inspection), "--stage", "research", "--json"]))
     assert overridden["desired"]["stage"] == "research" and overridden["origins"]["stage"]["source"] == "cli"
-    preview = run([str(cli), "setup", "--skill-storage", "copied", "--repo", str(inspection), "--init", "--dry-run"])
+    preview = run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--skill-storage", "copied", "--repo", str(inspection), "--init", "--dry-run"])
     effective = json.loads(next(line.split(": ", 1)[1] for line in preview.splitlines() if "Effective configuration:" in line))
     assert explained["desired"] == effective
     assert tree(inspection) == before, "inspection or preview changed authored content/Git metadata"
-    run([str(cli), "setup", "--skill-storage", "copied", "--repo", str(inspection), "--init"])
+    run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--skill-storage", "copied", "--repo", str(inspection), "--init"])
     before = tree(inspection)
     installed_view = json.loads(run([str(cli), "explain", "--skill-storage", "copied", "--repo", str(inspection), "--json"]))
     assert installed_view["differences"] == []
@@ -410,11 +434,9 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     owned_install(unrelated, "--init", "--skills", "builder", "--no-go", "--no-typescript", "--no-detect-languages", "--pr-template", "none")
     assert not (unrelated / "octo-manager.toml").exists()
 
-    # Missing policy choices fail before Git initialization or installation writes.
+    # Required flags fail in argparse, including previews and the compatibility entrypoint.
     authority_project = workspace / "explicit authority"
-    for flags, missing in (([], "authority"), (["--authority", "owned"], "adoption")):
-        assert missing + " must be selected explicitly" in install(authority_project, "--init", *flags, expected=1)
-        assert not authority_project.exists()
+    reject_incomplete_setup(authority_project)
     authority_project.mkdir()
     empty_view = json.loads(run([str(cli), "explain", "--repo", str(authority_project), "--json"]))
     assert empty_view["desired"]["authority"] is None and empty_view["desired"]["adoption"] is None
@@ -431,8 +453,10 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         assert view["origins"]["authority"]["source"] == "saved"
         assert view["installed"]["adoption"] == adoption
         run([str(cli), "validate", "--repo", str(authority_project), "--strict"])
+    reject_incomplete_setup(authority_project)
     authored_authority = authority_project / "source-code.toml"
     authored_authority.write_text('schema_version = 1\nauthority = "shared"\nadoption = "hold"\n')
+    reject_incomplete_setup(authority_project)
     before = tree(authority_project)
     view = json.loads(run([str(cli), "explain", "--repo", str(authority_project), "--json"]))
     assert view["desired"]["authority"] == "shared" and view["origins"]["adoption"]["source"] == "toml"
@@ -442,12 +466,12 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     assert override["desired"]["authority"] == "owned" and override["desired"]["adoption"] == "new"
     assert override["origins"]["adoption"]["source"] == "cli"
     assert tree(authority_project) == before
-    install(authority_project)
+    install(authority_project, "--authority", "shared", "--adoption", "hold")
     assert authored_authority.read_text() == 'schema_version = 1\nauthority = "shared"\nadoption = "hold"\n'
     for key in ("authority", "adoption"):
         authored_authority.write_text(f'schema_version = 1\n{key} = "unknown"\n')
         before = tree(authority_project)
-        assert "invalid configuration " + key in install(authority_project, expected=1)
+        assert "invalid configuration " + key in owned_install(authority_project, expected=1)
         assert tree(authority_project) == before
     authored_authority.unlink()
     # A legacy policy remains inspectable and runnable until an explicit upgrade.
@@ -478,6 +502,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
                    'agents = "codex"\npr_template = "none"\ndetect_languages = false\n'
                    '[checks.go]\nenabled = false\n[checks.typescript]\nenabled = false\n')
     config.write_text(config_text)
+    reject_incomplete_setup(configured)
     assert "TOML configuration only" in run([str(cli), "validate", "--repo", str(configured)])
     config.write_text(config_text.replace('stage = "research"', 'stage = "research"\npolicy_version = "99.0.0"'))
     before = tree(configured)
@@ -485,10 +510,10 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     assert tree(configured) == before, "unsupported config-only policy validation wrote files"
     config.write_text(config_text)
     before = tree(configured)
-    preview = install(configured, "--dry-run")
+    preview = owned_install(configured, "--dry-run")
     assert "Effective configuration" in preview and '"enabled": false' in preview
     assert tree(configured) == before, "TOML preview wrote files"
-    install(configured)
+    owned_install(configured)
     assert config.read_text() == config_text
     config_policy = json.loads((configured / ".source-code.json").read_text())
     assert config_policy["stage"] == "research" and config_policy["languages"] == []
@@ -496,8 +521,8 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     assert git(configured, "check-ignore", "source-code.toml") == "source-code.toml"
     state = json.loads((configured / ".agents/repo-bootstrap.json").read_text())
     assert str(config) not in json.dumps(state) and "source-code.toml" not in state["files"]
-    assert "already current" in install(configured)
-    install(configured, "--stage", "alpha")
+    assert "already current" in owned_install(configured)
+    owned_install(configured, "--stage", "alpha")
     assert config.read_text() == config_text
     assert json.loads((configured / ".source-code.json").read_text())["stage"] == "alpha"
     assert "configuration stage differs" in run([str(cli), "validate", "--repo", str(configured), "--strict"], expected=1)
@@ -510,19 +535,19 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
                     'schema_version = 1\n[checks.go]\nunknown = true\n', 'schema_version = 1\nstage = [\n']:
         config.write_text(invalid)
         before = tree(configured)
-        install(configured, expected=1)
+        owned_install(configured, expected=1)
         run([str(cli), "validate", "--repo", str(configured)], expected=1)
         assert tree(configured) == before, "invalid configuration changed installation"
     config.write_text(config_text.replace('stage = "research"', 'stage = "research"\npolicy_version = "99.0.0"'))
     before = tree(configured)
-    install(configured, "--dry-run", expected=1)
+    owned_install(configured, "--dry-run", expected=1)
     run([str(cli), "validate", "--repo", str(configured)], expected=1)
-    overridden_pin = install(configured, "--policy-version", "1.1.0", "--dry-run")
+    overridden_pin = owned_install(configured, "--policy-version", "1.1.0", "--dry-run")
     assert '"policy_version": "1.1.0"' in overridden_pin
     assert tree(configured) == before, "CLI policy override changed authored configuration"
     config.write_text(config_text.replace('[checks.go]\nenabled = false', '[checks.go]\nenabled = true\nrollout = "strict"'))
     before = tree(configured)
-    override = install(configured, "--no-go", "--dry-run")
+    override = owned_install(configured, "--no-go", "--dry-run")
     assert not json.loads(next(line.split(": ", 1)[1] for line in override.splitlines() if "Effective configuration:" in line))["checks"]["go"]["selected"]
     assert tree(configured) == before, "CLI override preview changed authored TOML"
     run([str(cli), "validate", "--skills-dir", str(source / "ai/skills/pull-request"),
@@ -541,15 +566,15 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     private_config.write_text(config_text)
     # Explicit relative paths resolve from the invocation directory, not --repo.
     relative_config = str(private_config.relative_to(workspace))
-    run([str(cli), "setup", "--skill-storage", "copied", "--repo", str(alternate), "--config", relative_config], cwd=workspace)
+    run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--skill-storage", "copied", "--repo", str(alternate), "--config", relative_config], cwd=workspace)
     assert git(alternate, "check-ignore", private_config.name) == private_config.name
     run([str(cli), "validate", "--repo", str(alternate), "--config", relative_config, "--strict"], cwd=workspace)
     run([str(cli), "upgrade", "--repo", str(alternate), "--config", relative_config], cwd=workspace)
     private_config.write_text(config_text.replace('mode = "shadow"', 'mode = "tracked"'))
-    run([str(cli), "setup", "--skill-storage", "copied", "--repo", str(alternate), "--config", relative_config], cwd=workspace)
+    run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--skill-storage", "copied", "--repo", str(alternate), "--config", relative_config], cwd=workspace)
     assert not run(["git", "-C", str(alternate), "check-ignore", "--no-index", private_config.name], expected=1)
     before = tree(alternate)
-    run([str(cli), "setup", "--skill-storage", "copied", "--repo", str(alternate), "--config", "missing.toml"], cwd=workspace, expected=1)
+    run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--skill-storage", "copied", "--repo", str(alternate), "--config", "missing.toml"], cwd=workspace, expected=1)
     assert tree(alternate) == before
 
     # Domain guidance is opt-in, portable, and separate from workstation tools.
@@ -677,13 +702,13 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     inspected = json.loads(run([str(cli), "explain", "--repo", str(proto_project), "--json"]))
     assert inspected["desired"]["checks"]["protobuf"]["action"] == "update"
     assert tree(proto_project) == before
-    install(proto_project, "--dry-run")
+    owned_install(proto_project, "--dry-run")
     assert tree(proto_project) == before
-    install(proto_project)
+    owned_install(proto_project)
     assert json.loads((proto_project / ".source-code.json").read_text())["languages"] == ["protobuf"]
     run([str(cli), "validate", "--repo", str(proto_project), "--strict"])
     for stage, mode in (("research", "build"), ("alpha", "alpha"), ("beta", "all"), ("production", "all")):
-        install(proto_project, "--stage", stage)
+        owned_install(proto_project, "--stage", stage)
         plan = run(["python3", str(proto_project / "scripts/check-source-code.py"), "protobuf", "--dry-run"])
         assert json.dumps(["python3", "scripts/check-protobuf.py", mode]) in plan
     settings = proto_project / ".protobuf-quality.json"
@@ -720,14 +745,14 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         (folder / "buf.yaml").write_text("version: v2\n")
     install(auto_proto, "--authority", "owned", "--adoption", "new", "--no-protobuf", "--pr-template", "none")
     assert not (auto_proto / "scripts/check-protobuf.py").exists()
-    install(auto_proto)
+    owned_install(auto_proto)
     run([str(cli), "upgrade", "--repo", str(auto_proto)])
     assert not (auto_proto / "scripts/check-protobuf.py").exists(), "saved explicit opt-out was lost"
-    install(auto_proto, "--protobuf")
+    owned_install(auto_proto, "--protobuf")
     assert (auto_proto / "scripts/check-protobuf.py").is_file()
     roots = json.loads((auto_proto / ".source-code.json").read_text())["detection"]["protobuf_roots"]
     assert roots == ["api", *[f"workspace{number}" for number in range(6)]]
-    install(auto_proto, "--no-detect-languages")
+    owned_install(auto_proto, "--no-detect-languages")
     assert json.loads((auto_proto / ".source-code.json").read_text())["detection"]["protobuf_roots"] == roots
     no_detection = workspace / "disabled schema detection"
     no_detection.mkdir()
@@ -735,7 +760,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     (no_detection / "example.proto").write_text('syntax = "proto3";\n')
     install(no_detection, "--authority", "owned", "--adoption", "new", "--no-detect-languages", "--pr-template", "none")
     assert not (no_detection / "scripts/check-protobuf.py").exists()
-    install(no_detection, "--protobuf")
+    owned_install(no_detection, "--protobuf")
     assert (no_detection / "scripts/check-protobuf.py").is_file()
     late_proto = workspace / "schemas added after initial setup"
     install(late_proto, "--init", "--authority", "owned", "--adoption", "new", "--pr-template", "none")
@@ -743,7 +768,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     (late_proto / "vendor/external.proto").write_text('syntax = "proto3";\n')
     (late_proto / ".gitignore").write_text("ignored.proto\n")
     (late_proto / "ignored.proto").write_text('syntax = "proto3";\n')
-    install(late_proto)
+    owned_install(late_proto)
     assert not (late_proto / "scripts/check-protobuf.py").exists()
     (late_proto / "api").mkdir()
     (late_proto / "api/owned.proto").write_text('syntax = "proto3";\n')
@@ -810,10 +835,10 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     authored_text = "# Project instructions\n\nPreserve the public CLI contract.\n"
     authored.write_text(authored_text)
     saved_router = router.read_bytes()
-    install(project, "--stage", "research")
+    owned_install(project, "--stage", "research")
     assert authored.read_text() == authored_text and router.read_bytes() == saved_router
     assert "Lifecycle stage: **research**" in generated_guide.read_text()
-    install(project, "--stage", "beta")
+    owned_install(project, "--stage", "beta")
     assert authored.read_text() == authored_text and router.read_bytes() == saved_router
     assert "Lifecycle stage: **beta**" in generated_guide.read_text()
     run([str(cli), "validate", "--repo", str(project), "--strict"])
@@ -827,7 +852,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     before = tree(project)
     assert "already current" in owned_install(project)
     assert tree(project) == before
-    assert "already current" in run([str(source / "bin/repo-bootstrap"), "--repo", str(project)])
+    assert "already current" in run([str(source / "bin/repo-bootstrap"), "--authority", "owned", "--adoption", "new", "--repo", str(project)])
     assert tree(project) == before
     owned_install(project, "--skills", "builder,architecture,pull-request,library-code-comments")
     assert not git(project, "diff", "--cached", "--name-only"), "installer staged files"

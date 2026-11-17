@@ -2760,7 +2760,7 @@ def main() -> None:
     )
     detection_parser.add_argument("--repo", type=Path, default=Path.cwd())
     detection_parser.add_argument("--json", action="store_true")
-    add_install_arguments(parser)
+    add_install_arguments(parser, require_policy=True)
     add_install_arguments(upgrade_parser)
     upgrade_parser.add_argument(
         "--strict", action="store_true", help="reject best-practice warnings in the upgrade source"
@@ -2807,7 +2807,9 @@ def main() -> None:
         command.exit(1, f"source-code {args.command}: {error}\n{suffix}")
 
 
-def add_install_arguments(parser: argparse.ArgumentParser, inspection: bool = False) -> None:
+def add_install_arguments(
+    parser: argparse.ArgumentParser, inspection: bool = False, require_policy: bool = False
+) -> None:
     parser.add_argument("--repo", type=Path, default=Path.cwd(), help="repository path (default: current directory)")
     parser.add_argument(
         "--config",
@@ -2914,12 +2916,14 @@ def add_install_arguments(parser: argparse.ArgumentParser, inspection: bool = Fa
     parser.add_argument(
         "--authority",
         choices=AUTHORITIES,
-        help="project authority (required on setup/upgrade unless configured or saved)",
+        required=require_policy,
+        help="project authority (required on every setup; upgrade uses configured or saved selection)",
     )
     parser.add_argument(
         "--adoption",
         choices=ADOPTIONS,
-        help="tool adoption (required on setup/upgrade unless configured or saved); backfill requires a scoped migration task",
+        required=require_policy,
+        help="tool adoption (required on every setup; upgrade uses configured or saved selection); backfill requires a scoped migration task",
     )
     parser.add_argument(
         "--stage", choices=STAGES, help="lifecycle assurance level (default: previous stage, else beta/full checks)"
