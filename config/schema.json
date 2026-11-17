@@ -16,6 +16,7 @@
             "enum": [
               "ai",
               "base",
+              "beads",
               "development",
               "easypost",
               "editor",
@@ -330,6 +331,10 @@
         "octo-manager": {
           "type": "boolean",
           "description": "Opt-in Octo service with Codex session, PR tracking and receipt hooks on macOS and Linux."
+        },
+        "beads": {
+          "type": "boolean",
+          "description": "Opt-in shared Beads HTTP endpoint with a private Dolt SQL server; Octo owns dispatch."
         },
         "treehouse": {
           "type": "boolean",
