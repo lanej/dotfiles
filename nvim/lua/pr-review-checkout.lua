@@ -1,5 +1,6 @@
 -- Detached worktrees never switch or clean the user's existing checkout.
 local M = {}
+local remotes = require("pr-review-remote")
 local registry_path = vim.fn.stdpath("state") .. "/pr-review-worktrees.json"
 
 local function notify(message, level)
@@ -23,26 +24,13 @@ local function git(path, args, callback)
 	)
 end
 
-local function identity(url)
-	local repo = url:match("^git@github%.com:(.+)$")
-		or url:match("^https://github%.com/(.+)$")
-		or url:match("^ssh://git@github%.com/(.+)$")
-	return repo and repo:gsub("/$", ""):gsub("%.git$", ""):lower()
-end
-
 local function matching_remote(path, repo, callback)
 	git(path, { "remote", "-v" }, function(output, err)
 		if err then
 			callback(nil)
 			return
 		end
-		for remote, url in output:gmatch("([^\n\t ]+)%s+([^\n\t ]+)%s+%(fetch%)") do
-			if identity(url) == repo:lower() then
-				callback(remote)
-				return
-			end
-		end
-		callback(nil)
+		callback(remotes.matching(output, repo))
 	end)
 end
 

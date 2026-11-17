@@ -1,5 +1,6 @@
 -- Keep ghlite's GitHub state bound to the selected repository, including detached review worktrees.
 local M = {}
+local remotes = require("pr-review-remote")
 local selected, busy = nil, 0
 local contexts = {}
 
@@ -20,16 +21,7 @@ function M.checked_out()
 	if not selected or not selected.head then
 		return false
 	end
-	local remote = git({ "remote", "get-url", "origin" })
-	local repo = remote
-		and (
-			remote:match("^git@github%.com:(.+)$")
-			or remote:match("^https://github%.com/(.+)$")
-			or remote:match("^https://github%.com:443/(.+)$")
-			or remote:match("^ssh://git@github%.com/(.+)$")
-		)
-	repo = repo and repo:gsub("/$", ""):gsub("%.git$", ""):lower()
-	local matches = repo == selected.pr.repository.nameWithOwner:lower()
+	local matches = remotes.matching(git({ "remote", "-v" }) or "", selected.pr.repository.nameWithOwner) ~= nil
 		and git({ "rev-parse", "HEAD" }) == selected.head
 	if matches then
 		selected.root = git({ "rev-parse", "--show-toplevel" })
