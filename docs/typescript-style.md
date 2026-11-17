@@ -9,7 +9,7 @@ Prefer explicit state, visible failures, and validated boundaries over a long li
 Start with a Git repository containing a `package.json`, a `tsconfig.json`, and the dependencies needed to compile its source. Select a different config with `--typescript-project path/to/tsconfig.json`; repeat the option for independent leaf projects.
 
 ```sh
-source-code setup --repo ~/src/service --typescript --pr-template none
+source-code setup --repo ~/src/service --authority shared --adoption hold --typescript --pr-template none
 cd ~/src/service
 node scripts/check-typescript.mjs tools
 node scripts/check-typescript.mjs
@@ -72,7 +72,7 @@ Adding a variant breaks the switch and the total mapping. The runtime guard thro
 ## Retrofit without a cleanup campaign
 
 ```sh
-source-code setup --repo ~/src/service --typescript-retrofit --pr-template none
+source-code setup --repo ~/src/service --authority shared --adoption hold --typescript-retrofit --pr-template none
 cd ~/src/service
 node scripts/check-typescript.mjs tools
 node scripts/check-typescript.mjs baseline

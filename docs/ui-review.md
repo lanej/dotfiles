@@ -57,11 +57,7 @@ remain here. Project selectors, thresholds, feedback, and approved screenshots
 remain in each app's `.ui-review/` directory. The version pin is installer metadata,
 not a design preference.
 
-`ui-review` is a project-only source-code skill, selected with `source-code setup --skills ui-review`. It includes the UI acceptance profile. It uses the standalone CLI to capture reports, inspect findings, and record explicit user feedback. Project acceptance criteria, rendered interaction coverage, and visual design rules belong to the optional [source-code UI acceptance profile](../ai/skills/ui-acceptance/SKILL.md), or the application's own instructions. Tool installation does not enable project gates. `enforceOnStop` is accepted but
-ignored. Optional `ui-review pre-commit --project apps/web` and `pre-push` gates
-verify existing evidence only for changed UI inputs in the selected application.
-They do not capture, stage, stash, or install hooks. Use the CLI in application CI
-for required gates; see upstream [Git integration](https://github.com/lanej/viewrule/blob/main/docs/git-gates.md).
+`ui-review` is a project-only source-code skill, selected with `source-code setup --authority AUTHORITY --adoption ADOPTION --skills ui-review`. It includes the UI acceptance profile. It uses the standalone CLI to capture reports, inspect findings, and record explicit user feedback. Project acceptance criteria, rendered interaction coverage, and visual design rules belong to the optional [source-code UI acceptance profile](../ai/skills/ui-acceptance/SKILL.md), or the application's own instructions. Tool installation does not enable project gates. `enforceOnStop` is accepted but ignored. Optional `ui-review pre-commit --project apps/web` and `pre-push` gates verify existing evidence only for changed UI inputs in the selected application. They do not capture, stage, stash, or install hooks. Use the CLI in application CI for required gates; see upstream [Git integration](https://github.com/lanej/viewrule/blob/main/docs/git-gates.md).
 
 ## Update, rollback, and remove
 
