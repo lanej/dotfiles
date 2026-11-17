@@ -52,6 +52,19 @@ Generation refuses detected conflicts before writing. It does not reload applica
 
 The CLI exits 0 for a successful inventory or clean check, 1 for check conflicts/drift, and 2 for invalid input or I/O errors. `generate --check` exits 1 on drift without writing; generation conflicts exit 2. JSON reports contain `coverage`, `bindings`, `conflicts`, and `drift`. `--root` before the subcommand inspects a different checkout.
 
+## Close Kitty windows and tabs
+
+| Shortcut | Action |
+|---|---|
+| Cmd+Q | Close the active Kitty window with confirmation. |
+| Cmd+Shift+D | Close the active Kitty window with confirmation. |
+| Ctrl+Shift+W | Close the active Kitty window with confirmation. |
+| Cmd+W | Close the active tab with confirmation; Enter defaults to No. |
+
+A Kitty window is a terminal pane within a tab. Cmd+Q is mapped to close that window rather than quit the entire application. Closing the last window also quits Kitty on macOS.
+
+`confirm_os_window_close 0` disables the global close guard, allowing OS-window closes and application quit requests during system restarts to proceed without a Kitty prompt. Cmd+W uses `close_tab_with_confirmation.py` to always ask before closing the tab, including at an idle shell prompt. Press **Y** to close or **N**, **Escape**, or **Enter** to keep the tab. The other three shortcuts use `close_window_with_confirmation` and also ask before closing. Reload configuration with **Cmd+Shift+R** after changing this setting.
+
 ## Preview an image from a Zellij pane
 
 Focus the pane containing the filename and press **Cmd+Shift+U**. Pick the label beside the image to open it in a split on the right. From a floating pane, the preview opens in another floating pane. Press **Enter** to close the preview. The same picker opens ordinary hyperlinks with Kitty.

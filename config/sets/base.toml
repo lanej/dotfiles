@@ -1,4 +1,7 @@
 # Shared property defaults and Git, followed automatically by the native OS set.
+[features]
+nvim_ghlite = false
+
 [codex]
 github_enabled = false
 easypost = false

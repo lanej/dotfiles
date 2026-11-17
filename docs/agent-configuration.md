@@ -19,8 +19,8 @@ The `.claude/settings.json` source is tracked. The `claude-settings` Git clean f
 From this checkout, preview and refresh the installed profile with:
 
 ```sh
-bin/source-code setup --repo . --conflict skip --dry-run
-bin/source-code setup --repo . --conflict skip
+bin/source-code setup --repo . --authority owned --adoption new --conflict skip --dry-run
+bin/source-code setup --repo . --authority owned --adoption new --conflict skip
 bin/source-code validate --repo . --strict
 ```
 

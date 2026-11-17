@@ -36,6 +36,17 @@
         ]
       }
     },
+    "features": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "nvim_ghlite": {
+          "type": "boolean",
+          "description": "Use ghlite for inline Neovim PR reviews instead of the default Octo review UI.",
+          "default": false
+        }
+      }
+    },
     "codex": {
       "type": "object",
       "additionalProperties": false,

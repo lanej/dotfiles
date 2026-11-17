@@ -7,7 +7,7 @@ Builder is the shared software skill for Claude, Codex and other assistants. Its
 Builder is project-scoped, alongside testing, comment, and language guidance. Install the versioned package with:
 
 ```sh
-source-code setup --repo ~/src/project --stage alpha --go --mode shadow --pr-template none
+source-code setup --repo ~/src/project --authority owned --adoption new --stage alpha --go --mode shadow --pr-template none
 ```
 
 Use tracked mode to share policy with a team. Shadow mode keeps installed files out of normal Git status. The project records its schema version, policy version, lifecycle stage, and installed languages in `.source-code.json`. Start a fresh session or reload the client's skill catalog after installation. See [source-code setup](repository-bootstrap.md) for stage transitions, packaging, conflict handling, and upgrades.

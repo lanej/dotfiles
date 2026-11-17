@@ -58,7 +58,7 @@ These are architectural defaults, with justified alternatives allowed. Simple ha
 Install Builder into a project with its lifecycle, testing, and comment skills:
 
 ```sh
-source-code setup --repo ~/src/project --stage alpha --mode shadow --pr-template none
+source-code setup --repo ~/src/project --authority owned --adoption new --stage alpha --mode shadow --pr-template none
 ```
 
 Add `--go` or `--typescript` for a language profile. Builder is absent from the default user-level skill catalog. Use tracked mode when the team should share the policy. The [source-code setup guide](./repository-bootstrap.md) describes stages and upgrades; [Using Builder](./pragmatic-hexagonal-usage.md) explains loading and preservation of existing explicit references.
