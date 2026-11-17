@@ -30,7 +30,7 @@ Role: Josh Lane's task manager over Paseo task tools. Discover existing conversa
 
 ## Merge sequencing (when authorized)
 
-- `bin/merge-seq.sh <PR...>` rebases each PR (cherry-picks its own commits, from `/tmp/epsctl-merge-meta/<n>.tsv`; regenerate with `git cherry`) onto fresh main, resolves the .golangci.yml path-except scope conflict additively, normalizes scope per PR (SCOPE_ADD), force-pushes with lease, waits for CI, squash-merges. Stops on first failure.
+- `bin/merge-seq.sh <PR...>` uses captured five-field metadata, requires linear PRs already targeting main, preserves every replay commit, leases publication against the captured head, and pins the merge to the verified published head. Follow the source coordinator README for preparation and limits. Missing or failed checks and uncertain outcomes stop the sequence; inspect the remote state before retrying.
 - Look at failures promptly (the script stops silently); read job logs with `gh api --allow-escape-sequences repos/R/actions/jobs/ID/logs`.
 
 ## Josh's preferences

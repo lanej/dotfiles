@@ -18,7 +18,7 @@ for name in README.md INSTRUCTIONS.md LESSONS.md STATE.md; do
 done
 
 # Scripts are code, not state: always refresh them from the dotfiles checkout.
-for script in commit-state merge-seq.sh resolve-golangci.py normalize-golangci.py; do
+for script in commit-state merge-seq.sh merge-seq.py resolve-golangci.py normalize-golangci.py; do
     cp "$here/bin/$script" "$dest/bin/$script"
 done
 chmod +x "$dest/bin/commit-state" "$dest/bin/merge-seq.sh"
@@ -27,5 +27,5 @@ if [ ! -d "$dest/.git" ]; then
     git -C "$dest" init -q -b main
 fi
 
-"$dest/bin/commit-state" "refresh coordinator scripts and seed missing state" || true
+"$dest/bin/commit-state" "refresh coordinator scripts and seed missing state"
 echo "coordinator state ready: $dest"
