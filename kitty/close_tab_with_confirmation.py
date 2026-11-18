@@ -1,52 +1,31 @@
-#!/usr/bin/env python3
-"""Kitten to close tab with confirmation if tmux or SSH is running."""
+"""Confirm an explicit tab close without guarding system quit requests."""
 
-from typing import List
-from kitty.boss import Boss
+from kittens.tui.handler import result_handler
 
 
-def main(args: List[str]) -> str:
-    """Close tab with confirmation if tmux or SSH is running."""
-    return ""
+def main(args: list[str]) -> None:
+    pass
 
 
-def handle_result(
-    args: List[str], answer: str, target_window_id: int, boss: Boss
-) -> None:
-    """Handle the result and close the tab if appropriate."""
-    tab = boss.active_tab
-    if not tab:
+@result_handler(no_ui=True)
+def handle_result(args, answer, target_window_id, boss):
+    window = boss.window_id_map.get(target_window_id)
+    tab = window.tabref() if window is not None else None
+    if tab is None:
         return
 
-    # Get the foreground processes in the tab
-    processes = []
-    for window in tab:
-        if window.child and window.child.foreground_processes:
-            processes.extend(
-                [p["cmdline"][0] for p in window.child.foreground_processes]
-            )
+    # Repeated shortcuts focus the existing prompt instead of stacking dialogs.
+    prompt = boss.window_id_map.get(tab.confirm_close_window_id)
+    if prompt is not None and prompt in tab:
+        tab.set_active_window(prompt)
+        return
 
-    # Check for tmux and SSH
-    has_tmux = any("tmux" in str(p).lower() for p in processes)
-    has_ssh = any("ssh" in str(p).lower() for p in processes)
-
-    # Build confirmation message
-    active_processes = []
-    if has_tmux:
-        active_processes.append("tmux")
-    if has_ssh:
-        active_processes.append("SSH")
-
-    if active_processes:
-        # Ask for confirmation
-        process_list = " and ".join(active_processes)
-        boss.confirm(
-            f"{process_list} session active. Close tab?",
-            lambda confirmed: boss.close_tab() if confirmed else None,
-        )
-    else:
-        # Close without confirmation
-        boss.close_tab()
-
-
-handle_result.no_ui = False
+    prompt = boss.confirm(
+        "Close this tab and all its terminal windows?",
+        boss.handle_close_tab_confirmation,
+        tab.id,
+        window=window,
+        confirm_on_accept=False,
+        title="Close tab?",
+    )
+    tab.confirm_close_window_id = prompt.id
