@@ -20,4 +20,4 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - run: make test-beads-service
+      - run: python3 scripts/test-beads-service.py
