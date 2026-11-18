@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import plistlib
 import hashlib
+import fcntl
 import socket
 import subprocess
 import sys
@@ -23,7 +24,7 @@ spec = importlib.util.spec_from_file_location("beads_service", SCRIPT)
 service = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(service)
 
-NATIVE = r'''import http.server, json, os, socket, sys
+NATIVE = r'''import http.server, json, os, socket, sys, time
 from pathlib import Path
 root = Path(__file__).parent
 with (root / "processes").open("a") as output:
@@ -52,6 +53,7 @@ elif args[0] == "init":
         "dolt_mode":"server", "dolt_database":args[args.index("--database")+1], "dolt_server_host":"127.0.0.1",
         "dolt_server_port":int(args[args.index("--server-port")+1])}))
 elif args[0] == "sql":
+    if (root / "hang-branch").exists(): time.sleep(60)
     print(json.dumps([{"branch":"wrong" if (root / "wrong-branch").exists() else "main"}]
                      if "ACTIVE_BRANCH" in args[1] else [{"hash":"checkpoint-head"}]))
 elif args[:3] == ["dolt","remote","list"]:
@@ -186,6 +188,22 @@ class SharedService(unittest.TestCase):
         self.assertFalse((self.state / "endpoint.json").exists())
         self.assert_children_stopped()
 
+    def test_hung_startup_probe_cannot_outlive_the_shutdown_deadline(self):
+        (self.share / "hang-branch").touch()
+        owner = self.start()
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            operations = self.share / "operations"
+            if operations.exists() and any("SELECT ACTIVE_BRANCH() AS branch" in json.loads(line)
+                                          for line in operations.read_text().splitlines()):
+                break
+            time.sleep(0.05)
+        else:
+            self.fail("Startup did not reach the controlled branch probe")
+        owner.terminate()
+        self.assertNotEqual(owner.wait(timeout=20), 0)
+        self.assert_children_stopped()
+
     def test_existing_workspace_is_not_migrated(self):
         beads = self.state / "workspace/.beads"
         beads.mkdir(parents=True)
@@ -245,6 +263,17 @@ class SharedService(unittest.TestCase):
                                    env=self.environment, capture_output=True, text=True)
         self.assertEqual(installed.returncode, 0, installed.stderr)
         self.assertEqual(json.loads(installed.stdout)["workspace"]["database"], "octo")
+        with (self.share / "install.lock").open("a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            blocked = self.cli("install", "--no-start")
+            self.assertNotEqual(blocked.returncode, 0)
+            inherited = subprocess.run(
+                [sys.executable, str(SCRIPT), "install", "--no-start", "--home", str(self.home),
+                 "--install-lock-fd", str(lock.fileno())], pass_fds=(lock.fileno(),),
+                env=self.environment, capture_output=True, text=True, timeout=10)
+            self.assertEqual(inherited.returncode, 0, inherited.stderr)
+            after_child_exit = self.cli("install", "--no-start")
+            self.assertNotEqual(after_child_exit.returncode, 0)
 
     def test_config_inspection_is_read_only_and_rejects_unsupported_behavior(self):
         before = sorted(str(path.relative_to(self.home)) for path in self.home.rglob("*"))
@@ -294,10 +323,12 @@ class SharedService(unittest.TestCase):
         git.write_text(f"#!{sys.executable}\nprint('" + 'a' * 40 + "\\trefs/dolt/data')\n")
         git.chmod(0o700)
         gh = self.share / "gh"
-        gh.write_text(f"#!{sys.executable}\nfrom pathlib import Path\nimport json\n"
+        gh.write_text(f"#!{sys.executable}\nfrom pathlib import Path\nimport json, sys\n"
+                      "assert sys.argv[1:4] == ['repo', 'view', 'https://github.com/lanej/beads-tasks'], 'Wrong GitHub host for visibility check'\n"
                       "print(json.dumps({'visibility':'PUBLIC' if Path(__file__).with_name('public').exists() else 'PRIVATE'}))\n")
         gh.chmod(0o700)
         self.environment["PATH"] = str(self.share) + os.pathsep + os.environ["PATH"]
+        self.environment["GH_HOST"] = "enterprise.example.invalid"
         result = self.cli("backup")
         self.assertEqual(result.returncode, 0, result.stderr)
         succeeded = json.loads(result.stdout)

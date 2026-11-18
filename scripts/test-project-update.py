@@ -242,11 +242,20 @@ class LifecycleTests(unittest.TestCase):
         profile.parent.mkdir(parents=True)
         profile.write_text('profile="trial"\n')
         controller = scripts / "beads-service.py"
-        controller.write_text('''import json, shutil, sys
+        controller.write_text('''import fcntl, json, shutil, sys
 from pathlib import Path
 home=Path.home()
 share=home/'.local/share/beads-service'
 action=sys.argv[1]
+if action in ('install','restart'):
+    assert '--install-lock-fd' in sys.argv
+    with (share/'install.lock').open('a') as contender:
+        try:
+            fcntl.flock(contender,fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            pass
+        else:
+            raise AssertionError('The parent deployment lock must remain held')
 if action=='install':
     assert '--no-start' in sys.argv
     share.mkdir(parents=True,exist_ok=True)

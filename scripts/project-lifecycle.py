@@ -2,6 +2,7 @@
 """Project-owned adapters for the workstation lifecycle convention."""
 
 import hashlib
+import fcntl
 import json
 import os
 from pathlib import Path
@@ -15,9 +16,9 @@ import tomllib
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def run(args, capture=False):
+def run(args, capture=False, **kwargs):
     result = subprocess.run(args, check=True, text=True,
-                            stdout=subprocess.PIPE if capture else None)
+                            stdout=subprocess.PIPE if capture else None, **kwargs)
     return result.stdout.strip() if capture else ""
 
 
@@ -90,6 +91,21 @@ def beads_artifacts(home):
 
 
 def beads(action):
+    if action == "status":
+        return beads_locked(action)
+    if action not in ("build", "restart"):
+        raise ValueError("Beads supports build, restart and status; clean is not configured")
+    share = Path.home() / ".local/share/beads-service"
+    share.mkdir(parents=True, mode=0o700, exist_ok=True)
+    with (share / "install.lock").open("a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as error:
+            raise ValueError("Another Beads installation or service operation is in progress") from error
+        return beads_locked(action, lock.fileno())
+
+
+def beads_locked(action, lock_fd=None):
     """Stage curated artifacts and activate only the matching staged source."""
     home = Path.home()
     share = home / ".local/share/beads-service"
@@ -122,7 +138,8 @@ def beads(action):
     source = beads_source()
     if action == "build":
         controller = ROOT / "scripts/beads-service.py"
-        run([sys.executable, str(controller), "install", "--home", str(home), "--no-start"])
+        run([sys.executable, str(controller), "install", "--home", str(home), "--no-start",
+             "--install-lock-fd", str(lock_fd)], pass_fds=(lock_fd,))
         if beads_source() != source:
             raise ValueError("Beads source changed during staging; inspect the installation before retrying")
         for name in ("beads-service.py", "beads_config.py"):
@@ -144,7 +161,7 @@ def beads(action):
         return 0
     if not verified or record["source"]["fingerprint"] != source["fingerprint"]:
         raise ValueError("Build this Beads source before restarting; staged artifacts must remain unchanged")
-    run([sys.executable, str(installed), "restart"])
+    run([sys.executable, str(installed), "restart", "--install-lock-fd", str(lock_fd)], pass_fds=(lock_fd,))
     if beads_artifacts(home) != record["artifacts"]:
         raise ValueError("Beads installation changed during restart; running revision is unknown")
     return 0

@@ -2,6 +2,7 @@
 """Manage one loopback Beads HTTP endpoint and its private Dolt SQL server."""
 
 import argparse
+from contextlib import contextmanager
 import fcntl
 import hashlib
 import json
@@ -27,6 +28,27 @@ from beads_config import load, location, seed, write_record
 
 ROOT = Path(__file__).resolve().parents[1]
 LABEL = "com.lanej.beads"
+
+
+@contextmanager
+def installation_lock(home, inherited=None):
+    share, _, _ = paths(home)
+    share.mkdir(parents=True, mode=0o700, exist_ok=True)
+    path = share / "install.lock"
+    if inherited is not None:
+        descriptor, target = os.fstat(inherited), path.stat()
+        if (descriptor.st_dev, descriptor.st_ino) != (target.st_dev, target.st_ino):
+            raise ValueError("Inherited deployment lock does not identify this installation")
+        # The parent retains this same open file description through receipt capture or activation.
+        fcntl.flock(inherited, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        yield
+        return
+    with path.open("a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as error:
+            raise ValueError("Another Beads installation or service operation is in progress") from error
+        yield
 
 
 def run(argv, **kwargs):
@@ -295,7 +317,7 @@ def supervise(home, share, state, config):
         if stopped:
             return
         observed = json.loads(run([*bd, "--sandbox", "--readonly", "sql", "SELECT ACTIVE_BRANCH() AS branch", "--json"],
-                                  cwd=workspace, env=env))
+                                  cwd=workspace, env=env, timeout=15))
         if observed != [{"branch": config["branch"]}]:
             raise ValueError("Beads is on a different Dolt branch than the trial profile")
         children.append(subprocess.Popen([*bd, "serve", "--addr", f"127.0.0.1:{config['http_port']}"],
@@ -373,7 +395,8 @@ def checkpoint(home):
             if len(matches) != 1 or matches[0]["url"] != target["url"]:
                 raise ValueError("Configured history remote differs from Beads; reconcile it explicitly before pushing")
             repository = target["url"].removeprefix("git+https://github.com/").removesuffix(".git")
-            privacy = json.loads(run(["gh", "repo", "view", repository, "--json", "visibility"], env=env, timeout=30))
+            privacy = json.loads(run(["gh", "repo", "view", f"https://github.com/{repository}", "--json", "visibility"],
+                                     env=env, timeout=30))
             if privacy.get("visibility") != "PRIVATE":
                 raise ValueError("The trial history repository must be private")
             native("dolt", "commit", "--message", "Checkpoint shared Beads trial history")
@@ -401,19 +424,19 @@ def main():
     parser.add_argument("action", choices=("install", "start", "restart", "stop", "status", "run", "config", "backup"))
     parser.add_argument("--home", type=Path, default=Path.home())
     parser.add_argument("--no-start", action="store_true", help="stage installation without starting or restarting the service")
+    parser.add_argument("--install-lock-fd", type=int, help=argparse.SUPPRESS)
     args = parser.parse_args()
     if args.no_start and args.action != "install":
         parser.error("--no-start applies only to install")
+    if args.install_lock_fd is not None and args.action not in ("install", "start", "restart", "stop"):
+        parser.error("--install-lock-fd applies only to installation and service controls")
     home = args.home.expanduser().resolve()
-    if args.action == "install":
-        share, _, _ = paths(home)
-        share.mkdir(parents=True, mode=0o700, exist_ok=True)
-        with (share / "install.lock").open("a") as lock:
-            try:
-                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError as error:
-                raise ValueError("Another Beads installation is in progress") from error
-            install(home, start=not args.no_start)
+    if args.action in ("install", "start", "restart", "stop"):
+        with installation_lock(home, args.install_lock_fd):
+            if args.action == "install":
+                install(home, start=not args.no_start)
+            else:
+                manage(home, args.action)
     elif args.action == "run":
         serve(home)
     elif args.action == "status":
