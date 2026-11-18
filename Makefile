@@ -626,8 +626,8 @@ octo-manager-install octo-manager-reinstall octo-manager-pull-latest octo-manage
 
 octo-manager-pull: octo-manager-pull-latest
 
-.PHONY: beads-install beads-start beads-restart beads-stop beads-status test-beads-service
-beads-install beads-start beads-restart beads-stop beads-status:
+.PHONY: beads-install beads-start beads-restart beads-stop beads-status beads-config beads-backup test-beads-service
+beads-install beads-start beads-restart beads-stop beads-status beads-config beads-backup:
 	@python3 "$(DOTFILES)/scripts/beads-service.py" "$(patsubst beads-%,%,$@)" --home "$(HOME)"
 
 test-beads-service:

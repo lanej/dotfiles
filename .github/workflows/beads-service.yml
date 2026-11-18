@@ -2,10 +2,10 @@ name: Beads service
 on:
   workflow_dispatch:
   pull_request:
-    paths: ['scripts/beads-service.py', 'scripts/test-beads-service.py', 'bootstrap/tools.toml', '.github/workflows/beads-service.yml']
+    paths: ['scripts/beads-service.py', 'scripts/beads_config.py', 'scripts/test-beads-service.py', 'config/beads/**', 'bootstrap/tools.toml', '.github/workflows/beads-service.yml']
   push:
     branches: [master]
-    paths: ['scripts/beads-service.py', 'scripts/test-beads-service.py', 'bootstrap/tools.toml', '.github/workflows/beads-service.yml']
+    paths: ['scripts/beads-service.py', 'scripts/beads_config.py', 'scripts/test-beads-service.py', 'config/beads/**', 'bootstrap/tools.toml', '.github/workflows/beads-service.yml']
 permissions:
   contents: read
 jobs:

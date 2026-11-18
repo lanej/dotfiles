@@ -285,7 +285,7 @@ revision = "6ede2fb6c61b763c9f83158cd21ea33ef60260a9"
 [tools.beads]
 description = "Opt-in shared Beads HTTP endpoint with a private Dolt SQL server; Octo owns dispatch."
 installer = "beads"
-requires = ["git"]
+requires = ["git", "gh"]
 version = "1.3.4"
 dolt_version = "2.7.4"
 

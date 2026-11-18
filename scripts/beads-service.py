@@ -9,6 +9,8 @@ import os
 from pathlib import Path
 import platform
 import plistlib
+import re
+import shlex
 import shutil
 import signal
 import socket
@@ -21,6 +23,8 @@ import tomllib
 import urllib.error
 import urllib.request
 
+from beads_config import load, location, seed, write_record
+
 ROOT = Path(__file__).resolve().parents[1]
 LABEL = "com.lanej.beads"
 
@@ -32,20 +36,13 @@ def run(argv, **kwargs):
 
 def paths(home):
     return (home / ".local/share/beads-service", home / ".local/state/beads-service",
-            Path(os.environ.get("XDG_CONFIG_HOME", home / ".config")) / "beads-service/config.json")
+            location(home))
 
 
 def settings(home):
-    share, state, config = paths(home)
-    value = json.loads(config.read_text())
-    if set(value) != {"http_port", "sql_port"}:
-        raise ValueError(f"Expected only http_port and sql_port in {config}")
-    for port in value.values():
-        if type(port) is not int or not 1024 <= port <= 65535:
-            raise ValueError("Ports must be integers between 1024 and 65535")
-    if value["http_port"] == value["sql_port"]:
-        raise ValueError("Beads HTTP and Dolt SQL need different ports")
-    return share, state, value
+    share, state, _ = paths(home)
+    value = load(home)
+    return share, state, {**value["service"], **value["workspace"], "history": value["history"]}
 
 
 def fetch_json(url):
@@ -67,13 +64,16 @@ def probe(home):
         if not isinstance(context, dict):
             raise ValueError("Expected a Beads context object")
         fetch_json(url + "/v0/beads/ready?limit=1")
-        ready = (context.get("database") == "octo" and context.get("dolt_mode") == "server"
+        ready = (context.get("database") == config["database"] and context.get("dolt_mode") == "server"
                  and context.get("beads_dir") == str(state / "workspace/.beads"))
     except (OSError, ValueError, urllib.error.HTTPError):
         pass
+    history_path = state / "history.json"
+    history = json.loads(history_path.read_text()) if history_path.exists() else {"state": "never_run"}
     return {"url": url, "live": live, "ready": ready,
             "database": context.get("database") if isinstance(context, dict) else None,
-            "workspace": context.get("repo_root") if isinstance(context, dict) else None}
+            "workspace": context.get("repo_root") if isinstance(context, dict) else None,
+            "history": {"mode": config["history"]["mode"], **history}}
 
 
 def install(home):
@@ -85,10 +85,7 @@ def install(home):
     catalog = tomllib.loads((ROOT / "bootstrap/tools.toml").read_text())["tools"]["beads"]
     for directory in (share, state, config_path.parent):
         directory.mkdir(parents=True, mode=0o700, exist_ok=True)
-    if not config_path.exists():
-        with config_path.open("x") as output:
-            json.dump({"http_port": 8790, "sql_port": 3310}, output, indent=2)
-            output.write("\n")
+    seed(home, ROOT / "config/beads/trial.toml")
     settings(home)
     binaries = {}
     for name, repo, version, asset in (
@@ -127,12 +124,13 @@ def install(home):
         binaries[name] = str(binary)
     (share / "runtime.json").write_text(json.dumps(binaries) + "\n")
     controller = share / "beads-service.py"
+    shutil.copyfile(Path(__file__).with_name("beads_config.py"), share / "beads_config.py")
     shutil.copyfile(Path(__file__), controller)
     controller.chmod(0o700)
     launcher = home / ".local/bin/beads-service"
     launcher.parent.mkdir(parents=True, exist_ok=True)
     # The installed copy keeps the service independent of its source worktree.
-    launcher.write_text(f"#!{sys.executable}\nimport runpy\nrunpy.run_path({str(controller)!r}, run_name='__main__')\n")
+    launcher.write_text(f"#!{sys.executable}\nimport os, sys\nos.execv(sys.executable, [sys.executable, {str(controller)!r}, *sys.argv[1:]])\n")
     launcher.chmod(0o755)
     definition(home)
     manage(home, "start")
@@ -230,7 +228,7 @@ def supervise(home, share, state, config):
         directory.mkdir(mode=0o700, exist_ok=True)
     if not (workspace / ".git").exists():
         run(["git", "-c", "core.hooksPath=/dev/null", "init", "--quiet", workspace])
-    for port in config.values():
+    for port in (config["http_port"], config["sql_port"]):
         with socket.socket() as listener:
             # Closed connections in TIME_WAIT must not masquerade as a live listener after restart.
             listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -272,7 +270,7 @@ def supervise(home, share, state, config):
                 raise ValueError("Incomplete Beads workspace; inspect it before retrying initialization")
             initializer = subprocess.Popen(
                 [binaries["bd"], "init", "--server", "--external", "--server-host", "127.0.0.1",
-                 "--server-port", str(config["sql_port"]), "--database", "octo", "--prefix", "octo",
+                 "--server-port", str(config["sql_port"]), "--database", config["database"], "--prefix", config["prefix"],
                  "--skip-agents", "--skip-hooks", "--non-interactive"], env=env, cwd=workspace)
             children.append(initializer)
             deadline = time.monotonic() + 45
@@ -287,12 +285,16 @@ def supervise(home, share, state, config):
             children.remove(initializer)
         # Fail rather than silently selecting embedded mode or another database.
         configured = json.loads(metadata.read_text())
-        if (configured.get("dolt_mode") != "server" or configured.get("dolt_database") != "octo"
+        if (configured.get("dolt_mode") != "server" or configured.get("dolt_database") != config["database"]
                 or configured.get("dolt_server_host") != "127.0.0.1"
                 or configured.get("dolt_server_port") != config["sql_port"]):
             raise ValueError(f"Workspace configuration differs from the managed database: {metadata}")
         if stopped:
             return
+        observed = json.loads(run([*bd, "--sandbox", "--readonly", "sql", "SELECT ACTIVE_BRANCH() AS branch", "--json"],
+                                  cwd=workspace, env=env))
+        if observed != [{"branch": config["branch"]}]:
+            raise ValueError("Beads is on a different Dolt branch than the trial profile")
         children.append(subprocess.Popen([*bd, "serve", "--addr", f"127.0.0.1:{config['http_port']}"],
                                          cwd=workspace, env=env))
         deadline = time.monotonic() + 45
@@ -322,9 +324,78 @@ def supervise(home, share, state, config):
             signal.signal(sig, handler)
 
 
+def checkpoint(home):
+    share, state, config = settings(home)
+    workspace = state / "workspace"
+    if not probe(home)["ready"]:
+        raise ValueError("The configured Beads workspace is not database-ready")
+    with (state / "history.lock").open("a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as error:
+            raise ValueError("Another history push is already in progress") from error
+        history_path = state / "history.json"
+        previous = json.loads(history_path.read_text()) if history_path.exists() else {}
+        record = {"state": "running", "attemptedAt": int(time.time() * 1000),
+                  "lastSuccess": previous.get("lastSuccess"), "pushAttempted": False}
+        write_record(history_path, record)
+        try:
+            binaries = json.loads((share / "runtime.json").read_text())
+            metadata = json.loads((workspace / ".beads/metadata.json").read_text())
+            if (metadata.get("dolt_mode") != "server" or metadata.get("dolt_database") != config["database"]
+                    or metadata.get("dolt_server_host") != "127.0.0.1"
+                    or metadata.get("dolt_server_port") != config["sql_port"]):
+                raise ValueError("Workspace metadata differs from the configured trial database")
+            env = {key: value for key, value in os.environ.items()
+                   if not key.startswith(("BEADS_", "BD_", "DOLT_"))}
+            env.update(BEADS_DIR=str(workspace / ".beads"), BEADS_DOLT_SERVER_MODE="1",
+                       BEADS_DOLT_SERVER_HOST="127.0.0.1", BEADS_DOLT_SERVER_PORT=str(config["sql_port"]),
+                       DOLT_ROOT_PATH=str(state / "dolt-home"), GIT_TERMINAL_PROMPT="0",
+                       PATH=f"{Path(binaries['dolt']).parent}:{os.environ.get('PATH', '')}")
+            gh = shutil.which("gh")
+            if gh is None:
+                raise ValueError("History pushes require the authenticated GitHub CLI")
+            # Use the existing GitHub login for these child processes, without rewriting Git configuration.
+            env.update(GIT_CONFIG_COUNT="2", GIT_CONFIG_KEY_0="credential.helper", GIT_CONFIG_VALUE_0="",
+                       GIT_CONFIG_KEY_1="credential.helper", GIT_CONFIG_VALUE_1=f"!{shlex.quote(gh)} auth git-credential")
+            bd = [binaries["bd"], "--sandbox"]
+            def native(*args):
+                return run([*bd, *args], cwd=workspace, env=env, timeout=180)
+            branch = json.loads(native("--readonly", "sql", "SELECT ACTIVE_BRANCH() AS branch", "--json"))
+            if branch != [{"branch": config["branch"]}]:
+                raise ValueError("Refusing history push from a different Dolt branch")
+            target = config["history"]
+            remotes = json.loads(native("dolt", "remote", "list", "--json"))
+            matches = [item for item in remotes if item["name"] == target["remote"]]
+            if len(matches) != 1 or matches[0]["url"] != target["url"]:
+                raise ValueError("Configured history remote differs from Beads; reconcile it explicitly before pushing")
+            repository = target["url"].removeprefix("git+https://github.com/").removesuffix(".git")
+            privacy = json.loads(run(["gh", "repo", "view", repository, "--json", "visibility"], env=env, timeout=30))
+            if privacy.get("visibility") != "PRIVATE":
+                raise ValueError("The trial history repository must be private")
+            native("dolt", "commit", "--message", "Checkpoint shared Beads trial history")
+            head = json.loads(native("--readonly", "sql", "SELECT DOLT_HASHOF('HEAD') AS hash", "--json"))
+            record.update(state="pushing", pushAttempted=True)
+            write_record(history_path, record)
+            native("dolt", "push", "--remote", target["remote"], "--no-adopt")
+            ref = run(["git", "ls-remote", "--exit-code", target["url"].removeprefix("git+"), "refs/dolt/data"],
+                      env=env, timeout=60).split()
+            if len(ref) != 2 or ref[1] != "refs/dolt/data" or not re.fullmatch(r"[a-f0-9]{40,64}", ref[0]):
+                raise ValueError("Push returned but the Git data ref could not be confirmed")
+            success = {"at": int(time.time() * 1000), "sourceHeadAtPush": head,
+                       "gitDataRef": ref[0], "remote": target["url"]}
+            record.update(state="succeeded", lastSuccess=success)
+            write_record(history_path, record)
+            print(json.dumps(record))
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
+            record.update(state="unconfirmed" if record["pushAttempted"] else "failed", error=str(error))
+            write_record(history_path, record)
+            raise
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("install", "start", "restart", "stop", "status", "run"))
+    parser.add_argument("action", choices=("install", "start", "restart", "stop", "status", "run", "config", "backup"))
     parser.add_argument("--home", type=Path, default=Path.home())
     args = parser.parse_args()
     home = args.home.expanduser().resolve()
@@ -343,6 +414,10 @@ def main():
         status = probe(home)
         print(json.dumps(status))
         return 0 if status["ready"] else 1
+    elif args.action == "config":
+        print(json.dumps({"path": str(location(home)), **load(home)}))
+    elif args.action == "backup":
+        checkpoint(home)
     else:
         manage(home, args.action)
     return 0
@@ -351,5 +426,5 @@ def main():
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except (OSError, ValueError, subprocess.CalledProcessError) as error:
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
         sys.exit(f"beads-service: {error}")

@@ -15,6 +15,7 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
 SCRIPT = ROOT / "scripts/beads-service.py"
 spec = importlib.util.spec_from_file_location("beads_service", SCRIPT)
 service = importlib.util.module_from_spec(spec)
@@ -26,6 +27,13 @@ root = Path(__file__).parent
 with (root / "processes").open("a") as output:
     output.write(str(os.getpid()) + "\n")
 args = sys.argv[1:]
+with (root / "operations").open("a") as output:
+    output.write(json.dumps(args) + "\n")
+if Path(__file__).name == "bd":
+    args = [arg for arg in args if arg not in ("--sandbox", "--readonly", "--json")]
+    if args[0] == "-C":
+        assert Path.cwd() == Path(args[1])
+        args = args[2:]
 if Path(__file__).name == "dolt":
     listener = socket.socket()
     listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -39,11 +47,20 @@ elif args[0] == "init":
     beads = Path.cwd() / ".beads"
     beads.mkdir()
     (beads / "metadata.json").write_text(json.dumps({
-        "dolt_mode":"server", "dolt_database":"octo", "dolt_server_host":"127.0.0.1",
+        "dolt_mode":"server", "dolt_database":args[args.index("--database")+1], "dolt_server_host":"127.0.0.1",
         "dolt_server_port":int(args[args.index("--server-port")+1])}))
+elif args[0] == "sql":
+    print(json.dumps([{"branch":"wrong" if (root / "wrong-branch").exists() else "main"}]
+                     if "ACTIVE_BRANCH" in args[1] else [{"hash":"checkpoint-head"}]))
+elif args[:3] == ["dolt","remote","list"]:
+    print(json.dumps([{"name":"origin","url":"git+https://github.com/lanej/beads-tasks.git"}]))
+elif args[:2] == ["dolt","commit"]:
+    print("Checkpoint committed")
+elif args[:2] == ["dolt","push"]:
+    if (root / "fail-push").exists(): sys.exit(7)
+    print("Push complete")
 else:
-    assert args[0] == "-C" and args[2] == "serve"
-    assert Path.cwd() == Path(args[1])
+    assert args[0] == "serve"
     class Handler(http.server.BaseHTTPRequestHandler):
         def log_message(self, *args): pass
         def do_GET(self):
@@ -52,7 +69,8 @@ else:
                 self.send_response(503)
                 self.end_headers()
                 return
-            value = ({"database":"wrong" if (root / "wrong").exists() else "octo",
+            metadata=json.loads((Path.cwd() / ".beads/metadata.json").read_text())
+            value = ({"database":"wrong" if (root / "wrong").exists() else metadata["dolt_database"],
                       "beads_dir":str(Path.cwd() / ".beads"), "repo_root":str(Path.cwd()),
                       "dolt_mode":"server"} if self.path.endswith("context") else {})
             self.send_response(200)
@@ -78,13 +96,16 @@ class SharedService(unittest.TestCase):
         self.state = self.home / ".local/state/beads-service"
         self.share.mkdir(parents=True)
         self.state.mkdir(parents=True)
-        config = self.home / ".config/beads-service/config.json"
+        config = self.home / ".config/beads-service/config.toml"
+        self.config = config
         config.parent.mkdir(parents=True)
         first, second = free_port(), free_port()
         while second == first:
             second = free_port()
         self.ports = {"http_port": first, "sql_port": second}
-        config.write_text(json.dumps(self.ports))
+        template = (ROOT / "config/beads/trial.toml").read_text()
+        config.write_text(template.replace("http_port = 8790", f"http_port = {first}")
+                          .replace("sql_port = 3310", f"sql_port = {second}"))
         for name in ("bd", "dolt"):
             binary = self.share / name
             binary.write_text(f"#!{sys.executable}\n" + NATIVE)
@@ -198,6 +219,81 @@ class SharedService(unittest.TestCase):
         self.assertFalse((self.share / "processes").exists())
         self.assertFalse((self.share / "beads-service.py").exists())
         self.assertEqual((self.share / "runtime.json").read_bytes(), before)
+
+    def test_config_inspection_is_read_only_and_rejects_unsupported_behavior(self):
+        before = sorted(str(path.relative_to(self.home)) for path in self.home.rglob("*"))
+        result = self.cli("config")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["history"]["mode"], "manual")
+        self.assertEqual(before, sorted(str(path.relative_to(self.home)) for path in self.home.rglob("*")))
+        original = self.config.read_text()
+        for invalid in (original.replace('mode = "manual"', 'mode = "automatic"'),
+                        original + '\nunknown_switch = true\n',
+                        original.replace(str(self.ports["sql_port"]), str(self.ports["http_port"]))):
+            self.config.write_text(invalid)
+            result = self.cli("config")
+            self.assertNotEqual(result.returncode, 0)
+            self.assertFalse((self.share / "processes").exists())
+
+    def test_legacy_ports_are_carried_forward_without_rewriting_local_settings(self):
+        self.config.unlink()
+        legacy = self.config.with_suffix(".json")
+        original = json.dumps(self.ports, indent=4) + "\n"
+        legacy.write_text(original)
+        with patch.dict(os.environ, self.environment):
+            service.seed(self.home, ROOT / "config/beads/trial.toml")
+        self.assertEqual(legacy.read_text(), original)
+        self.assertEqual(json.loads(self.cli("config").stdout)["service"], self.ports)
+        self.config.write_text(self.config.read_text() + "\n# Local operator comment\n")
+        local = self.config.read_bytes()
+        with patch.dict(os.environ, self.environment):
+            service.seed(self.home, ROOT / "config/beads/trial.toml")
+        self.assertEqual(self.config.read_bytes(), local)
+
+    def test_configured_database_is_used_and_wrong_branch_is_refused(self):
+        self.config.write_text(self.config.read_text().replace('database = "octo"', 'database = "tasks"'))
+        owner = self.start()
+        self.assertEqual(self.ready()["database"], "tasks")
+        owner.terminate()
+        self.assertEqual(owner.wait(timeout=20), 0)
+        (self.share / "wrong-branch").touch()
+        rejected = self.start()
+        self.assertNotEqual(rejected.wait(timeout=10), 0)
+        self.assert_children_stopped()
+
+    def test_private_checkpoint_records_confirmation_and_preserves_last_success_on_failure(self):
+        self.start()
+        self.ready()
+        git = self.share / "git"
+        git.write_text(f"#!{sys.executable}\nprint('" + 'a' * 40 + "\\trefs/dolt/data')\n")
+        git.chmod(0o700)
+        gh = self.share / "gh"
+        gh.write_text(f"#!{sys.executable}\nfrom pathlib import Path\nimport json\n"
+                      "print(json.dumps({'visibility':'PUBLIC' if Path(__file__).with_name('public').exists() else 'PRIVATE'}))\n")
+        gh.chmod(0o700)
+        self.environment["PATH"] = str(self.share) + os.pathsep + os.environ["PATH"]
+        result = self.cli("backup")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        succeeded = json.loads(result.stdout)
+        self.assertEqual(succeeded["state"], "succeeded")
+        operations = [json.loads(line) for line in (self.share / "operations").read_text().splitlines()]
+        push = next(args for args in operations if "push" in args)
+        self.assertEqual(push[push.index("--remote") + 1], "origin")
+        self.assertIn("--no-adopt", push)
+        self.assertNotIn("--force", push)
+        before = len(operations)
+        (self.share / "public").touch()
+        refused = self.cli("backup")
+        self.assertNotEqual(refused.returncode, 0)
+        operations = [json.loads(line) for line in (self.share / "operations").read_text().splitlines()]
+        self.assertFalse(any("push" in args or "commit" in args for args in operations[before:]))
+        (self.share / "public").unlink()
+        (self.share / "fail-push").touch()
+        uncertain = self.cli("backup")
+        self.assertNotEqual(uncertain.returncode, 0)
+        history = json.loads((self.state / "history.json").read_text())
+        self.assertEqual(history["state"], "unconfirmed")
+        self.assertEqual(history["lastSuccess"], succeeded["lastSuccess"])
 
 
 if __name__ == "__main__":
