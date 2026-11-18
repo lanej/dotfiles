@@ -6,11 +6,13 @@ import json
 import os
 from pathlib import Path
 import plistlib
+import hashlib
 import socket
 import subprocess
 import sys
 import tempfile
 import time
+import tomllib
 import unittest
 from unittest.mock import patch
 
@@ -123,8 +125,8 @@ class SharedService(unittest.TestCase):
         for log in self.logs:
             log.close()
 
-    def cli(self, action):
-        return subprocess.run([sys.executable, str(SCRIPT), action, "--home", str(self.home)],
+    def cli(self, action, *options):
+        return subprocess.run([sys.executable, str(SCRIPT), action, *options, "--home", str(self.home)],
                               env=self.environment, capture_output=True, text=True, timeout=10)
 
     def start(self):
@@ -219,6 +221,30 @@ class SharedService(unittest.TestCase):
         self.assertFalse((self.share / "processes").exists())
         self.assertFalse((self.share / "beads-service.py").exists())
         self.assertEqual((self.share / "runtime.json").read_bytes(), before)
+
+    def test_install_can_stage_without_starting_any_process(self):
+        catalog = tomllib.loads((ROOT / "bootstrap/tools.toml").read_text())["tools"]["beads"]
+        target = {"Darwin": "darwin", "Linux": "linux"}[service.platform.system()]
+        arch = {"arm64": "arm64", "aarch64": "arm64", "x86_64": "amd64"}[service.platform.machine()]
+        for name, version in (("bd", catalog["version"]), ("dolt", catalog["dolt_version"])):
+            directory = self.share / "runtime" / f"{name}-{version}-{target}-{arch}"
+            directory.mkdir(parents=True)
+            content = (self.share / name).read_bytes()
+            (directory / name).write_bytes(content)
+            (directory / name).chmod(0o700)
+            (directory / "sha256").write_text(hashlib.sha256(content).hexdigest())
+        before = self.config.read_bytes()
+        result = self.cli("install", "--no-start")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(json.loads(result.stdout)["started"])
+        self.assertFalse((self.share / "processes").exists())
+        self.assertFalse((self.state / "workspace").exists())
+        self.assertEqual(self.config.read_bytes(), before)
+        launcher = self.home / ".local/bin/beads-service"
+        installed = subprocess.run([str(launcher), "config", "--home", str(self.home)],
+                                   env=self.environment, capture_output=True, text=True)
+        self.assertEqual(installed.returncode, 0, installed.stderr)
+        self.assertEqual(json.loads(installed.stdout)["workspace"]["database"], "octo")
 
     def test_config_inspection_is_read_only_and_rejects_unsupported_behavior(self):
         before = sorted(str(path.relative_to(self.home)) for path in self.home.rglob("*"))

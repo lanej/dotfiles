@@ -76,7 +76,7 @@ def probe(home):
             "history": {"mode": config["history"]["mode"], **history}}
 
 
-def install(home):
+def install(home, *, start=True):
     share, state, config_path = paths(home)
     target = {"Darwin": "darwin", "Linux": "linux"}.get(platform.system())
     arch = {"arm64": "arm64", "aarch64": "arm64", "x86_64": "amd64"}.get(platform.machine())
@@ -133,7 +133,10 @@ def install(home):
     launcher.write_text(f"#!{sys.executable}\nimport os, sys\nos.execv(sys.executable, [sys.executable, {str(controller)!r}, *sys.argv[1:]])\n")
     launcher.chmod(0o755)
     definition(home)
-    manage(home, "start")
+    if start:
+        manage(home, "start")
+    else:
+        print(json.dumps({"staged": True, "started": False, "runtime": binaries}))
 
 
 def definition(home):
@@ -397,7 +400,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("install", "start", "restart", "stop", "status", "run", "config", "backup"))
     parser.add_argument("--home", type=Path, default=Path.home())
+    parser.add_argument("--no-start", action="store_true", help="stage installation without starting or restarting the service")
     args = parser.parse_args()
+    if args.no_start and args.action != "install":
+        parser.error("--no-start applies only to install")
     home = args.home.expanduser().resolve()
     if args.action == "install":
         share, _, _ = paths(home)
@@ -407,7 +413,7 @@ def main():
                 fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except BlockingIOError as error:
                 raise ValueError("Another Beads installation is in progress") from error
-            install(home)
+            install(home, start=not args.no_start)
     elif args.action == "run":
         serve(home)
     elif args.action == "status":

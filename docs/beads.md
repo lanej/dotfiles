@@ -16,6 +16,21 @@ Enable `tools.beads = true` in the machine TOML, or include `"beads"` in its set
 
 The installed `~/.local/bin/beads-service` supports `start`, `restart`, `stop`, `status`, `config`, and `backup` from any directory. Its controller and configuration reader are copied into `~/.local/share/beads-service`, so deleting the installation source worktree does not interrupt the service. Runtime binaries are private and versioned; an existing `bd` on PATH is preserved.
 
+## Runtime updates
+
+Use the shared [project-update lifecycle](project-updates.md) for ongoing maintenance:
+
+```sh
+project-update status beads
+project-update pull beads
+project-update build beads
+project-update restart beads
+# Or run pull, build and restart together:
+project-update update beads
+```
+
+The project source is dotfiles, which owns the compatible Beads/Dolt pins. Pulling does not choose an independent upstream latest or change the private task-data repository. Build installs the selected artifacts with `--no-start`, preserving a running service; restart requires a matching staged source fingerprint and unchanged artifact hashes. Local configuration and task storage remain intact. `status` separates verified installed identity from observed service readiness and an unknown running revision. Initial explicit `make beads-install` remains available; direct installs can invalidate the updater's installed-identity receipt until staged again. The optional browser UI and manual history checkpoints are separate from runtime updates.
+
 ## Trial profile
 
 Installation seeds `$XDG_CONFIG_HOME/beads-service/config.toml` (default `~/.config/beads-service/config.toml`) from [the stock trial profile](../config/beads/trial.toml). Existing TOML, including comments, is preserved. When carrying forward the earlier two-port JSON configuration, installation validates and preserves its port choices, writes a new TOML file, and retains the original JSON unchanged. Ordinary configuration inspection does not create or convert files. If both files exist, TOML is authoritative.
