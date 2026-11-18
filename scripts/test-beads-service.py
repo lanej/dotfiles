@@ -141,12 +141,22 @@ class SharedService(unittest.TestCase):
 
     def ready(self):
         deadline = time.monotonic() + 10
+        result = None
         while time.monotonic() < deadline:
             result = self.cli("status")
             if result.returncode == 0:
                 return json.loads(result.stdout)
             time.sleep(0.05)
-        self.fail("Service failed to become ready: " + "".join(path.read_text() for path in self.home.glob("log-*")))
+        try:
+            context = service.fetch_json(f"http://127.0.0.1:{self.ports['http_port']}/v0/beads/context")
+        except (OSError, ValueError) as error:
+            context = str(error)
+        diagnostics = {"status": result.stdout if result else None,
+                       "stderr": result.stderr if result else None,
+                       "context": context, "expected_beads_dir": str(self.state / "workspace/.beads"),
+                       "processes": [process.poll() for process in self.processes]}
+        self.fail("Service failed to become ready: " + json.dumps(diagnostics) + "\n" +
+                  "".join(path.read_text() for path in self.home.glob("log-*")))
 
     def assert_children_stopped(self):
         # The init process is already reaped; neither long-running child may survive its owner.
