@@ -24,7 +24,7 @@ spec = importlib.util.spec_from_file_location("beads_service", SCRIPT)
 service = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(service)
 
-NATIVE = r'''import http.server, json, os, socket, sys, time
+NATIVE = r'''import http.server, json, os, socket, socketserver, sys, time
 from pathlib import Path
 root = Path(__file__).parent
 with (root / "processes").open("a") as output:
@@ -80,7 +80,11 @@ else:
             self.send_response(200)
             self.end_headers()
             self.wfile.write(json.dumps(value).encode())
-    http.server.HTTPServer(("127.0.0.1", int(args[-1].split(":")[-1])), Handler).serve_forever()
+    class LoopbackHTTPServer(http.server.HTTPServer):
+        # HTTPServer resolves its server name during bind; this fixture needs no DNS.
+        def server_bind(self):
+            socketserver.TCPServer.server_bind(self)
+    LoopbackHTTPServer(("127.0.0.1", int(args[-1].split(":")[-1])), Handler).serve_forever()
 '''
 
 
