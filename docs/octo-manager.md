@@ -4,6 +4,8 @@ Octo publishes caller-written GitHub PRs through local format validation and a d
 
 ## Enable
 
+The optional [shared Beads service](beads.md) provides a separate local work-graph endpoint. It does not replace Octo's issue lifecycle or dispatch; installing it alone does not connect Octo to Beads.
+
 Add the switch to the existing `[tools]` section of your machine configuration (`~/.config/dotfiles/config.toml`, or the selected `DOTFILES_CONFIG`):
 
 ```toml
