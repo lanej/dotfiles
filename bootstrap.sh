@@ -1201,7 +1201,7 @@ install_dependencies() {
 				python3 "$dotfiles_root/scripts/install-octo-manager.py" || return 1
 				;;
 			beads)
-				python3 "$dotfiles_root/tools/beads-service/beads-service.py" install || return 1
+				python3 "$dotfiles_root/tools/beads/beads-service.py" install || return 1
 				;;
 			treehouse) install_treehouse_tools || return 1 ;;
 			macos-window-tool) install_macos_window_tool "$tool" || return 1 ;;

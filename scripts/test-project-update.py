@@ -230,10 +230,10 @@ class LifecycleTests(unittest.TestCase):
                 self.assertEqual(arguments, ["-C", str(ROOT.resolve()), *targets])
 
     def test_beads_stages_then_restarts_only_matching_artifacts(self):
-        scripts = self.checkout / "tools/beads-service"
+        scripts = self.checkout / "tools/beads"
         scripts.mkdir(parents=True)
         adapter = scripts / "project-update.py"
-        shutil.copyfile(ROOT / "tools/beads-service/project-update.py", adapter)
+        shutil.copyfile(ROOT / "tools/beads/project-update.py", adapter)
         (scripts / "beads_config.py").write_text("# Fixture config reader\n")
         catalog = self.checkout / "bootstrap/tools.toml"
         catalog.parent.mkdir()

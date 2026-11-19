@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   pull_request:
     paths: &beads-paths
-      - 'tools/beads-service/**'
+      - 'tools/beads/**'
       - 'config/beads/**'
       - 'bootstrap/tools.toml'
       - '.github/workflows/beads-service.yml'
@@ -27,4 +27,4 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - run: python3 tools/beads-service/test-beads-service.py
+      - run: python3 tools/beads/test-beads-service.py

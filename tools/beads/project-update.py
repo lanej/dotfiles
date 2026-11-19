@@ -25,7 +25,7 @@ def binary_digest(path):
 
 
 def beads_source():
-    files = ("tools/beads-service/project-update.py", "tools/beads-service/beads-service.py", "tools/beads-service/beads_config.py", "config/beads/trial.toml", "bootstrap/tools.toml")
+    files = ("tools/beads/project-update.py", "tools/beads/beads-service.py", "tools/beads/beads_config.py", "config/beads/trial.toml", "bootstrap/tools.toml")
     hashes = {name: binary_digest(ROOT / name) for name in files}
     revision = run(["git", "-C", str(ROOT), "rev-parse", "HEAD"], capture=True)
     dirty = bool(run(["git", "-C", str(ROOT), "status", "--porcelain", "--untracked-files=all", "--", *files], capture=True))
@@ -89,13 +89,13 @@ def beads_locked(action, lock_fd=None):
         raise ValueError("Beads supports build, restart and status; clean is not configured")
     source = beads_source()
     if action == "build":
-        controller = ROOT / "tools/beads-service/beads-service.py"
+        controller = ROOT / "tools/beads/beads-service.py"
         run([sys.executable, str(controller), "install", "--home", str(home), "--no-start",
              "--install-lock-fd", str(lock_fd)], pass_fds=(lock_fd,))
         if beads_source() != source:
             raise ValueError("Beads source changed during staging; inspect the installation before retrying")
         for name in ("beads-service.py", "beads_config.py"):
-            if binary_digest(ROOT / "tools/beads-service" / name) != binary_digest(share / name):
+            if binary_digest(ROOT / "tools/beads" / name) != binary_digest(share / name):
                 raise ValueError("Installed Beads controller differs from the selected source")
         catalog = tomllib.loads((ROOT / "bootstrap/tools.toml").read_text())["tools"]["beads"]
         record = {"source": source, "artifacts": beads_artifacts(home),

@@ -5,7 +5,7 @@ on:
     paths: &update-paths
       - 'bin/project-update'
       - 'scripts/project-lifecycle.py'
-      - 'tools/beads-service/project-update.py'
+      - 'tools/beads/project-update.py'
       - 'scripts/make/project-update.sh'
       - 'scripts/test-project-update.py'
       - 'config/project-updates.toml'

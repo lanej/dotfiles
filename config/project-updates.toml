@@ -13,7 +13,7 @@ command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "zellij"]
 # Beads and Dolt versions are curated together in the dotfiles catalog.
 [projects.beads]
 path = "{dotfiles}"
-command = ["{python}", "{dotfiles}/tools/beads-service/project-update.py"]
+command = ["{python}", "{dotfiles}/tools/beads/project-update.py"]
 
 [projects.bedrock-router]
 path = "~/src/bedrock-router"
