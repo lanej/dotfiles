@@ -34,7 +34,7 @@ while IFS= read -r entry; do
 		*) fail 'Archive contains a special file' ;;
 	esac
 done <"$scratch/types"
-bsdtar -xf "$scratch/archive.tar.gz" -C "$destination" --safe-writes --no-same-owner --no-same-permissions
+bsdtar -xf "$scratch/archive.tar.gz" -C "$destination" --no-same-owner --no-same-permissions
 # Reject links that could redirect later validation or receipt writes outside staging.
 find "$destination" -type l -print0 >"$scratch/links"
 while IFS= read -r -d '' link; do
