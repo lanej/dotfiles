@@ -1,0 +1,8 @@
+#!/bin/sh
+# Commit the coordinator state. Usage: bin/commit-state "message"
+set -eu
+cd "$(dirname "$0")/.."
+git add -A
+if git diff --cached --quiet; then echo "nothing to commit"; exit 0; fi
+git commit -q -m "${1:-update state}"
+git log --oneline -1
