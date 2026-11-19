@@ -5,7 +5,7 @@ on:
       - 'scripts/build-git-worktree-hooks.sh'
       - 'scripts/pull-git-worktree-source.sh'
       - 'scripts/lib/git-worktree-runtime.sh'
-      - 'scripts/extract-git-runtime.py'
+      - 'scripts/extract-git-runtime.sh'
       - 'scripts/install-git-worktree-hooks.sh'
       - 'patches/git-worktree-hooks/**'
       - 'scripts/install-worktree-manager'
@@ -26,7 +26,7 @@ on:
       - 'scripts/build-git-worktree-hooks.sh'
       - 'scripts/pull-git-worktree-source.sh'
       - 'scripts/lib/git-worktree-runtime.sh'
-      - 'scripts/extract-git-runtime.py'
+      - 'scripts/extract-git-runtime.sh'
       - 'scripts/install-git-worktree-hooks.sh'
       - 'patches/git-worktree-hooks/**'
       - 'scripts/install-worktree-manager'
@@ -60,7 +60,7 @@ jobs:
           python-version: '3.11'
       - name: Install Linux build and activity dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y lsof build-essential libcurl4-openssl-dev libexpat1-dev zlib1g-dev
+        run: sudo apt-get update && sudo apt-get install -y lsof build-essential libcurl4-openssl-dev libexpat1-dev zlib1g-dev libarchive-tools
       - name: Download pinned worktree package
         run: |
           version=$(python3 -c 'import tomllib; print(tomllib.load(open("bootstrap/tools.toml","rb"))["tools"]["worktree-manager"]["version"])')

@@ -44,9 +44,13 @@ version = "0.1.1"
 description = "Install the default patched Git runtime with worktree lifecycle hooks; disable to keep system Git."
 installer = "git-worktree-hooks"
 requires = ["git", "build"]
+requires_linux = ["bsdtar"]
 setup = ["shell"]
 version = "2.56.0"
 runtime_version = "2.56.0.worktree-hooks.1"
+
+[tools.bsdtar]
+installer = "system"
 
 [tools.zsh]
 installer = "system"
@@ -148,7 +152,7 @@ installer = "system"
 
 [tools.shfmt]
 requires = ["go"]
-version = "3.10.0"
+version = "3.14.1"
 
 [tools.bash-language-server]
 requires = ["node"]

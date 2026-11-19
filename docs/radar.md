@@ -107,6 +107,10 @@ Tiling window manager via the macOS Accessibility API. Manages all windows at th
 
 Required correctness lint in the reusable [TypeScript profile](typescript-style.md), alongside typed ESLint and Prettier. Biome findings cannot be added to retrofit baselines.
 
+### shfmt
+
+[shfmt](https://github.com/mvdan/sh) formats the Git worktree runtime and its bootstrap/lint entrypoints. The catalog pin is shared by explicit installation and the shell CI check; `make shell-format` applies formatting and `make shell-format-check` checks it. Adoption expands through an explicit file list without reformatting unrelated shell features.
+
 ### worktree manager
 
 [worktree](worktree-manager.md) creates identifiable repository-local agent checkouts, tracks full ownership and protects active tasks. Finishing protection and explicit safe pruning replace reusable Treehouse allocation for new agent work. Project updates select the latest stable Git release and compile the lifecycle-hook runtime locally from a shallow upstream clone with checked-in patches; no custom Git release is required.

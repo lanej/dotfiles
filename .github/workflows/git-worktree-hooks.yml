@@ -9,7 +9,7 @@ on:
       - 'scripts/dotfiles-config.py'
       - 'scripts/pull-git-worktree-source.sh'
       - 'scripts/lib/git-worktree-runtime.sh'
-      - 'scripts/extract-git-runtime.py'
+      - 'scripts/extract-git-runtime.sh'
       - 'scripts/install-git-worktree-hooks.sh'
       - 'scripts/test-install-git-worktree-hooks.sh'
       - 'bin/git-worktree-policy'
@@ -32,7 +32,7 @@ on:
       - 'scripts/dotfiles-config.py'
       - 'scripts/pull-git-worktree-source.sh'
       - 'scripts/lib/git-worktree-runtime.sh'
-      - 'scripts/extract-git-runtime.py'
+      - 'scripts/extract-git-runtime.sh'
       - 'scripts/install-git-worktree-hooks.sh'
       - 'scripts/test-install-git-worktree-hooks.sh'
       - 'bin/git-worktree-policy'
@@ -66,7 +66,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y build-essential libcurl4-openssl-dev libexpat1-dev zlib1g-dev lsof
+        run: sudo apt-get update && sudo apt-get install -y build-essential libcurl4-openssl-dev libexpat1-dev zlib1g-dev libarchive-tools lsof
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -113,7 +113,7 @@ jobs:
     steps:
       - name: Install Enterprise Linux 8 build dependencies
         run: |
-          dnf install -y gcc make git curl tar xz perl python3.12 diffutils findutils libcurl-devel expat-devel zlib-devel
+          dnf install -y gcc make git curl tar bsdtar xz perl python3.12 diffutils findutils libcurl-devel expat-devel zlib-devel
           ln -s /usr/bin/python3.12 /usr/local/bin/python3
       - uses: actions/checkout@v4
       - name: Build, test and package Enterprise Linux 8 runtime

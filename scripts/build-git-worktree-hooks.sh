@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-    cat <<'HELP'
+	cat <<'HELP'
 Usage: scripts/build-git-worktree-hooks.sh OUTPUT_DIRECTORY [--source CHECKOUT]
 
 Build a selected stable Git checkout (or shallow clone the catalog baseline), apply the
@@ -14,12 +14,12 @@ HELP
 }
 
 if [[ ${1:-} == --help || ${1:-} == -h ]]; then
-    usage
-    exit 0
+	usage
+	exit 0
 fi
-if [[ $# != 1 && ( $# != 3 || $2 != --source ) ]]; then
-    usage >&2
-    exit 2
+if [[ $# != 1 && ($# != 3 || $2 != --source) ]]; then
+	usage >&2
+	exit 2
 fi
 
 runtime_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -32,13 +32,16 @@ if [[ -n $selected_source ]]; then git_runtime_source "$selected_source"; fi
 source_url="https://github.com/git/git.git"
 jobs=${JOBS:-4}
 if [[ ! $jobs =~ ^[1-9][0-9]*$ ]]; then
-    printf 'JOBS must be a positive integer\n' >&2
-    exit 2
+	printf 'JOBS must be a positive integer\n' >&2
+	exit 2
 fi
 case $(uname -s) in
-    Darwin) platform=darwin ;;
-    Linux) platform=linux ;;
-    *) printf 'Unsupported build platform\n' >&2; exit 2 ;;
+	Darwin) platform=darwin ;;
+	Linux) platform=linux ;;
+	*)
+		printf 'Unsupported build platform\n' >&2
+		exit 2
+		;;
 esac
 architecture=$(uname -m)
 archive_name=$(git_runtime_archive_name)
@@ -46,49 +49,49 @@ package=${archive_name%.tar.gz}
 mkdir -p "$1"
 output=$(cd "$1" && pwd)
 if [[ -e $output/$package.tar.gz || -e $output/$package.tar.gz.sha256 ]]; then
-    printf 'Output already exists: %s\n' "$output/$package.tar.gz" >&2
-    exit 2
+	printf 'Output already exists: %s\n' "$output/$package.tar.gz" >&2
+	exit 2
 fi
 export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/git-worktree-build.XXXXXXXX")
 trap 'rm -rf "$scratch"' EXIT
 
 sha256() {
-    if command -v sha256sum >/dev/null 2>&1; then
-        sha256sum "$1" | cut -d ' ' -f 1
-    else
-        shasum -a 256 "$1" | cut -d ' ' -f 1
-    fi
+	if command -v sha256sum >/dev/null 2>&1; then
+		sha256sum "$1" | cut -d ' ' -f 1
+	else
+		shasum -a 256 "$1" | cut -d ' ' -f 1
+	fi
 }
 
 source_dir="$scratch/git-$version"
 if [[ -n $selected_source ]]; then
-    mkdir "$source_dir"
-    git -C "$selected_source" archive HEAD | tar -xf - -C "$source_dir"
+	mkdir "$source_dir"
+	git -C "$selected_source" archive HEAD | tar -xf - -C "$source_dir"
 else
-    git clone --depth 1 --single-branch --branch "v$version" "$source_url" "$source_dir"
-    source_commit=$(git -C "$source_dir" rev-parse HEAD)
+	git clone --depth 1 --single-branch --branch "v$version" "$source_url" "$source_dir"
+	source_commit=$(git -C "$source_dir" rev-parse HEAD)
 fi
 mkdir "$scratch/patches"
 cp "$repo_root"/patches/git-worktree-hooks/*.patch "$scratch/patches/"
 for patch in "$scratch"/patches/*.patch; do
-    git -C "$source_dir" apply --check "$patch"
-    git -C "$source_dir" apply "$patch"
+	git -C "$source_dir" apply --check "$patch"
+	git -C "$source_dir" apply "$patch"
 done
 
 build_options=(
-    prefix=/usr/local RUNTIME_PREFIX=YesPlease "GIT_VERSION=$runtime_version"
-    NO_GETTEXT=YesPlease NO_TCLTK=YesPlease NO_RUST=YesPlease
-    NO_OPENSSL=YesPlease
+	prefix=/usr/local RUNTIME_PREFIX=YesPlease "GIT_VERSION=$runtime_version"
+	NO_GETTEXT=YesPlease NO_TCLTK=YesPlease NO_RUST=YesPlease
+	NO_OPENSSL=YesPlease
 )
 if [[ $platform == darwin ]]; then
-    # WHY: Use SDK libraries rather than absolute paths to Homebrew libraries.
-    build_options+=(NO_HOMEBREW=YesPlease NO_FINK=YesPlease NO_DARWIN_PORTS=YesPlease
-        CURL_CONFIG=/usr/bin/curl-config CURL_CFLAGS= CURL_LDFLAGS=-lcurl)
+	# WHY: Use SDK libraries rather than absolute paths to Homebrew libraries.
+	build_options+=(NO_HOMEBREW=YesPlease NO_FINK=YesPlease NO_DARWIN_PORTS=YesPlease
+		CURL_CONFIG=/usr/bin/curl-config CURL_CFLAGS= CURL_LDFLAGS=-lcurl)
 fi
 make -C "$source_dir" -j "$jobs" "${build_options[@]}" all
 make -C "$source_dir/t" -j "$jobs" "${build_options[@]}" \
-    T='t240*.sh t1350-config-hooks-path.sh t1800-hook.sh'
+	T='t240*.sh t1350-config-hooks-path.sh t1800-hook.sh'
 make -C "$source_dir" "${build_options[@]}" DESTDIR="$scratch/stage" install
 runtime="$scratch/stage/usr/local"
 
@@ -96,55 +99,55 @@ mkdir -p "$runtime/share/doc/git-worktree-hooks"
 cp "$source_dir/COPYING" "$runtime/share/doc/git-worktree-hooks/COPYING"
 provenance="$runtime/share/doc/git-worktree-hooks/BUILD.txt"
 {
-    printf 'Git source: %s\nTag: v%s\nCommit: %s\n' "$source_url" "$version" "$source_commit"
-    printf 'Build platform: %s %s\n' "$platform" "$architecture"
-    printf 'Build options:'
-    printf ' %s' "${build_options[@]}"
-    printf '\nPatches (SHA256):\n'
-    for patch in "$scratch"/patches/*.patch; do
-        printf '%s  %s\n' "$(sha256 "$patch")" "$(basename "$patch")"
-        cp "$patch" "$runtime/share/doc/git-worktree-hooks/"
-    done
-} > "$provenance"
+	printf 'Git source: %s\nTag: v%s\nCommit: %s\n' "$source_url" "$version" "$source_commit"
+	printf 'Build platform: %s %s\n' "$platform" "$architecture"
+	printf 'Build options:'
+	printf ' %s' "${build_options[@]}"
+	printf '\nPatches (SHA256):\n'
+	for patch in "$scratch"/patches/*.patch; do
+		printf '%s  %s\n' "$(sha256 "$patch")" "$(basename "$patch")"
+		cp "$patch" "$runtime/share/doc/git-worktree-hooks/"
+	done
+} >"$provenance"
 
 # WHY: Exercise relocation and installed templates/helpers before packaging.
 "$runtime/bin/git" --version
 "$runtime/bin/git" init "$scratch/smoke"
 "$runtime/bin/git" -C "$scratch/smoke" -c user.name=Build -c user.email=build@example.invalid commit --allow-empty -m smoke
-cat > "$scratch/smoke/.git/hooks/pre-worktree" <<'HOOK'
+cat >"$scratch/smoke/.git/hooks/pre-worktree" <<'HOOK'
 #!/bin/sh
 exit 1
 HOOK
 chmod +x "$scratch/smoke/.git/hooks/pre-worktree"
 if "$runtime/bin/git" -C "$scratch/smoke" worktree add -b rejected "$scratch/smoke-linked"; then
-    printf 'Installed pre-worktree hook failed to reject creation\n' >&2
-    exit 1
+	printf 'Installed pre-worktree hook failed to reject creation\n' >&2
+	exit 1
 fi
 if [[ -e $scratch/smoke-linked ]] || "$runtime/bin/git" -C "$scratch/smoke" show-ref --verify --quiet refs/heads/rejected; then
-    printf 'Rejected creation left checkout or branch state\n' >&2
-    exit 1
+	printf 'Rejected creation left checkout or branch state\n' >&2
+	exit 1
 fi
 rm "$scratch/smoke/.git/hooks/pre-worktree"
-cat > "$scratch/smoke/.git/hooks/post-worktree" <<'HOOK'
+cat >"$scratch/smoke/.git/hooks/post-worktree" <<'HOOK'
 #!/bin/sh
 printf '%s\n' "$1" >> "$(git rev-parse --git-common-dir)/worktree-events"
 HOOK
 chmod +x "$scratch/smoke/.git/hooks/post-worktree"
 PATH="$runtime/bin:$PATH" "$runtime/bin/git" -C "$scratch/smoke" worktree add --no-checkout --detach "$scratch/smoke-linked"
 PATH="$runtime/bin:$PATH" "$runtime/bin/git" -C "$scratch/smoke" worktree remove --force "$scratch/smoke-linked"
-printf 'add\nremove\n' > "$scratch/expected-events"
+printf 'add\nremove\n' >"$scratch/expected-events"
 cmp "$scratch/expected-events" "$scratch/smoke/.git/worktree-events"
 if [[ $platform == darwin ]]; then
-    otool -L "$runtime/bin/git" "$runtime/libexec/git-core/git-remote-http" > "$runtime/share/doc/git-worktree-hooks/libraries.txt"
-    if grep -Eq '/opt/homebrew/|/usr/local/(opt|Cellar)/|/opt/local/' "$runtime/share/doc/git-worktree-hooks/libraries.txt"; then
-        printf 'Runtime unexpectedly depends on package-manager libraries\n' >&2
-        exit 1
-    fi
+	otool -L "$runtime/bin/git" "$runtime/libexec/git-core/git-remote-http" >"$runtime/share/doc/git-worktree-hooks/libraries.txt"
+	if grep -Eq '/opt/homebrew/|/usr/local/(opt|Cellar)/|/opt/local/' "$runtime/share/doc/git-worktree-hooks/libraries.txt"; then
+		printf 'Runtime unexpectedly depends on package-manager libraries\n' >&2
+		exit 1
+	fi
 else
-    ldd "$runtime/bin/git" "$runtime/libexec/git-core/git-remote-http" > "$runtime/share/doc/git-worktree-hooks/libraries.txt"
+	ldd "$runtime/bin/git" "$runtime/libexec/git-core/git-remote-http" >"$runtime/share/doc/git-worktree-hooks/libraries.txt"
 fi
 tar -czf "$scratch/$package.tar.gz" -C "$runtime" .
 archive_sha256=$(sha256 "$scratch/$package.tar.gz")
-printf '%s  %s.tar.gz\n' "$archive_sha256" "$package" > "$scratch/$package.tar.gz.sha256"
+printf '%s  %s.tar.gz\n' "$archive_sha256" "$package" >"$scratch/$package.tar.gz.sha256"
 mv "$scratch/$package.tar.gz" "$scratch/$package.tar.gz.sha256" "$output/"
 printf 'Built %s/%s.tar.gz\n' "$output" "$package"

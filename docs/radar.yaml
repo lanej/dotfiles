@@ -233,6 +233,11 @@ entries:
     ring: adopt
     rationale: |-
       Required correctness lint in the reusable [TypeScript profile](typescript-style.md), alongside typed ESLint and Prettier. Biome findings cannot be added to retrofit baselines.
+  - id: shfmt
+    name: shfmt
+    ring: adopt
+    rationale: |-
+      [shfmt](https://github.com/mvdan/sh) formats the Git worktree runtime and its bootstrap/lint entrypoints. The catalog pin is shared by explicit installation and the shell CI check; `make shell-format` applies formatting and `make shell-format-check` checks it. Adoption expands through an explicit file list without reformatting unrelated shell features.
   - id: worktree-manager
     name: worktree manager
     ring: adopt
