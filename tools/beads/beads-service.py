@@ -26,7 +26,7 @@ import urllib.request
 
 from beads_config import load, location, seed, write_record
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 LABEL = "com.lanej.beads"
 
 
