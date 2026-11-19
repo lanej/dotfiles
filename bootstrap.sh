@@ -37,8 +37,8 @@ package_manager_semver() {
 }
 
 apt_package_semver() {
-	apt-cache policy "$1" 2>/dev/null |
-		awk '$1 == "Candidate:" { print $2 }' | parse_semver | head -n1
+	apt-cache policy "$1" 2>/dev/null \
+		| awk '$1 == "Candidate:" { print $2 }' | parse_semver | head -n1
 }
 
 package_semver() {
@@ -46,6 +46,24 @@ package_semver() {
 		"$1_package_semver" || (echo "Failed to get semver for based on custom script: $1" >&2 && return 1)
 	else
 		package_manager_semver "$1" || (echo "Failed to get semver for: $1" >&2 && return 1)
+	fi
+}
+
+install_bsdtar_package() {
+	if command -v bsdtar >/dev/null; then
+		return 0
+	fi
+	if command -v brew >/dev/null; then
+		brew install libarchive
+	elif command -v dnf >/dev/null; then
+		sudo dnf install -y bsdtar
+	elif command -v apt-get >/dev/null; then
+		sudo apt-get install -y libarchive-tools
+	elif command -v pacman >/dev/null; then
+		sudo pacman -S --needed --noconfirm libarchive
+	else
+		echo 'Install bsdtar before installing patched Git' >&2
+		return 1
 	fi
 }
 
@@ -86,7 +104,7 @@ install_fd_package() {
 		# For dnf systems, prefer cargo installation if there are conflicts
 		if rpm -qa | grep -q "^fd-"; then
 			echo "Existing fd package found, will install via cargo to avoid conflict"
-			return 1  # This will trigger the fallback to cargo installation
+			return 1 # This will trigger the fallback to cargo installation
 		fi
 		sudo dnf install -y fd-find
 	elif command -v apt-get; then
@@ -165,7 +183,7 @@ install_gh_package() {
 		sudo pacman -S --noconfirm github-cli
 	elif command -v apt-get &>/dev/null; then
 		curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-		echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+		echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
 		sudo apt update
 		sudo apt install gh
 	else
@@ -201,7 +219,7 @@ setup_gh_auth() {
 		echo ""
 
 		# Ask if user wants to authenticate now
-		if [ -t 0 ]; then  # Check if running interactively
+		if [ -t 0 ]; then # Check if running interactively
 			read -p "Would you like to authenticate with GitHub now? (y/n): " -r
 			if [[ $REPLY =~ ^[Yy]$ ]]; then
 				gh auth login && install_gh_extensions
@@ -239,10 +257,10 @@ semver_ge() {
 	local required_major required_minor required_patch
 
 	# Parse installed version
-	IFS=. read -r installed_major installed_minor installed_patch <<< "$installed_version"
+	IFS=. read -r installed_major installed_minor installed_patch <<<"$installed_version"
 
 	# Parse required version
-	IFS=. read -r required_major required_minor required_patch <<< "$required_version"
+	IFS=. read -r required_major required_minor required_patch <<<"$required_version"
 
 	# Set defaults for missing components
 	installed_major=${installed_major:-0}
@@ -399,8 +417,11 @@ install_go_from_release() (
 	local go_arch
 	case "$(uname -m)" in
 		x86_64) go_arch=amd64 ;;
-		arm64|aarch64) go_arch=arm64 ;;
-		*) echo "Unsupported Go architecture" >&2; exit 1 ;;
+		arm64 | aarch64) go_arch=arm64 ;;
+		*)
+			echo "Unsupported Go architecture" >&2
+			exit 1
+			;;
 	esac
 	local go_os
 	go_os=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -554,13 +575,19 @@ install_zellij_from_release() (
 	local zellij_arch zellij_target zellij_stage zellij_url
 	case "$(uname -m)" in
 		x86_64) zellij_arch=x86_64 ;;
-		arm64|aarch64) zellij_arch=aarch64 ;;
-		*) echo "Unsupported Zellij architecture" >&2; exit 1 ;;
+		arm64 | aarch64) zellij_arch=aarch64 ;;
+		*)
+			echo "Unsupported Zellij architecture" >&2
+			exit 1
+			;;
 	esac
 	case "$(uname -s)" in
 		Darwin) zellij_target="$zellij_arch-apple-darwin" ;;
 		Linux) zellij_target="$zellij_arch-unknown-linux-musl" ;;
-		*) echo "Unsupported Zellij OS" >&2; exit 1 ;;
+		*)
+			echo "Unsupported Zellij OS" >&2
+			exit 1
+			;;
 	esac
 	zellij_stage=$(mktemp -d) || exit 1
 	trap 'rm -rf "$zellij_stage"' EXIT
@@ -570,7 +597,7 @@ install_zellij_from_release() (
 	tar --no-same-owner -xzf "$zellij_stage/zellij.tar.gz" -C "$zellij_stage" || exit 1
 	# Upstream checksums identify the extracted binary by its CI build path.
 	awk '$1 ~ /^[[:xdigit:]]+$/ && length($1) == 64 { print $1 "  zellij"; exit }' \
-		"$zellij_stage/release.sha256sum" > "$zellij_stage/binary.sha256sum"
+		"$zellij_stage/release.sha256sum" >"$zellij_stage/binary.sha256sum"
 	test -s "$zellij_stage/binary.sha256sum" || exit 1
 	cd "$zellij_stage" || exit 1
 	if command -v sha256sum >/dev/null; then
@@ -589,15 +616,24 @@ install_zellij_from_release() (
 
 install_btop_from_release() (
 	case "$os" in
-		macos) brew install btop; exit $? ;;
+		macos)
+			brew install btop
+			exit $?
+			;;
 		linux) ;;
-		*) echo "Unsupported btop OS: $os" >&2; exit 1 ;;
+		*)
+			echo "Unsupported btop OS: $os" >&2
+			exit 1
+			;;
 	esac
 	local btop_arch btop_stage
 	case "$(uname -m)" in
 		x86_64) btop_arch=x86_64 ;;
-		arm64|aarch64) btop_arch=aarch64 ;;
-		*) echo "Unsupported btop architecture" >&2; exit 1 ;;
+		arm64 | aarch64) btop_arch=aarch64 ;;
+		*)
+			echo "Unsupported btop architecture" >&2
+			exit 1
+			;;
 	esac
 	btop_stage=$(mktemp -d) || exit 1
 	trap 'rm -rf "$btop_stage"' EXIT
@@ -635,16 +671,22 @@ install_eza_from_release() {
 
 install_shfmt_from_release() {
 	install_package_version go 1.22
-	go install mvdan.cc/sh/v3/cmd/shfmt@v3.10.0
+	GOBIN="$HOME/.local/bin" go install "mvdan.cc/sh/v3/cmd/shfmt@v$1"
 }
 
 install_node_from_release() {
 	# Download and install nvm:
 	local node_stage
 	node_stage=$(mktemp) || return 1
-	curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh -o "$node_stage" ||
-		{ rm -f "$node_stage"; return 1; }
-	PROFILE=/dev/null bash "$node_stage" || { rm -f "$node_stage"; return 1; }
+	curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh -o "$node_stage" \
+		|| {
+			rm -f "$node_stage"
+			return 1
+		}
+	PROFILE=/dev/null bash "$node_stage" || {
+		rm -f "$node_stage"
+		return 1
+	}
 	rm -f "$node_stage"
 
 	# Set up nvm environment - must be sourced fresh for new installation
@@ -656,7 +698,10 @@ install_node_from_release() {
 	[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion" # This loads nvm bash_completion
 
 	# Download and install Node.js:
-	nvm install "$1" || { echo "Failed to install node@$1 via nvm" >&2; return 1; }
+	nvm install "$1" || {
+		echo "Failed to install node@$1 via nvm" >&2
+		return 1
+	}
 	nvm alias default "$1" || return 1
 	nvm use "$1" || return 1
 	# WHY: NVM can replace its PATH entry in place, behind another Node executable.
@@ -678,12 +723,18 @@ install_firstmate_release() (
 	case "$(uname -s)" in
 		Darwin) release_os=darwin ;;
 		Linux) release_os=linux ;;
-		*) echo "Unsupported Firstmate tool OS" >&2; exit 1 ;;
+		*)
+			echo "Unsupported Firstmate tool OS" >&2
+			exit 1
+			;;
 	esac
 	case "$(uname -m)" in
-		arm64|aarch64) release_arch=arm64 ;;
-		x86_64|amd64) release_arch=amd64 ;;
-		*) echo "Unsupported Firstmate tool architecture" >&2; exit 1 ;;
+		arm64 | aarch64) release_arch=arm64 ;;
+		x86_64 | amd64) release_arch=amd64 ;;
+		*)
+			echo "Unsupported Firstmate tool architecture" >&2
+			exit 1
+			;;
 	esac
 	stage=$(mktemp -d) || exit 1
 	trap 'rm -rf "$stage"' EXIT
@@ -691,7 +742,7 @@ install_firstmate_release() (
 	local url="https://github.com/kunchenguid/$tool/releases/download/v$version"
 	curl -fsSL "$url/$archive" -o "$stage/$archive" || exit 1
 	curl -fsSL "$url/checksums.txt" -o "$stage/checksums.txt" || exit 1
-	awk -v archive="$archive" '$2 == archive { print }' "$stage/checksums.txt" > "$stage/selected.sha256"
+	awk -v archive="$archive" '$2 == archive { print }' "$stage/checksums.txt" >"$stage/selected.sha256"
 	test -s "$stage/selected.sha256" || exit 1
 	cd "$stage" || exit 1
 	if command -v sha256sum >/dev/null; then
@@ -714,7 +765,6 @@ install_treehouse_tools() {
 	make -C "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" treehouse-config
 }
 
-
 claude-code_current_semver() {
 	current_heuristic_semver claude
 }
@@ -727,17 +777,17 @@ install_claude-code_from_release() (
 )
 
 bd_current_semver() {
-    command -v bd >/dev/null || return 1
-    bd version | parse_semver | head -n1
+	command -v bd >/dev/null || return 1
+	bd version | parse_semver | head -n1
 }
 
 bd_package_semver() {
-    # WHY: A package named bd may be unrelated; use the verified Beads release.
-    return 1
+	# WHY: A package named bd may be unrelated; use the verified Beads release.
+	return 1
 }
 
 install_bd_from_release() {
-    sh "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-beads" "$1"
+	sh "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-beads" "$1"
 }
 
 install_pi_from_release() {
@@ -795,15 +845,18 @@ install_mmdc_from_release() (
 install_jq_from_release() (
 	case "$(uname -m)" in
 		x86_64) jq_arch=amd64 ;;
-		arm64|aarch64) jq_arch=arm64 ;;
-		*) echo "Unsupported jq architecture" >&2; exit 1 ;;
+		arm64 | aarch64) jq_arch=arm64 ;;
+		*)
+			echo "Unsupported jq architecture" >&2
+			exit 1
+			;;
 	esac
 	jq_asset="jq-$os-$jq_arch"
 	jq_stage=$(mktemp -d) || exit 1
 	trap 'rm -rf "$jq_stage"' EXIT
 	curl -fsSL "https://github.com/jqlang/jq/releases/download/jq-$1/$jq_asset" -o "$jq_stage/$jq_asset" || exit 1
 	curl -fsSL "https://github.com/jqlang/jq/releases/download/jq-$1/sha256sum.txt" -o "$jq_stage/checksums" || exit 1
-	awk -v asset="$jq_asset" '$2 == asset || $2 == "*" asset' "$jq_stage/checksums" > "$jq_stage/selected"
+	awk -v asset="$jq_asset" '$2 == asset || $2 == "*" asset' "$jq_stage/checksums" >"$jq_stage/selected"
 	[ -s "$jq_stage/selected" ] || exit 1
 	if command -v sha256sum >/dev/null; then
 		(cd "$jq_stage" && sha256sum -c selected) || exit 1
@@ -818,13 +871,19 @@ install_yq_from_release() {
 	local yq_arch yq_os
 	case "$(uname -m)" in
 		x86_64) yq_arch=amd64 ;;
-		arm64|aarch64) yq_arch=arm64 ;;
-		*) echo "Unsupported yq architecture" >&2; return 1 ;;
+		arm64 | aarch64) yq_arch=arm64 ;;
+		*)
+			echo "Unsupported yq architecture" >&2
+			return 1
+			;;
 	esac
 	case "$os" in
 		macos) yq_os=darwin ;;
 		linux) yq_os=linux ;;
-		*) echo "Unsupported yq OS" >&2; return 1 ;;
+		*)
+			echo "Unsupported yq OS" >&2
+			return 1
+			;;
 	esac
 	mkdir -p "$HOME/.local/bin" || return 1
 	curl -fsSL "https://github.com/mikefarah/yq/releases/download/v$1/yq_${yq_os}_${yq_arch}" \
@@ -882,8 +941,8 @@ install_zsh-autosuggestions_from_source() {
 
 yaml-language-server_current_semver() {
 	command -v yaml-language-server >/dev/null || return 1
-	npm list --global yaml-language-server --depth=0 --json 2>/dev/null |
-		jq -r '.dependencies["yaml-language-server"].version // empty'
+	npm list --global yaml-language-server --depth=0 --json 2>/dev/null \
+		| jq -r '.dependencies["yaml-language-server"].version // empty'
 }
 
 install_yaml-language-server_from_release() {
@@ -914,19 +973,28 @@ install_atuin_from_release() (
 	# Binary releases also avoid requiring Atuin's newer Rust toolchain.
 	case "$(uname -m)" in
 		x86_64) atuin_arch=x86_64 ;;
-		arm64|aarch64) atuin_arch=aarch64 ;;
-		*) echo "Unsupported Atuin architecture" >&2; exit 1 ;;
+		arm64 | aarch64) atuin_arch=aarch64 ;;
+		*)
+			echo "Unsupported Atuin architecture" >&2
+			exit 1
+			;;
 	esac
 	case "$(uname -s)" in
 		Darwin) atuin_target="$atuin_arch-apple-darwin" ;;
 		Linux) atuin_target="$atuin_arch-unknown-linux-musl" ;;
-		*) echo "Unsupported Atuin OS" >&2; exit 1 ;;
+		*)
+			echo "Unsupported Atuin OS" >&2
+			exit 1
+			;;
 	esac
 	atuin_program=${2:-atuin}
 	case "$atuin_program" in
 		atuin) atuin_bin="${CARGO_HOME:-$HOME/.cargo}/bin" ;;
 		atuin-server) atuin_bin="$HOME/.local/bin" ;;
-		*) echo "Unsupported Atuin program" >&2; exit 1 ;;
+		*)
+			echo "Unsupported Atuin program" >&2
+			exit 1
+			;;
 	esac
 	atuin_stage=$(mktemp -d) || exit 1
 	trap 'rm -rf "$atuin_stage"' EXIT
@@ -991,10 +1059,16 @@ install_ctags-lsp_from_source() {
 install_cargo_from_release() {
 	local rust_stage
 	rust_stage=$(mktemp) || return 1
-	curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs -o "$rust_stage" ||
-		{ rm -f "$rust_stage"; return 1; }
-	RUSTUP_INIT_SKIP_PATH_CHECK=yes sh "$rust_stage" --default-toolchain "$1" --profile minimal --no-modify-path -y ||
-		{ rm -f "$rust_stage"; return 1; }
+	curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs -o "$rust_stage" \
+		|| {
+			rm -f "$rust_stage"
+			return 1
+		}
+	RUSTUP_INIT_SKIP_PATH_CHECK=yes sh "$rust_stage" --default-toolchain "$1" --profile minimal --no-modify-path -y \
+		|| {
+			rm -f "$rust_stage"
+			return 1
+		}
 	rm -f "$rust_stage"
 	# NOTE: rustup generates this file outside the repository.
 	# shellcheck disable=SC1091
@@ -1043,19 +1117,25 @@ install_build_dependencies() {
 	[ "$os" = linux ] || return 0
 	# WHY: Minimal Perl installations omit IPC::Cmd and Time::Piece needed by vendored OpenSSL.
 	if command -v dnf >/dev/null; then
-		sudo dnf install -y cmake ninja-build gettext gcc gcc-c++ make unzip autoconf automake libtool openssl-devel pkgconfig ncurses perl-IPC-Cmd perl-Time-Piece
+		sudo dnf install -y cmake ninja-build gettext gcc gcc-c++ make unzip autoconf automake libtool openssl-devel pkgconfig ncurses perl-IPC-Cmd perl-Time-Piece libcurl-devel expat-devel zlib-devel
 	elif command -v apt-get >/dev/null; then
 		sudo apt-get update
-		sudo apt-get install -y cmake ninja-build gettext build-essential unzip autoconf automake libtool libssl-dev pkg-config ncurses-bin perl
+		sudo apt-get install -y cmake ninja-build gettext build-essential unzip autoconf automake libtool libssl-dev pkg-config ncurses-bin perl libcurl4-openssl-dev libexpat1-dev zlib1g-dev
 	elif command -v pacman >/dev/null; then
-		sudo pacman -S --needed --noconfirm base-devel cmake ninja unzip openssl ncurses perl
+		sudo pacman -S --needed --noconfirm base-devel cmake ninja unzip openssl ncurses perl curl expat zlib
 	fi
 }
 
 install_macos_window_tool() {
-	[ "$os" = macos ] || { echo "$1 requires macOS" >&2; return 1; }
+	[ "$os" = macos ] || {
+		echo "$1 requires macOS" >&2
+		return 1
+	}
 	command -v "$1" >/dev/null && return 0
-	command -v brew >/dev/null || { echo "Homebrew is required to install $1" >&2; return 1; }
+	command -v brew >/dev/null || {
+		echo "Homebrew is required to install $1" >&2
+		return 1
+	}
 	brew install "koekeishiya/formulae/$1"
 }
 
@@ -1120,7 +1200,8 @@ configure_python_ca_trust() {
 	# Preserve explicitly selected trust stores, including directory-only setups.
 	[ "${SSL_CERT_FILE+x}" != x ] && [ "${SSL_CERT_DIR+x}" != x ] || return 0
 	local certificate_file
-	certificate_file=$(python3 - <<'PY'
+	certificate_file=$(
+		python3 - <<'PY'
 from pathlib import Path
 import ssl
 
@@ -1163,7 +1244,8 @@ install_rust_runtime() {
 install_dependencies() {
 	install_config_runtime || return 1
 	load_dotfiles_config || return 1
-	local tool installer package version go_bin
+	local tool installer package version go_bin dotfiles_root
+	dotfiles_root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
 	while IFS=$'\t' read -r tool installer package version; do
 		[ -n "$tool" ] || continue
 		echo "Configuring tool: $tool"
@@ -1195,35 +1277,41 @@ install_dependencies() {
 			zellij) install_zellij_runtime || return 1 ;;
 			font) install_hack_nerd_font || return 1 ;;
 			worktree-manager)
-				sh "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-worktree-manager" "$version" || return 1
+				sh "$dotfiles_root/scripts/install-worktree-manager" "$version" || return 1
 				;;
 			worktree-policy)
-				sh "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-worktree-policy" "$version" || return 1
+				sh "$dotfiles_root/scripts/install-worktree-policy" "$version" || return 1
 				;;
 			git-worktree-hooks)
 				local git_archive_args=()
 				if [ -n "${DOTFILES_GIT_WORKTREE_HOOKS_ARCHIVE:-}" ]; then
 					git_archive_args=(--archive "$DOTFILES_GIT_WORKTREE_HOOKS_ARCHIVE")
 				fi
-				python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-git-worktree-hooks.py" "${git_archive_args[@]}" || return 1
+				bash "$dotfiles_root/scripts/install-git-worktree-hooks.sh" "${git_archive_args[@]}" || return 1
 				;;
 			approval-cli)
-				python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-approval-cli.py" "$tool" || return 1
+				python3 "$dotfiles_root/scripts/install-approval-cli.py" "$tool" || return 1
 				;;
 			octo-manager)
-				python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-octo-manager.py" || return 1
+				python3 "$dotfiles_root/scripts/install-octo-manager.py" || return 1
+				;;
+			beads)
+				python3 "$dotfiles_root/tools/beads/beads-service.py" install || return 1
 				;;
 			treehouse) install_treehouse_tools || return 1 ;;
 			macos-window-tool) install_macos_window_tool "$tool" || return 1 ;;
-			*) echo "Unknown tool installer: $installer" >&2; return 1 ;;
+			*)
+				echo "Unknown tool installer: $installer" >&2
+				return 1
+				;;
 		esac
-	done <<< "$DOTFILES_INSTALL_PLAN"
+	done <<<"$DOTFILES_INSTALL_PLAN"
 }
 
 setup_atuin_sync() {
-	if [ -z "${ATUIN_SYNC_HOST:-}" ] &&
-		[ ! -s "$HOME/.local/state/atuin-sync/host" ] &&
-		[ ! -f "$HOME/.local/share/atuin/self-hosted-account.json" ]; then
+	if [ -z "${ATUIN_SYNC_HOST:-}" ] \
+		&& [ ! -s "$HOME/.local/state/atuin-sync/host" ] \
+		&& [ ! -f "$HOME/.local/share/atuin/self-hosted-account.json" ]; then
 		echo "No Atuin sync host configured; skipping sync setup. Set ATUIN_SYNC_HOST to enable it."
 		return 0
 	fi
@@ -1263,7 +1351,10 @@ run_configured_hooks() {
 				fi
 				;;
 			sql-formatters) make -C "$HOME/.files" sql-formatters UV="$(command -v uv)" || return 1 ;;
-			*) echo "Unknown setup hook: $hook" >&2; return 1 ;;
+			*)
+				echo "Unknown setup hook: $hook" >&2
+				return 1
+				;;
 		esac
 	done
 }

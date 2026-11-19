@@ -3,10 +3,75 @@ name: Shell checks
 on:
   workflow_dispatch:
   pull_request:
-    paths: ['.github/scripts/install-file-selection-tools.sh', 'scripts/make/*.sh', 'bootstrap.sh', 'install.sh', 'claude/evals/skill-maintenance/check_size.sh', 'scripts/setup-checklist.sh', 'scripts/install-tmux-plugins.sh', 'scripts/install-ep-direnv.sh', 'scripts/install-agent-status-broker', 'scripts/install-zellij', 'scripts/install-treehouse', 'bin/ac-awake-service', 'bin/paseo-pi', 'bin/zellij-attach', 'bin/zellij-balance', 'bin/fix-ssh', 'sh/ssh-rc', 'bin/fzf-path-preview', 'bin/git-ssh', 'bin/sync-codex-mcp-servers', 'sh/alias', 'sh/functions', '.github/workflows/shellcheck.yml']
+    paths:
+      - '.github/scripts/install-file-selection-tools.sh'
+      - 'scripts/make/*.sh'
+      - 'bootstrap.sh'
+      - 'install.sh'
+      - 'claude/evals/skill-maintenance/check_size.sh'
+      - 'scripts/setup-checklist.sh'
+      - 'scripts/install-tmux-plugins.sh'
+      - 'scripts/install-ep-direnv.sh'
+      - 'scripts/install-agent-status-broker'
+      - 'scripts/install-zellij'
+      - 'scripts/install-treehouse'
+      - 'bin/ac-awake-service'
+      - 'bin/paseo-pi'
+      - 'bin/zellij-attach'
+      - 'bin/zellij-balance'
+      - 'bin/fix-ssh'
+      - 'sh/ssh-rc'
+      - 'bin/fzf-path-preview'
+      - 'bin/git-ssh'
+      - 'bin/sync-codex-mcp-servers'
+      - 'sh/alias'
+      - 'sh/functions'
+      - '.github/workflows/shellcheck.yml'
+      - 'scripts/build-git-worktree-hooks.sh'
+      - 'scripts/extract-git-runtime.sh'
+      - 'scripts/install-git-worktree-hooks.sh'
+      - 'scripts/lib/git-worktree-runtime.sh'
+      - 'scripts/pull-git-worktree-source.sh'
+      - 'scripts/test-install-git-worktree-hooks.sh'
+      - 'scripts/worktree-manager-update.sh'
+      - 'scripts/install-shfmt.sh'
+      - 'bootstrap/tools.toml'
   push:
-    branches: [master]
-    paths: ['.github/scripts/install-file-selection-tools.sh', 'scripts/make/*.sh', 'bootstrap.sh', 'install.sh', 'claude/evals/skill-maintenance/check_size.sh', 'scripts/setup-checklist.sh', 'scripts/install-tmux-plugins.sh', 'scripts/install-ep-direnv.sh', 'scripts/install-agent-status-broker', 'scripts/install-zellij', 'scripts/install-treehouse', 'bin/ac-awake-service', 'bin/paseo-pi', 'bin/zellij-attach', 'bin/zellij-balance', 'bin/fix-ssh', 'sh/ssh-rc', 'bin/fzf-path-preview', 'bin/git-ssh', 'bin/sync-codex-mcp-servers', 'sh/alias', 'sh/functions', '.github/workflows/shellcheck.yml']
+    branches:
+      - master
+    paths:
+      - '.github/scripts/install-file-selection-tools.sh'
+      - 'scripts/make/*.sh'
+      - 'bootstrap.sh'
+      - 'install.sh'
+      - 'claude/evals/skill-maintenance/check_size.sh'
+      - 'scripts/setup-checklist.sh'
+      - 'scripts/install-tmux-plugins.sh'
+      - 'scripts/install-ep-direnv.sh'
+      - 'scripts/install-agent-status-broker'
+      - 'scripts/install-zellij'
+      - 'scripts/install-treehouse'
+      - 'bin/ac-awake-service'
+      - 'bin/paseo-pi'
+      - 'bin/zellij-attach'
+      - 'bin/zellij-balance'
+      - 'bin/fix-ssh'
+      - 'sh/ssh-rc'
+      - 'bin/fzf-path-preview'
+      - 'bin/git-ssh'
+      - 'bin/sync-codex-mcp-servers'
+      - 'sh/alias'
+      - 'sh/functions'
+      - '.github/workflows/shellcheck.yml'
+      - 'scripts/build-git-worktree-hooks.sh'
+      - 'scripts/extract-git-runtime.sh'
+      - 'scripts/install-git-worktree-hooks.sh'
+      - 'scripts/lib/git-worktree-runtime.sh'
+      - 'scripts/pull-git-worktree-source.sh'
+      - 'scripts/test-install-git-worktree-hooks.sh'
+      - 'scripts/worktree-manager-update.sh'
+      - 'scripts/install-shfmt.sh'
+      - 'bootstrap/tools.toml'
 
 permissions:
   contents: read
@@ -18,6 +83,16 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Read pinned Go version
+        id: tools
+        run: python3 -c 'import os,tomllib; version=tomllib.load(open("bootstrap/tools.toml","rb"))["tools"]["go"]["version"]; open(os.environ["GITHUB_OUTPUT"],"a").write("go="+version+"\n")'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ steps.tools.outputs.go }}
+          cache: false
+      - run: bash scripts/install-shfmt.sh
+      - run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - run: make shell-format-check
       - run: bash scripts/make/shellcheck.sh "$PWD"
       - run: bash -n sh/alias
       - run: bash -n sh/functions

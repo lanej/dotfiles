@@ -4,7 +4,7 @@ set -eu
 directory=${1:-$HOME/.local/share/paseo-coordinator}
 mode=${2:-embedded}
 case "$mode" in embedded|server) ;; *) printf '%s\n' 'Mode must be embedded or server' >&2; exit 1 ;; esac
-command -v bd >/dev/null 2>&1 || { printf '%s\n' 'Install Beads first: enable tools.beads and run make install' >&2; exit 1; }
+command -v bd >/dev/null 2>&1 || { printf '%s\n' 'Install Beads first: enable tools.beads-cli and run make install' >&2; exit 1; }
 command -v python3 >/dev/null 2>&1 || { printf '%s\n' 'Python 3 is required' >&2; exit 1; }
 mkdir -p "$directory"
 directory=$(cd "$directory" && pwd -P)

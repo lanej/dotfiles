@@ -4,7 +4,7 @@ Beads owns task briefs, work status, constraints, evidence and next actions in a
 
 ## Install and initialize
 
-Enable `tools.beads = true` in the selected machine TOML, inspect `make plan`, then run `make install`. The catalog pins Beads 1.3.4. The release installer verifies the published archive checksum and installed binary version, and preserves unmanaged or modified binaries. Configuration alone neither installs Beads nor initializes task storage.
+Enable `tools.beads-cli = true` in the selected machine TOML, inspect `make plan`, then run `make install`. The catalog pins Beads 1.3.4. The release installer verifies the published archive checksum and installed binary version, and preserves unmanaged or modified binaries. Configuration alone neither installs Beads nor initializes task storage.
 
 Initialize explicitly:
 

@@ -34,7 +34,7 @@ def main():
         assert json.loads((ROOT / "config/schema.json").read_text()) == schema, "Regenerate config/schema.json from the runtime definitions."
         assert (ROOT / "config/targets.mk").read_text() == run(*command, "--format", "make-targets").stdout, "Regenerate config/targets.mk from the native sets and tool catalog."
         platform_set = "macos" if sys.platform == "darwin" else "linux"
-        native_tools = {"git", "git-worktree-hooks", "worktree-policy"} | ({"yabai", "skhd"} if platform_set == "macos" else {"x11", "polybar", "bspwm"})
+        native_tools = {"git", "git-worktree-hooks", "worktree-policy", "build"} | ({"yabai", "skhd"} if platform_set == "macos" else {"x11", "polybar", "bspwm", "bsdtar"})
         disabled_native = "yabai" if platform_set == "macos" else "polybar"
         assert baseline["sets"] == ["base", platform_set, "shell", "terminal"]
         assert {tool["name"] for tool in baseline["baseline"]["tools"]} == native_tools
@@ -48,6 +48,12 @@ def main():
         assert "octo-manager" not in {tool["name"] for tool in baseline["tools"]}
         assert "source-code" not in {tool["name"] for tool in baseline["tools"]}
         config = home / ".config/dotfiles/config.toml"
+        config.parent.mkdir(parents=True, exist_ok=True)
+        config.write_text('[tools]\nbeads-cli = true\n')
+        cli_only = json.loads(run(*command, "--format", "json").stdout)
+        cli_tool = next(tool for tool in cli_only["tools"] if tool["name"] == "beads-cli")
+        assert cli_tool["installer"] == "package" and cli_tool["package"] == "bd", cli_tool
+        assert "beads" not in {tool["name"] for tool in cli_only["tools"]}, "CLI-only selection must not enable the Beads service"
         sets = config.parent / "sets"
         sets.mkdir(parents=True)
         (sets / "inline-review.toml").write_text('[features]\nnvim_ghlite = true\n')

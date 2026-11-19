@@ -40,7 +40,7 @@ jobs:
       - run: python3 scripts/test-beads-install.py
       - name: Install pinned Beads for native task acceptance
         run: |
-          version=$(python3 -c 'import tomllib; print(tomllib.load(open("bootstrap/tools.toml", "rb"))["tools"]["beads"]["version"])')
+          version=$(python3 -c 'import tomllib; print(tomllib.load(open("bootstrap/tools.toml", "rb"))["tools"]["beads-cli"]["version"])')
           sh scripts/install-beads "$version"
           echo "PASEO_TASKS_NATIVE_BEADS=$HOME/.local/bin/bd" >> "$GITHUB_ENV"
       - run: npm run check

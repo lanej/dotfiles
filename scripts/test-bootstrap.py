@@ -175,10 +175,8 @@ def main():
         (checkout / "scripts/install-worktree-policy").write_text('#!/bin/sh\n[ "$1" = 0.1.1 ] || exit 1\ntouch "$HOME/native-policy-installed"\n')
         manager_version = tomllib.loads((root / "bootstrap/tools.toml").read_text())["tools"]["worktree-manager"]["version"]
         (checkout / "scripts/install-worktree-manager").write_text('#!/bin/sh\n[ "$1" = ' + manager_version + ' ] || exit 1\ntouch "$HOME/worktree-manager-installed"\n')
-        (checkout / "scripts/install-git-worktree-hooks.py").write_text(
-            "from pathlib import Path\nimport os\n"
-            "home = Path(os.environ['HOME'])\n"
-            "(home / 'patched-git-installed').touch()\n")
+        (checkout / "scripts/install-git-worktree-hooks.sh").write_text(
+            '#!/bin/sh\ntouch "$HOME/patched-git-installed"\n')
         shutil.copyfile(root / "scripts/setup-checklist.sh", checkout / "scripts/setup-checklist.sh")
         machine_config = home / ".config/dotfiles/config.toml"
         machine_config.parent.mkdir(parents=True)
