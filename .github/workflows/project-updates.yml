@@ -5,6 +5,8 @@ on:
     paths: &update-paths
       - 'bin/project-update'
       - 'scripts/project-lifecycle.py'
+      - 'scripts/worktree-manager-update.sh'
+      - 'scripts/lib/git-worktree-runtime.sh'
       - 'tools/beads/project-update.py'
       - 'scripts/make/project-update.sh'
       - 'scripts/test-project-update.py'

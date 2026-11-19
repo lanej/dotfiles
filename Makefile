@@ -106,7 +106,7 @@ instruction-size:
 	$(call require-command,jq)
 	@bash "$(DOTFILES)/claude/evals/skill-maintenance/check_size.sh" --base "$(INSTRUCTION_SIZE_BASE)" --installed-home "$(HOME)"
 
-lint: shellcheck audit-skills instruction-size theme-check lua-check
+lint: shellcheck shell-format-check audit-skills instruction-size theme-check lua-check
 
 .PHONY: lua-check lua-format
 lua-check:
@@ -132,6 +132,12 @@ test-theme-presentation:
 	@"$(UV)" run --script "$(DOTFILES)/scripts/test-theme-presentation.py"
 test-theme-native:
 	@"$(UV)" run --script "$(DOTFILES)/scripts/test-theme-native.py"
+
+.PHONY: shell-format shell-format-check
+shell-format:
+	@bash "$(MAKE_SCRIPTS)/shell-format.sh" "$(DOTFILES)" --write
+shell-format-check:
+	@bash "$(MAKE_SCRIPTS)/shell-format.sh" "$(DOTFILES)" --check
 
 shellcheck:
 	$(call require-command,shellcheck)
@@ -304,7 +310,7 @@ test-treehouse-worktree-policy: worktree-policy-native
 test-worktree-manager:
 	@"$(UV)" run --no-project "$(DOTFILES)/scripts/test-worktree-manager.py" --binary "$(WORKTREE_MANAGER_BINARY)" --git "$(GIT_WORKTREE_HOOKS_GIT)"
 test-install-git-worktree-hooks:
-	@"$(UV)" run --no-project "$(DOTFILES)/scripts/test-install-git-worktree-hooks.py" --archive "$(GIT_WORKTREE_HOOKS_ARCHIVE)"
+	@"$(UV)" run --no-project --python ">=3.11" bash "$(DOTFILES)/scripts/test-install-git-worktree-hooks.sh" --archive "$(GIT_WORKTREE_HOOKS_ARCHIVE)"
 claude-plugins:
 	$(call require-command,claude)
 	@"$(DOTFILES)/bin/claude-remove-blocked-plugins" --blocklist "$(DOTFILES)/claude/blocked-plugins.json"

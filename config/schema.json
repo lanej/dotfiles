@@ -120,6 +120,10 @@
           "type": "boolean",
           "description": "Install the default patched Git runtime with worktree lifecycle hooks; disable to keep system Git."
         },
+        "bsdtar": {
+          "type": "boolean",
+          "description": "Enable the bsdtar bootstrap recipe."
+        },
         "zsh": {
           "type": "boolean",
           "description": "Enable the zsh bootstrap recipe."
