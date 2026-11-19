@@ -74,7 +74,7 @@ test('CLI regenerates after a ring change, checks stale output, and preserves ou
 test('the migrated registry retains the accepted decisions and links', async () => {
   const { rings } = await loadRadar();
   assert.deepEqual(rings.map((ring) => ring.entries.map((entry) => entry.id)), [
-    ["neovim","git","zsh","starship","atuin","bat","fd","eza","ripgrep","direnv","git-delta","github-cli","jq","yq","just","tmux","claude-code","codex","fzf","kitty","yabai","zellij","biome","worktree-manager","source-code-application-stack","connect","buf","project-engineering-guidance"], ['beads', 'mergiraf', 'keylease', 'intent', 'paseo', 'viewrule', 'commander'], ['pi', 'aerospace'],
+    ["neovim","git","zsh","starship","atuin","bat","fd","eza","ripgrep","direnv","git-delta","github-cli","jq","yq","just","tmux","claude-code","codex","fzf","kitty","yabai","zellij","biome","shfmt","worktree-manager","source-code-application-stack","connect","buf","project-engineering-guidance"], ['beads', 'mergiraf', 'keylease', 'intent', 'paseo', 'viewrule', 'commander'], ['pi', 'aerospace'],
     ['firstmate-through-paseo-and-github', 'superpowers', 'opencode', 'ghostty', 'andrej-karpathy-skills', 'sccache'],
   ]);
   assert.equal(rings[1].entries.find((entry) => entry.id === 'viewrule').icon, 'viewrule.png');
