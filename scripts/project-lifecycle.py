@@ -219,36 +219,10 @@ def approval_cli(project, action):
     return 0
 
 
-def worktree_manager(action):
-    tools = tomllib.loads((ROOT / "bootstrap/tools.toml").read_text())["tools"]
-    recipe = tools["worktree-manager"]
-    if action == "build":
-        run([sys.executable, str(ROOT / "scripts/install-git-worktree-hooks.py")])
-        run(["sh", str(ROOT / "scripts/install-worktree-manager"), recipe["version"]])
-        run(["make", "-C", str(ROOT), "git"])
-    elif action in ("status", "restart"):
-        versions = {}
-        for name in ("git", "worktree"):
-            binary = Path.home() / ".local/bin" / name
-            result = subprocess.run([str(binary), "--version"], text=True, capture_output=True) if binary.is_file() else None
-            versions[name] = result.stdout.strip() if result and result.returncode == 0 else None
-        if action == "status":
-            print(json.dumps({"installed_versions": versions, "running_revision": None}))
-        elif versions != {"git": "git version " + tools["git-worktree-hooks"]["runtime_version"],
-                          "worktree": "worktree " + recipe["version"]}:
-            raise ValueError("Build the catalog-pinned Git and worktree manager before activation")
-        # Both CLIs load their installed executable on the next invocation.
-    else:
-        raise ValueError("worktree-manager supports build, restart and status; clean is not configured")
-    return 0
-
-
 def main():
-    if len(sys.argv) != 3 or sys.argv[1] not in ("octo-manager", "zellij", "bedrock-router", "intent", "keylease", "beads", "worktree-manager"):
+    if len(sys.argv) != 3 or sys.argv[1] not in ("octo-manager", "zellij", "bedrock-router", "intent", "keylease", "beads"):
         raise ValueError("Usage: project-lifecycle.py PROJECT ACTION")
     project, action = sys.argv[1:]
-    if project == "worktree-manager":
-        return worktree_manager(action)
     if project == "beads":
         return beads(action)
     if project in ("intent", "keylease"):

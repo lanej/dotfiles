@@ -304,7 +304,7 @@ test-treehouse-worktree-policy: worktree-policy-native
 test-worktree-manager:
 	@"$(UV)" run --no-project "$(DOTFILES)/scripts/test-worktree-manager.py" --binary "$(WORKTREE_MANAGER_BINARY)" --git "$(GIT_WORKTREE_HOOKS_GIT)"
 test-install-git-worktree-hooks:
-	@"$(UV)" run --no-project "$(DOTFILES)/scripts/test-install-git-worktree-hooks.py" --archive "$(GIT_WORKTREE_HOOKS_ARCHIVE)"
+	@"$(UV)" run --no-project --python ">=3.11" bash "$(DOTFILES)/scripts/test-install-git-worktree-hooks.sh" --archive "$(GIT_WORKTREE_HOOKS_ARCHIVE)"
 claude-plugins:
 	$(call require-command,claude)
 	@"$(DOTFILES)/bin/claude-remove-blocked-plugins" --blocklist "$(DOTFILES)/claude/blocked-plugins.json"

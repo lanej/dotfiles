@@ -7,8 +7,11 @@ on:
       - 'bootstrap.sh'
       - 'bootstrap/tools.toml'
       - 'scripts/dotfiles-config.py'
-      - 'scripts/install-git-worktree-hooks.py'
-      - 'scripts/test-install-git-worktree-hooks.py'
+      - 'scripts/pull-git-worktree-source.sh'
+      - 'scripts/lib/git-worktree-runtime.sh'
+      - 'scripts/extract-git-runtime.py'
+      - 'scripts/install-git-worktree-hooks.sh'
+      - 'scripts/test-install-git-worktree-hooks.sh'
       - 'bin/git-worktree-policy'
       - 'bin/git-worktree-policy-hook'
       - 'tools/worktree-policy/**'
@@ -21,13 +24,17 @@ on:
       - 'scripts/build-git-worktree-hooks.sh'
       - '.github/workflows/git-worktree-hooks.yml'
   push:
-    branches: [master]
+    branches:
+      - master
     paths:
       - 'bootstrap.sh'
       - 'bootstrap/tools.toml'
       - 'scripts/dotfiles-config.py'
-      - 'scripts/install-git-worktree-hooks.py'
-      - 'scripts/test-install-git-worktree-hooks.py'
+      - 'scripts/pull-git-worktree-source.sh'
+      - 'scripts/lib/git-worktree-runtime.sh'
+      - 'scripts/extract-git-runtime.py'
+      - 'scripts/install-git-worktree-hooks.sh'
+      - 'scripts/test-install-git-worktree-hooks.sh'
       - 'bin/git-worktree-policy'
       - 'bin/git-worktree-policy-hook'
       - 'tools/worktree-policy/**'
@@ -48,7 +55,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, ubuntu-22.04-arm, macos-15, macos-15-intel]
+        os:
+          - ubuntu-22.04
+          - ubuntu-22.04-arm
+          - macos-15
+          - macos-15-intel
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     steps:
@@ -72,7 +83,7 @@ jobs:
       - name: Build, test and package runtime
         run: scripts/build-git-worktree-hooks.sh "$RUNNER_TEMP/git-artifacts"
       - name: Check optional runtime installer
-        run: python3 scripts/test-install-git-worktree-hooks.py --archive "$RUNNER_TEMP"/git-artifacts/*.tar.gz
+        run: bash scripts/test-install-git-worktree-hooks.sh --archive "$RUNNER_TEMP"/git-artifacts/*.tar.gz
       - name: Extract patched runtime
         run: |
           mkdir "$RUNNER_TEMP/git-runtime"
@@ -93,7 +104,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, ubuntu-22.04-arm]
+        os:
+          - ubuntu-22.04
+          - ubuntu-22.04-arm
     runs-on: ${{ matrix.os }}
     container: rockylinux:8
     timeout-minutes: 25
@@ -106,7 +119,7 @@ jobs:
       - name: Build, test and package Enterprise Linux 8 runtime
         run: scripts/build-git-worktree-hooks.sh "$RUNNER_TEMP/git-el8-artifacts"
       - name: Check Enterprise Linux 8 runtime installer
-        run: python3 scripts/test-install-git-worktree-hooks.py --archive "$RUNNER_TEMP"/git-el8-artifacts/*.tar.gz
+        run: bash scripts/test-install-git-worktree-hooks.sh --archive "$RUNNER_TEMP"/git-el8-artifacts/*.tar.gz
       - uses: actions/upload-artifact@v4
         with:
           name: git-worktree-hooks-EL8-${{ runner.arch }}

@@ -19,6 +19,11 @@ shellcheck -x \
     "$dotfiles/scripts/install-worktree-manager" \
     "$dotfiles/scripts/build-worktree-policy.sh" \
     "$dotfiles/tools/worktree-policy/scripts/check-go.sh" \
+    "$dotfiles/scripts/lib/git-worktree-runtime.sh" \
+    "$dotfiles/scripts/pull-git-worktree-source.sh" \
+    "$dotfiles/scripts/install-git-worktree-hooks.sh" \
+    "$dotfiles/scripts/test-install-git-worktree-hooks.sh" \
+    "$dotfiles/scripts/worktree-manager-update.sh" \
     "$dotfiles/scripts/build-git-worktree-hooks.sh" \
     "$dotfiles/bin/ac-awake-service" \
     "$dotfiles/bin/paseo-pi" \

@@ -3,10 +3,10 @@ set -euo pipefail
 
 usage() {
     cat <<'HELP'
-Usage: scripts/build-git-worktree-hooks.sh OUTPUT_DIRECTORY
+Usage: scripts/build-git-worktree-hooks.sh OUTPUT_DIRECTORY [--source CHECKOUT]
 
-Shallow clone the catalog-pinned upstream Git tag, apply the checked-in worktree hook patches, build
-and test its runtime, then write a relocatable platform archive and checksum.
+Build a selected stable Git checkout (or shallow clone the catalog baseline), apply the
+checked-in worktree hook patches, test its runtime and write a local archive and checksum.
 Requires Python 3.11+, a C toolchain, make, Git, Perl, tar, and development libraries
 for zlib, libcurl and expat. Does not install Git or change PATH.
 Set JOBS to control build parallelism (default: 4).
@@ -17,23 +17,18 @@ if [[ ${1:-} == --help || ${1:-} == -h ]]; then
     usage
     exit 0
 fi
-if [[ $# != 1 ]]; then
+if [[ $# != 1 && ( $# != 3 || $2 != --source ) ]]; then
     usage >&2
     exit 2
 fi
 
-repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-catalog_values=$(python3 - "$repo_root/bootstrap/tools.toml" <<'PYTHON'
-import sys
-import tomllib
-with open(sys.argv[1], "rb") as stream:
-    recipe = tomllib.load(stream)["tools"]["git-worktree-hooks"]
-for key in ("version", "runtime_version"):
-    print(recipe[key])
-PYTHON
-)
-version=$(printf '%s\n' "$catalog_values" | sed -n '1p')
-runtime_version=$(printf '%s\n' "$catalog_values" | sed -n '2p')
+runtime_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+repo_root=$runtime_root
+# shellcheck source=scripts/lib/git-worktree-runtime.sh
+source "$runtime_root/scripts/lib/git-worktree-runtime.sh"
+git_runtime_catalog
+selected_source=${3:-}
+if [[ -n $selected_source ]]; then git_runtime_source "$selected_source"; fi
 source_url="https://github.com/git/git.git"
 jobs=${JOBS:-4}
 if [[ ! $jobs =~ ^[1-9][0-9]*$ ]]; then
@@ -46,7 +41,7 @@ case $(uname -s) in
     *) printf 'Unsupported build platform\n' >&2; exit 2 ;;
 esac
 architecture=$(uname -m)
-archive_name=$(python3 "$repo_root/scripts/install-git-worktree-hooks.py" --archive-name)
+archive_name=$(git_runtime_archive_name)
 package=${archive_name%.tar.gz}
 mkdir -p "$1"
 output=$(cd "$1" && pwd)
@@ -67,8 +62,13 @@ sha256() {
 }
 
 source_dir="$scratch/git-$version"
-git clone --depth 1 --single-branch --branch "v$version" "$source_url" "$source_dir"
-source_commit=$(git -C "$source_dir" rev-parse HEAD)
+if [[ -n $selected_source ]]; then
+    mkdir "$source_dir"
+    git -C "$selected_source" archive HEAD | tar -xf - -C "$source_dir"
+else
+    git clone --depth 1 --single-branch --branch "v$version" "$source_url" "$source_dir"
+    source_commit=$(git -C "$source_dir" rev-parse HEAD)
+fi
 mkdir "$scratch/patches"
 cp "$repo_root"/patches/git-worktree-hooks/*.patch "$scratch/patches/"
 for patch in "$scratch"/patches/*.patch; do

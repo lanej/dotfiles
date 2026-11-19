@@ -27,7 +27,8 @@ command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "intent"]
 path = "~/src/1password-agent"
 command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "keylease"]
 
-# Dotfiles pins the manager and the upstream Git tag plus local hook patches.
+# Dotfiles pins the manager and patches; pull also selects upstream stable Git.
 [projects.worktree-manager]
 path = "{dotfiles}"
-command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "worktree-manager"]
+command = ["bash", "{dotfiles}/scripts/worktree-manager-update.sh"]
+pull_sources = true

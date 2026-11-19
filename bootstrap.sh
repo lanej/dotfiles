@@ -1191,7 +1191,7 @@ install_dependencies() {
 				if [ -n "${DOTFILES_GIT_WORKTREE_HOOKS_ARCHIVE:-}" ]; then
 					git_archive_args=(--archive "$DOTFILES_GIT_WORKTREE_HOOKS_ARCHIVE")
 				fi
-				python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-git-worktree-hooks.py" "${git_archive_args[@]}" || return 1
+				bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-git-worktree-hooks.sh" "${git_archive_args[@]}" || return 1
 				;;
 			approval-cli)
 				python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-approval-cli.py" "$tool" || return 1
