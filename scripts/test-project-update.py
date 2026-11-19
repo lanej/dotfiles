@@ -230,10 +230,10 @@ class LifecycleTests(unittest.TestCase):
                 self.assertEqual(arguments, ["-C", str(ROOT.resolve()), *targets])
 
     def test_beads_stages_then_restarts_only_matching_artifacts(self):
-        scripts = self.checkout / "scripts"
-        scripts.mkdir()
-        adapter = scripts / "project-lifecycle.py"
-        shutil.copyfile(ADAPTER, adapter)
+        scripts = self.checkout / "tools/beads"
+        scripts.mkdir(parents=True)
+        adapter = scripts / "project-update.py"
+        shutil.copyfile(ROOT / "tools/beads/project-update.py", adapter)
         (scripts / "beads_config.py").write_text("# Fixture config reader\n")
         catalog = self.checkout / "bootstrap/tools.toml"
         catalog.parent.mkdir()
@@ -276,7 +276,7 @@ elif action=='status':
         self.git(self.checkout, "commit", "-m", "Beads adapter fixture")
         revision = self.git(self.checkout, "rev-parse", "HEAD")
         self.config.write_text(f'[projects.beads]\npath={json.dumps(str(self.checkout))}\n'
-                               f'command={json.dumps([sys.executable, str(adapter), "beads"])}\n')
+                               f'command={json.dumps([sys.executable, str(adapter)])}\n')
         persistent = self.base / ".local/state/beads-service/workspace/valuable"
         persistent.parent.mkdir(parents=True)
         persistent.write_text("retained task data")

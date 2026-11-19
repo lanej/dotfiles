@@ -1149,7 +1149,8 @@ install_rust_runtime() {
 install_dependencies() {
 	install_config_runtime || return 1
 	load_dotfiles_config || return 1
-	local tool installer package version go_bin
+	local tool installer package version go_bin dotfiles_root
+	dotfiles_root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
 	while IFS=$'\t' read -r tool installer package version; do
 		[ -n "$tool" ] || continue
 		echo "Configuring tool: $tool"
@@ -1181,26 +1182,26 @@ install_dependencies() {
 			zellij) install_zellij_runtime || return 1 ;;
 			font) install_hack_nerd_font || return 1 ;;
 			worktree-manager)
-				sh "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-worktree-manager" "$version" || return 1
+				sh "$dotfiles_root/scripts/install-worktree-manager" "$version" || return 1
 				;;
 			worktree-policy)
-				sh "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-worktree-policy" "$version" || return 1
+				sh "$dotfiles_root/scripts/install-worktree-policy" "$version" || return 1
 				;;
 			git-worktree-hooks)
 				local git_archive_args=()
 				if [ -n "${DOTFILES_GIT_WORKTREE_HOOKS_ARCHIVE:-}" ]; then
 					git_archive_args=(--archive "$DOTFILES_GIT_WORKTREE_HOOKS_ARCHIVE")
 				fi
-				python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-git-worktree-hooks.py" "${git_archive_args[@]}" || return 1
+				python3 "$dotfiles_root/scripts/install-git-worktree-hooks.py" "${git_archive_args[@]}" || return 1
 				;;
 			approval-cli)
-				python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-approval-cli.py" "$tool" || return 1
+				python3 "$dotfiles_root/scripts/install-approval-cli.py" "$tool" || return 1
 				;;
 			octo-manager)
-				python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-octo-manager.py" || return 1
+				python3 "$dotfiles_root/scripts/install-octo-manager.py" || return 1
 				;;
 			beads)
-				python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/beads-service.py" install || return 1
+				python3 "$dotfiles_root/tools/beads/beads-service.py" install || return 1
 				;;
 			treehouse) install_treehouse_tools || return 1 ;;
 			macos-window-tool) install_macos_window_tool "$tool" || return 1 ;;

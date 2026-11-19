@@ -2,7 +2,7 @@
 
 The optional `beads` tool runs one Beads HTTP endpoint and one private Dolt SQL server under the native user service manager. Its trial profile selects the workspace, ports, expected Dolt branch, and private history remote. Dispatch remains with the explicitly selected controller. Installing the endpoint does not enroll or migrate tasks, synchronize GitHub issues, or replace Octo's issue lifecycle; its Beads adapter is a separate integration.
 
-Enable `tools.beads = true` in the machine TOML, or include `"beads"` in its sets. `make plan` shows the selection; `make install` installs the catalog-pinned, checksum-verified native binaries and starts the service. Default configuration commands do not install software or start it. Explicit `python3 scripts/beads-service.py install` from dotfiles installs and starts only this capability.
+Enable `tools.beads = true` in the machine TOML, or include `"beads"` in its sets. `make plan` shows the selection; `make install` installs the catalog-pinned, checksum-verified native binaries and starts the service. Default configuration commands do not install software or start it. Explicit `python3 tools/beads/beads-service.py install` from dotfiles installs and starts only this capability.
 
 | Command | Purpose |
 | --- | --- |
@@ -12,9 +12,13 @@ Enable `tools.beads = true` in the machine TOML, or include `"beads"` in its set
 | `beads-service status` | Report endpoint identity, HTTP liveness and database readiness; return nonzero unless ready. |
 | `beads-service config` | Validate and print the effective trial profile without starting anything or contacting a service. |
 | `beads-service backup` | Explicitly checkpoint and push the entire shared task history to the configured private GitHub repository. |
-| `python3 scripts/test-beads-service.py` | Exercise ownership, readiness, failure cleanup and workspace protection with controlled native processes. |
+| `python3 tools/beads/test-beads-service.py` | Exercise ownership, readiness, failure cleanup and workspace protection with controlled native processes. |
 
 The installed `~/.local/bin/beads-service` supports `start`, `restart`, `stop`, `status`, `config`, and `backup` from any directory. Its controller and configuration reader are copied into `~/.local/share/beads-service`, so deleting the installation source worktree does not interrupt the service. Runtime binaries are private and versioned; an existing `bd` on PATH is preserved.
+
+## Source layout
+
+[The Beads capability](../tools/beads/) groups the service controller, strict configuration reader, runtime-update adapter, and service checks. The controller uses Python’s standard library for TOML and JSON validation, native launchd property lists, inherited file-descriptor locks, atomic receipts, and bounded child-process supervision. Bootstrap remains the shell entrypoint for selected installation; source configuration and task state remain separate from the installed controller.
 
 ## Runtime updates
 
@@ -29,7 +33,7 @@ project-update restart beads
 project-update update beads
 ```
 
-The project source is dotfiles, which owns the compatible Beads/Dolt pins. Pulling does not choose an independent upstream latest or change the private task-data repository. Build installs the selected artifacts with `--no-start`, preserving a running service; restart requires a matching staged source fingerprint and unchanged artifact hashes. Local configuration and task storage remain intact. `status` separates verified installed identity from observed service readiness and an unknown running revision. Initial explicit `python3 scripts/beads-service.py install` remains available; direct installs can invalidate the updater's installed-identity receipt until staged again. The optional browser UI and manual history checkpoints are separate from runtime updates.
+The project source is dotfiles, which owns the compatible Beads/Dolt pins. Pulling does not choose an independent upstream latest or change the private task-data repository. Build installs the selected artifacts with `--no-start`, preserving a running service; restart requires a matching staged source fingerprint and unchanged artifact hashes. Local configuration and task storage remain intact. `status` separates verified installed identity from observed service readiness and an unknown running revision. Initial explicit `python3 tools/beads/beads-service.py install` remains available; direct installs can invalidate the updater's installed-identity receipt until staged again. The optional browser UI and manual history checkpoints are separate from runtime updates.
 
 ## Trial profile
 
