@@ -47,7 +47,7 @@ def validate(value):
 def load(home):
     config = location(home)
     if not config.is_file():
-        raise ValueError(f"Missing {config}; run python3 scripts/beads-service.py install from dotfiles to seed the trial profile")
+        raise ValueError(f"Missing {config}; run python3 tools/beads-service/beads-service.py install from dotfiles to seed the trial profile")
     return validate(tomllib.loads(config.read_text()))
 
 

@@ -17,9 +17,9 @@ import tomllib
 import unittest
 from unittest.mock import patch
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "scripts"))
-SCRIPT = ROOT / "scripts/beads-service.py"
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+SCRIPT = Path(__file__).resolve().with_name("beads-service.py")
 spec = importlib.util.spec_from_file_location("beads_service", SCRIPT)
 service = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(service)
