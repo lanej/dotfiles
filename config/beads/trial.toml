@@ -1,0 +1,20 @@
+# One local authority, independent of source repositories and agent harnesses.
+version = 1
+profile = "trial"
+
+[service]
+# Both listeners remain on loopback. The optional browser UI is separate.
+http_port = 8790
+sql_port = 3310
+
+[workspace]
+# Preserve the existing database; changing this does not migrate its contents.
+database = "octo"
+prefix = "octo"
+branch = "main"
+
+[history]
+remote = "origin"
+url = "git+https://github.com/lanej/beads-tasks.git"
+# Push only when beads-service backup is explicitly invoked. No timer is installed.
+mode = "manual"

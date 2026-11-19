@@ -1,6 +1,11 @@
 # Source of truth for the tech radar. Run: npm --prefix website run radar
 version: 1
 entries:
+  - id: beads
+    name: Beads and Dolt
+    ring: trial
+    rationale: |-
+      [Beads](beads.md) provides a shared local work graph through one managed HTTP endpoint backed by a private Dolt SQL server. Native binaries are pinned and checksum-verified. Octo retains dispatch ownership; issue synchronization and an Octo adapter require separate integration.
   - id: neovim
     name: Neovim
     ring: adopt
