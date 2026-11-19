@@ -531,6 +531,7 @@ test-zellij-ancestor-navigation:
 	@python3 "$(DOTFILES)/scripts/test-zellij-sessions.py" --ancestor-navigation-only
 
 test-zellij-sessions: zellij-helpers
+	@python3 "$(DOTFILES)/scripts/test-zellij-session-cycles.py"
 	@python3 "$(DOTFILES)/scripts/test-zellij-sessions.py"
 
 .PHONY: directory-picker

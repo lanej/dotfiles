@@ -4,7 +4,7 @@ This repository-only guide covers installation, implementation boundaries, and v
 
 ## Runtime and configuration
 
-The selected runtime recipe is defined in [the tool catalog](../bootstrap/tools.toml); its patched revision and native build settings live in [the runtime installer](../scripts/install-zellij). The patched runtime carries the CLI completion, shutdown flush, initial-client registration, and concurrent permission-cache fixes needed by the supported workflows. Upstream release and main selections do not imply those fixes are present.
+The selected runtime recipe is defined in [the tool catalog](../bootstrap/tools.toml); its patched revision and native build settings live in [the runtime installer](../scripts/install-zellij). The patched runtime carries the CLI completion, shutdown flush, initial-client registration, concurrent permission-cache, and nested-session cycle fixes needed by the supported workflows. Upstream release and main selections do not imply those fixes are present.
 
 Native builds use Rust 1.95.0 and revision-isolated artifacts under `${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/zellij/target/<revision>`. The installation stamp sits beside the managed executable rather than in the restorable cache. The first build from a revision's isolated cache replaces stale binaries; subsequent verified installs can reuse Cargo's ownership checks.
 
@@ -57,6 +57,10 @@ Remote programs share `~/.ssh/dotfiles-agent/forwarded.sock`, a per-user link in
 The SSH login hook updates the link before launching programs, without running a command inside Zellij or discovering a server through parent processes. Missing or invalid incoming sockets fail visibly and leave the selected agent unchanged. No private key material is copied.
 
 Shutdown validates the owning Unix socket again before ending a session. The client-detach chooser uses fresh attachment identities and receiver ownership, rejecting observed stale selections rather than falling back to detaching every other viewer.
+
+Nested viewers cannot switch into a containing session, including through the native session manager or `--close-current`. The runtime rejects the switch before detaching or scheduling closure. Ancestry follows committed renames and includes all attached containing viewers; detached viewers cannot recreate an old ancestry through a late reply.
+
+The session-cycle detector also requires recursive direct attachments to exit without registering a nested guest. The current pinned runtime rejects guest registration but leaves the recursive client alive, so this final assertion remains failing until the runtime is corrected.
 
 ## Verification
 
