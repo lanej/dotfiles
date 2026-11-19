@@ -1,0 +1,3 @@
+# One local API and database shared by Octo and its agents.
+[tools]
+beads = true

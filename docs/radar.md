@@ -131,6 +131,10 @@ Strict Protobuf compilation, lint, formatting, and compatibility checks through 
 
 ## Trial
 
+### Beads and Dolt
+
+[Beads](beads.md) provides a shared local work graph through one managed HTTP endpoint backed by a private Dolt SQL server. Native binaries are pinned and checksum-verified. Octo retains dispatch ownership; issue synchronization and an Octo adapter require separate integration.
+
 ### Mergiraf
 
 [Mergiraf](mergiraf.md): selected by the `shell` set, with a machine-level `tools.mergiraf = false` opt-out. Installation activates syntax-aware Git merging for its supported file types. Runnable TOML, Lua, and JSON examples demonstrate combined independent edits and retained disagreements. Revisit the trial after reviewing resolutions during normal branch integration; Zsh remains outside the installed binary's advertised language coverage.

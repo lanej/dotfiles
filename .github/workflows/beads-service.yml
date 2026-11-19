@@ -1,0 +1,23 @@
+name: Beads service
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['scripts/beads-service.py', 'scripts/beads_config.py', 'scripts/test-beads-service.py', 'config/beads/**', 'bootstrap/tools.toml', '.github/workflows/beads-service.yml']
+  push:
+    branches: [master]
+    paths: ['scripts/beads-service.py', 'scripts/beads_config.py', 'scripts/test-beads-service.py', 'config/beads/**', 'bootstrap/tools.toml', '.github/workflows/beads-service.yml']
+permissions:
+  contents: read
+jobs:
+  service:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python3 scripts/test-beads-service.py
