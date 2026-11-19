@@ -10,6 +10,10 @@ Use the repository’s required Go checks early and before handoff. Use `source-
 
 Preserve and extend existing project checks; reconcile an existing configuration instead of replacing or weakening it. For nested modules, workspaces, build tags, platform-specific code, or native dependencies, adapt the checks and CI matrix to the actual build surfaces. The supplied runner covers one root module on its host platform. Run relevant extra configurations explicitly.
 
+## API client generation
+
+For Go client generation from OpenAPI-described JSON APIs, prefer [Ogen](https://ogen.dev/). Source the authoritative OpenAPI specification, whether encoded as JSON or YAML, and pin the generator version. JSON samples or a standalone JSON Schema do not supply the full HTTP contract; establish the missing operations and protocol semantics before generation. Document a concrete compatibility constraint and a revisit condition when selecting another generator. Preserve established project tools unless a migration is authorized.
+
 ## Correctness checks
 
 Use the selected Go entrypoint and project requirements to choose required checks. The runner supports `lint`, `fmt` with explicit paths, `fix` for scoped cuddling repairs, `test`, and `vuln`. Review source-writing changes. Read [the correctness guide](correctness.md) when adopting, tuning, or explaining the profile.

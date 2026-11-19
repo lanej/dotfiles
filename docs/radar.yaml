@@ -260,6 +260,11 @@ entries:
     rationale: |-
       Strict Protobuf compilation, lint, formatting, and compatibility checks through the reusable [source-code profile](repository-bootstrap.md#protobuf-correctness-profile), with a small native Buf check plugin rejecting string fields ending in `_json`.
 
+  - id: ogen
+    name: Ogen
+    ring: adopt
+    rationale: |-
+      [Ogen](https://ogen.dev/) is the preferred Go client generator for OpenAPI-described JSON APIs in the shared [Go guidance](../ai/skills/go/references/common.md#api-client-generation). Generate from authoritative specifications, pin generator versions, and preserve established project tools unless a migration is authorized.
   - id: commander
     name: Commander
     ring: trial
