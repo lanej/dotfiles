@@ -5,9 +5,9 @@ usage() {
     cat <<'HELP'
 Usage: scripts/build-git-worktree-hooks.sh OUTPUT_DIRECTORY
 
-Download the catalog-pinned Git source, apply the checked-in worktree hook patches, build
+Shallow clone the catalog-pinned upstream Git tag, apply the checked-in worktree hook patches, build
 and test its runtime, then write a relocatable platform archive and checksum.
-Requires Python 3.11+, a C toolchain, make, curl, Git, Perl, tar/xz, and development libraries
+Requires Python 3.11+, a C toolchain, make, Git, Perl, tar, and development libraries
 for zlib, libcurl and expat. Does not install Git or change PATH.
 Set JOBS to control build parallelism (default: 4).
 HELP
@@ -28,14 +28,13 @@ import sys
 import tomllib
 with open(sys.argv[1], "rb") as stream:
     recipe = tomllib.load(stream)["tools"]["git-worktree-hooks"]
-for key in ("version", "runtime_version", "source_sha256"):
+for key in ("version", "runtime_version"):
     print(recipe[key])
 PYTHON
 )
 version=$(printf '%s\n' "$catalog_values" | sed -n '1p')
 runtime_version=$(printf '%s\n' "$catalog_values" | sed -n '2p')
-source_sha256=$(printf '%s\n' "$catalog_values" | sed -n '3p')
-source_url="https://www.kernel.org/pub/software/scm/git/git-$version.tar.xz"
+source_url="https://github.com/git/git.git"
 jobs=${JOBS:-4}
 if [[ ! $jobs =~ ^[1-9][0-9]*$ ]]; then
     printf 'JOBS must be a positive integer\n' >&2
@@ -67,14 +66,9 @@ sha256() {
     fi
 }
 
-curl --fail --location --retry 3 "$source_url" -o "$scratch/source.tar.xz"
-actual_sha256=$(sha256 "$scratch/source.tar.xz")
-if [[ $actual_sha256 != "$source_sha256" ]]; then
-    printf 'Source checksum mismatch: expected %s, got %s\n' "$source_sha256" "$actual_sha256" >&2
-    exit 1
-fi
-tar -xJf "$scratch/source.tar.xz" -C "$scratch"
 source_dir="$scratch/git-$version"
+git clone --depth 1 --single-branch --branch "v$version" "$source_url" "$source_dir"
+source_commit=$(git -C "$source_dir" rev-parse HEAD)
 mkdir "$scratch/patches"
 cp "$repo_root"/patches/git-worktree-hooks/*.patch "$scratch/patches/"
 for patch in "$scratch"/patches/*.patch; do
@@ -102,7 +96,7 @@ mkdir -p "$runtime/share/doc/git-worktree-hooks"
 cp "$source_dir/COPYING" "$runtime/share/doc/git-worktree-hooks/COPYING"
 provenance="$runtime/share/doc/git-worktree-hooks/BUILD.txt"
 {
-    printf 'Git source: %s\nSHA256: %s\n' "$source_url" "$source_sha256"
+    printf 'Git source: %s\nTag: v%s\nCommit: %s\n' "$source_url" "$version" "$source_commit"
     printf 'Build platform: %s %s\n' "$platform" "$architecture"
     printf 'Build options:'
     printf ' %s' "${build_options[@]}"

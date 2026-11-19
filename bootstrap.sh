@@ -1029,12 +1029,12 @@ install_build_dependencies() {
 	[ "$os" = linux ] || return 0
 	# WHY: Minimal Perl installations omit IPC::Cmd and Time::Piece needed by vendored OpenSSL.
 	if command -v dnf >/dev/null; then
-		sudo dnf install -y cmake ninja-build gettext gcc gcc-c++ make unzip autoconf automake libtool openssl-devel pkgconfig ncurses perl-IPC-Cmd perl-Time-Piece
+		sudo dnf install -y cmake ninja-build gettext gcc gcc-c++ make unzip autoconf automake libtool openssl-devel pkgconfig ncurses perl-IPC-Cmd perl-Time-Piece libcurl-devel expat-devel zlib-devel
 	elif command -v apt-get >/dev/null; then
 		sudo apt-get update
-		sudo apt-get install -y cmake ninja-build gettext build-essential unzip autoconf automake libtool libssl-dev pkg-config ncurses-bin perl
+		sudo apt-get install -y cmake ninja-build gettext build-essential unzip autoconf automake libtool libssl-dev pkg-config ncurses-bin perl libcurl4-openssl-dev libexpat1-dev zlib1g-dev
 	elif command -v pacman >/dev/null; then
-		sudo pacman -S --needed --noconfirm base-devel cmake ninja unzip openssl ncurses perl
+		sudo pacman -S --needed --noconfirm base-devel cmake ninja unzip openssl ncurses perl curl expat zlib
 	fi
 }
 

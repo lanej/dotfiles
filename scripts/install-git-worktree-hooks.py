@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Install the pinned patched Git package without modifying system Git."""
+"""Compile and install pinned upstream Git with local worktree patches."""
 
 import argparse
 import hashlib
+import json
 import os
 from pathlib import Path
 import platform
@@ -14,7 +15,6 @@ import sys
 import tarfile
 import tempfile
 import tomllib
-import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -83,7 +83,17 @@ def managed_link(link, installs):
             and (target.parent.parent / ".archive-sha256").is_file())
 
 
-def install(archive, home):
+def source_identity():
+    """Reuse a local build only while its catalog, patches and builder match."""
+    inputs = [ROOT / "scripts/build-git-worktree-hooks.sh",
+              *sorted((ROOT / "patches/git-worktree-hooks").glob("*.patch"))]
+    digest = hashlib.sha256(json.dumps(catalog(), sort_keys=True).encode())
+    for path in inputs:
+        digest.update(str(path.relative_to(ROOT)).encode() + b"\0" + path.read_bytes())
+    return digest.hexdigest()
+
+
+def install(archive, home, *, source_id=None):
     if not hasattr(tarfile, "data_filter"):
         raise ValueError("Safe extraction requires Python 3.11.8+ or 3.12+")
     recipe = catalog()
@@ -96,17 +106,15 @@ def install(archive, home):
         raise ValueError(f"Refusing to replace user-managed executable or link: {active}")
     if installs.is_symlink():
         raise ValueError(f"Runtime directory must not be a symlink: {installs}")
-    destination = installs / expected
+    if archive is None:
+        source_id = source_identity()
+    destination = installs / (f"{expected}-{source_id}" if source_id else expected)
     if archive is None and not os.path.lexists(destination):
-        basename = archive_name(recipe)
-        with tempfile.TemporaryDirectory(prefix="git-runtime-download-") as temporary:
-            archive = Path(temporary) / basename
-            for name in (basename + ".sha256", basename):
-                url = f"{recipe['release_url']}/{name}"
-                print(f"Downloading {url}", flush=True)
-                with urllib.request.urlopen(url, timeout=60) as source, (Path(temporary) / name).open("wb") as target:
-                    shutil.copyfileobj(source, target)
-            return install(archive, home)
+        with tempfile.TemporaryDirectory(prefix="git-runtime-build-") as temporary:
+            subprocess.run(["bash", str(ROOT / "scripts/build-git-worktree-hooks.sh"), temporary], check=True)
+            if source_identity() != source_id:
+                raise ValueError("Git build inputs changed during compilation; retry with stable inputs")
+            return install(Path(temporary) / archive_name(recipe), home, source_id=source_id)
     digest = None
     if archive is not None:
         basename = archive_name(recipe)
@@ -171,7 +179,7 @@ def install(archive, home):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--archive", type=Path, help="Use a local platform archive and adjacent .sha256 instead of downloading the pinned package")
+    parser.add_argument("--archive", type=Path, help="Use a local platform archive and adjacent .sha256 instead of compiling upstream Git")
     parser.add_argument("--home", default=Path.home(), type=Path)
     parser.add_argument("--archive-name", action="store_true", help="Print this machine's package filename without installing")
     options = parser.parse_args()

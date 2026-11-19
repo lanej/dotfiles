@@ -83,49 +83,75 @@ def main():
         ):
             selected = scratch / f"git-{recipe['version']}-worktree-hooks-{package_platform}-{machine}.tar.gz"
             fixture_archive(selected)
-            requests = []
-            def selected_download(url, timeout):
-                requests.append(url)
-                assert timeout == 60
-                assert url in {f"{recipe['release_url']}/{selected.name}", f"{recipe['release_url']}/{selected.name}.sha256"}, url
-                return selected.with_name(url.rsplit("/", 1)[1]).open("rb")
+            builds = []
+            original_run = installer.subprocess.run
+            def build(arguments, **kwargs):
+                if arguments[:2] != ["bash", str(ROOT / "scripts/build-git-worktree-hooks.sh")]:
+                    return original_run(arguments, **kwargs)
+                builds.append(arguments)
+                assert kwargs["check"]
+                output = Path(arguments[-1])
+                import shutil
+                shutil.copyfile(selected, output / selected.name)
+                shutil.copyfile(selected.with_name(selected.name + ".sha256"), output / (selected.name + ".sha256"))
             with patch.object(installer.platform, "system", return_value=system), \
                  patch.object(installer.platform, "machine", return_value=machine), \
                  patch.object(installer.platform, "freedesktop_os_release", return_value=release), \
-                 patch.object(installer.urllib.request, "urlopen", side_effect=selected_download):
+                 patch.object(installer.subprocess, "run", side_effect=build):
                 try:
                     installer.install(None, home)
                 except ValueError as error:
                     assert "runtime version" in str(error), str(error)
                 else:
-                    raise AssertionError("Wrong-version package unexpectedly activated")
-            assert len(requests) == 2
+                    raise AssertionError("Wrong-version build unexpectedly activated")
+            assert len(builds) == 1
             assert not active.exists()
-        print("PASS fresh downloads select Enterprise Linux 8, standard Linux and macOS packages")
+        print("PASS local builds select Enterprise Linux 8, standard Linux and macOS artifacts")
 
-        with patch.object(installer.urllib.request, "urlopen", side_effect=OSError("fixture download failed")):
+        with patch.object(installer.subprocess, "run", side_effect=OSError("fixture build failed")):
             try:
                 installer.install(None, home)
             except OSError as error:
-                assert "fixture download failed" in str(error)
+                assert "fixture build failed" in str(error)
             else:
-                raise AssertionError("Missing download unexpectedly installed Git")
+                raise AssertionError("Failed build unexpectedly installed Git")
         assert not active.exists()
         if options.archive:
             real = options.archive.resolve()
-            downloaded_home = scratch / "downloaded home with 'quotes"
-            requests = []
-            def download(url, timeout):
-                requests.append(url)
-                assert timeout == 60
-                assert url.startswith(recipe["release_url"] + "/")
-                return real.with_name(url.rsplit("/", 1)[1]).open("rb")
-            with patch.object(installer.urllib.request, "urlopen", side_effect=download):
-                installer.install(None, downloaded_home)
-                assert len(requests) == 2
-                installer.install(None, downloaded_home)
-                assert len(requests) == 2, "Rerun downloaded the installed runtime again"
-            assert (downloaded_home / ".local/bin/git").resolve().name == "git-launcher"
+            built_home = scratch / "built home with 'quotes"
+            builds = []
+            original_run = installer.subprocess.run
+            def build_real(arguments, **kwargs):
+                if arguments[:2] == ["bash", str(ROOT / "scripts/build-git-worktree-hooks.sh")]:
+                    import shutil
+                    builds.append(arguments)
+                    output = Path(arguments[-1])
+                    shutil.copyfile(real, output / installer.archive_name(recipe))
+                    shutil.copyfile(real.with_name(real.name + ".sha256"), output / (installer.archive_name(recipe) + ".sha256"))
+                    return
+                return original_run(arguments, **kwargs)
+            with patch.object(installer.subprocess, "run", side_effect=build_real):
+                installer.install(None, built_home)
+                assert len(builds) == 1
+                installer.install(None, built_home)
+                assert len(builds) == 1, "Rerun rebuilt unchanged source"
+                first_runtime = (built_home / ".local/bin/git").resolve()
+                with patch.object(installer, "source_identity", return_value="f" * 64):
+                    installer.install(None, built_home)
+                assert len(builds) == 2, "Changed source inputs did not rebuild"
+                assert first_runtime.is_file(), "Updating removed the previous runtime"
+                assert (built_home / ".local/bin/git").resolve() != first_runtime
+                current = (built_home / ".local/bin/git").readlink()
+                with patch.object(installer, "source_identity", return_value="e" * 64), \
+                     patch.object(installer.subprocess, "run", side_effect=OSError("fixture build failed")):
+                    try:
+                        installer.install(None, built_home)
+                    except OSError:
+                        pass
+                    else:
+                        raise AssertionError("Failed build unexpectedly activated Git")
+                assert (built_home / ".local/bin/git").readlink() == current
+            assert (built_home / ".local/bin/git").resolve().name == "git-launcher"
             bootstrap_install(real, home)
             first_target = active.readlink()
             expected_target = home / ".local/opt/git-worktree-hooks" / recipe["runtime_version"] / "bin/git-launcher"
@@ -137,14 +163,14 @@ def main():
             assert active.readlink() == first_target
             active.unlink()
             active.symlink_to(expected_target.with_name("git"))
-            checked_install(None, home, success=True)
+            checked_install(real, home, success=True)
             assert active.readlink() == first_target, "Legacy direct-binary link was not migrated"
-            bootstrap_install(None, home)
+            bootstrap_install(real, home)
             assert active.readlink() == first_target
             active.unlink()
-            checked_install(None, home, success=True)
+            checked_install(real, home, success=True)
             assert active.readlink() == first_target
-            print("PASS real archive activation, runtime relocation and rerun/reactivation without archive")
+            print("PASS real activation, relocation, unchanged build reuse and failed-update preservation")
             incompatible = scratch / "incompatible" / real.name
             incompatible.parent.mkdir()
             replaced_helper = False

@@ -109,7 +109,7 @@ Required correctness lint in the reusable [TypeScript profile](typescript-style.
 
 ### worktree manager
 
-[worktree](worktree-manager.md) creates identifiable repository-local agent checkouts, tracks full ownership and protects active tasks. Finishing protection and explicit safe pruning replace reusable Treehouse allocation for new agent work.
+[worktree](worktree-manager.md) creates identifiable repository-local agent checkouts, tracks full ownership and protects active tasks. Finishing protection and explicit safe pruning replace reusable Treehouse allocation for new agent work. Project updates compile the lifecycle-hook Git runtime locally from a shallow upstream clone with checked-in patches; no custom Git release is required.
 
 ### Source-code application stack
 
