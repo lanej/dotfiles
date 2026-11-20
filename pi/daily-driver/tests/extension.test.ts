@@ -27,6 +27,7 @@ test("Pi lifecycle adapter compacts settled history once and restores its native
   }[] = [{ type: "message", id: "turn" }];
   let requests = 0;
   let draft = "";
+  let sessionId = "session";
   let terminalInput: (() => void) | undefined;
   const api = {
     on: (
@@ -48,7 +49,7 @@ test("Pi lifecycle adapter compacts settled history once and restores its native
     getContextUsage: () => ({ percent: 60 }),
     sessionManager: {
       getBranch: () => entries,
-      getSessionId: () => "session",
+      getSessionId: () => sessionId,
       getLeafId: () => entries.at(-1)?.id,
     },
     compact: (options: { onComplete(): void }) => {
@@ -67,8 +68,8 @@ test("Pi lifecycle adapter compacts settled history once and restores its native
       },
     },
   } as unknown as ExtensionContext;
-  const emit = async (name: string) => {
-    await handlers.get(name)?.({}, context);
+  const emit = async (name: string, event: object = {}) => {
+    await handlers.get(name)?.(event, context);
   };
   try {
     dailyDriver(api);
@@ -91,8 +92,35 @@ test("Pi lifecycle adapter compacts settled history once and restores its native
     terminalInput?.();
     t.mock.timers.tick(300_000);
     assert.equal(requests, 2);
+
+    await emit("tool_execution_start", { toolName: "subagent" });
+    for (const event of ["session_tree", "session_compact"]) {
+      if (event === "session_compact") {
+        entries.push({ type: "compaction", id: "manual-compaction" });
+      }
+      await emit(event);
+      entries.push({ type: "message", id: `after-${event}` });
+      await emit("agent_settled");
+      t.mock.timers.tick(300_000);
+      assert.equal(
+        requests,
+        2,
+        `${event} must not clear the unknown-child guard`,
+      );
+    }
+
     await emit("session_shutdown");
     assert.equal(terminalInput, undefined);
+    sessionId = "next-session";
+    entries.splice(0, entries.length, { type: "message", id: "fresh-session" });
+    await emit("session_start");
+    t.mock.timers.tick(300_000);
+    assert.equal(
+      requests,
+      3,
+      "new session startup resets the child-work guard",
+    );
+    await emit("session_shutdown");
   } finally {
     t.mock.timers.reset();
     if (previous === undefined) delete process.env.PI_DRIVER_CONFIG;

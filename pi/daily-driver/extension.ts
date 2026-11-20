@@ -30,7 +30,6 @@ export default function dailyDriver(pi: ExtensionAPI): void {
     const generation = lifecycle;
     settled = ctx.isIdle();
     dialogs = 0;
-    childWork = false;
     try {
       ctx.ui.setStatus("pi-driver", undefined);
       const config = await loadConfig();
@@ -121,7 +120,10 @@ export default function dailyDriver(pi: ExtensionAPI): void {
     }
   };
 
-  pi.on("session_start", async (_event, ctx) => initialize(ctx));
+  pi.on("session_start", async (_event, ctx) => {
+    childWork = false;
+    await initialize(ctx);
+  });
   pi.on("session_shutdown", () => release());
   pi.on("session_tree", async (_event, ctx) => initialize(ctx));
   pi.on("session_compact", async (_event, ctx) => initialize(ctx));

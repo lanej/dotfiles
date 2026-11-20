@@ -6,7 +6,6 @@ on:
       - 'pi/daily-driver/**'
       - 'bin/pi-driver'
       - 'scripts/configure-pi-driver.py'
-      - 'Makefile'
       - '.github/workflows/pi-driver.yml'
   push:
     branches: [master]
