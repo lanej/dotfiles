@@ -6,7 +6,7 @@ The built-in [Nord preset](design-system/nord.mdx) documents the palette and cur
 
 ## Start a session
 
-Enable Zellij in your [machine settings](../README.md#configuration-sets), then install the selected tools with `make install`. The guides below describe the managed modern configuration.
+Enable Zellij in your [machine settings](configuration.md), then install the selected tools with `make install`. The guides below describe the managed modern configuration.
 
 ```sh
 zj

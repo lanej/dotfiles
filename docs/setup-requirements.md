@@ -2,7 +2,7 @@
 
 Default setup must make the checkout useful for configuration before development runtimes exist. Software installation is a separate, explicit operation. These requirements govern the native OS baseline, machine TOML, composed tool sets, bootstrap, and full installation on macOS and Linux.
 
-The requirements define intended behavior; the implementation and tests must remain consistent with them. See [issue #128](https://github.com/lanej/dotfiles/issues/128) for the regression that motivated this separation and the [README](../README.md#installation) for usage instructions. **MUST** and **MUST NOT** identify required behavior. Requirement IDs remain stable as implementation details change.
+The requirements define intended behavior; the implementation and tests must remain consistent with them. See [issue #128](https://github.com/lanej/dotfiles/issues/128) for the regression that motivated this separation and the [installation guide](install.md) for usage instructions. **MUST** and **MUST NOT** identify required behavior. Requirement IDs remain stable as implementation details change.
 
 ## Command contract
 

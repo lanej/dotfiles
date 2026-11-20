@@ -9,10 +9,10 @@ hero:
     file: ./brand/dotfiles-logo.png
   actions:
     - text: Set up a machine
-      link: ../README.md#installation
+      link: install.md
       icon: right-arrow
     - text: Explore the configuration
-      link: ../README.md#configuration-sets
+      link: configuration.md
       variant: secondary
 ---
 import { CardGrid } from '@astrojs/starlight/components';
@@ -30,7 +30,7 @@ curl -fsSL https://raw.githubusercontent.com/lanej/dotfiles/master/install.sh | 
 
 Requires Git, Make, and Bash on macOS or Linux. An existing `~/.files` checkout is reused without pulling updates or changing branches. [Read the installer](../install.sh) before running it.
 
-Then [choose this machine’s tool sets](../README.md#configuration-sets) in `~/.config/dotfiles/config.toml`, for example `workstation` for the broad setup. From the checkout, preview and install that selection:
+Then [choose this machine’s tool sets](configuration.md) in `~/.config/dotfiles/config.toml`, for example `workstation` for the broad setup. From the checkout, preview and install that selection:
 
 ```sh
 make plan && make install
@@ -39,7 +39,7 @@ make plan && make install
 ## Find your next step
 
 <CardGrid>
-  <NavigationCard icon="setup" title="Compose your setup" description="Git, shell, and terminal tools are defaults. Add optional bundles and private sets, then override what this machine needs." href="../README.md#configuration-sets" />
+  <NavigationCard icon="setup" title="Compose your setup" description="Git, shell, and terminal tools are defaults. Add optional bundles and private sets, then override what this machine needs." href="configuration.md" />
   <NavigationCard icon="terminal" title="Work in the terminal" description="Sessions, pane navigation, and the important difference between tmux copying and Zellij scrollback." href="./terminal-workflows.mdx" />
   <NavigationCard icon="files" title="Know where things live" description="Follow configuration from machine TOML to tool recipes, installers, and linked files." href="./architecture.mdx" />
   <NavigationCard icon="stack" title="Explore the stack" description="Shell, Neovim, Kitty, multiplexers, AI tooling, and platform-specific configuration." href="./components.mdx" />
@@ -56,6 +56,6 @@ make plan && make install
 | `make plan` | Show the tools and configuration selected by this machine’s settings. |
 | `make install` | Install the selected tools and apply their configuration. |
 
-After setup, `make` reapplies the resolved configuration without installing packages. [Follow the installation guide](../README.md#installation) for prerequisites and machine settings.
+After setup, `make` reapplies the resolved configuration without installing packages. [Follow the installation guide](install.md) for prerequisites and machine settings.
 
 The reference pages are built directly from this checkout’s documentation. Their **Edit page** links lead to the original source, so the website and repository stay in step.
