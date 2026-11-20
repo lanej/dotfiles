@@ -59,3 +59,11 @@ Distributed Beads and broader harness deployment are tracked in [issue #349](htt
 ## Verification boundary
 
 The native acceptance detector uses real embedded Beads and disposable Git/SQLite repositories. It exercises migration, direct CLI changes, claims, reassignment, unrelated concurrent edits, interrupted projection, source backup and pending feedback. It never publishes or merges a PR. Existing package tests retain the task-service delivery and host-routing checks. SSH transport and actual Pi/Paseo deployment require acceptance on the intended hosts before claiming live rollout completion.
+
+## Runtime and operator interfaces
+
+Task integration code uses TypeScript and the pinned official Pi SDK for session types, parsing and active-context selection. Task observation reads one session snapshot and never opens a mutable Pi session manager or rewrites the worker's history. Identity, malformed-record and ancestry checks remain local guards because Pi's tolerant parser alone cannot establish task ownership or a safe completion checkpoint. The SDK's Undici override retains its HTTP API while applying the security-patched release; revisit it when the pinned Pi version includes that release.
+
+New coding workers require the native worktree manager. If it is unavailable, launch fails before creating a checkout; there is no raw Git or Treehouse allocation fallback. Existing adopted checkouts retain their ownership, and legacy allocation reconciliation does not authorize new legacy allocations.
+
+[The Zellij fleet design (#362)](https://github.com/lanej/dotfiles/issues/362) defines the local operator direction: an explicit Beads root maps to a Zellij session, immediate workstreams map to tabs, and active authorized Pi attempts map to live panes. Deeper hierarchy remains in a floating task tree; blocker edges do not become parentage. Selecting a worker focuses its existing Pi TUI, while native attention navigation takes precedence. Pane presence, process liveness and task status are distinct observations. This workspace mapping remains a design/prototype scope; it is not installed by the task plugin. Paseo supplies mobile access; native Beads task inspection remains available without it.
