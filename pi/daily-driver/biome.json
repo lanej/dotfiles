@@ -1,0 +1,6 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.6.6/schema.json",
+  "files": { "includes": ["**", "!package-lock.json"] },
+  "formatter": { "indentStyle": "space" },
+  "linter": { "rules": { "preset": "recommended" } }
+}

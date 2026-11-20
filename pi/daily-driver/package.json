@@ -1,0 +1,37 @@
+{
+  "name": "@lanej/pi-daily-driver",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "pi": {
+    "extensions": [
+      "./extension.ts"
+    ]
+  },
+  "scripts": {
+    "driver": "node --import tsx cli.ts",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "test:beads-native": "node --import tsx acceptance/beads-control.ts",
+    "test:pi-native": "node --import tsx acceptance/pi-resources.ts",
+    "format": "biome format --write .",
+    "check": "biome check . && tsc --noEmit"
+  },
+  "dependencies": {
+    "commander": "^14.0.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.6",
+    "@earendil-works/pi-coding-agent": "1.4.0",
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "minimatch": "11.0.3",
+    "undici": "8.12.3"
+  }
+}

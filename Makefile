@@ -612,6 +612,14 @@ pi-resources: codex-skills
 test-pi-resources:
 	@python3 "$(DOTFILES)/scripts/test-pi-resources.py"
 
+.PHONY: pi-driver-config test-pi-driver
+pi-driver-config:
+	@python3 "$(DOTFILES)/scripts/configure-pi-driver.py" "$(DOTFILES)/pi/daily-driver" "$(HOME)/.pi/agent"
+test-pi-driver:
+	@npm --prefix "$(DOTFILES)/pi/daily-driver" run check
+	@npm --prefix "$(DOTFILES)/pi/daily-driver" test
+	@npm --prefix "$(DOTFILES)/pi/daily-driver" run test:pi-native
+
 firstmate-retire:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 
