@@ -6,22 +6,21 @@ import { z } from "zod";
 import { Connection } from "./server/connection";
 import { address } from "./shared/contracts";
 
-// Native bd remains the service-independent task CLI; this client handles migration and legacy maintenance.
+// Native Beads HTTP and bd support task inspection independently of Paseo.
 const cli = new Command()
   .name("maintain")
-  .description("Task host migration and maintenance");
+  .description("Task host PR maintenance");
 cli
   .command("skill")
   .description("Read task integration guidance without contacting a host")
   .action(() => {
     process.stdout.write(
-      "# Task integration\n\nUse bd list, bd show and bd history in the dedicated task repository without Paseo. Pi and Paseo retain their native worker sessions. Use beads-migrate --json with a host-qualified task address on stdin only after pausing the selected task at an idle boundary. Distributed replicas are unsupported. Submit/get retain the existing PR maintenance interface.\n",
+      "# Task integration\n\nTask content lives in the configured Beads HTTP service. Inspect it independently of Paseo with native Beads tools or the service API. Pi retains native worker sessions; new coding workers require worktree manager. Existing data is never migrated implicitly. Submit/get retain the existing PR maintenance interface.\n",
     );
   });
 for (const [name, method] of [
   ["submit", "tasks.link"],
   ["get", "tasks.pr_maintenance"],
-  ["beads-migrate", "tasks.beads_migrate"],
 ]) {
   cli
     .command(name)

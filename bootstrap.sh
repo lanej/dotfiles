@@ -776,20 +776,6 @@ install_claude-code_from_release() (
 	bash "$claude_stage" "$1" || exit 1
 )
 
-bd_current_semver() {
-	command -v bd >/dev/null || return 1
-	bd version | parse_semver | head -n1
-}
-
-bd_package_semver() {
-	# WHY: A package named bd may be unrelated; use the verified Beads release.
-	return 1
-}
-
-install_bd_from_release() {
-	sh "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-beads" "$1"
-}
-
 install_pi_from_release() {
 	install_package_version node 24 || return 1
 	npm install -g --ignore-scripts "@earendil-works/pi-coding-agent@$1"

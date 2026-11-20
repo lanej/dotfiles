@@ -6,7 +6,7 @@ Codex and Claude use their native agent tools for delegation and communication. 
 
 ## Beads task records
 
-The optional [Beads authority integration](beads-tasks.md) makes the dedicated Mac task repository authoritative for enrolled task content while preserving this service's runtime and delivery records. Native `bd` inspection does not require Paseo. Embedded mode is the default; remote hosts use authenticated access to the same authority, with distributed replicas deferred.
+[The shared Beads HTTP service](beads-tasks.md) is required for task content. A generated TypeScript client addresses the explicitly configured URL and project identity; SQLite retains host execution and delivery records. Native Beads inspection is independent of Paseo. Existing data is never migrated implicitly, and distributed replicas remain deferred.
 
 ## Task contract
 

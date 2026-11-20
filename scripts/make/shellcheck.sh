@@ -17,8 +17,6 @@ shellcheck -x \
 	"$dotfiles/scripts/install-treehouse" \
 	"$dotfiles/scripts/install-worktree-policy" \
 	"$dotfiles/scripts/install-worktree-manager" \
-	"$dotfiles/scripts/install-beads" \
-	"$dotfiles/scripts/init-beads-coordinator" \
 	"$dotfiles/scripts/install-shfmt.sh" \
 	"$dotfiles/scripts/build-worktree-policy.sh" \
 	"$dotfiles/tools/worktree-policy/scripts/check-go.sh" \

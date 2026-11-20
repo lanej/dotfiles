@@ -13,7 +13,6 @@ import {
   readMaintenancePolicy,
 } from "./maintenance-policy";
 import type { Store } from "./store";
-
 export type MaintenanceRecord = {
   id: string;
   taskId: string;
@@ -43,7 +42,6 @@ export interface Maintainer {
 }
 const message = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
-
 export class PRMaintenance implements Maintainer {
   private running = new Set<string>();
   readonly resolver: ConflictResolver;
@@ -65,23 +63,27 @@ export class PRMaintenance implements Maintainer {
       .all(`pr-maintenance:${taskId}:%`)
       .map((row) => JSON.parse(row.record as string));
   }
-  private save(record: MaintenanceRecord) {
+  private async save(record: MaintenanceRecord) {
     record.updatedAt = this.store.now();
-    this.store.write(
+    await this.store.write(
       "cache",
       `pr-maintenance:${record.taskId}:${record.id}`,
       record,
     );
   }
-  private handled(value: Task, entry: TaskEvent, record: MaintenanceRecord) {
-    const status = this.store.get(value.taskId);
-    this.store.change(
+  private async handled(
+    value: Task,
+    entry: TaskEvent,
+    record: MaintenanceRecord,
+  ) {
+    const status = await this.store.get(value.taskId);
+    await this.store.change(
       value.taskId,
-      (current) => {
-        const source = this.store
-          .events(value.taskId)
-          .find((event) => event.id === entry.id)!;
-        this.store.saveEvent({
+      async (current) => {
+        const source = (await this.store.events(value.taskId)).find(
+          (event) => event.id === entry.id,
+        )!;
+        await this.store.saveEvent({
           ...source,
           delivery: "handled",
           payload: { ...source.payload, maintenance: record },
@@ -91,22 +93,17 @@ export class PRMaintenance implements Maintainer {
           ["complete", "decision"].includes(
             String(entry.payload.previousStatus),
           ) &&
-          !this.store
-            .events(value.taskId)
-            .some(
-              (event) =>
-                event.delivery !== "handled" &&
-                event.kind !== "continue" &&
-                event.payload.type !== "state",
-            )
+          !(await this.store.events(value.taskId)).some(
+            (event) =>
+              event.delivery !== "handled" &&
+              event.kind !== "continue" &&
+              event.payload.type !== "state",
+          )
         ) {
-          for (const queued of this.store
-            .events(value.taskId)
-            .filter(
-              (event) =>
-                event.kind === "continue" && event.delivery === "queued",
-            )) {
-            this.store.saveEvent({ ...queued, delivery: "handled" });
+          for (const queued of (await this.store.events(value.taskId)).filter(
+            (event) => event.kind === "continue" && event.delivery === "queued",
+          )) {
+            await this.store.saveEvent({ ...queued, delivery: "handled" });
           }
           current.status = "decision";
           current.nextAction =
@@ -138,7 +135,13 @@ export class PRMaintenance implements Maintainer {
       value.kind !== "coding" ||
       !value.worker ||
       entry.payload.type !== "repair" ||
-      !(entry.payload.repair as { conflict?: boolean } | undefined)?.conflict
+      !(
+        entry.payload.repair as
+          | {
+              conflict?: boolean;
+            }
+          | undefined
+      )?.conflict
     )
       return false;
     const url = String(entry.payload.url);
@@ -148,7 +151,7 @@ export class PRMaintenance implements Maintainer {
     const id = digest([value.taskId, url, head, base]);
     if (this.running.has(id)) return true;
     this.running.add(id);
-    let record = this.store.read<MaintenanceRecord>(
+    let record = await this.store.read<MaintenanceRecord>(
       "cache",
       `pr-maintenance:${value.taskId}:${id}`,
     );
@@ -163,11 +166,11 @@ export class PRMaintenance implements Maintainer {
           (await this.resolver.remoteHead(pending.request)) !==
             pending.candidate.head
         )
-          return this.escalate(entry, pending);
+          return await this.escalate(entry, pending);
         pending.state = "published";
         pending.reason =
           "Publication confirmed before admitting another repair";
-        this.save(pending);
+        await this.save(pending);
       }
       // WHY: Reconcile admitted effects even if policy was removed or GitHub now reports another revision.
       if (record?.state === "publishing") {
@@ -179,14 +182,14 @@ export class PRMaintenance implements Maintainer {
         ) {
           record.state = "published";
           record.reason = "Publication confirmed after interruption";
-          this.save(record);
-          this.handled(value, entry, record);
+          await this.save(record);
+          await this.handled(value, entry, record);
           return true;
         }
         record.reason =
           "Publication outcome remains unknown; reconcile the recorded candidate before any further push";
-        this.save(record);
-        return this.escalate(entry, record);
+        await this.save(record);
+        return await this.escalate(entry, record);
       }
       const policy = this.policy(value.repository);
       if (!policy) return false;
@@ -209,13 +212,14 @@ export class PRMaintenance implements Maintainer {
           updatedAt: this.store.now(),
           request: null,
         };
-        this.save(record);
+        await this.save(record);
       }
       if (record.state === "published" || record.state === "superseded") {
-        this.handled(value, entry, record);
+        await this.handled(value, entry, record);
         return true;
       }
-      if (record.state === "needs_agent") return this.escalate(entry, record);
+      if (record.state === "needs_agent")
+        return await this.escalate(entry, record);
       const observation = (await this.github.observe(url)).pullRequest;
       if (
         observation?.state !== "open" ||
@@ -259,14 +263,17 @@ export class PRMaintenance implements Maintainer {
           "Maintenance policy changed during an unfinished attempt",
         );
       record.request = request;
-      this.save(record);
-      if (!(await idle()) || this.store.get(value.taskId).control !== "running")
+      await this.save(record);
+      if (
+        !(await idle()) ||
+        (await this.store.get(value.taskId)).control !== "running"
+      )
         return true;
       const candidate = record.candidate?.head
         ? record.candidate
         : await this.resolver.prepare(request);
       record.candidate = candidate;
-      this.save(record);
+      await this.save(record);
       if (
         !candidate.head ||
         candidate.conflicts.length ||
@@ -288,7 +295,7 @@ export class PRMaintenance implements Maintainer {
         );
       }
       if (!(await idle())) return true;
-      const control = this.store.get(value.taskId);
+      const control = await this.store.get(value.taskId);
       if (
         control.control !== "running" ||
         !control.github.includes(url) ||
@@ -298,31 +305,31 @@ export class PRMaintenance implements Maintainer {
       if (digest(this.policy(value.repository)) !== record.policyDigest)
         throw new Error("Maintenance policy changed before publication");
       record.state = "publishing";
-      this.save(record);
+      await this.save(record);
       try {
         await this.resolver.publish(request, candidate);
       } catch (error) {
         if (error instanceof StaleRevision) {
           record.state = "superseded";
           record.reason = message(error);
-          this.save(record);
-          this.handled(value, entry, record);
+          await this.save(record);
+          await this.handled(value, entry, record);
           return true;
         }
         record.reason = `Publication needs reconciliation: ${message(error)}`;
-        this.save(record);
-        return this.escalate(entry, record);
+        await this.save(record);
+        return await this.escalate(entry, record);
       }
       if ((await this.resolver.remoteHead(request)) !== candidate.head) {
         record.reason =
           "Published branch readback differs; reconcile before retrying";
-        this.save(record);
-        return this.escalate(entry, record);
+        await this.save(record);
+        return await this.escalate(entry, record);
       }
       record.state = "published";
       record.reason = candidate.reason;
-      this.save(record);
-      this.handled(value, entry, record);
+      await this.save(record);
+      await this.handled(value, entry, record);
       return true;
     } catch (error) {
       if (!record) {
@@ -342,31 +349,30 @@ export class PRMaintenance implements Maintainer {
       }
       if (record.state === "publishing") {
         record.reason = message(error);
-        this.save(record);
-        return this.escalate(entry, record);
+        await this.save(record);
+        return await this.escalate(entry, record);
       }
       record.state =
         error instanceof StaleRevision ? "superseded" : "needs_agent";
       record.reason = message(error);
-      this.save(record);
+      await this.save(record);
       if (record.state === "superseded") {
-        this.handled(value, entry, record);
+        await this.handled(value, entry, record);
         return true;
       }
-      return this.escalate(entry, record);
+      return await this.escalate(entry, record);
     } finally {
       this.running.delete(id);
     }
   }
-  private escalate(entry: TaskEvent, record: MaintenanceRecord) {
-    this.store.saveEvent({
+  private async escalate(entry: TaskEvent, record: MaintenanceRecord) {
+    await this.store.saveEvent({
       ...entry,
       payload: { ...entry.payload, maintenance: record },
     });
     return false;
   }
 }
-
 // Long-running Git and validation commands must not block polling or other tasks.
 export class MaintenanceQueue implements Maintainer {
   private jobs = new Map<string, Promise<void>>();
@@ -387,17 +393,17 @@ export class MaintenanceQueue implements Maintainer {
       if (this.jobs.size >= 2) return true;
       const job = this.program
         .handle(value, entry, async () => !this.stopping && (await idle()))
-        .then((result) => {
+        .then(async (result) => {
           if (
-            this.program.store
-              .events(value.taskId)
-              .find((event) => event.id === entry.id)?.delivery !== "handled"
+            (await this.program.store.events(value.taskId)).find(
+              (event) => event.id === entry.id,
+            )?.delivery !== "handled"
           ) {
             this.outcomes.set(entry.id, result);
           }
         })
-        .catch((error) => {
-          this.program.store.change(value.taskId, (current) => {
+        .catch(async (error) => {
+          await this.program.store.change(value.taskId, (current) => {
             current.error = message(error);
           });
           this.outcomes.set(entry.id, false);

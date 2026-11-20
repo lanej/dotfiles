@@ -14,11 +14,12 @@ import {
 } from "../server/pr-watch";
 import { Store } from "../server/store";
 import { maintenanceFixture } from "./maintenance-fixture";
-
-function programFixture(mode: "clean" | "recorded" | "structural" = "clean") {
+async function programFixture(
+  mode: "clean" | "recorded" | "structural" = "clean",
+) {
   const repo = maintenanceFixture(mode);
   const store = new Store(join(repo.root, "tasks.sqlite"), "host");
-  const value = store.create({
+  const value = await store.create({
     title: "Maintain PR",
     outcome: "Deliver the change",
     kind: "coding",
@@ -27,21 +28,26 @@ function programFixture(mode: "clean" | "recorded" | "structural" = "clean") {
     successCriteria: ["Configured checks pass"],
     constraints: [],
   });
-  store.bind(value.taskId, randomUUID(), randomUUID(), repo.repository);
-  store.change(value.taskId, (current) => {
+  await store.bind(value.taskId, randomUUID(), randomUUID(), repo.repository);
+  await store.change(value.taskId, (current) => {
     current.github = ["https://github.com/o/r/pull/1"];
     current.status = "decision";
   });
-  const entry = store.addEvent(value.taskId, "github", "Repair conflict", {
-    payload: {
-      type: "repair",
-      url: "https://github.com/o/r/pull/1",
-      revision: repo.pr.head,
-      baseRevision: repo.pr.base,
-      repair: { conflict: true },
-      previousStatus: "decision",
+  const entry = await store.addEvent(
+    value.taskId,
+    "github",
+    "Repair conflict",
+    {
+      payload: {
+        type: "repair",
+        url: "https://github.com/o/r/pull/1",
+        revision: repo.pr.head,
+        baseRevision: repo.pr.base,
+        repair: { conflict: true },
+        previousStatus: "decision",
+      },
     },
-  });
+  );
   const github = {
     observe: async () => ({
       head: repo.pr.head,
@@ -60,7 +66,7 @@ function programFixture(mode: "clean" | "recorded" | "structural" = "clean") {
     ...repo,
     store,
     entry,
-    value: store.get(value.taskId),
+    value: await store.get(value.taskId),
     github,
     program,
     cleanup: () => {
@@ -69,7 +75,6 @@ function programFixture(mode: "clean" | "recorded" | "structural" = "clean") {
     },
   };
 }
-
 await test("current check attempts and commit status contexts replace historical failures without hiding other apps", () => {
   const checks = latestChecks([
     {
@@ -133,10 +138,9 @@ await test("current check attempts and commit status contexts replace historical
     "closed",
   );
 });
-
 await test("program publishes validated Git and recorded resolutions without changing the worker checkout", async () => {
   for (const recorded of [false, true]) {
-    const f = programFixture(recorded ? "recorded" : "clean");
+    const f = await programFixture(recorded ? "recorded" : "clean");
     try {
       const before = f.git("status", "--porcelain");
       assert.equal(
@@ -157,8 +161,11 @@ await test("program publishes validated Git and recorded resolutions without cha
         "preserve this local work\n",
       );
       assert.ok(readFileSync(record.candidate!.patch, "utf8").length);
-      assert.equal(f.store.events(f.value.taskId)[0].delivery, "handled");
-      assert.equal(f.store.get(f.value.taskId).status, "decision");
+      assert.equal(
+        (await f.store.events(f.value.taskId))[0].delivery,
+        "handled",
+      );
+      assert.equal((await f.store.get(f.value.taskId)).status, "decision");
       const restarted = new PRMaintenance(
         f.store,
         f.github,
@@ -175,10 +182,9 @@ await test("program publishes validated Git and recorded resolutions without cha
     }
   }
 });
-
 await test("below-threshold or failed validation escalates with evidence and never publishes", async () => {
   for (const mode of ["threshold", "validation", "mutation"]) {
-    const f = programFixture("recorded");
+    const f = await programFixture("recorded");
     try {
       if (mode === "threshold") f.policy.minimumConfidence = 0.99;
       if (mode === "validation")
@@ -211,7 +217,7 @@ await test("below-threshold or failed validation escalates with evidence and nev
       );
       assert.equal(
         (
-          f.store.events(f.value.taskId)[0].payload.maintenance as {
+          (await f.store.events(f.value.taskId))[0].payload.maintenance as {
             id: string;
           }
         ).id,
@@ -222,16 +228,15 @@ await test("below-threshold or failed validation escalates with evidence and nev
     }
   }
 });
-
 await test("pause, changed revisions and policy revocation prevent program publication", async () => {
   for (const mode of ["pause", "head", "base", "policy"]) {
-    const f = programFixture();
+    const f = await programFixture();
     try {
       const prepare = f.program.resolver.prepare.bind(f.program.resolver);
       f.program.resolver.prepare = async (request) => {
         const candidate = await prepare(request);
         if (mode === "pause")
-          f.store.change(f.value.taskId, (current) => {
+          await f.store.change(f.value.taskId, (current) => {
             current.control = "paused";
           });
         if (mode === "head") f.pr.head = "f".repeat(40);
@@ -250,9 +255,8 @@ await test("pause, changed revisions and policy revocation prevent program publi
     }
   }
 });
-
 await test("a lost push response reconciles after restart without a second push even if policy was removed", async () => {
-  const f = programFixture("recorded");
+  const f = await programFixture("recorded");
   try {
     const publish = f.program.resolver.publish.bind(f.program.resolver);
     let pushes = 0;
@@ -284,14 +288,13 @@ await test("a lost push response reconciles after restart without a second push 
     f.cleanup();
   }
 });
-
 await test("Mergiraf resolves a real structural conflict and validates both changes before publication", {
   skip:
     spawnSync("mergiraf", ["--version"]).status !== 0
       ? "Optional Mergiraf binary is not installed"
       : false,
 }, async () => {
-  const f = programFixture("structural");
+  const f = await programFixture("structural");
   try {
     const handled = await f.program.handle(f.value, f.entry, async () => true);
     const record = f.program.records(f.value.taskId)[0];
@@ -307,10 +310,9 @@ await test("Mergiraf resolves a real structural conflict and validates both chan
     f.cleanup();
   }
 });
-
 await test("unscored structural resolutions and PRs outside the worker branch escalate without publishing", async () => {
   for (const mode of ["unscored", "fork", "branch"]) {
-    const f = programFixture("structural");
+    const f = await programFixture("structural");
     try {
       if (mode === "unscored") {
         f.policy.confidence.rerere = null;
@@ -332,9 +334,8 @@ await test("unscored structural resolutions and PRs outside the worker branch es
     }
   }
 });
-
 await test("an unconfirmed push keeps its identity and escalates without automatic replay", async () => {
-  const f = programFixture();
+  const f = await programFixture();
   try {
     let pushes = 0;
     f.program.resolver.publish = async () => {
@@ -362,9 +363,8 @@ await test("an unconfirmed push keeps its identity and escalates without automat
     f.cleanup();
   }
 });
-
 await test("custom merge drivers cannot inherit the clean Git confidence score", async () => {
-  const f = programFixture();
+  const f = await programFixture();
   try {
     writeFileSync(join(f.repository, ".gitattributes"), "*.txt merge=union\n");
     f.git("add", ".gitattributes");
@@ -372,7 +372,7 @@ await test("custom merge drivers cannot inherit the clean Git confidence score",
     f.git("push", "origin", "feature");
     f.pr.head = f.git("rev-parse", "HEAD");
     f.entry.payload.revision = f.pr.head;
-    f.store.saveEvent(f.entry);
+    await f.store.saveEvent(f.entry);
     assert.equal(
       await f.program.handle(f.value, f.entry, async () => true),
       false,

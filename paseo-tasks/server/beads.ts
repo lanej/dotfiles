@@ -1,8 +1,8 @@
-import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import createClient from "openapi-fetch";
+import { fetch as nodeFetch } from "undici";
 import { z } from "zod";
 import { task, type Task } from "../shared/contracts";
+import type { paths, components } from "./generated/beads";
 
 const content = task
   .pick({
@@ -38,7 +38,10 @@ const issue = z.object({
   status: z.string(),
   priority: z.number().int().min(0).max(4),
   assignee: z.string().default(""),
-  metadata: z.record(z.string(), z.unknown()),
+  metadata: z
+    .record(z.string(), z.unknown())
+    .nullish()
+    .transform((value) => value ?? {}),
 });
 type Issue = z.infer<typeof issue>;
 const nativeStatus: Record<Task["status"], string> = {
@@ -72,95 +75,118 @@ export const beadId = (id: string) => `tasks-${z.uuid().parse(id)}`;
 const actor = (value: Task, worker = value.worker?.agentId ?? value.taskId) =>
   `paseo:${value.serverId}/${worker}`;
 
-/** Beads owns task content; SQLite retains execution and delivery state. */
-export class Beads {
-  readonly directory: string;
+export class BeadsError extends Error {
   constructor(
-    directory: string,
-    readonly authority: string,
-    readonly binary = "bd",
-    readonly sshHost?: string,
+    message: string,
+    readonly status: number,
+    readonly problem: unknown,
   ) {
-    this.directory = resolve(directory);
-    if (sshHost) {
-      if (!/^[A-Za-z0-9][A-Za-z0-9_.@-]*$/.test(sshHost))
-        throw new Error("Invalid Beads SSH authority host");
-      if (!directory.startsWith("/"))
-        throw new Error("Remote Beads directory must be absolute");
-    } else {
-      const metadata = JSON.parse(
-        readFileSync(join(this.directory, ".beads/metadata.json"), "utf8"),
+    super(message);
+  }
+}
+
+/** The service owns task content; SQLite retains local execution and delivery state. */
+export class Beads {
+  private readonly client;
+  constructor(
+    readonly url: string,
+    readonly authority: string,
+    token?: string,
+  ) {
+    const target = new URL(url);
+    if (
+      !["http:", "https:"].includes(target.protocol) ||
+      target.username ||
+      target.password ||
+      target.search ||
+      target.hash ||
+      target.pathname !== "/"
+    )
+      throw new Error(
+        "Beads URL must name an HTTP(S) service origin without credentials",
       );
-      if (
-        metadata.backend !== "dolt" ||
-        !["server", "embedded"].includes(metadata.dolt_mode)
-      )
-        throw new Error("Tasks requires an initialized Beads Dolt workspace");
-    }
+    if (
+      target.protocol === "http:" &&
+      !["127.0.0.1", "localhost", "[::1]"].includes(target.hostname)
+    )
+      throw new Error(
+        "Non-loopback Beads endpoints require HTTPS; use a loopback tunnel for private HTTP services",
+      );
     z.uuid().parse(authority);
-    this.verifyAuthority();
-  }
-  private run(args: string[], owner = "paseo-tasks"): unknown {
-    const command = ["--json", "--sandbox", "--actor", owner, ...args];
-    const quote = (value: string) => `'${value.replaceAll("'", "'\"'\"'")}'`;
-    const remote = `cd ${quote(this.directory)} && exec env BEADS_DIR=${quote(join(this.directory, ".beads"))} ${[this.binary, ...command].map(quote).join(" ")}`;
-    const result = spawnSync(
-      this.sshHost ? "ssh" : this.binary,
-      this.sshHost
-        ? [
-            "-o",
-            "BatchMode=yes",
-            "-o",
-            "ConnectTimeout=5",
-            this.sshHost,
-            remote,
-          ]
-        : command,
-      {
-        cwd: this.sshHost ? undefined : this.directory,
-        encoding: "utf8",
-        timeout: 30_000,
-        maxBuffer: 8 * 1024 * 1024,
-        env: {
-          ...process.env,
-          BEADS_DIR: join(this.directory, ".beads"),
-          BD_LAST_TOUCHED_FALLBACK: "0",
-        },
+    this.client = createClient<paths>({
+      baseUrl: target.origin,
+      headers: {
+        "Bd-Project-Id": authority,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-    );
-    if (result.error || result.status !== 0)
-      throw new Error(
-        `Beads ${args[0]} failed; writes may need readback before retry: ${result.error?.message ?? result.stderr.trim()}`,
-      );
-    try {
-      return JSON.parse(result.stdout);
-    } catch {
-      throw new Error(
-        `Beads ${args[0]} returned unreadable JSON; reconcile before retrying writes`,
+      fetch: async (request) =>
+        nodeFetch(request.url, {
+          method: request.method,
+          headers: Object.fromEntries(request.headers.entries()),
+          body: request.body ? await request.text() : undefined,
+          signal: AbortSignal.timeout(30_000),
+          redirect: "error",
+        }),
+    });
+  }
+  private async result<T>(
+    pending: Promise<{ data?: T; error?: unknown; response: Response }>,
+  ): Promise<T> {
+    const response = await pending;
+    if (!response.response.ok || response.data === undefined) {
+      const problem = z
+        .object({ code: z.string().optional(), reason: z.string().optional() })
+        .passthrough()
+        .safeParse(response.error);
+      throw new BeadsError(
+        `Beads HTTP ${response.response.status}${problem.success ? `: ${problem.data.code ?? "unknown"} ${problem.data.reason ?? ""}` : ""}`,
+        response.response.status,
+        response.error,
       );
     }
+    return response.data;
   }
-  private verifyAuthority() {
-    const observed = z
-      .object({ found: z.literal(true), value: z.string() })
-      .parse(this.run(["kv", "get", "paseo.authority"]));
-    if (observed.value !== this.authority)
+  async verifyAuthority() {
+    const context = await this.result(this.client.GET("/v0/beads/context"));
+    if (
+      context.project_id !== this.authority ||
+      context.backend !== "dolt" ||
+      context.dolt_mode !== "server"
+    )
       throw new Error(
-        "Beads authority differs from configured authority; refusing replica or foreign database",
+        "Beads authority differs from configured service project; refusing foreign or embedded storage",
       );
+    for (const capability of [
+      "project.enforce",
+      "issues.get",
+      "issues.create",
+      "issues.update",
+    ])
+      if (!context.capabilities?.includes(capability))
+        throw new Error(
+          `Beads service lacks required capability: ${capability}`,
+        );
   }
-  private readIssue(value: Pick<Task, "taskId" | "serverId">): Issue {
-    this.verifyAuthority();
-    const rows = z.array(issue).parse(this.run(["show", beadId(value.taskId)]));
-    if (rows.length !== 1 || rows[0].id !== beadId(value.taskId))
+  private async readIssue(
+    value: Pick<Task, "taskId" | "serverId">,
+  ): Promise<Issue> {
+    await this.verifyAuthority();
+    const observed = issue.parse(
+      await this.result(
+        this.client.GET("/v0/beads/issues/{id}", {
+          params: { path: { id: beadId(value.taskId) } },
+        }),
+      ),
+    );
+    if (observed.id !== beadId(value.taskId))
       throw new Error("Beads task identity is ambiguous");
-    const saved = attachment.parse(unpack(rows[0].metadata));
+    const saved = attachment.parse(unpack(observed.metadata));
     if (saved.taskId !== value.taskId || saved.serverId !== value.serverId)
       throw new Error("Beads task belongs to another host or task");
-    return rows[0];
+    return observed;
   }
-  read(value: Task): TaskContent {
-    const observed = this.readIssue(value);
+  async read(value: Task): Promise<TaskContent> {
+    const observed = await this.readIssue(value);
     const saved = attachment.parse(unpack(observed.metadata));
     const status =
       nativeStatus[saved.status] === observed.status
@@ -190,56 +216,63 @@ export class Beads {
           : 100 - 25 * observed.priority,
     });
   }
-  create(value: Task) {
-    this.verifyAuthority();
-    const args = [
-      "create",
-      "--id",
-      beadId(value.taskId),
-      "--title",
-      value.title,
-      "--description",
-      value.outcome,
-      "--acceptance",
-      JSON.stringify(value.successCriteria),
-      "--status",
-      nativeStatus[value.status],
-      "--priority",
-      String(priority(value.priority)),
-      "--metadata",
-      JSON.stringify(
-        pack({
-          ...taskContent(value),
-          schema: 1,
-          taskId: value.taskId,
-          serverId: value.serverId,
-        }),
-      ),
-      "--external-ref",
-      `paseo:${value.serverId}/${value.taskId}`,
-    ];
-    if (value.worker) args.push("--assignee", actor(value));
-    // WHY: Stable IDs reconcile a lost creation response without creating another task.
+  async create(value: Task) {
+    await this.verifyAuthority();
     try {
-      this.run(args);
+      await this.result(
+        this.client.POST("/v0/beads/issues", {
+          body: {
+            actor: actor(value),
+            issue_type: "task",
+            id: beadId(value.taskId),
+            force_id_prefix: true,
+            ephemeral: false,
+            no_history: false,
+            inherit_labels_from_parent: false,
+            title: value.title,
+            description: value.outcome,
+            acceptance_criteria: JSON.stringify(value.successCriteria),
+            status: nativeStatus[value.status],
+            priority: priority(value.priority),
+            metadata: pack({
+              ...taskContent(value),
+              schema: 1,
+              taskId: value.taskId,
+              serverId: value.serverId,
+            }),
+            external_ref: `paseo:${value.serverId}/${value.taskId}`,
+            ...(value.worker ? { assignee: actor(value) } : {}),
+          },
+        }),
+      );
     } catch (error) {
-      const existing = this.read(value);
+      // WHY: Stable ids permit read-only reconciliation after a lost creation response; writes are never retried blindly.
+      if (error instanceof BeadsError && error.status !== 409) throw error;
+      let existing: TaskContent;
+      try {
+        existing = await this.read(value);
+      } catch {
+        throw error;
+      }
       if (JSON.stringify(existing) !== JSON.stringify(taskContent(value)))
         throw error;
     }
-    if (JSON.stringify(this.read(value)) !== JSON.stringify(taskContent(value)))
+    if (
+      JSON.stringify(await this.read(value)) !==
+      JSON.stringify(taskContent(value))
+    )
       throw new Error("Beads creation readback differs from requested content");
   }
-  assertOwner(value: Task) {
-    if (value.worker && this.readIssue(value).assignee !== actor(value))
+  async assertOwner(value: Task) {
+    if (value.worker && (await this.readIssue(value)).assignee !== actor(value))
       throw new Error(
         "Beads ownership changed; pause and reconcile the retained worker before more execution",
       );
   }
-  claim(value: Task, worker: string) {
-    const observed = this.readIssue(value);
+  async claim(value: Task, worker: string) {
+    const observed = await this.readIssue(value);
     if (
-      this.read(value).status !== "active" ||
+      (await this.read(value)).status !== "active" ||
       !["open", "in_progress"].includes(observed.status)
     )
       throw new Error(
@@ -248,29 +281,27 @@ export class Beads {
     const owner = actor(value, worker);
     if (observed.assignee && observed.assignee !== owner)
       throw new Error("Beads task is claimed by another actor");
-    this.run(
-      [
-        "update",
-        beadId(value.taskId),
-        "--if-status",
-        observed.status,
-        "--if-assignee",
-        observed.assignee,
-        "--assignee",
-        owner,
-        "--status",
-        "in_progress",
-      ],
-      owner,
+    await this.result(
+      this.client.PATCH("/v0/beads/issues/{id}", {
+        params: { path: { id: observed.id } },
+        body: {
+          actor: owner,
+          force_close_policy: false,
+          force_assignee_transfer: false,
+          expected_status: observed.status,
+          expected_assignee: observed.assignee,
+          patch: { assignee: owner, status: "in_progress" },
+        },
+      }),
     );
-    if (this.readIssue(value).assignee !== owner)
+    if ((await this.readIssue(value)).assignee !== owner)
       throw new Error("Beads did not confirm worker ownership");
   }
-  update(before: Task, after: Task) {
+  async update(before: Task, after: Task) {
     const previous = taskContent(before),
       next = taskContent(after);
     if (JSON.stringify(previous) === JSON.stringify(next)) return;
-    const observed = this.readIssue(before);
+    const observed = await this.readIssue(before);
     if (
       (before.worker || observed.assignee) &&
       observed.assignee !== actor(before)
@@ -278,44 +309,47 @@ export class Beads {
       throw new Error(
         "Beads task ownership changed or is claimed by another actor",
       );
-    if (JSON.stringify(this.read(before)) !== JSON.stringify(previous))
+    if (JSON.stringify(await this.read(before)) !== JSON.stringify(previous))
       throw new Error("Beads task changed; refresh before applying the update");
-    const args = [
-      "update",
-      beadId(before.taskId),
-      "--if-status",
-      observed.status,
-      "--if-assignee",
-      observed.assignee,
-    ];
-    if (previous.title !== next.title) args.push("--title", next.title);
-    if (previous.outcome !== next.outcome)
-      args.push(
-        "--description",
-        next.outcome,
-        ...(next.outcome ? [] : ["--allow-empty-description"]),
-      );
-    if (
-      JSON.stringify(previous.successCriteria) !==
-      JSON.stringify(next.successCriteria)
-    )
-      args.push("--acceptance", JSON.stringify(next.successCriteria));
-    if (previous.status !== next.status)
-      args.push("--status", nativeStatus[next.status]);
-    if (previous.priority !== next.priority)
-      args.push("--priority", String(priority(next.priority)));
     const changed = Object.keys(next).filter(
       (key) =>
         JSON.stringify(previous[key as keyof TaskContent]) !==
         JSON.stringify(next[key as keyof TaskContent]),
     );
-    const patch = Object.fromEntries(
-      changed.map((key) => [key, next[key as keyof TaskContent]]),
+    const patch: components["schemas"]["IssuePatchBody"] = {
+      metadata: {
+        merge: pack(
+          Object.fromEntries(
+            changed.map((key) => [key, next[key as keyof TaskContent]]),
+          ),
+        ),
+      },
+    };
+    if (previous.title !== next.title) patch.title = next.title;
+    if (previous.outcome !== next.outcome) patch.description = next.outcome;
+    if (
+      JSON.stringify(previous.successCriteria) !==
+      JSON.stringify(next.successCriteria)
+    )
+      patch.acceptance_criteria = JSON.stringify(next.successCriteria);
+    if (previous.status !== next.status)
+      patch.status = nativeStatus[next.status];
+    if (previous.priority !== next.priority)
+      patch.priority = priority(next.priority);
+    await this.result(
+      this.client.PATCH("/v0/beads/issues/{id}", {
+        params: { path: { id: observed.id } },
+        body: {
+          actor: actor(before),
+          force_close_policy: false,
+          force_assignee_transfer: false,
+          expected_status: observed.status,
+          expected_assignee: observed.assignee,
+          patch,
+        },
+      }),
     );
-    // WHY: Native merge resolves each changed key inside Beads' transaction, preserving concurrent unrelated fields.
-    args.push("--metadata", JSON.stringify(pack(patch)));
-    this.run(args, actor(before));
-    const confirmed = this.read(after);
+    const confirmed = await this.read(after);
     if (
       changed.some(
         (key) =>

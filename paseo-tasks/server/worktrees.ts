@@ -19,7 +19,7 @@ export interface Worktrees {
   ): Promise<Reservation>;
   acquire(
     reservation: Reservation,
-    attempting: () => void,
+    attempting: () => void | Promise<void>,
   ): Promise<Allocation>;
 }
 const command = async (cwd: string, executable: string, args: string[]) =>
@@ -137,7 +137,7 @@ export class WorktreeManager implements Worktrees {
   }
   async acquire(
     reservation: Reservation,
-    attempting: () => void,
+    attempting: () => void | Promise<void>,
   ): Promise<Allocation> {
     const { primary, root, holder, branch, baseCommit, agent } = reservation;
     const rows = await inspectTasks(primary, this.executable);
@@ -163,7 +163,7 @@ export class WorktreeManager implements Worktrees {
         throw new Error(
           "Worktree acquisition outcome remains unknown; inspect worktree status before retrying. No second allocation was requested",
         );
-      attempting();
+      await attempting();
       const response = JSON.parse(
         await command(primary, this.executable, [
           "create",

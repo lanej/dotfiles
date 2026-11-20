@@ -1,69 +1,40 @@
 # Beads task authority
 
-Beads owns task briefs, work status, constraints, evidence and next actions in a dedicated repository on the Mac. `bd list`, `bd show` and `bd history` read that record without Paseo. Pi and the Paseo task panel remain clients. SQLite retains execution bindings, managed checkouts, current activity, pending feedback and delivery receipts; its task content is a refreshable projection for enrolled tasks.
+The shared Beads HTTP service owns task briefs, work status, constraints, evidence and next actions. Pi runs ordinary worker sessions, worktree manager owns new coding checkouts, and Paseo supplies the task panel and mobile access. SQLite retains local execution bindings, managed checkout identities and durable delivery records; task content there is a refreshable projection.
 
-## Install and initialize
+## Configure the service
 
-Enable `tools.beads-cli = true` in the selected machine TOML, inspect `make plan`, then run `make install`. The catalog pins Beads 1.3.4. The release installer verifies the published archive checksum and installed binary version, and preserves unmanaged or modified binaries. Configuration alone neither installs Beads nor initializes task storage.
-
-Initialize explicitly:
-
-```sh
-make beads-coordinator-init
-```
-
-The default directory is `~/.local/share/paseo-coordinator`; select another dedicated repository with `BEADS_COORDINATOR_DIR=/absolute/path`. Initialization uses embedded Dolt and does not start a database server. Embedded mode admits one writer at a time; application writes are serialized by the existing SQLite transaction and Beads enforces its storage lock against other CLI processes. A competing CLI operation can report contention; inspect current state before retrying. Server mode is optional for simultaneous writers: initialize with `BEADS_STORAGE_MODE=server` only after installing Dolt separately. Initialization preserves an existing workspace and refuses an implicit mode change.
-
-The initializer skips Beads agent instructions and Git hooks, preserving existing canonical skills and host integrations. It records one authority UUID in Beads and prints the two environment settings required by the task service:
+Select `tools.beads = true` and follow [Beads service setup](beads.md). Inspect `beads-service status` for readiness and the service URL. Read `GET /v0/beads/context` to obtain its `project_id`, then configure the intended task host explicitly:
 
 ```text
-PASEO_TASKS_BEADS_DIR=/absolute/path/to/coordinator
-PASEO_TASKS_BEADS_AUTHORITY=<printed UUID>
+PASEO_TASKS_BEADS_URL=http://127.0.0.1:8790
+PASEO_TASKS_BEADS_PROJECT_ID=<project_id from the intended service>
 ```
 
-Apply these to the intended Paseo daemon's environment at an idle maintenance boundary after validating the plugin. No daemon restart or worker migration occurs during installation or initialization. New tasks created by a configured service use Beads. Existing tasks retain their source until explicitly migrated. Removing the configuration cannot make enrolled tasks fall back to stale SQLite content.
+Set `PASEO_TASKS_BEADS_TOKEN_FILE` when the endpoint requires bearer authentication. The file supplies one token; credentials are never placed in the URL. Remote hosts use a deliberately configured authenticated service endpoint or existing secure tunnel. The task adapter does not create an SSH connection, replica, embedded database or server process. Beyond loopback, use a confidential authenticated transport as required by the Beads service contract.
 
-## Inspect and edit independently
+Startup verifies the project identity, server-backed Dolt mode and required API capabilities. Every task request carries `Bd-Project-Id`, so a replacement or misdirected endpoint cannot silently bind the host to another workspace. Retired `PASEO_TASKS_BEADS_DIR`, `PASEO_TASKS_BEADS_AUTHORITY` and `PASEO_TASKS_BEADS_SSH_HOST` settings fail with an actionable error. They never initialize or migrate storage.
 
-Run native commands from the dedicated repository:
+## Task records and guarded writes
 
-```sh
-bd list --all --json
-bd show tasks-<existing-task-UUID> --json
-bd history tasks-<existing-task-UUID> --json
-```
+Each new task has a stable `tasks-<task-UUID>` Beads ID. Native title, description, acceptance criteria, priority, status and assignee remain independently inspectable. Flat `paseo.*` metadata retains the accepted task context and host/task identity. Native updates to unrelated metadata keys survive a task edit. Per-field metadata merges and native expected-status/expected-assignee guards are applied together in Beads' transaction; same-field edits retain Beads' last-writer semantics.
 
-Task UUIDs and host-qualified API addresses remain stable. The corresponding bead ID is `tasks-<UUID>`. Native title, description, acceptance criteria and priority remain authoritative. Structured acceptance is written as a JSON array; a human-readable replacement becomes one acceptance criterion. Other task fields use flat `paseo.*` metadata keys, which are visible in `bd show --json`. For example, `bd update ID --metadata '{"paseo.progress":"Observed result"}'` changes progress.
+The application uses asynchronous HTTP requests through `openapi-fetch` and generated types. Requests time out after 30 seconds and refuse redirects. Mutating requests are never retried blindly. Creation uses its stable ID for read-only reconciliation after a lost response; writes whose outcome cannot be confirmed remain errors requiring inspection. A service outage never permits an enrolled task to fall back to stale SQLite content.
 
-The adapter patches only changed fields using Beads' native atomic metadata merge, preserving unknown keys and concurrent changes to unrelated fields. Same-field concurrent CLI edits follow native last-writer semantics; this is not full-row compare-and-swap. The existing task API revision check still protects competing application updates. Status and assignee preconditions protect native worker claims. A CLI reassignment blocks further execution, delivery and worker updates until ownership is reconciled; it cannot retract an already admitted message or running turn. Closing, blocking or deferring an unbound task prevents automatic launch.
+Local SQLite transactions serialize task projection, execution bookkeeping and dispatch reservations while awaiting required Beads effects. This preserves local admission ordering and rollback behavior, but the two databases are not one atomic transaction: an HTTP write can commit before local persistence fails. The next successful read reconciles authoritative task content. Locks can remain held across bounded HTTP calls, so this remains a single-host pilot design; measure responsiveness before wider enrollment.
 
-## Migrate one task first
+Existing local task databases without a matching service project pin are refused. No automatic task migration or history import is provided. Closed embedded pilot records and their backups remain in their original repository; new work uses the shared service.
 
-Pause the selected task, wait for a verified idle worker with no pending native question, and run the existing task-service CLI:
+## Generated API contract
 
-```sh
-printf '%s\n' '{"serverId":"<host>","taskId":"<existing UUID>"}' |
-  npm --prefix paseo-tasks run maintain -- beads-migrate --json
-```
+`paseo-tasks/api/beads-1.3.4.yaml` is the upstream MIT-licensed [Beads v1.3.4 OpenAPI contract](https://github.com/gastownhall/beads/blob/v1.3.4/internal/httpapi/spec/openapi.v0.yaml). `npm --prefix paseo-tasks run generate:beads` regenerates the TypeScript contract. Generation checks detect drift; do not edit generated types by hand. The upstream REST contract is consumed as published rather than replaced with a custom application API.
 
-The host validates its identity and worker activity. Before enrollment it creates a consistent SQLite snapshot at `<tasks-state>/backups/before-beads-<UUID>-<attempt>.sqlite`. Migration preserves the source row, task UUID, worker conversation, checkout and pending delivery records. It verifies Beads publication before recording enrollment. Retrying uses the same bead ID; a different existing record is a conflict. A Beads write followed by a local projection failure remains visible through native CLI inspection, and the next successful read reconciles the local content and coordinator report.
-
-Verify native CLI readback, the task panel, retained feedback, worker follow-ups and restart recovery before resuming the pilot or migrating another task. Do not restore a pre-migration snapshot over a live database; retain it for explicit recovery. Use Beads' Dolt-native backup facility for database history; JSONL exports are interchange data rather than backups.
-
-## Remote execution hosts
-
-Remote task services use the same Mac authority, never an independently writable replica. Set `PASEO_TASKS_BEADS_SSH_HOST` to an existing noninteractive SSH alias for the Mac, use the Mac's absolute repository path as `PASEO_TASKS_BEADS_DIR`, and pin its authority UUID. The adapter executes native `bd` on that host with bounded, batch-mode SSH and quoted arguments. Configure the Mac's noninteractive PATH to expose `bd`. Unavailable SSH or a mismatched authority blocks task operations; it does not initialize local storage or redirect to another host. Native SSH inspection works independently of Paseo as well.
-
-Distributed Beads and broader harness deployment are tracked in [issue #349](https://github.com/lanej/dotfiles/issues/349). OctoManager remains responsible for PR lifecycle work; adopting Beads does not add a PR watcher or authorize merges.
-
-## Verification boundary
-
-The native acceptance detector uses real embedded Beads and disposable Git/SQLite repositories. It exercises migration, direct CLI changes, claims, reassignment, unrelated concurrent edits, interrupted projection, source backup and pending feedback. It never publishes or merges a PR. Existing package tests retain the task-service delivery and host-routing checks. SSH transport and actual Pi/Paseo deployment require acceptance on the intended hosts before claiming live rollout completion.
+Native acceptance creates disposable Dolt and Beads HTTP processes, exercises task creation, independent CLI edits, worker ownership, closed-task refusal and retained feedback, and removes only its own processes and workspace. It never writes to the configured shared service or migrates live tasks. Existing package tests protect delivery, recovery and host routing. Actual Pi/Paseo deployment and remote transport still require host-specific acceptance.
 
 ## Runtime and operator interfaces
 
-Task integration code uses TypeScript and the pinned official Pi SDK for session types, parsing and active-context selection. Task observation reads one session snapshot and never opens a mutable Pi session manager or rewrites the worker's history. Identity, malformed-record and ancestry checks remain local guards because Pi's tolerant parser alone cannot establish task ownership or a safe completion checkpoint. The SDK's Undici override retains its HTTP API while applying the security-patched release; revisit it when the pinned Pi version includes that release.
+Task integration code uses TypeScript and the pinned official Pi SDK for session types, parsing and active-context selection. Observation reads one session snapshot without opening a mutable Pi session manager or rewriting worker history. Identity, malformed-record and ancestry guards remain necessary because Pi's tolerant parser alone cannot establish ownership or a safe completion checkpoint. The scoped Undici override applies its security patch while retaining the pinned Pi API; revisit it when updating Pi.
 
-New coding workers require the native worktree manager. If it is unavailable, launch fails before creating a checkout; there is no raw Git or Treehouse allocation fallback. Existing adopted checkouts retain their ownership, and legacy allocation reconciliation does not authorize new legacy allocations.
+New coding workers require native worktree manager. Missing tooling fails before checkout creation; there is no raw Git or Treehouse allocation fallback. Adopted checkouts retain their ownership, and reconciliation of a legacy allocation cannot request a new one.
 
-[The Zellij fleet design (#362)](https://github.com/lanej/dotfiles/issues/362) defines the local operator direction: an explicit Beads root maps to a Zellij session, immediate workstreams map to tabs, and active authorized Pi attempts map to live panes. Deeper hierarchy remains in a floating task tree; blocker edges do not become parentage. Selecting a worker focuses its existing Pi TUI, while native attention navigation takes precedence. Pane presence, process liveness and task status are distinct observations. This workspace mapping remains a design/prototype scope; it is not installed by the task plugin. Paseo supplies mobile access; native Beads task inspection remains available without it.
+[The Zellij fleet design (#362)](https://github.com/lanej/dotfiles/issues/362) defines the local operator direction: explicit Beads root → Zellij session, immediate workstream → tab, active authorized Pi attempt → live pane. Deeper hierarchy remains in a floating tree; blocker edges do not become parentage. Selection focuses the existing Pi TUI, with native attention navigation taking precedence. Pane presence, process liveness and task status remain separate observations. This workspace mapping is a design/prototype scope; the task plugin does not install it.
