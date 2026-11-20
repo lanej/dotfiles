@@ -16,11 +16,15 @@
 
 My daily environment for editing code, navigating repositories, and working with terminal agents. Machine-local TOML selects the tools; Make and symlinks apply their configuration. A shared Nord theme ties the workspace together.
 
-[![Directory history with ranked paths, a README preview, Git changes, and attached agents in three columns](docs/images/directory-picker/history.svg)](docs/directory-picker.md)
+[![Customized Zellij tabs with interlocking chevrons, numbered sessions, SSH and battery indicators](docs/images/zellij-status.png)](docs/zellij/status-bar.mdx)
 
-**Find the next place to work.** The [directory and worktree picker](docs/directory-picker.md) puts paths, project context, and Git activity together. Its layout adapts as you filter or resize.
+**One terminal, a complete workspace.** [Zellij](docs/zellij.md) brings together editor panes, coding agents, project navigation, and Git workflows. My customized [status bar](docs/zellij/status-bar.mdx) keeps tab identity, pane focus, SSH context, and machine state visible without taking over the screen.
+
+The [directory and worktree picker](docs/directory-picker.md) adds ranked paths, project context, and Git activity, with a layout that adapts as you filter or resize.
 
 ## Inside the workspace
+
+[![Directory history with ranked paths, README preview, Git changes, and attached agents](docs/images/directory-picker/history.svg)](docs/directory-picker.md)
 
 | Workflow | What’s included |
 | --- | --- |
