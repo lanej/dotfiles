@@ -64,6 +64,8 @@ The package retains the canonical compiler and typed lint rules under `.typescri
 
 The native Beads probe uses a disposable service to race claims, edit the accepted fields using native Beads tools and verify that a stale closing PATCH is refused. The [interactive acceptance fixture](acceptance/local-run.md) runs real Pi, Zellij, the worktree manager and Beads with a loopback model. It checks same-pane steering and refocus, tool-driven completion, failed verification, edited scope and independent inspection after Pi exits.
 
+The capture shows the native worker and verified Beads result in an isolated Zellij session using stock styling and a deterministic loopback provider.
+
 ![Pi worker in Zellij submitting a verified result for its bead](../../docs/assets/pi-driver/local-run-submitted.png)
 
 The separately invoked `uv run --script pi/daily-driver/acceptance/terminal.py --output docs/assets/pi-driver` exercises tree navigation, task details, Escape recovery, and draft entry through actual Pi PTYs with a controlled Beads boundary. It checks the native theme colors, filled status pills and absence of startup/helper text. The retained renders preserve terminal-cell colors and crop unused terminal rows; they do not establish live provider behavior.
