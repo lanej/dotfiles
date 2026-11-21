@@ -3,19 +3,50 @@ import { homedir } from "node:os";
 import { isAbsolute, join } from "node:path";
 import { z } from "zod";
 
+export enum DriverProfile {
+  Work = "work",
+  Personal = "personal",
+}
+export const driverProfileSchema = z.enum(DriverProfile);
+
+export enum AgentRole {
+  Lead = "lead",
+  Worker = "worker",
+  Reviewer = "reviewer",
+  Explorer = "explorer",
+}
+
+export enum DefaultProvider {
+  BedrockMantle = "bedrock-mantle",
+  ChatGPTSubscription = "openai-codex",
+}
+
+export enum ReasoningLevel {
+  Off = "off",
+  Minimal = "minimal",
+  Low = "low",
+  Medium = "medium",
+  High = "high",
+  ExtraHigh = "xhigh",
+}
+export function knownProvider(value: string): DefaultProvider | undefined {
+  const parsed = z.enum(DefaultProvider).safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
+
 const selection = z
   .object({
     provider: z.string().min(1),
     model: z.string().min(1),
-    reasoning: z.enum(["off", "minimal", "low", "medium", "high", "xhigh"]),
+    reasoning: z.enum(ReasoningLevel),
   })
   .strict();
 const profile = z
   .object({
-    lead: selection,
-    worker: selection,
-    reviewer: selection,
-    explorer: selection,
+    [AgentRole.Lead]: selection,
+    [AgentRole.Worker]: selection,
+    [AgentRole.Reviewer]: selection,
+    [AgentRole.Explorer]: selection,
   })
   .strict();
 export const configSchema = z
@@ -40,7 +71,10 @@ export const configSchema = z
       .strict()
       .optional(),
     profiles: z
-      .object({ work: profile.optional(), personal: profile.optional() })
+      .object({
+        [DriverProfile.Work]: profile.optional(),
+        [DriverProfile.Personal]: profile.optional(),
+      })
       .strict()
       .default({}),
   })
@@ -49,9 +83,9 @@ export type DriverConfig = z.infer<typeof configSchema>;
 
 export function configPath(): string {
   return (
-    process.env.PI_DRIVER_CONFIG ??
+    process.env["PI_DRIVER_CONFIG"] ??
     join(
-      process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"),
+      process.env["XDG_CONFIG_HOME"] ?? join(homedir(), ".config"),
       "pi-driver/config.json",
     )
   );
@@ -62,9 +96,9 @@ export async function loadConfig(path = configPath()): Promise<DriverConfig> {
     return configSchema.parse(JSON.parse(await readFile(path, "utf8")));
   } catch (error) {
     if (
-      (error as NodeJS.ErrnoException).code === "ENOENT" &&
+      z.object({ code: z.literal("ENOENT") }).safeParse(error).success &&
       path === configPath() &&
-      !process.env.PI_DRIVER_CONFIG
+      process.env["PI_DRIVER_CONFIG"] === undefined
     ) {
       return configSchema.parse({});
     }
@@ -75,10 +109,26 @@ export async function loadConfig(path = configPath()): Promise<DriverConfig> {
 }
 
 const roles = (provider: string, prefix: string) => ({
-  lead: { provider, model: `${prefix}gpt-6.1-sol`, reasoning: "high" },
-  worker: { provider, model: `${prefix}gpt-6.1-sol`, reasoning: "medium" },
-  reviewer: { provider, model: `${prefix}gpt-6.1-sol`, reasoning: "medium" },
-  explorer: { provider, model: `${prefix}gpt-6.1-terra`, reasoning: "low" },
+  [AgentRole.Lead]: {
+    provider,
+    model: `${prefix}gpt-6.1-sol`,
+    reasoning: ReasoningLevel.High,
+  },
+  [AgentRole.Worker]: {
+    provider,
+    model: `${prefix}gpt-6.1-sol`,
+    reasoning: ReasoningLevel.Medium,
+  },
+  [AgentRole.Reviewer]: {
+    provider,
+    model: `${prefix}gpt-6.1-sol`,
+    reasoning: ReasoningLevel.Medium,
+  },
+  [AgentRole.Explorer]: {
+    provider,
+    model: `${prefix}gpt-6.1-terra`,
+    reasoning: ReasoningLevel.Low,
+  },
 });
 
 export const exampleConfig = {
@@ -90,7 +140,7 @@ export const exampleConfig = {
     executable: "bd",
   },
   profiles: {
-    work: roles("bedrock-mantle", "openai."),
-    personal: roles("openai-codex", ""),
+    [DriverProfile.Work]: roles(DefaultProvider.BedrockMantle, "openai."),
+    [DriverProfile.Personal]: roles(DefaultProvider.ChatGPTSubscription, ""),
   },
 };

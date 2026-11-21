@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'pi/daily-driver/**'
+      - 'design-system/generated/pi.json'
       - 'bin/pi-driver'
       - 'scripts/configure-pi-driver.py'
       - '.github/workflows/pi-driver.yml'
@@ -11,6 +12,7 @@ on:
     branches: [master]
     paths:
       - 'pi/daily-driver/**'
+      - 'design-system/generated/pi.json'
       - 'bin/pi-driver'
       - 'scripts/configure-pi-driver.py'
       - '.github/workflows/pi-driver.yml'
@@ -33,4 +35,5 @@ jobs:
         with:
           python-version: '3.11'
       - run: npm --prefix pi/daily-driver ci --ignore-scripts
+      - run: npm --prefix pi/daily-driver/.typescript-quality ci --ignore-scripts
       - run: make test-pi-driver

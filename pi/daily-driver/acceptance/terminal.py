@@ -5,11 +5,13 @@
 """Exercise native Pi keyboard flows in owned PTYs and retain rendered screenshots."""
 import argparse
 import fcntl
+import json
 import os
 from pathlib import Path
 import select
 import struct
 import subprocess
+import sys
 import tempfile
 import termios
 
@@ -20,6 +22,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--output", required=True)
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[1]
+palette = json.loads((root / "../../design-system/generated/colors.json").read_text())
 output = Path(args.output)
 output.mkdir(parents=True, exist_ok=True)
 
@@ -41,8 +44,11 @@ elif 'list' in sys.argv: print(json.dumps([{'id':'daily-1','title':'Pi daily dri
 elif 'show' in sys.argv: print(json.dumps([{'id':sys.argv[-1],'title':'Idle compaction','status':'open','parent':'daily-1','description':'Compact settled sessions after five minutes and 60%.','acceptance_criteria':'Preserve drafts, task identity, and pending effects.'}]))
 ''')
     boundary.chmod(0o755)
-    import json
     (home / "config.json").write_text(json.dumps({"beads": {"workspace": str(workspace), "database": "fixture", "branch": "main", "executable": str(boundary)}}))
+    env = {**os.environ, "HOME": str(home), "PI_CODING_AGENT_DIR": str(agent), "PI_DRIVER_CONFIG": str(home / "config.json"), "TERM": "xterm-256color", "COLORTERM": "truecolor", "PI_TELEMETRY": "0", "PI_SKIP_VERSION_CHECK": "1"}
+    subprocess.run([sys.executable, str(root / "../../scripts/configure-pi-driver.py"), str(root), str(agent)], env=env, check=True, stdout=subprocess.DEVNULL)
+    project = home / "dotfiles"
+    project.mkdir()
     try:
         font = ImageFont.truetype("/System/Library/Fonts/Menlo.ttc", 14)
     except OSError:
@@ -50,7 +56,7 @@ elif 'show' in sys.argv: print(json.dumps([{'id':sys.argv[-1],'title':'Idle comp
     for columns, rows in [(100, 26), (60, 20)]:
         master, slave = os.openpty()
         fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", rows, columns, 0, 0))
-        process = subprocess.Popen(["node", str(root / "node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js"), "--offline", "--no-mcp", "--no-session", "--model", "fixture/tiny", "--extension", str(root / "extension.ts")], env={**os.environ, "HOME": str(home), "PI_CODING_AGENT_DIR": str(agent), "PI_DRIVER_CONFIG": str(home / "config.json"), "TERM": "xterm-256color", "PI_TELEMETRY": "0", "PI_SKIP_VERSION_CHECK": "1"}, cwd=home, stdin=slave, stdout=slave, stderr=slave)
+        process = subprocess.Popen(["node", str(root / "node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js"), "--offline", "--no-mcp", "--no-session", "--model", "fixture/tiny"], env=env, cwd=project, stdin=slave, stdout=slave, stderr=slave)
         os.close(slave)
         screen = pyte.Screen(columns, rows)
         stream = pyte.Stream(screen)
@@ -63,19 +69,46 @@ elif 'show' in sys.argv: print(json.dumps([{'id':sys.argv[-1],'title':'Idle comp
                         stream.feed(os.read(master, 65536).decode("utf-8", errors="replace"))
                     except OSError:
                         break
+        def capture(name):
+            occupied = [y for y, line in enumerate(screen.display) if line.strip()]
+            first = max(0, min(occupied) - 1)
+            last = min(rows, max(occupied) + 2)
+            image = Image.new("RGB", (columns * 9, (last - first) * 18), palette["roles"]["surface"])
+            draw = ImageDraw.Draw(image)
+            ansi_names = ["black", "red", "green", "brown", "blue", "magenta", "cyan", "white"]
+            def color(value, fallback):
+                if value == "default": return palette["roles"][fallback]
+                if value in ansi_names: return palette["ansi"][ansi_names.index(value)]
+                if len(value) == 6: return "#" + value
+                return palette["roles"][fallback]
+            for y in range(first, last):
+                for x in range(columns):
+                    cell = screen.buffer[y][x]
+                    fg, bg = color(cell.fg, "text"), color(cell.bg, "surface")
+                    if cell.reverse: fg, bg = bg, fg
+                    top = (y - first) * 18
+                    draw.rectangle((x * 9, top, (x + 1) * 9, top + 18), fill=bg)
+                    draw.text((x * 9, top), cell.data, font=font, fill=fg)
+            image.save(output / f"{name}-{columns}.png")
         try:
             pump(1)
             os.write(master, b"/tasks\r")
             pump(1)
             assert "daily-1" in "\n".join(screen.display), screen.display
-            image = Image.new("RGB", (columns * 9, rows * 18), "#1e222a")
-            draw = ImageDraw.Draw(image)
-            for y, line in enumerate(screen.display):
-                draw.text((0, y * 18), line, font=font, fill="#d8dee9")
-            image.save(output / f"tasks-{columns}.png")
-            os.write(master, b"\x1b[B\r")
+            for noise in ["navigation", "Pi can explain", "[Extensions]", "[Extension issues]", "Warning: Extension", "idle compact", "escape/ctrl+c"]:
+                assert noise not in "\n".join(screen.display), screen.display
+            colors = {screen.buffer[y][x].fg.upper() for y in range(rows) for x in range(columns)}
+            assert palette["roles"]["accent"].lstrip("#") in colors, colors
+            backgrounds = {screen.buffer[y][x].bg.upper() for y in range(rows) for x in range(columns)}
+            assert palette["roles"]["accent"].lstrip("#") in backgrounds, backgrounds
+            assert palette["roles"]["text.muted"].lstrip("#") in backgrounds, backgrounds
+            assert "IN PROGRESS" in "\n".join(screen.display) and "OPEN" in "\n".join(screen.display)
+            capture("tasks")
+            os.write(master, b"j\r")
             pump(.5)
             assert "Acceptance" in "\n".join(screen.display), screen.display
+            assert "Read-only observation" not in "\n".join(screen.display)
+            capture("task-details")
             os.write(master, b"\x1b")
             pump(.2)
             os.write(master, b"unfinished instruction")

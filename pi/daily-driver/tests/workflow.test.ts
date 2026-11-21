@@ -1,17 +1,25 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  readlink,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { taskDetails, taskLabel, taskTree } from "../beads.ts";
+import { z } from "zod";
+import { taskDetails, taskLabel, taskSchema, taskTree } from "../beads.ts";
 
 const execute = promisify(execFile);
 const root = fileURLToPath(new URL("../", import.meta.url));
 
-test("task containment stays separate from blockers, including missing parents and cycles", () => {
+await test("task containment stays separate from blockers, including missing parents and cycles", () => {
   const rows = taskTree([
     {
       id: "child",
@@ -51,12 +59,11 @@ test("task containment stays separate from blockers, including missing parents a
       task: { id: "bad", title: "escape\x1b[31m\nnewline", status: "open" },
       depth: 0,
     }),
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: Assert that terminal control characters are removed.
-    /\x1b|\n/,
+    /\p{Cc}/u,
   );
 });
 
-test("CLI reads the explicitly configured source and dispatch never allocates", async () => {
+await test("CLI reads the explicitly configured source and dispatch never allocates", async () => {
   const temporary = await mkdtemp(join(tmpdir(), "pi-driver-workflow-"));
   try {
     const workspace = join(temporary, "authority with spaces");
@@ -96,9 +103,11 @@ test("CLI reads the explicitly configured source and dispatch never allocates", 
         ["--import", "tsx", join(root, "cli.ts"), ...args],
         { cwd: root, env, timeout: 10_000 },
       );
-    const listing = await driver("tasks", "--json");
-    assert.equal(JSON.parse(listing.stdout).workspace, workspace);
-    assert.equal(JSON.parse(listing.stdout).tasks[0].id, "fixture-1");
+    const listing = z
+      .object({ workspace: z.string(), tasks: z.array(taskSchema) })
+      .parse(JSON.parse((await driver("tasks", "--json")).stdout));
+    assert.equal(listing.workspace, workspace);
+    assert.equal(listing.tasks[0]?.id, "fixture-1");
     assert.match((await driver("tasks", "fixture-1")).stdout, /Keep state/);
     const before = await readFile(capture, "utf8");
     await assert.rejects(
@@ -118,7 +127,7 @@ test("CLI reads the explicitly configured source and dispatch never allocates", 
   }
 });
 
-test("opt-in registration preserves local settings and is idempotent", async () => {
+await test("opt-in registration preserves local settings and is idempotent", async () => {
   const temporary = await mkdtemp(join(tmpdir(), "pi-driver-install-"));
   try {
     const agent = join(temporary, "agent");
@@ -139,10 +148,20 @@ test("opt-in registration preserves local settings and is idempotent", async () 
       );
     await install();
     await install();
-    const settings = JSON.parse(
-      await readFile(join(agent, "settings.json"), "utf8"),
+    const settings = z
+      .object({
+        theme: z.string(),
+        quietStartup: z.boolean(),
+        defaultModel: z.string(),
+        packages: z.array(z.string()),
+      })
+      .parse(JSON.parse(await readFile(join(agent, "settings.json"), "utf8")));
+    assert.equal(settings.theme, "dotfiles");
+    assert.equal(settings.quietStartup, true);
+    assert.equal(
+      await readlink(join(agent, "themes/dotfiles.json")),
+      join(root, "../../design-system/generated/pi.json"),
     );
-    assert.equal(settings.theme, "dark");
     assert.equal(settings.defaultModel, "keep-model");
     assert.deepEqual(settings.packages, [
       "keep-package",

@@ -5,11 +5,19 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
+import { z } from "zod";
+import { run } from "../process.ts";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const temporary = await mkdtemp(join(tmpdir(), "pi-driver-resources-"));
 const agent = join(temporary, ".pi/agent");
 await mkdir(agent, { recursive: true });
+await run(
+  "python3",
+  [join(root, "../../scripts/configure-pi-driver.py"), root, agent],
+  { env: { ...process.env, PI_CODING_AGENT_DIR: agent } },
+);
+await writeFile(join(temporary, "config.json"), "{}");
 await writeFile(
   join(agent, "models.json"),
   JSON.stringify({
@@ -37,8 +45,6 @@ const pi = spawn(
     "--no-mcp",
     "--model",
     "fixture/tiny",
-    "--extension",
-    join(root, "extension.ts"),
   ],
   {
     cwd: temporary,
@@ -53,7 +59,6 @@ const pi = spawn(
     stdio: ["pipe", "pipe", "pipe"],
   },
 );
-await writeFile(join(temporary, "config.json"), "{}");
 let errors = "";
 pi.stderr.on("data", (chunk: Buffer) => {
   errors += chunk.toString();
@@ -63,9 +68,16 @@ try {
   pi.stdin.write('{"id":"resources","type":"get_commands"}\n');
   let found = false;
   for await (const line of createInterface({ input: pi.stdout })) {
-    const event = JSON.parse(line);
-    if (event.id !== "resources") continue;
-    assert.equal(event.success, true, JSON.stringify(event));
+    const envelope = z
+      .looseObject({ id: z.string().optional() })
+      .parse(JSON.parse(line));
+    if (envelope.id !== "resources") continue;
+    const event = z
+      .object({
+        success: z.literal(true),
+        data: z.object({ commands: z.array(z.object({ name: z.string() })) }),
+      })
+      .parse(envelope);
     for (const name of ["tasks", "driver-profile", "driver-status"])
       assert.ok(
         event.data.commands.some(
@@ -85,7 +97,11 @@ try {
   clearTimeout(timeout);
   if (pi.exitCode === null) {
     pi.kill("SIGTERM");
-    await new Promise<void>((resolve) => pi.once("close", () => resolve()));
+    await new Promise<void>((resolve) => {
+      pi.once("close", () => {
+        resolve();
+      });
+    });
   }
   await rm(temporary, { recursive: true, force: true });
 }

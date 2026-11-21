@@ -1,106 +1,74 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { test } from "node:test";
-import type {
-  ExtensionAPI,
-  ExtensionContext,
-} from "@earendil-works/pi-coding-agent";
-import dailyDriver from "../extension.ts";
+import { IdleSession, type IdleSessionHost } from "../idle.ts";
+import { PiEvent } from "../runtime.ts";
 
-test("Pi lifecycle adapter compacts settled history once and restores its native marker", async (t) => {
-  const temporary = await mkdtemp(join(tmpdir(), "pi-driver-extension-"));
-  const previous = process.env.PI_DRIVER_CONFIG;
-  process.env.PI_DRIVER_CONFIG = join(temporary, "config.json");
-  await writeFile(process.env.PI_DRIVER_CONFIG, "{}");
+await test("idle session restores attempts and preserves unknown child work across reinitialization", (t) => {
   t.mock.timers.enable({ apis: ["setTimeout"] });
-  const handlers = new Map<
-    string,
-    (event: object, context: ExtensionContext) => unknown
-  >();
-  const entries: {
-    type: string;
-    id: string;
-    customType?: string;
-    data?: unknown;
-  }[] = [{ type: "message", id: "turn" }];
+  const idle = new IdleSession();
   let requests = 0;
   let draft = "";
   let sessionId = "session";
-  let terminalInput: (() => void) | undefined;
-  const api = {
-    on: (
-      name: string,
-      handler: (event: object, context: ExtensionContext) => unknown,
-    ) => {
-      handlers.set(name, handler);
+  let historyId = "turn";
+  let recordedHistory: string | null = null;
+  const host: IdleSessionHost = {
+    snapshot: () => ({
+      sessionId,
+      branchId: historyId,
+      historyId,
+      settled: true,
+      pendingInput: false,
+      editorText: draft,
+      percent: 60,
+    }),
+    recordAttempt: (id) => {
+      recordedHistory = id;
     },
-    registerCommand: () => {},
-    appendEntry: (customType: string, data: unknown) => {
-      entries.push({ type: "custom", id: "attempt", customType, data });
-    },
-  } as unknown as ExtensionAPI;
-  const context = {
-    mode: "tui",
-    hasUI: true,
-    isIdle: () => true,
-    hasPendingMessages: () => false,
-    getContextUsage: () => ({ percent: 60 }),
-    sessionManager: {
-      getBranch: () => entries,
-      getSessionId: () => sessionId,
-      getLeafId: () => entries.at(-1)?.id,
-    },
-    compact: (options: { onComplete(): void }) => {
+    compact: (callbacks) => {
       requests++;
-      options.onComplete();
+      callbacks.complete();
     },
-    ui: {
-      setStatus: () => {},
-      notify: () => {},
-      getEditorText: () => draft,
-      onTerminalInput: (handler: () => void) => {
-        terminalInput = handler;
-        return () => {
-          terminalInput = undefined;
-        };
-      },
+    notify: (error) => {
+      throw error;
     },
-  } as unknown as ExtensionContext;
-  const emit = async (name: string, event: object = {}) => {
-    await handlers.get(name)?.(event, context);
+    schedule: (callback, delay) => {
+      const timer = setTimeout(callback, delay);
+      return () => {
+        clearTimeout(timer);
+      };
+    },
+  };
+  const initialize = () => {
+    idle.initialize(host, 300_000, 60, recordedHistory);
   };
   try {
-    dailyDriver(api);
-    await emit("session_start");
+    idle.newSession();
+    initialize();
     t.mock.timers.tick(299_999);
     assert.equal(requests, 0);
     t.mock.timers.tick(1);
     assert.equal(requests, 1);
-    assert.equal(entries.at(-1)?.customType, "pi-driver:idle-attempt");
-    await emit("session_shutdown");
-    await emit("session_start");
+    assert.equal(recordedHistory, "turn");
+    idle.stop();
+    idle.newSession();
+    initialize();
     t.mock.timers.tick(300_000);
     assert.equal(requests, 1, "resumed history must not compact again");
-    entries.push({ type: "message", id: "next-turn" });
-    await emit("agent_settled");
+    historyId = "next-turn";
+    idle.agentSettled();
     draft = "unfinished";
     t.mock.timers.tick(300_000);
     assert.equal(requests, 1);
     draft = "";
-    terminalInput?.();
+    idle.terminalInput();
     t.mock.timers.tick(300_000);
     assert.equal(requests, 2);
 
-    await emit("tool_execution_start", { toolName: "subagent" });
-    for (const event of ["session_tree", "session_compact"]) {
-      if (event === "session_compact") {
-        entries.push({ type: "compaction", id: "manual-compaction" });
-      }
-      await emit(event);
-      entries.push({ type: "message", id: `after-${event}` });
-      await emit("agent_settled");
+    idle.toolStart("subagent");
+    for (const event of [PiEvent.SessionTree, PiEvent.SessionCompact]) {
+      initialize();
+      historyId = `after-${event}`;
+      idle.agentSettled();
       t.mock.timers.tick(300_000);
       assert.equal(
         requests,
@@ -109,22 +77,24 @@ test("Pi lifecycle adapter compacts settled history once and restores its native
       );
     }
 
-    await emit("session_shutdown");
-    assert.equal(terminalInput, undefined);
+    idle.stop();
     sessionId = "next-session";
-    entries.splice(0, entries.length, { type: "message", id: "fresh-session" });
-    await emit("session_start");
+    historyId = "fresh-session";
+    idle.newSession();
+    initialize();
     t.mock.timers.tick(300_000);
     assert.equal(
       requests,
       3,
       "new session startup resets the child-work guard",
     );
-    await emit("session_shutdown");
+    historyId = "shutdown-turn";
+    idle.agentSettled();
+    idle.stop();
+    t.mock.timers.tick(300_000);
+    assert.equal(requests, 3, "shutdown cancels the pending timer");
   } finally {
+    idle.stop();
     t.mock.timers.reset();
-    if (previous === undefined) delete process.env.PI_DRIVER_CONFIG;
-    else process.env.PI_DRIVER_CONFIG = previous;
-    await rm(temporary, { recursive: true, force: true });
   }
 });

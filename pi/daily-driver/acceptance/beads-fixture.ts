@@ -5,6 +5,7 @@ import { createConnection, createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
+import { processFailure } from "../process.ts";
 
 const execute = promisify(execFile);
 export interface CommandResult {
@@ -15,7 +16,7 @@ export interface CommandResult {
 export interface NativeBeads {
   workspace: string;
   directory: string;
-  command(args: string[], actor?: string): Promise<CommandResult>;
+  command: (args: string[], actor?: string) => Promise<CommandResult>;
 }
 
 export async function withBeads<T>(
@@ -37,7 +38,7 @@ export async function withBeads<T>(
     HOME: directory,
     DOLT_ROOT_PATH: join(directory, "dolt-home"),
     DOLT_CLI_NO_UPDATE_CHECK: "1",
-    PATH: `${dirname(dolt)}:${process.env.PATH}`,
+    PATH: `${dirname(dolt)}:${process.env["PATH"] ?? ""}`,
   });
   await execute(
     "git",
@@ -48,12 +49,15 @@ export async function withBeads<T>(
   listener.listen(0, "127.0.0.1");
   await once(listener, "listening");
   const address = listener.address();
-  if (!address || typeof address === "string")
+  if (address === null || typeof address === "string")
     throw new Error("Cannot reserve fixture port");
   const port = address.port;
-  await new Promise<void>((resolve, reject) =>
-    listener.close((error) => (error ? reject(error) : resolve())),
-  );
+  await new Promise<void>((resolve, reject) => {
+    listener.close((error) => {
+      if (error !== undefined) reject(error);
+      else resolve();
+    });
+  });
   const server = spawn(
     dolt,
     [
@@ -68,7 +72,7 @@ export async function withBeads<T>(
     { cwd: data, env, stdio: ["ignore", "ignore", "pipe"] },
   );
   let serverError = "";
-  server.stderr?.on("data", (chunk: Buffer) => {
+  server.stderr.on("data", (chunk: Buffer) => {
     serverError = (serverError + chunk.toString()).slice(-4000);
   });
   server.on("error", (error) => {
@@ -92,22 +96,20 @@ export async function withBeads<T>(
       );
       return { code: 0, ...result };
     } catch (error) {
-      const failure = error as {
-        code?: number;
-        stdout?: string;
-        stderr?: string;
-        message: string;
-      };
+      const failure = processFailure(error);
       return {
         code: typeof failure.code === "number" ? failure.code : -1,
         stdout: failure.stdout ?? "",
-        stderr: failure.stderr || failure.message,
+        stderr:
+          failure.stderr !== undefined && failure.stderr.length > 0
+            ? failure.stderr
+            : failure.message,
       };
     }
   };
   try {
     const deadline = Date.now() + 20_000;
-    while (true) {
+    for (;;) {
       const connected = await new Promise<boolean>((resolve) => {
         const socket = createConnection({ host: "127.0.0.1", port });
         socket.once("connect", () => {

@@ -4,16 +4,43 @@ import { z } from "zod";
 import type { DriverConfig } from "./config.ts";
 import { run } from "./process.ts";
 
+export enum TaskStatus {
+  Open = "open",
+  InProgress = "in_progress",
+  Blocked = "blocked",
+  Deferred = "deferred",
+  Closed = "closed",
+}
+
+export enum TaskRelationship {
+  ParentChild = "parent-child",
+  Blocks = "blocks",
+}
+
+export function knownTaskStatus(value: string): TaskStatus | undefined {
+  const parsed = z.enum(TaskStatus).safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
+
+function knownRelationship(value: string): TaskRelationship | undefined {
+  const parsed = z.enum(TaskRelationship).safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
+
+function inlineText(value: string): string {
+  return value.replace(/\p{Cc}/gu, " ");
+}
+
 const dependency = z.union([
   z
     .object({
       id: z.string(),
       dependency_type: z.string(),
     })
-    .passthrough(),
+    .loose(),
   z
     .object({ depends_on_id: z.string(), type: z.string() })
-    .passthrough()
+    .loose()
     .transform((edge) => ({
       ...edge,
       id: edge.depends_on_id,
@@ -25,13 +52,14 @@ export const taskSchema = z
     id: z.string().min(1),
     title: z.string(),
     status: z.string(),
+    assignee: z.string().optional(),
     description: z.string().optional(),
     acceptance_criteria: z.string().optional(),
     parent: z.string().optional(),
     parent_id: z.string().optional(),
     dependencies: z.array(dependency).optional(),
   })
-  .passthrough();
+  .loose();
 export type Task = z.infer<typeof taskSchema>;
 export interface TreeRow {
   task: Task;
@@ -43,8 +71,11 @@ export function parentId(task: Task): string | undefined {
   return (
     task.parent ??
     task.parent_id ??
-    task.dependencies?.find((edge) => edge.dependency_type === "parent-child")
-      ?.id
+    task.dependencies?.find(
+      (edge) =>
+        knownRelationship(edge.dependency_type) ===
+        TaskRelationship.ParentChild,
+    )?.id
   );
 }
 
@@ -56,29 +87,33 @@ export function taskTree(tasks: Task[]): TreeRow[] {
   const children = new Map<string, Task[]>();
   for (const task of tasks) {
     const parent = parentId(task);
-    if (parent && byId.has(parent))
+    if (parent !== undefined && byId.has(parent))
       children.set(parent, [...(children.get(parent) ?? []), task]);
   }
   const rows: TreeRow[] = [];
   const seen = new Set<string>();
   const visit = (root: Task, depth: number, warning?: string) => {
-    const stack = [{ task: root, depth, warning }];
-    while (stack.length) {
+    const stack: TreeRow[] = [
+      { task: root, depth, ...(warning === undefined ? {} : { warning }) },
+    ];
+    while (stack.length > 0) {
       const row = stack.pop();
-      if (!row || seen.has(row.task.id)) continue;
+      if (row === undefined || seen.has(row.task.id)) continue;
       seen.add(row.task.id);
       rows.push(row);
       for (const child of [...(children.get(row.task.id) ?? [])].reverse())
-        stack.push({ task: child, depth: row.depth + 1, warning: undefined });
+        stack.push({ task: child, depth: row.depth + 1 });
     }
   };
   for (const task of tasks) {
     const parent = parentId(task);
-    if (!parent || !byId.has(parent))
+    if (parent === undefined || !byId.has(parent))
       visit(
         task,
         0,
-        parent ? `Parent ${parent} is outside this result` : undefined,
+        parent !== undefined
+          ? `Parent ${parent} is outside this result`
+          : undefined,
       );
   }
   for (const task of tasks)
@@ -87,38 +122,44 @@ export function taskTree(tasks: Task[]): TreeRow[] {
   return rows;
 }
 
-export function taskLabel(row: TreeRow): string {
-  return `${"  ".repeat(Math.min(row.depth, 12))}${row.depth > 12 ? "… " : ""}${row.task.id} · ${row.task.title} · ${row.task.status}${row.warning ? " ⚠" : ""}`.replace(
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: Task text is untrusted terminal display content.
-    /[\x00-\x1f\x7f]/g,
-    " ",
+export function taskLabel(
+  row: TreeRow,
+  renderStatus: (status: string) => string = (status) => status,
+): string {
+  const label = inlineText(
+    `${"  ".repeat(Math.min(row.depth, 12))}${row.depth > 12 ? "… " : ""}${row.task.id} · ${row.task.title}`,
   );
+  return `${label}  ${renderStatus(inlineText(row.task.status))}${row.warning !== undefined ? " ⚠" : ""}`;
 }
 
-export function taskDetails(task: Task, workspace: string): string {
+export function taskDetails(
+  task: Task,
+  workspace: string,
+  renderStatus: (status: string) => string = (status) => status,
+): string {
   const blockers =
     task.dependencies
-      ?.filter((edge) => edge.dependency_type === "blocks")
+      ?.filter(
+        (edge) =>
+          knownRelationship(edge.dependency_type) === TaskRelationship.Blocks,
+      )
       .map((edge) => edge.id) ?? [];
-  return [
-    `${workspace} / ${task.id}`,
+  const parent = parentId(task);
+  const lines = [
+    `${workspace} / ${task.id} · ${task.title}`,
     `Status: ${task.status}`,
-    `Parent: ${parentId(task) ?? "None"}`,
-    `Blocked by: ${blockers.join(", ") || "None reported"}`,
+    parent !== undefined ? `Parent: ${parent}` : undefined,
+    blockers.length > 0 ? `Blocked by: ${blockers.join(", ")}` : undefined,
     "",
-    task.description || "Not specified in task description",
-    "",
-    "Acceptance criteria:",
-    task.acceptance_criteria || "Not specified in task",
-    "",
-    "Read-only observation; this view does not accept scope or authorize execution.",
+    task.description,
+    task.acceptance_criteria !== undefined
+      ? `\nAcceptance criteria:\n${task.acceptance_criteria}`
+      : undefined,
   ]
-    .join("\n")
-    .replace(
-      // biome-ignore lint/suspicious/noControlCharactersInRegex: Preserve line breaks, remove executable terminal controls.
-      /[\x00-\x09\x0b-\x1f\x7f]/g,
-      "",
-    );
+    .filter((line) => line !== undefined)
+    .map((line) => line.replace(/(?!\n)\p{Cc}/gu, ""));
+  lines[1] = `Status: ${renderStatus(inlineText(task.status))}`;
+  return lines.join("\n");
 }
 
 export class BeadsReader {
@@ -127,7 +168,7 @@ export class BeadsReader {
   async verify(): Promise<void> {
     const metadata = z
       .object({ dolt_mode: z.literal("server"), dolt_database: z.string() })
-      .passthrough()
+      .loose()
       .parse(
         JSON.parse(
           await readFile(
@@ -157,7 +198,7 @@ export class BeadsReader {
   }
 
   async show(id: string): Promise<Task> {
-    if (!id || id.startsWith("-"))
+    if (id.length === 0 || id.startsWith("-"))
       throw new Error("An explicit Beads task ID is required");
     await this.verify();
     const tasks = z.array(taskSchema).parse(await this.call(["show", id]));
@@ -172,7 +213,7 @@ export class BeadsReader {
         ([key]) => !key.startsWith("BEADS_") && !key.startsWith("BD_"),
       ),
     );
-    env.BD_LAST_TOUCHED_FALLBACK = "0";
+    env["BD_LAST_TOUCHED_FALLBACK"] = "0";
     return JSON.parse(
       await run(
         this.settings.executable,

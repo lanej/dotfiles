@@ -68,7 +68,7 @@ function fixture() {
   };
 }
 
-test("five settled minutes AND 60 percent are required; one request per history", () => {
+await test("five settled minutes AND 60 percent are required; one request per history", () => {
   const f = fixture();
   f.snapshot.percent = 59.9;
   f.controller.settled();
@@ -91,7 +91,7 @@ test("five settled minutes AND 60 percent are required; one request per history"
   assert.equal(f.requests, 2);
 });
 
-test("new input restarts the idle window; drafts and unknown usage fail closed", () => {
+await test("new input restarts the idle window; drafts and unknown usage fail closed", () => {
   const f = fixture();
   f.controller.settled();
   f.advance(200_000);
@@ -109,7 +109,7 @@ test("new input restarts the idle window; drafts and unknown usage fail closed",
   assert.equal(f.requests, 0);
 });
 
-test("active work, queued input, dialogs, and children prevent requests", () => {
+await test("active work, queued input, dialogs, and children prevent requests", () => {
   for (const change of [
     { settled: false },
     { pendingInput: true },
@@ -124,7 +124,7 @@ test("active work, queued input, dialogs, and children prevent requests", () => 
   }
 });
 
-test("replacement, branch changes, restore and failed requests do not replay stale timers", () => {
+await test("replacement, branch changes, restore and failed requests do not replay stale timers", () => {
   const f = fixture();
   f.controller.settled();
   f.snapshot.sessionId = "replacement";

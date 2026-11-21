@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { Command } from "commander";
-import { BeadsReader, parentId } from "../beads.ts";
+import { BeadsReader, parentId, taskSchema } from "../beads.ts";
 import { run } from "../process.ts";
 import { withBeads } from "./beads-fixture.ts";
 
@@ -27,7 +27,7 @@ await withBeads(options.bd, options.dolt, async ({ workspace, command }) => {
     "--json",
   ]);
   assert.equal(create.code, 0, create.stderr);
-  const id: string = JSON.parse(create.stdout).id;
+  const id = taskSchema.parse(JSON.parse(create.stdout)).id;
   const child = await command([
     "create",
     "--title",
@@ -39,14 +39,14 @@ await withBeads(options.bd, options.dolt, async ({ workspace, command }) => {
     "--json",
   ]);
   assert.equal(child.code, 0, child.stderr);
-  const childId: string = JSON.parse(child.stdout).id;
+  const childId = taskSchema.parse(JSON.parse(child.stdout)).id;
   const reader = new BeadsReader({
     workspace,
     database: "pi_driver_trial",
     branch: "main",
     executable: options.bd,
   });
-  const listed = await reader.list().catch(async (error) => {
+  const listed = await reader.list().catch(async (error: unknown) => {
     throw new Error(
       `${String(error)}; native list: ${(await command(["list", "--all", "--json"])).stdout}`,
     );

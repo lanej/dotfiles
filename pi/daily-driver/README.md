@@ -1,6 +1,6 @@
 # Pi daily-driver foundation
 
-This package extends Pi 1.4.0 with idle compaction, explicit work/personal model selection, and a read-only Beads task browser. It is not a complete daily-driver replacement: managed task launch, delegation, worktree provisioning, Octo delivery, task acceptance, and automatic archival are disabled by the Beads execution-authority gate below. Existing standalone Pi and Paseo workflows remain separate.
+This package extends Pi 1.4.0 with the shared dotfiles theme, a compact task interface, idle compaction, explicit work/personal model selection, and a read-only Beads task browser. It is not a complete daily-driver replacement: managed task launch, delegation, worktree provisioning, Octo delivery, task acceptance, and automatic archival are disabled by the Beads execution-authority gate below. Existing standalone Pi and Paseo workflows remain separate.
 
 ## Enable
 
@@ -9,7 +9,9 @@ npm --prefix ~/.files/pi/daily-driver ci --ignore-scripts
 make pi-driver-config
 ```
 
-The configuration target registers this local Pi package while preserving providers, models, credentials, and unrelated packages. It performs no download, authentication, task claim, or service startup. It respects `PI_CODING_AGENT_DIR`. Start or reload Pi to discover `/tasks`, `/driver-profile`, and `/driver-status`. The repository's normal bin configuration exposes `pi-driver`; it can also be invoked directly from `~/.files/bin/pi-driver`.
+The configuration target registers this local Pi package, selects the generated `dotfiles` theme, and enables quiet startup. Providers, models, credentials, and unrelated packages are preserved. It performs no download, authentication, task claim, or service startup. It respects `PI_CODING_AGENT_DIR`. Start or reload Pi to discover `/tasks`, `/driver-profile`, and `/driver-status`. The repository's normal bin configuration exposes `pi-driver`; it can also be invoked directly from `~/.files/bin/pi-driver`.
+
+The theme comes from the shared semantic adapter, with Nord selected by the current design-system preset. The terminal retains its canvas and opacity settings. Task states use filled, contrasting status pills with text labels; custom Beads states retain their labels with a neutral tone. Task selection and details omit keyboard instructions and policy boilerplate. The footer keeps project/branch, model/profile, reasoning, nonzero context usage and cost, plus status supplied by other extensions. Startup hints, resource listings, zero-usage counters, and the permanent compaction-policy line are hidden. Actionable errors remain visible.
 
 Run `pi-driver config --example` to inspect the optional configuration format. Save your edited configuration at `${XDG_CONFIG_HOME:-~/.config}/pi-driver/config.json`, or point `PI_DRIVER_CONFIG` at an explicit file. Missing default configuration enables only the default idle-compaction policy; a missing explicitly selected file is an error. Configuration inspection and `pi-driver skill` need no services or credentials.
 
@@ -36,14 +38,21 @@ The [task contract](https://github.com/lanej/dotfiles/issues/353) requires a sta
 ## Checks
 
 ```sh
+npm --prefix pi/daily-driver run quality:tools
 make test-pi-driver
 npm --prefix pi/daily-driver run test:beads-native -- --bd /absolute/path/to/bd --dolt /absolute/path/to/dolt
 ```
 
-The first command checks local formatting/types, controlled workflow behavior, and discovery through the actual pinned Pi runtime without a provider request. The native Beads probe creates and removes its own database and processes, verifies real task parsing and claim behavior, and exits **2** with `dispatchReady: false` for the evaluated scope-fencing gap. It does not start, stop, migrate, or inspect the trial database's tasks. These checks do not establish authenticated model inference, a real GitHub round trip, Linux runtime acceptance, or the blocked archive lifecycle.
+The tools command explicitly installs the pinned quality dependencies. `make test-pi-driver` runs the repository's complete strict TypeScript profile for this package: compiler checks, typed ESLint, Biome, Prettier, workflow tests and dependency audit, followed by loading the configured package and generated theme through the actual pinned Pi runtime without a provider request. All package TypeScript sources, including tests and acceptance scripts, are covered without a baseline or exclusions. Run `npm --prefix pi/daily-driver run typecheck` or `run lint` for focused checks; `run format -- FILE.ts` requires explicit package-relative paths.
 
-The separately invoked `uv run --script pi/daily-driver/acceptance/terminal.py --output docs/assets/pi-driver` exercises tree navigation, task details, Escape recovery, and draft entry through actual Pi PTYs with a controlled Beads boundary. These retained renders show the native interface at both checked widths; they do not establish live provider behavior.
+The package retains the canonical compiler and typed lint rules under `.typescript-quality/`. Declaration checking stays enabled. Bundler resolution matches Pi's native TypeScript loader and the CLI's tsx loader. The Biome profile retains the previous recommended lint rules alongside the canonical correctness rules; only its stylistic `useLiteralKeys` rule is disabled because strict `noPropertyAccessFromIndexSignature` requires bracket access. Runtime modes, events, session/message kinds, navigation keys, profiles, roles, reasoning levels, task states and relationships use enums. External data is validated before enum-specific decisions; custom provider IDs, task states and relationship types remain representable.
+
+The native Beads probe creates and removes its own database and processes, verifies real task parsing and claim behavior, and exits **2** with `dispatchReady: false` for the evaluated scope-fencing gap. It does not start, stop, migrate, or inspect the trial database's tasks. These checks do not establish authenticated model inference, a real GitHub round trip, or the blocked archive lifecycle.
+
+The separately invoked `uv run --script pi/daily-driver/acceptance/terminal.py --output docs/assets/pi-driver` exercises tree navigation, task details, Escape recovery, and draft entry through actual Pi PTYs with a controlled Beads boundary. It checks the native theme colors, filled status pills and absence of startup/helper text. The retained renders preserve terminal-cell colors and crop unused terminal rows; they do not establish live provider behavior.
 
 ![Native Pi task browser at 60 columns](../../docs/assets/pi-driver/tasks-60.png)
 
 ![Native Pi task browser at 100 columns](../../docs/assets/pi-driver/tasks-100.png)
+
+![Native Pi task details at 60 columns](../../docs/assets/pi-driver/task-details-60.png)

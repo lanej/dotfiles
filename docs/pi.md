@@ -1,6 +1,6 @@
 # Pi
 
-[Pi](https://github.com/earendil-works/pi) is an optional coding-agent runtime. The dotfiles integration shares skills and role instructions. The opt-in [daily-driver foundation](../pi/daily-driver/README.md) adds idle compaction, explicit work/personal profiles, and read-only Beads task trees. Managed execution and automatic archival remain blocked by the evaluated Beads revision-guard gap; this integration does not change the default coding client.
+[Pi](https://github.com/earendil-works/pi) is an optional coding-agent runtime. The dotfiles integration shares skills and role instructions. The opt-in [daily-driver foundation](../pi/daily-driver/README.md) adds the shared dotfiles theme, a compact TUI, idle compaction, explicit work/personal profiles, and read-only Beads task trees. Managed execution and automatic archival remain blocked by the evaluated Beads revision-guard gap; this integration does not change the default coding client.
 
 ## Install
 
