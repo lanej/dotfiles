@@ -22,7 +22,7 @@
     "rust": "1.1.1",
     "ship": "1.0.0",
     "source-code-lifecycle": "1.2.4",
-    "testing": "1.1.1",
+    "testing": "1.1.2",
     "typescript": "1.1.3",
     "ui-acceptance": "1.0.1",
     "ui-review": "1.0.0"

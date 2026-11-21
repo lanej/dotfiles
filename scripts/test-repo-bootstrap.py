@@ -192,6 +192,10 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     # Generated CI gates run from a fresh checkout without local skill links.
     gate_project = workspace / "linked gate"
     run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(gate_project), "--init", "--mode", "tracked", "--go", "--go-rollout", "strict", "--no-detect-languages", "--pr-template", "none"])
+    go_refs = gate_project / ".agents/skills/go/references"
+    assert (go_refs / "profile.md").read_bytes() == (source / "ai/skills/go/references/profile-installed.md").read_bytes()
+    assert (go_refs / "rollout.md").read_bytes() == (source / "ai/skills/go/references/rollout-strict.md").read_bytes()
+    assert not list(go_refs.glob("rollout-*.md"))
     git(gate_project, "add", ".")
     git(gate_project, "commit", "-qm", "Configure a standalone lifecycle gate")
     gate_clone = workspace / "gate clone"
@@ -268,7 +272,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         staged_testing = workspace / ("stage selected guidance " + storage)
         staged_testing.mkdir()
         git(staged_testing, "init", "--quiet")
-        (staged_testing / "source-code.toml").write_text('schema_version = 1\nauthority = "owned"\nadoption = "new"\nmode = "shadow"\nskill_storage = "' + storage + '"\nskills = ' + json.dumps(maturity_skills) + '\ndetect_languages = false\npr_template = "none"\n')
+        (staged_testing / "source-code.toml").write_text('schema_version = 1\nauthority = "owned"\nadoption = "new"\nmode = "shadow"\nskill_storage = "' + storage + '"\nskills = ' + json.dumps([*maturity_skills, "octo-manager"]) + '\ndetect_languages = false\npr_template = "none"\n')
         for stage in ("research", "alpha", "beta", "production", "research"):
             command = [str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(staged_testing), "--stage", stage]
             if stage == "alpha":
@@ -279,11 +283,83 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
                 selected = source / "ai/skills/.maturity-profiles" / stage / name
                 assert (installed / "SKILL.md").read_bytes() == (selected / "SKILL.md").read_bytes()
                 assert {child.name for child in installed.iterdir()} <= {"SKILL.md", "references", "assets"}
-                assert installed.is_symlink() == (storage == "linked")
-                if storage == "linked":
+                configured = name in {"go", "typescript", "python", "protobuf", "source-code-lifecycle"}
+                assert installed.is_symlink() == (storage == "linked" and not configured)
+                if storage == "linked" and not configured:
                     assert installed.resolve() == selected
+                if configured and name != "source-code-lifecycle":
+                    assert (installed / "references/profile.md").read_bytes() == (source / "ai/skills" / name / "references/profile-uninstalled.md").read_bytes()
+                    assert not (installed / "references/profile-installed.md").exists()
+                    assert not (installed / "references/rollout-strict.md").exists()
                 assert (installed / "references").is_dir()
+            octo_refs = staged_testing / ".agents/skills/octo-manager/references"
+            expected_merge = "enabled" if stage in {"research", "alpha"} else "disabled"
+            assert (octo_refs / "auto-merge.md").read_bytes() == (source / "ai/skills/octo-manager/references" / f"auto-merge-{expected_merge}.md").read_bytes()
+            assert not (octo_refs / "auto-merge-enabled.md").exists()
+            assert not (octo_refs / "auto-merge-disabled.md").exists()
             run([str(cli), "validate", "--repo", str(staged_testing), "--strict"])
+        # Authored Octo overrides are compiled into guidance, even on a subset update.
+        config = staged_testing / "octo-manager.toml"
+        authored = 'schema_version = 1\n[merging]\nauto_merge = false\n[notifications.instructions]\nmerged = "Report the deployment handoff."\nready = ""\n'
+        config.write_text(authored)
+        before = tree(staged_testing)
+        command = [str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(staged_testing), "--skills", "just"]
+        run([*command, "--dry-run"])
+        assert tree(staged_testing) == before
+        run(command)
+        assert config.read_text() == authored
+        assert (octo_refs / "auto-merge.md").read_bytes() == (source / "ai/skills/octo-manager/references/auto-merge-disabled.md").read_bytes()
+        followup = (octo_refs / "notification-instructions.md").read_text()
+        assert "## merged\n\nReport the deployment handoff." in followup
+        assert "## ready\n\nNo default follow-up instruction is enabled for this state." in followup
+        assert "## checks_failed" in followup  # Unoverridden states retain Octo's defaults.
+        config.write_text(authored.replace("false", "true"))
+        run([*command, "--stage", "beta"])
+        assert (octo_refs / "auto-merge.md").read_bytes() == (source / "ai/skills/octo-manager/references/auto-merge-enabled.md").read_bytes()
+        malformed = config.read_text().replace("true", '"invalid"')
+        config.write_text(malformed)
+        before = tree(staged_testing)
+        run(command, expected=1)
+        assert tree(staged_testing) == before
+        config.write_text(authored.replace("false", "true"))
+        run([*command, "--stage", "research"])
+        if storage == "linked":
+            # Upgrade an old whole-directory canonical link into a selected package.
+            directory = staged_testing / ".agents/skills/source-code-lifecycle"
+            state_path = staged_testing / ".agents/repo-bootstrap.json"
+            state = json.loads(state_path.read_text())
+            prefix = ".agents/skills/source-code-lifecycle"
+            state["files"] = {name: entry for name, entry in state["files"].items() if not name.startswith(prefix + "/")}
+            shutil.rmtree(directory)
+            origin = source / "ai/skills/.maturity-profiles/research/source-code-lifecycle"
+            directory.symlink_to(origin, target_is_directory=True)
+            state["files"][prefix] = {"kind": "link", "target": str(origin)}
+            state_path.write_text(json.dumps(state))
+            run([str(cli), "upgrade", "--repo", str(staged_testing)])
+            assert not directory.is_symlink()
+            assert (directory / "references/authority.md").read_bytes() == (source / "ai/skills/source-code-lifecycle/references/authority-owned.md").read_bytes()
+            # The shared technical reference remains live without exposing other policies.
+            canonical = source / "ai/skills/go/references/common.md"
+            original = canonical.read_bytes()
+            canonical.write_bytes(original + b"\nShared technical update.\n")
+            assert (staged_testing / ".agents/skills/go/references/common.md").read_bytes() == canonical.read_bytes()
+            canonical.write_bytes(original)
+        else:
+            # Remove old copied variants only when they still match the manifest.
+            obsolete = staged_testing / ".agents/skills/go/references/profile-installed.md"
+            obsolete.write_text("Legacy profile variant.\n")
+            state_path = staged_testing / ".agents/repo-bootstrap.json"
+            state = json.loads(state_path.read_text())
+            state["files"][obsolete.relative_to(staged_testing).as_posix()] = {"kind": "file", "sha256": hashlib.sha256(obsolete.read_bytes()).hexdigest(), "executable": False}
+            state_path.write_text(json.dumps(state))
+            obsolete.write_text("Customized profile variant.\n")
+            before = tree(staged_testing)
+            run([str(cli), "upgrade", "--repo", str(staged_testing)], expected=1)
+            assert tree(staged_testing) == before
+            obsolete.write_text("Legacy profile variant.\n")
+            run([str(cli), "upgrade", "--repo", str(staged_testing)])
+            assert not obsolete.exists()
+        run([str(cli), "validate", "--repo", str(staged_testing), "--strict"])
         if storage == "copied":
             for name in ("testing", "go"):
                 entrypoint = staged_testing / ".agents/skills" / name / "SKILL.md"
@@ -448,12 +524,17 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         assert policy["authority"] == authority and policy["adoption"] == adoption
         assert (authority_project / ".agents/skills/source-code-lifecycle/references/tool-choices.md").is_file()
         guidance = (authority_project / ".agents/source-code.md").read_text()
-        selected = set(re.findall(r"`(\.agents/skills/source-code-lifecycle/references/(?:authority|adoption)-[^`]+\.md)`", guidance))
+        selected = set(re.findall(r"`(\.agents/skills/source-code-lifecycle/references/(?:authority|adoption)\.md)`", guidance))
         assert selected == {
-            f".agents/skills/source-code-lifecycle/references/authority-{authority}.md",
-            f".agents/skills/source-code-lifecycle/references/adoption-{adoption}.md",
+            ".agents/skills/source-code-lifecycle/references/authority.md",
+            ".agents/skills/source-code-lifecycle/references/adoption.md",
         }
         assert all((authority_project / path).is_file() for path in selected)
+        refs = authority_project / ".agents/skills/source-code-lifecycle/references"
+        for field, value in (("authority", authority), ("adoption", adoption)):
+            assert (refs / (field + ".md")).read_bytes() == (source / "ai/skills/source-code-lifecycle/references" / f"{field}-{value}.md").read_bytes()
+            assert not list(refs.glob(field + "-*.md"))
+        assert (refs / "tool-catalog.md").exists() == (adoption != "hold")
         run([str(cli), "upgrade", "--repo", str(authority_project)])
         view = json.loads(run([str(cli), "explain", "--repo", str(authority_project), "--json"]))
         assert view["differences"] == []
@@ -791,10 +872,12 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         assert policy["kind"] == kind and policy["stage"] == "research" and policy["languages"] == []
         assert ("library-code-comments" in policy["skills"]) == (kind == "library")
         assert f"Project kind: **{kind}**" in (target / ".agents/source-code.md").read_text()
-        selected = re.findall(r"`(\.agents/skills/source-code-lifecycle/references/kind-[^`]+\.md)`",
+        selected = re.findall(r"`(\.agents/skills/source-code-lifecycle/references/kinds\.md)`",
                               (target / ".agents/source-code.md").read_text())
-        assert selected == [f".agents/skills/source-code-lifecycle/references/kind-{kind}.md"]
+        assert selected == [".agents/skills/source-code-lifecycle/references/kinds.md"]
         assert (target / selected[0]).is_file()
+        assert (target / selected[0]).read_bytes() == (source / "ai/skills/source-code-lifecycle/references" / f"kind-{kind}.md").read_bytes()
+        assert not list((target / selected[0]).parent.glob("kind-*.md"))
         run([str(cli), "validate", "--repo", str(target), "--strict"])
         run([str(cli), "upgrade", "--repo", str(target)])
         assert json.loads((target / ".source-code.json").read_text())["kind"] == kind

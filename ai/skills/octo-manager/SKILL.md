@@ -13,4 +13,4 @@ Run `octo-manager pr validate --title TITLE --body-file FILE` before publication
 
 ## Repository automation
 
-Read [the automation selector](references/automation.md) when handling notifications or assessing automatic merging. It selects the effective per-PR or repository merge policy and the current state’s configured follow-up. Preserve authored configuration and existing task authority.
+Read [the installed automation policy](references/automation.md) when handling notifications or assessing automatic merging. It contains the repository merge default and configured notification follow-up; current per-PR evidence can override the default. Preserve authored configuration and existing task authority.

@@ -2,7 +2,7 @@
 
 Before selecting application tools or an API protocol, read [the project tool-choice policy](../../source-code-lifecycle/references/tool-choices.md). Apply the declared authority and adoption at the configured maturity; preserve external providers’ protocols and established stacks according to that policy.
 
-Read [the check-profile selector](profile.md) for the installed language gate and rollout. Preserve existing repository checks.
+Read the installed `references/profile.md` in this skill package for the installed language gate and rollout. Preserve existing repository checks.
 
 For comment decisions, read the [shared comment guidance](../../code-comments/SKILL.md). For public library APIs, also read the [library comment guidance](../../library-code-comments/SKILL.md). Bootstrap bundles both with this skill in tracked or local mode; apply the library perspective only to library work and preserve project requirements.
 
