@@ -227,7 +227,15 @@ MATURITY_SKILLS = (
     "protobuf",
     "source-code-lifecycle",
 )
-CONFIGURED_SKILLS = {"source-code-lifecycle", "go", "typescript", "python", "protobuf", "octo-manager"}
+SKILL_TEMPLATE_BLOCKS = {
+    "source-code-lifecycle": ("project-policy",),
+    "go": ("verification",),
+    "typescript": ("verification",),
+    "python": ("verification",),
+    "protobuf": ("verification",),
+    "octo-manager": ("automation",),
+}
+CONFIGURED_SKILLS = set(SKILL_TEMPLATE_BLOCKS)
 KINDS = ("service", "library", "tool")
 AUTHORITIES = ("owned", "shared", "upstream")
 ADOPTIONS = ("hold", "new", "backfill")
@@ -948,6 +956,12 @@ def package(
     for skill in skills:
         directory = (skill_source or SOURCE / "ai/skills") / skill
         selected = selected_skill_directory(skill_source or SOURCE / "ai/skills", skill, stage)
+        entrypoint = selected / "SKILL.md"
+        if entrypoint.is_symlink() or not entrypoint.is_file():
+            raise ValueError(f"missing or linked skill entrypoint: {entrypoint}")
+        render_skill_template(
+            entrypoint.read_text(), dict.fromkeys(SKILL_TEMPLATE_BLOCKS.get(skill, ()), ""), str(entrypoint)
+        )
         if skill_source is not None and skill not in CONFIGURED_SKILLS:
             directory = selected
             if directory.is_symlink() or not (directory / "SKILL.md").is_file():
@@ -1153,6 +1167,7 @@ def configure_skill_packages(
 ) -> Snapshot | None:
     """Resolve project choices before exposing skills to either agent host."""
     source = Path(resolved["skill_source"]) if resolved["skill_storage"] == "linked" else SOURCE / "ai/skills"
+    rendered: set[str] = set()
 
     def reference(skill: str, variant: str) -> str:
         origin = source / skill / "references" / variant
@@ -1161,6 +1176,8 @@ def configure_skill_packages(
         return inline_skill_reference(origin.read_text())
 
     def render(skill: str, blocks: Mapping[str, str]) -> None:
+        if skill not in SKILL_TEMPLATE_BLOCKS or blocks.keys() != set(SKILL_TEMPLATE_BLOCKS[skill]):
+            raise ValueError(f"skill renderer does not match its declared placeholders: {skill}")
         destination = f".agents/skills/{skill}/SKILL.md"
         template = (
             payloads[destination].decode()
@@ -1170,6 +1187,13 @@ def configure_skill_packages(
         data = render_skill_template(template, blocks, destination).encode()
         files[destination] = file_entry(data)
         payloads[destination] = data
+        rendered.add(skill)
+
+    def finish(snapshot: Snapshot | None = None) -> Snapshot | None:
+        missing = (resolved["skills"] & CONFIGURED_SKILLS) - rendered
+        if missing:
+            raise ValueError("configured skills have no renderer: " + ", ".join(sorted(missing)))
+        return snapshot
 
     def omit(skill: str, names: Iterable[str]) -> None:
         for name in names:
@@ -1229,7 +1253,7 @@ def configure_skill_packages(
         )
 
     if "octo-manager" not in resolved["skills"]:
-        return None
+        return finish()
     snapshot = inspect(root, "octo-manager.toml")
     if snapshot is not None and snapshot["kind"] != "file":
         raise ValueError("preserving linked or non-file octo-manager.toml")
@@ -1283,7 +1307,7 @@ def configure_skill_packages(
             "automation.md",
         ],
     )
-    return snapshot
+    return finish(snapshot)
 
 
 def go_adoption(root: Path, state: Manifest, rollout: str | None) -> tuple[str, str | None]:

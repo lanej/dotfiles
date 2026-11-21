@@ -76,6 +76,23 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     shutil.copytree(SOURCE / "docs", source / "docs", symlinks=True)
     cli = source / "bin/source-code"
 
+    loader = importlib.machinery.SourceFileLoader("source_code_acceptance", str(cli))
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[loader.name] = module
+    loader.exec_module(module)
+
+    # Audit actual source entrypoints, including stages not selected by a fixture.
+    assert module.SKILL_TEMPLATE_BLOCKS.keys() <= set(module.SKILLS)
+    assert all(module.SKILL_TEMPLATE_BLOCKS.values())
+    for name in module.SKILLS:
+        stages = module.STAGES if name in module.MATURITY_SKILLS else module.STAGES[:1]
+        expected_markers = [f"<!-- source-code:{block} -->" for block in module.SKILL_TEMPLATE_BLOCKS.get(name, ())]
+        for stage in stages:
+            entrypoint = module.selected_skill_directory(source / "ai/skills", name, stage) / "SKILL.md"
+            markers = [line for line in entrypoint.read_text().splitlines() if "source-code:" in line]
+            assert sorted(markers) == sorted(expected_markers), (entrypoint, markers, expected_markers)
+
     def reject_incomplete_setup(target):
         before = tree(target)
         paths_before = set(target.rglob("*"))
@@ -280,7 +297,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         run([str(cli), "validate", "--repo", str(retired), "--strict"])
 
     # Selected project skills expose only their current-maturity entrypoints.
-    maturity_skills = ("testing", "code-comments", "go", "rust", "typescript", "python", "protobuf", "source-code-lifecycle")
+    maturity_skills = module.MATURITY_SKILLS
     for storage in ("linked", "copied"):
         staged_testing = workspace / ("stage selected guidance " + storage)
         staged_testing.mkdir()
@@ -295,7 +312,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
                 installed = staged_testing / ".agents/skills" / name
                 selected = source / "ai/skills/.maturity-profiles" / stage / name
                 assert {child.name for child in installed.iterdir()} <= {"SKILL.md", "references", "assets"}
-                configured = name in {"go", "typescript", "python", "protobuf", "source-code-lifecycle"}
+                configured = name in module.SKILL_TEMPLATE_BLOCKS
                 if configured:
                     guide = rendered_skill(staged_testing, name)
                     assert f"# {name}: {stage}" in guide, (name, stage, guide)
@@ -319,18 +336,21 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
             assert not (octo_refs / "notification-instructions.md").exists()
             assert not (octo_refs / "automation.md").exists()
             run([str(cli), "validate", "--repo", str(staged_testing), "--strict"])
-        # Malformed source templates must fail before touching a configured installation.
-        template = source / "ai/skills/.maturity-profiles/research/go/SKILL.md"
-        original_template = template.read_text()
-        assert "<!-- source-code:verification -->" in original_template, template
-        before = tree(staged_testing)
-        try:
-            template.write_text(original_template.replace("<!-- source-code:verification -->", ""))
-            output = run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(staged_testing)], expected=1)
-            assert "missing or malformed skill template" in output and ".agents/skills/go/SKILL.md" in output, output
-            assert tree(staged_testing) == before, "malformed template changed the installation"
-        finally:
-            template.write_text(original_template)
+        # Missing declared markers and unregistered templates fail before project writes.
+        for name in ("go", "rust"):
+            template = source / f"ai/skills/.maturity-profiles/research/{name}/SKILL.md"
+            original_template = template.read_text()
+            marker = "<!-- source-code:verification -->"
+            assert (marker in original_template) == (name == "go"), template
+            before = tree(staged_testing)
+            try:
+                invalid = original_template.replace(marker, "") if name == "go" else original_template + f"\n{marker}\n"
+                template.write_text(invalid)
+                output = run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(staged_testing)], expected=1)
+                assert "skill template" in output and f"{name}/SKILL.md" in output, output
+                assert tree(staged_testing) == before, "invalid template changed the installation"
+            finally:
+                template.write_text(original_template)
         # Authored Octo overrides are compiled into guidance, even on a subset update.
         config = staged_testing / "octo-manager.toml"
         authored = ('schema_version = 1\n[issues]\nmax_concurrency = 2\n'
@@ -501,11 +521,6 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         return install(target, "--authority", "owned", "--adoption", "new", *args, expected=expected)
 
     # Two concurrent seed publishers retain one complete winner and never replace it.
-    loader = importlib.machinery.SourceFileLoader("source_code_seed_test", str(cli))
-    spec = importlib.util.spec_from_loader(loader.name, loader)
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[loader.name] = module
-    loader.exec_module(module)
     seed = workspace / "concurrent-octo.toml"
     candidates = [b"first complete seed\n", b"second complete seed\n"]
     with ThreadPoolExecutor(max_workers=2) as pool:

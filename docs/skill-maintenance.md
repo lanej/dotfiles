@@ -6,6 +6,8 @@ Follow the proportionate testing policy in [AGENTS.md](../AGENTS.md): focused pr
 
 For a substantive change to instructional behavior, read the repository-owned [skill-authoring workflow](../ai/skills/skill-authoring/SKILL.md). It defines the shared authoring contract for Codex and Claude, including host adaptation, proportionate checks, and independent behavioral trials when warranted. No external authoring plugin is required. Do not edit plugin caches or update installed plugins as a side effect.
 
+For project skills assembled by `source-code`, use the [rendering inventory and template contract](source-code-skills.md). It identifies the source entrypoints, resolved policy fragments, expected placeholders, and refresh behavior; update its inventory alongside the executable declarations when adding a rendered skill.
+
 Routine configuration, documentation, and small script maintenance do not
 require an authoring workflow, paired model evaluation, or evidence bundle.
 Review the diff, check syntax where applicable, and run the affected feature's
