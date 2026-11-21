@@ -4,6 +4,8 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { z } from "zod";
 import { BeadsReader, taskDetails, taskLabel, taskTree } from "./beads.ts";
+import { registerArchives } from "./archives.ts";
+import { delegateTool, registerDelegation } from "./delegation.ts";
 import { dispatchGate } from "./capabilities.ts";
 import {
   AgentRole,
@@ -31,6 +33,15 @@ export default function dailyDriver(pi: ExtensionAPI): void {
   let removeInputListener: (() => void) | undefined;
   let lifecycle = 0;
   let selectedProfile: DriverProfile | undefined;
+
+  const delegation = registerDelegation(
+    pi,
+    () => selectedProfile,
+    () => {
+      idle.terminalInput();
+    },
+  );
+  registerArchives(pi);
 
   const release = () => {
     lifecycle++;
@@ -66,7 +77,9 @@ export default function dailyDriver(pi: ExtensionAPI): void {
           branchId: ctx.sessionManager.getLeafId(),
           historyId: history(),
           settled: ctx.isIdle(),
-          pendingInput: ctx.hasPendingMessages(),
+          pendingInput:
+            ctx.hasPendingMessages() ||
+            delegation.blocks(ctx.sessionManager.getSessionId()),
           editorText: ctx.ui.getEditorText(),
           percent: ctx.getContextUsage()?.percent ?? null,
         }),
@@ -170,7 +183,8 @@ export default function dailyDriver(pi: ExtensionAPI): void {
     idle.promptEnd();
   });
   pi.on(PiEvent.ToolStart, (event) => {
-    idle.toolStart(event.toolName);
+    if (event.toolName === delegateTool) idle.activity();
+    else idle.toolStart(event.toolName);
   });
 
   pi.registerCommand("tasks", {
@@ -288,6 +302,7 @@ export default function dailyDriver(pi: ExtensionAPI): void {
       if (await pi.setModel(lead)) {
         pi.setThinkingLevel(leadSelection.reasoning);
         selectedProfile = name;
+        delegation.activate();
       }
     },
   });

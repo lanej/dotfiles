@@ -1,8 +1,8 @@
 # Pi daily-driver foundation
 
-This package extends Pi 1.4.0 with the shared dotfiles theme, a compact task interface, idle compaction, explicit work/personal model selection, and a read-only Beads task browser. It is not a complete daily-driver replacement: managed task launch, delegation, worktree provisioning, Octo delivery, task acceptance, and automatic archival are disabled by the Beads execution-authority gate below. Existing standalone Pi and Paseo workflows remain separate.
+This package extends Pi 1.4.0 with the shared dotfiles theme, a compact task interface, idle compaction, explicit work/personal model selection, and a read-only Beads task browser. It is not a complete daily-driver replacement: task-bound coding, Octo delivery, task acceptance, and automatic archival remain gated. Explicit read-only delegation and archive browsing are available separately. Existing standalone Pi and Paseo workflows remain separate.
 
-The [runtime integration plan](RUNTIME.md) evaluates existing Pi delegation packages and defines the remaining managed-worktree, task-authority, Octo and archive adapters. The first increment is read-only delegation through a package; the later capabilities retain their explicit execution and delivery gates.
+The [runtime integration plan](RUNTIME.md) evaluates existing Pi delegation packages and defines the remaining managed-worktree, task-authority, Octo and archive adapters. The first increment integrates read-only delegation through a package and browsing existing archives.
 
 ## Enable
 
@@ -23,13 +23,13 @@ Compaction requires five settled idle minutes **and** at least 60% context-windo
 
 The timer resets on terminal activity, input, tool execution, and blocking dialogs. Unknown context usage, active execution, pending input, editor drafts, and dialogs prevent compaction. Attempt markers are native session entries outside model context, scoped to the active branch. One new stretch of conversation history gets one idle attempt; failures remain visible and can be retried manually with `/compact`. Native/manual compaction also satisfies the current history. Reload, tree navigation, and session replacement discard old timers.
 
-Managed subagents are not enabled. If a third-party tool with a subagent/delegation name executes, idle compaction is conservatively suspended for that runtime because that tool supplies no verified active-child count. Tree navigation and manual/native compaction preserve this guard; session startup clears it. Reload after independently confirming its work is settled. This does not establish compatibility with arbitrary background-agent extensions.
+Managed children keep idle compaction blocked during execution or uncertainty. If another third-party tool with a subagent/delegation name executes, idle compaction is conservatively suspended for that runtime because that tool supplies no verified active-child count. Tree navigation and manual/native compaction preserve this guard; session startup clears it. Reload after independently confirming its work is settled. This does not establish compatibility with arbitrary background-agent extensions.
 
 ## Task inspection and profiles
 
 Configure an absolute `beads.workspace`, expected `database`, and Dolt `branch`. The reader requires server-mode metadata and checks the actual branch through native `bd --readonly --sandbox` operations. It never initializes a database or falls back to another workspace. Ambient `BEADS_` variables and `BD_` overrides are excluded. Task trees use native parent-child edges; blockers remain separate. Results are capped at 1000 tasks and visibly marked when potentially truncated. `/tasks ID` or `pi-driver tasks ID` reads task details; observed descriptions are not accepted execution scope. Cached ownership decisions are not used.
 
-`/driver-profile work` and `/driver-profile personal` explicitly select the configured lead model after validating that all four role models exist in Pi's registry. The work profile requires explicit HTTPS Bedrock Mantle model endpoints; personal uses Pi's `openai-codex` subscription provider. Authenticate through Pi's own flow. Model identifiers in `config --example` are selections to validate against your available catalog, not a claim of account access. No credentials are copied and there is no cross-profile fallback. Worker/reviewer/explorer settings are retained configuration, not active delegation.
+`/driver-profile work` and `/driver-profile personal` explicitly select the configured lead model after validating that all four role models exist in Pi's registry. The work profile requires explicit HTTPS Bedrock Mantle model endpoints; personal uses Pi's `openai-codex` subscription provider. Authenticate through Pi's own flow. Model identifiers in `config --example` are selections to validate against your available catalog, not a claim of account access. No credentials are copied and there is no cross-profile fallback. Reviewer and Explorer selections drive opt-in read-only delegation. The Worker selection is reserved for task-bound coding.
 
 ## Dispatch gate
 
@@ -58,3 +58,13 @@ The separately invoked `uv run --script pi/daily-driver/acceptance/terminal.py -
 ![Native Pi task browser at 100 columns](../../docs/assets/pi-driver/tasks-100.png)
 
 ![Native Pi task details at 60 columns](../../docs/assets/pi-driver/task-details-60.png)
+
+## Delegation and archives
+
+Set `"delegation": { "enabled": true }` in the driver configuration, then select a lead with `/driver-profile work` or `/driver-profile personal` in a persistent session. Pi offers `driver_delegate` for Explorer and Reviewer assignments. Each assignment inspects the current committed revision in a native manager-owned checkout. The child receives a fresh context with only snapshot inspection tools, and its result returns to the lead. Configure the provider and model catalog through Pi. Unload standalone subagent packages for managed sessions.
+
+The driver loads the pinned tintinweb runner through a small adapter. The configuration command prepares that runner after the package install. Attempts, checkout receipts and child sessions are retained privately under `${XDG_STATE_HOME:-~/.local/state}/pi-driver`. An uncertain attempt blocks further delegation and idle compaction for its lead session. Inspect its recorded manager owner and native session before recovery. Use the native manager to finish and prune eligible read-only checkouts after reviewing their retained state.
+
+Run `/archives` to search and preview existing Session Snap archives. The default database is `~/.pi/agent/session-archive.db`. Set `archives.database` to an absolute alternate path when needed. The picker shows up to the latest 1,000 archived sessions and opens a local, bounded preview. It opens the database read-only and does not modify transcript history.
+
+Verify real delegation with `npm --prefix pi/daily-driver run test:delegation-native` and an installed native worktree manager. The terminal acceptance script also exercises archive search and preview at 60 and 100 columns.

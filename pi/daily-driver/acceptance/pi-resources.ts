@@ -78,7 +78,7 @@ try {
         data: z.object({ commands: z.array(z.object({ name: z.string() })) }),
       })
       .parse(envelope);
-    for (const name of ["tasks", "driver-profile", "driver-status"])
+    for (const name of ["tasks", "archives", "driver-profile", "driver-status"])
       assert.ok(
         event.data.commands.some(
           (command: { name: string }) => command.name === name,
@@ -89,7 +89,10 @@ try {
     break;
   }
   assert.ok(found, errors);
-  assert.doesNotMatch(errors, /Failed to load|Error loading|Cannot load/);
+  assert.doesNotMatch(
+    errors,
+    /Failed to load|Error loading|Cannot load|Warning: Extension package/,
+  );
   console.log(
     "Pi 1.4.0 loaded the daily-driver extension and discovered its commands without a provider request.",
   );

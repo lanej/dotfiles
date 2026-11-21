@@ -11,21 +11,31 @@ const failureSchema = z.object({
 });
 
 export function processFailure(error: unknown): z.infer<typeof failureSchema> {
+  if (error instanceof CommandError) return error.failure;
   const parsed = failureSchema.safeParse(error);
   return parsed.success
     ? parsed.data
     : { message: error instanceof Error ? error.message : String(error) };
 }
 
+class CommandError extends Error {
+  constructor(
+    message: string,
+    readonly failure: z.infer<typeof failureSchema>,
+  ) {
+    super(message);
+  }
+}
+
 export async function run(
   executable: string,
   args: string[],
-  options: { cwd?: string; env?: NodeJS.ProcessEnv } = {},
+  options: { cwd?: string; env?: NodeJS.ProcessEnv; timeout?: number } = {},
 ): Promise<string> {
   try {
     const result = await execute(executable, args, {
-      ...options,
       timeout: 15_000,
+      ...options,
       maxBuffer: 4 * 1024 * 1024,
       encoding: "utf8",
       windowsHide: true,
@@ -34,8 +44,9 @@ export async function run(
   } catch (error) {
     const failure = processFailure(error);
     const stderr = failure.stderr?.trim();
-    throw new Error(
+    throw new CommandError(
       `${executable} failed (${String(failure.code ?? "unknown")}): ${stderr !== undefined && stderr.length > 0 ? stderr : failure.message}`,
+      failure,
     );
   }
 }
