@@ -11,6 +11,6 @@ Protect the working steel thread and the main happy paths users can actually exe
 
 Comprehensive error and boundary testing is not the default here. Add a failure case early when its consequence or uncertainty makes it part of the minimum useful protection. Keep fixtures and setup small enough to support rapid changes to provisional interfaces.
 
-Read [minimum effective testing](references/principles.md) for test selection, diagnostic assertions, and verification boundaries. Confirm the current stage in `.source-code.json`; this entrypoint is selected by source-code setup. Preserve authored project requirements.
+Read [minimum effective testing](references/principles.md) for test selection, diagnostic assertions, and verification boundaries. This entrypoint is selected by source-code setup for the installed stage. Preserve authored project requirements.
 
 For installed generated language profiles, run `python3 scripts/check-source-code.py LANGUAGE` for the configured gate. Use existing repository commands and the applicable language guidance otherwise. Run affected checks after relevant changes and distinguish local evidence from hosted and external outcomes.

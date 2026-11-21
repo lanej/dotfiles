@@ -7,4 +7,4 @@ description: "Use when deciding whether to add a source comment, writing or revi
 
 Explain consequential assumptions and interactions needed to understand the experiment. Do not document speculative APIs as stable supported contracts. Preserve explicit repository documentation requirements.
 
-Read [shared guidance](references/common.md) for invariant rules and tool mechanics. Command examples there describe available capabilities; they do not add checks beyond this selected entrypoint and the repository's requirements. When selecting verification, use the installed testing guidance for minimum effective coverage and useful CLI diagnostics. Preserve authored project requirements and explicit authority limits.
+Read [shared guidance](references/common.md) for comment usefulness, placement, and format. Apply this entrypoint’s contract depth; the shared standard does not promote the project to another stage. Apply the installed library comment perspective only to library public API work within authored project or task scope. Preserve explicit documentation requirements.

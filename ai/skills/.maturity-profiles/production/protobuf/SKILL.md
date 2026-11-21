@@ -5,8 +5,8 @@ description: "Use when creating, modifying, reviewing, or validating Protobuf sc
 
 # protobuf: production
 
-Use the full generated profile with an explicit supported compatibility baseline. Preserve published field identities and supported consumers; provide relevant migration and recovery evidence. Do not choose a newer baseline merely to silence breaking changes.
+Protect supported behavior with controlled changes, independent review, and relevant recovery and operational evidence. Keep claims bounded to observed behavior.
 
-When `protobuf` is listed in `.source-code.json` languages, run `python3 scripts/check-source-code.py protobuf` for the configured gate. Otherwise follow existing repository checks; guidance installation alone does not add a runtime profile.
+<!-- source-code:verification -->
 
 Read [shared guidance](references/common.md) for invariant rules and tool mechanics. Command examples there describe available capabilities; they do not add checks beyond this selected entrypoint and the repository's requirements. When selecting verification, use the installed testing guidance for minimum effective coverage and useful CLI diagnostics. Preserve authored project requirements and explicit authority limits.

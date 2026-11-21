@@ -2,19 +2,13 @@
 
 Before selecting application tools or an API protocol, read [the project tool-choice policy](../../source-code-lifecycle/references/tool-choices.md). Apply the declared authority and adoption at the configured maturity; preserve external providers’ protocols and established stacks according to that policy.
 
-Read the project’s stage through [source-code lifecycle](../../source-code-lifecycle/SKILL.md). When `go` is listed in the project policy’s `languages`, run `python3 scripts/check-source-code.py go` for its generated gate. Otherwise follow existing repository checks; detected language guidance alone does not install a check profile. Full profile commands below remain available when that profile is installed.
+Follow the verification commands and enforcement in this skill’s installed entrypoint. Preserve existing repository checks.
 
 For comment decisions, read the [shared comment guidance](../../code-comments/SKILL.md). For public library APIs, also read the [library comment guidance](../../library-code-comments/SKILL.md). Bootstrap bundles both with this skill in tracked or local mode; apply the library perspective only to library work and preserve project requirements.
 
-Use the repository’s required Go checks early and before handoff. Use `source-code setup --go` for new projects or `source-code setup --go-retrofit --pr-template none` for existing repositories. Bootstrap detects root modules, preserves an existing lint config, and defaults existing code to a shrinking lint baseline. Read [the adoption instructions](correctness.md) before installing or merging the profile; they also describe copying the portable assets without dotfiles. Commit the checks and policy so other machines and CI use them.
+## Correctness
 
-Preserve and extend existing project checks; reconcile an existing configuration instead of replacing or weakening it. For nested modules, workspaces, build tags, platform-specific code, or native dependencies, adapt the checks and CI matrix to the actual build surfaces. The supplied runner covers one root module on its host platform. Run relevant extra configurations explicitly.
-
-## Correctness checks
-
-Use the selected Go entrypoint and project requirements to choose required checks. The runner supports `lint`, `fmt` with explicit paths, `fix` for scoped cuddling repairs, `test`, and `vuln`. Review source-writing changes. Read [the correctness guide](correctness.md) when adopting, tuning, or explaining the profile.
-
-The runner caches pinned tools outside the project, verifies the linter release checksum, and keeps tool dependencies out of the application's `go.mod`. Initial setup and vulnerability analysis need network access. Missing tools, unavailable dependencies, or failed checks are failures to resolve or report; never silently skip a gate. Preserve all findings for batch repairs. Respect an explicitly adopted ratchet: initialize its baseline only on committed existing Go source before adding new work, and use `ratchet` to remove resolved findings. Never grow a baseline or use changed-line filters, blanket exclusions, or omitted tests to silence new findings. New file paths are strict; analysis still checks unchanged consumers affected by a new enum value.
+Fix findings at their cause. Use only narrowly scoped suppressions with the named linter and a concrete rationale. Static analysis and passing tests do not prove domain correctness or cover unexecuted race paths.
 
 Use a named type and typed constants for simple enums. Give zero an intentional meaning or treat it as invalid. Handle every declared value explicitly in switches and enum-keyed maps; a `default` branch must not substitute for a missing declared case. Handle out-of-set values at runtime too: `State(99)` can still compile. For variants carrying different data, use an interface marked `//sumtype:decl` with an unexported marker method and concrete variants; require exhaustive type switches with `gochecksumtype`.
 
@@ -37,7 +31,9 @@ gotestsum --junitfile=junit.xml ./...   # CI
 `--rerun-fails` is for *diagnosing* a flake, not for making CI green. A test that only passes on
 re-run is a bug to fix.
 
-## Existing projects without the profile
+## Existing repository checks
+
+These examples describe available Go tools; use the installed profile selector and repository requirements to choose required commands.
 
 ```bash
 gofmt -l .          # inspect output; this command alone does not fail on differences

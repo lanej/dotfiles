@@ -29,7 +29,9 @@ def run(command, cwd=None, expected=0, env=None):
 
 
 def git(root, *args):
+    # Snapshot assertions must not race background maintenance in fixture repositories.
     return run(["git", "-C", str(root), "-c", "core.hooksPath=/dev/null",
+                "-c", "maintenance.auto=false", "-c", "gc.auto=0",
                 "-c", "commit.gpgsign=false", "-c", "user.name=Bootstrap acceptance",
                 "-c", "user.email=bootstrap@example.invalid", *args]).strip()
 
@@ -37,6 +39,16 @@ def git(root, *args):
 def tree(root):
     return {str(path.relative_to(root)): (os.readlink(path) if path.is_symlink() else path.read_bytes())
             for path in root.rglob("*") if path.is_symlink() or path.is_file()}
+
+
+def rendered_skill(root, name):
+    entrypoint = root / ".agents/skills" / name / "SKILL.md"
+    assert entrypoint.is_file() and not entrypoint.is_symlink(), entrypoint
+    text = entrypoint.read_text()
+    assert "<!-- source-code:" not in text, entrypoint
+    selectors = re.findall(r"(?<![a-z0-9_-])(?:profile|rollout|authority|adoption|kinds|kind|auto-merge|notification-instructions|automation)(?:-[a-z]+)?\.md", text)
+    assert not selectors, (entrypoint, selectors)
+    return text
 
 
 # Exercise the standalone workflow command with only its documented runner present.
@@ -63,6 +75,23 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     shutil.copytree(SOURCE / "ai", source / "ai", symlinks=True)
     shutil.copytree(SOURCE / "docs", source / "docs", symlinks=True)
     cli = source / "bin/source-code"
+
+    loader = importlib.machinery.SourceFileLoader("source_code_acceptance", str(cli))
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[loader.name] = module
+    loader.exec_module(module)
+
+    # Audit actual source entrypoints, including stages not selected by a fixture.
+    assert module.SKILL_TEMPLATE_BLOCKS.keys() <= set(module.SKILLS)
+    assert all(module.SKILL_TEMPLATE_BLOCKS.values())
+    for name in module.SKILLS:
+        stages = module.STAGES if name in module.MATURITY_SKILLS else module.STAGES[:1]
+        expected_markers = [f"<!-- source-code:{block} -->" for block in module.SKILL_TEMPLATE_BLOCKS.get(name, ())]
+        for stage in stages:
+            entrypoint = module.selected_skill_directory(source / "ai/skills", name, stage) / "SKILL.md"
+            markers = [line for line in entrypoint.read_text().splitlines() if "source-code:" in line]
+            assert sorted(markers) == sorted(expected_markers), (entrypoint, markers, expected_markers)
 
     def reject_incomplete_setup(target):
         before = tree(target)
@@ -192,6 +221,11 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     # Generated CI gates run from a fresh checkout without local skill links.
     gate_project = workspace / "linked gate"
     run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(gate_project), "--init", "--mode", "tracked", "--go", "--go-rollout", "strict", "--no-detect-languages", "--pr-template", "none"])
+    go_guide = rendered_skill(gate_project, "go")
+    assert "python3 scripts/check-source-code.py go" in go_guide, go_guide
+    assert "Enforcement: strict" in go_guide and "Enforcement: ratchet" not in go_guide, go_guide
+    go_refs = gate_project / ".agents/skills/go/references"
+    assert not list(go_refs.glob("profile*.md")) and not list(go_refs.glob("rollout*.md"))
     git(gate_project, "add", ".")
     git(gate_project, "commit", "-qm", "Configure a standalone lifecycle gate")
     gate_clone = workspace / "gate clone"
@@ -263,12 +297,12 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         run([str(cli), "validate", "--repo", str(retired), "--strict"])
 
     # Selected project skills expose only their current-maturity entrypoints.
-    maturity_skills = ("testing", "code-comments", "go", "rust", "typescript", "python", "protobuf", "source-code-lifecycle")
+    maturity_skills = module.MATURITY_SKILLS
     for storage in ("linked", "copied"):
         staged_testing = workspace / ("stage selected guidance " + storage)
         staged_testing.mkdir()
         git(staged_testing, "init", "--quiet")
-        (staged_testing / "source-code.toml").write_text('schema_version = 1\nauthority = "owned"\nadoption = "new"\nmode = "shadow"\nskill_storage = "' + storage + '"\nskills = ' + json.dumps(maturity_skills) + '\ndetect_languages = false\npr_template = "none"\n')
+        (staged_testing / "source-code.toml").write_text('schema_version = 1\nauthority = "owned"\nadoption = "new"\nmode = "shadow"\nskill_storage = "' + storage + '"\nskills = ' + json.dumps([*maturity_skills, "octo-manager"]) + '\ndetect_languages = false\npr_template = "none"\n')
         for stage in ("research", "alpha", "beta", "production", "research"):
             command = [str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(staged_testing), "--stage", stage]
             if stage == "alpha":
@@ -277,13 +311,107 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
             for name in maturity_skills:
                 installed = staged_testing / ".agents/skills" / name
                 selected = source / "ai/skills/.maturity-profiles" / stage / name
-                assert (installed / "SKILL.md").read_bytes() == (selected / "SKILL.md").read_bytes()
                 assert {child.name for child in installed.iterdir()} <= {"SKILL.md", "references", "assets"}
-                assert installed.is_symlink() == (storage == "linked")
-                if storage == "linked":
+                configured = name in module.SKILL_TEMPLATE_BLOCKS
+                if configured:
+                    guide = rendered_skill(staged_testing, name)
+                    assert f"# {name}: {stage}" in guide, (name, stage, guide)
+                else:
+                    assert (installed / "SKILL.md").read_bytes() == (selected / "SKILL.md").read_bytes()
+                assert installed.is_symlink() == (storage == "linked" and not configured)
+                if storage == "linked" and not configured:
                     assert installed.resolve() == selected
+                if configured and name != "source-code-lifecycle":
+                    assert "python3 scripts/check-source-code.py " + name not in guide, (name, guide)
+                    assert not list((installed / "references").glob("profile*.md"))
+                    assert not list((installed / "references").glob("rollout*.md"))
+                elif name == "source-code-lifecycle":
+                    assert "Authority: owned" in guide and "Tool adoption: new" in guide, guide
                 assert (installed / "references").is_dir()
+            octo_refs = staged_testing / ".agents/skills/octo-manager/references"
+            expected_merge = "enabled" if stage in {"research", "alpha"} else "disabled"
+            guide = rendered_skill(staged_testing, "octo-manager")
+            assert "Automatic merging " + expected_merge in guide, guide
+            assert not list(octo_refs.glob("auto-merge*.md"))
+            assert not (octo_refs / "notification-instructions.md").exists()
+            assert not (octo_refs / "automation.md").exists()
             run([str(cli), "validate", "--repo", str(staged_testing), "--strict"])
+        # Missing declared markers and unregistered templates fail before project writes.
+        for name in ("go", "rust"):
+            template = source / f"ai/skills/.maturity-profiles/research/{name}/SKILL.md"
+            original_template = template.read_text()
+            marker = "<!-- source-code:verification -->"
+            assert (marker in original_template) == (name == "go"), template
+            before = tree(staged_testing)
+            try:
+                invalid = original_template.replace(marker, "") if name == "go" else original_template + f"\n{marker}\n"
+                template.write_text(invalid)
+                output = run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(staged_testing)], expected=1)
+                assert "skill template" in output and f"{name}/SKILL.md" in output, output
+                assert tree(staged_testing) == before, "invalid template changed the installation"
+            finally:
+                template.write_text(original_template)
+        # Authored Octo overrides are compiled into guidance, even on a subset update.
+        config = staged_testing / "octo-manager.toml"
+        authored = ('schema_version = 1\n[issues]\nmax_concurrency = 2\n'
+                    + ''.join(f'[issues.profiles.{name}]\nharness = "codex"\nmodel = "configured"\n'
+                              for name in ("investigation", "implementation", "verification"))
+                    + '[merging]\nauto_merge = false\n[notifications.instructions]\nmerged = "Report the deployment handoff."\nready = ""\n')
+        config.write_text(authored)
+        before = tree(staged_testing)
+        command = [str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(staged_testing), "--skills", "just"]
+        run([*command, "--dry-run"])
+        assert tree(staged_testing) == before
+        run(command)
+        assert config.read_text() == authored
+        followup = rendered_skill(staged_testing, "octo-manager")
+        assert "Automatic merging disabled" in followup and "Automatic merging enabled" not in followup, followup
+        assert "## Configured notification follow-up" in followup
+        assert "### merged\n\nReport the deployment handoff." in followup
+        assert "### ready\n\nNo default follow-up instruction is enabled for this state." in followup
+        assert "### checks_failed" in followup  # Unoverridden states retain Octo's defaults.
+        assert "Inspect reconciliation evidence before retrying an uncertain operation." in followup, followup
+        config.write_text(authored.replace("false", "true"))
+        run([*command, "--stage", "beta"])
+        followup = rendered_skill(staged_testing, "octo-manager")
+        assert "Automatic merging enabled" in followup and "Automatic merging disabled" not in followup, followup
+        for malformed in (
+            config.read_text().replace("auto_merge = true", 'auto_merge = "invalid"'),
+            config.read_text().replace("schema_version = 1", "schema_version = 1\nunknown = true"),
+            config.read_text().replace("max_concurrency = 2", "max_concurrency = 0"),
+        ):
+            config.write_text(malformed)
+            before = tree(staged_testing)
+            output = run(command, expected=1)
+            assert "Octo" in output, output
+            assert tree(staged_testing) == before, output
+        config.write_text(authored.replace("false", "true"))
+        run([*command, "--stage", "research"])
+        # Missing selected policy sources must fail before changing installed guidance.
+        canonical = source / "ai/skills/source-code-lifecycle/references/authority-owned.md"
+        original = canonical.read_bytes()
+        before = tree(staged_testing)
+        try:
+            canonical.unlink()
+            output = run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(staged_testing)], expected=1)
+            assert "authority-owned.md" in output, output
+            assert tree(staged_testing) == before, "missing canonical policy changed the installation"
+        finally:
+            canonical.write_bytes(original)
+        # Shared technical and Octo resources stay live only in linked installations.
+        for relative, canonical in (
+            ("go/references/common.md", source / "ai/skills/go/references/common.md"),
+            ("octo-manager/assets/notification-defaults.json", source / "ai/skills/octo-manager/assets/notification-defaults.json"),
+        ):
+            original = canonical.read_bytes()
+            updated = original + b"\n"
+            try:
+                canonical.write_bytes(updated)
+                expected = updated if storage == "linked" else original
+                assert (staged_testing / ".agents/skills" / relative).read_bytes() == expected, (storage, relative)
+            finally:
+                canonical.write_bytes(original)
+        run([str(cli), "validate", "--repo", str(staged_testing), "--strict"])
         if storage == "copied":
             for name in ("testing", "go"):
                 entrypoint = staged_testing / ".agents/skills" / name / "SKILL.md"
@@ -393,11 +521,6 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         return install(target, "--authority", "owned", "--adoption", "new", *args, expected=expected)
 
     # Two concurrent seed publishers retain one complete winner and never replace it.
-    loader = importlib.machinery.SourceFileLoader("source_code_seed_test", str(cli))
-    spec = importlib.util.spec_from_loader(loader.name, loader)
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[loader.name] = module
-    loader.exec_module(module)
     seed = workspace / "concurrent-octo.toml"
     candidates = [b"first complete seed\n", b"second complete seed\n"]
     with ThreadPoolExecutor(max_workers=2) as pool:
@@ -447,12 +570,33 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         policy = json.loads((authority_project / ".source-code.json").read_text())
         assert policy["authority"] == authority and policy["adoption"] == adoption
         assert (authority_project / ".agents/skills/source-code-lifecycle/references/tool-choices.md").is_file()
+        guidance = (authority_project / ".agents/source-code.md").read_text()
+        assert ".agents/skills/source-code-lifecycle/SKILL.md" in guidance, guidance
+        assert not re.search(r"references/(?:authority|adoption)\.md", guidance), guidance
+        guide = rendered_skill(authority_project, "source-code-lifecycle")
+        assert f"Authority: {authority}" in guide and f"Tool adoption: {adoption}" in guide, guide
+        refs = authority_project / ".agents/skills/source-code-lifecycle/references"
+        for field in ("authority", "adoption"):
+            assert not list(refs.glob(field + "*.md")), field
+        assert (refs / "tool-catalog.md").exists() == (adoption != "hold")
         run([str(cli), "upgrade", "--repo", str(authority_project)])
         view = json.loads(run([str(cli), "explain", "--repo", str(authority_project), "--json"]))
         assert view["differences"] == []
         assert view["origins"]["authority"]["source"] == "saved"
         assert view["installed"]["adoption"] == adoption
         run([str(cli), "validate", "--repo", str(authority_project), "--strict"])
+        if adoption == "new":
+            git(authority_project, "add", ".")
+            git(authority_project, "commit", "-qm", "Track portable project policies")
+            # Changing policy may remove a tracked managed reference, but never an edited one.
+            catalog = refs / "tool-catalog.md"
+            original = catalog.read_bytes()
+            catalog.write_bytes(original + b"\nKeep this project-specific choice.\n")
+            before = tree(authority_project)
+            output = install(authority_project, "--authority", "shared", "--adoption", "hold", expected=1)
+            assert "preserving customized policy content" in output, output
+            assert tree(authority_project) == before, "policy transition overwrote local edits"
+            catalog.write_bytes(original)
     reject_incomplete_setup(authority_project)
     authored_authority = authority_project / "source-code.toml"
     authored_authority.write_text('schema_version = 1\nauthority = "shared"\nadoption = "hold"\n')
@@ -594,7 +738,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
             git(domain, "add", ".")
             git(domain, "commit", "-qm", "Select project domain guidance")
             clone = workspace / "portable domain clone"
-            run(["git", "clone", "--quiet", str(domain), str(clone)])
+            git(workspace, "clone", "--quiet", str(domain), str(clone))
             run([str(cli), "validate", "--repo", str(clone), "--strict"])
             run(["python3", str(VALIDATOR), *[str(clone / ".agents/skills" / name) for name in policy["skills"]]])
         else:
@@ -617,6 +761,8 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         assert effective["checks"]["go"]["selected"] and effective["checks"]["typescript"]["selected"]
     run([str(cli), "upgrade", "--repo", str(profile_intent)])
     assert json.loads((profile_intent / ".source-code.json").read_text())["languages"] == ["go", "typescript"]
+    guide = rendered_skill(profile_intent, "typescript")
+    assert "# typescript: research" in guide and "python3 scripts/check-source-code.py typescript" in guide, guide
     run([str(cli), "validate", "--repo", str(profile_intent), "--strict"])
     original_intent = (profile_intent / "source-code.toml").read_text()
     (profile_intent / "source-code.toml").write_text('schema_version = 1\n[checks.go]\nrollout = "ratchet"\n[checks.typescript]\nprojects = ["ignored.json"]\n')
@@ -648,7 +794,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     git(portable_config, "add", ".")
     git(portable_config, "commit", "-qm", "Share project profile")
     config_clone = workspace / "configuration clone"
-    run(["git", "clone", "--quiet", str(portable_config), str(config_clone)])
+    git(workspace, "clone", "--quiet", str(portable_config), str(config_clone))
     run([str(cli), "validate", "--repo", str(config_clone), "--strict"])
     run([str(cli), "upgrade", "--repo", str(config_clone)])
     assert (config_clone / "source-code.toml").read_text() == tracked_config.read_text()
@@ -677,6 +823,8 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     run([str(cli), "validate", "--repo", str(python_project), "--strict"])
     for stage, mode in (("research", "typecheck"), ("alpha", "alpha"), ("beta", "all"), ("production", "all")):
         owned_install(python_project, "--stage", stage)
+        guide = rendered_skill(python_project, "python")
+        assert f"# python: {stage}" in guide and "python3 scripts/check-source-code.py python" in guide, guide
         plan = run(["python3", str(python_project / "scripts/check-source-code.py"), "python", "--dry-run"])
         assert json.dumps(["python3", "scripts/check-python.py", mode]) in plan
     run([str(cli), "upgrade", "--repo", str(python_project)])
@@ -709,6 +857,8 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     run([str(cli), "validate", "--repo", str(proto_project), "--strict"])
     for stage, mode in (("research", "build"), ("alpha", "alpha"), ("beta", "all"), ("production", "all")):
         owned_install(proto_project, "--stage", stage)
+        guide = rendered_skill(proto_project, "protobuf")
+        assert f"# protobuf: {stage}" in guide and "python3 scripts/check-source-code.py protobuf" in guide, guide
         plan = run(["python3", str(proto_project / "scripts/check-source-code.py"), "protobuf", "--dry-run"])
         assert json.dumps(["python3", "scripts/check-protobuf.py", mode]) in plan
     settings = proto_project / ".protobuf-quality.json"
@@ -724,7 +874,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     git(proto_project, "add", ".")
     git(proto_project, "commit", "--quiet", "-m", "Install portable Protobuf policy")
     proto_clone = workspace / "portable Protobuf clone"
-    run(["git", "clone", "--quiet", str(proto_project), str(proto_clone)])
+    git(workspace, "clone", "--quiet", str(proto_project), str(proto_clone))
     run([str(cli), "validate", "--repo", str(proto_clone), "--strict"])
 
     # Nested Buf workspaces also select checks; ignored/vendor schemas do not classify the project.
@@ -784,7 +934,12 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         assert policy["kind"] == kind and policy["stage"] == "research" and policy["languages"] == []
         assert ("library-code-comments" in policy["skills"]) == (kind == "library")
         assert f"Project kind: **{kind}**" in (target / ".agents/source-code.md").read_text()
-        assert (target / ".agents/skills/source-code-lifecycle/references/kinds.md").is_file()
+        guidance = (target / ".agents/source-code.md").read_text()
+        assert ".agents/skills/source-code-lifecycle/SKILL.md" in guidance, guidance
+        assert "references/kinds.md" not in guidance, guidance
+        guide = rendered_skill(target, "source-code-lifecycle")
+        assert f"Project kind: {kind}" in guide, guide
+        assert not list((target / ".agents/skills/source-code-lifecycle/references").glob("kind*.md"))
         run([str(cli), "validate", "--repo", str(target), "--strict"])
         run([str(cli), "upgrade", "--repo", str(target)])
         assert json.loads((target / ".source-code.json").read_text())["kind"] == kind
@@ -859,7 +1014,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     git(project, "add", ".")
     git(project, "commit", "-qm", "Adopt repository guidance")
     shared = workspace / "colleague checkout"
-    run(["git", "clone", "--quiet", str(project), str(shared)])
+    git(workspace, "clone", "--quiet", str(project), str(shared))
     assert (shared / ".claude/skills/pull-request/SKILL.md").is_file()
     assert (shared / ".claude/skills/library-code-comments/SKILL.md").is_file()
     assert (shared / ".agents/skills/code-comments/references/standard.md").is_file()
@@ -1070,6 +1225,9 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     assert (go_project / ".golangci.strict.json").is_file()
     settings = json.loads((go_project / ".go-quality.json").read_text())
     assert settings["rollout"] == "ratchet" and settings["legacy"]["path"] == ".golangci.yaml"
+    guide = rendered_skill(go_project, "go")
+    assert "python3 scripts/check-source-code.py go" in guide, guide
+    assert "Enforcement: ratchet" in guide and "Enforcement: strict" not in guide, guide
     assert os.access(go_project / "scripts/check-go.sh", os.X_OK)
     assert (go_project / ".github/workflows/go-quality.yml").is_file()
     assert (go_project / ".claude/skills/go").resolve() == go_project / ".agents/skills/go"
@@ -1098,6 +1256,8 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         assert stage in owned_install(explicit_go, "--skills", "go", "--stage", stage, "--dry-run")
         assert tree(explicit_go) == before
         owned_install(explicit_go, "--skills", "go", "--stage", stage)
+        guide = rendered_skill(explicit_go, "go")
+        assert f"# go: {stage}" in guide and "python3 scripts/check-source-code.py go" in guide, guide
         run(["python3", str(runner), "go"], env=environment)
         assert trace.read_text().splitlines()[-1] == f"scripts/check-go.sh {mode}"
         assert "already current" in owned_install(explicit_go, "--skills", "go")
