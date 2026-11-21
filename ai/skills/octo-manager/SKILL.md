@@ -13,4 +13,4 @@ Run `octo-manager pr validate --title TITLE --body-file FILE` before publication
 
 ## Repository automation
 
-Read `octo-manager.toml` when acting on Octo notifications. Source-code seeds it when this integration is selected and preserves authored settings on later setup runs. The `project_stage` auto-merge default follows the installed source-code stage: research and alpha enable it; beta, production, and unknown stages disable it. Explicit per-PR settings take precedence. State-specific instructions describe the requested follow-up; receipt alone does not complete that work. Follow installed project guidance and existing user authority.
+Read [the automation selector](references/automation.md) when handling notifications or assessing automatic merging. It selects the effective per-PR or repository merge policy and the current state’s configured follow-up. Preserve authored configuration and existing task authority.

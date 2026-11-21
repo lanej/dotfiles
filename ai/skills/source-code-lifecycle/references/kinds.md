@@ -1,13 +1,13 @@
-# Project kind
+# Select project kind guidance
 
-`kind` describes how people or other software consume the project. It is independent of language, architecture, and lifecycle stage. Select it explicitly as `service`, `library`, or `tool`; an omitted kind preserves existing requirements without inferring a category from files or dependencies. Apply this guidance alongside the selected stage and repository contracts.
+Read the installed `.source-code.json`. When `kind` is selected, read only its matching reference:
 
-| Kind | Reader or consumer | Relevant obligations |
-| --- | --- | --- |
-| `service` | Integrators and operators | Explain integration contracts, failure behavior, configuration, and observable health. For retained deployments, provide evidence appropriate to rollout, recovery, and operational changes. |
-| `library` | Callers who should not need to inspect implementation | Document supported public behavior, inputs/outputs, constraints, interactions, errors, and useful examples. Identify provisional APIs and compatibility expectations. Use the installed library comment guidance. |
-| `tool` | People or automation invoking an interface | Define invocation, inputs/outputs, diagnostics, failure outcomes, and installation requirements. For CLIs, follow [CLI construction](../../cli/SKILL.md), including progressive `skill` / `skill --topic` discovery, meaningful exit codes, and machine-readable output contracts; for interactive tools, cover the actual interaction and recovery paths. |
+| Configuration | Read |
+| --- | --- |
+| `kind = service` | [Service obligations](kind-service.md) |
+| `kind = library` | [Library obligations](kind-library.md) |
+| `kind = tool` | [Tool obligations](kind-tool.md) |
 
-Use the selected lifecycle entrypoint for the depth of these obligations at the project’s current maturity.
+An omitted kind preserves existing requirements; do not infer a category from files or dependencies. An unknown value requires resolving the policy rather than choosing a substitute. Kind describes how consumers use the project, independently of language, architecture, and lifecycle stage. Scale the selected obligations through the installed lifecycle entrypoint.
 
-Kind does not select a new architecture, install deployment tools, or add generated language commands. Preserve existing repository gates and report evidence and limits. A repository can contain several kinds of code; project-wide kind is currently one optional selection. Directory-specific composition remains a separate design decision, so do not infer or synthesize directory overrides.
+Kind does not select architecture, install deployment tools, or add generated language commands. Preserve existing repository gates. Project-wide kind is one optional selection; honor authored directory scope without synthesizing directory overrides.

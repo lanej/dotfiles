@@ -447,6 +447,13 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         policy = json.loads((authority_project / ".source-code.json").read_text())
         assert policy["authority"] == authority and policy["adoption"] == adoption
         assert (authority_project / ".agents/skills/source-code-lifecycle/references/tool-choices.md").is_file()
+        guidance = (authority_project / ".agents/source-code.md").read_text()
+        selected = set(re.findall(r"`(\.agents/skills/source-code-lifecycle/references/(?:authority|adoption)-[^`]+\.md)`", guidance))
+        assert selected == {
+            f".agents/skills/source-code-lifecycle/references/authority-{authority}.md",
+            f".agents/skills/source-code-lifecycle/references/adoption-{adoption}.md",
+        }
+        assert all((authority_project / path).is_file() for path in selected)
         run([str(cli), "upgrade", "--repo", str(authority_project)])
         view = json.loads(run([str(cli), "explain", "--repo", str(authority_project), "--json"]))
         assert view["differences"] == []
@@ -784,7 +791,10 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         assert policy["kind"] == kind and policy["stage"] == "research" and policy["languages"] == []
         assert ("library-code-comments" in policy["skills"]) == (kind == "library")
         assert f"Project kind: **{kind}**" in (target / ".agents/source-code.md").read_text()
-        assert (target / ".agents/skills/source-code-lifecycle/references/kinds.md").is_file()
+        selected = re.findall(r"`(\.agents/skills/source-code-lifecycle/references/kind-[^`]+\.md)`",
+                              (target / ".agents/source-code.md").read_text())
+        assert selected == [f".agents/skills/source-code-lifecycle/references/kind-{kind}.md"]
+        assert (target / selected[0]).is_file()
         run([str(cli), "validate", "--repo", str(target), "--strict"])
         run([str(cli), "upgrade", "--repo", str(target)])
         assert json.loads((target / ".source-code.json").read_text())["kind"] == kind
