@@ -2,6 +2,8 @@
 
 [Pi](https://github.com/earendil-works/pi) is an optional coding-agent runtime. The dotfiles integration shares skills and role instructions. The opt-in [daily-driver foundation](../pi/daily-driver/README.md) adds the shared dotfiles theme, a compact TUI, idle compaction, explicit work/personal profiles, and read-only Beads task trees. Managed execution and automatic archival remain blocked by the evaluated Beads revision-guard gap; this integration does not change the default coding client.
 
+The [runtime integration plan](../pi/daily-driver/RUNTIME.md) evaluates existing Pi packages for subagent delegation and session management, with adapters for the native worktree manager, Beads authority, Octo feedback delivery, and the merge/removal/archive sequence. It separates the next read-only delegation increment from task-bound coding and the complete delivery lifecycle.
+
 ## Install
 
 Select `pi = true` under `[tools]` in the machine TOML and run `make install` to install `@earendil-works/pi-coding-agent` at version 1.4.0 or retain an already installed newer version, then configure its shared resources. Bootstrap installs Node 24 first. The Pi package is installed with npm lifecycle scripts disabled.

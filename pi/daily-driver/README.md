@@ -2,6 +2,8 @@
 
 This package extends Pi 1.4.0 with the shared dotfiles theme, a compact task interface, idle compaction, explicit work/personal model selection, and a read-only Beads task browser. It is not a complete daily-driver replacement: managed task launch, delegation, worktree provisioning, Octo delivery, task acceptance, and automatic archival are disabled by the Beads execution-authority gate below. Existing standalone Pi and Paseo workflows remain separate.
 
+The [runtime integration plan](RUNTIME.md) evaluates existing Pi delegation packages and defines the remaining managed-worktree, task-authority, Octo and archive adapters. The first increment is read-only delegation through a package; the later capabilities retain their explicit execution and delivery gates.
+
 ## Enable
 
 ```sh
