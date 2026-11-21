@@ -39,3 +39,11 @@ export async function run(
     );
   }
 }
+
+export async function processStart(pid: number): Promise<string> {
+  return (
+    await run("ps", ["-p", String(pid), "-o", "lstart="], {
+      env: { ...process.env, LC_ALL: "C", TZ: "UTC" },
+    })
+  ).trim();
+}

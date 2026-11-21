@@ -16,7 +16,11 @@ export interface CommandResult {
 export interface NativeBeads {
   workspace: string;
   directory: string;
-  command: (args: string[], actor?: string) => Promise<CommandResult>;
+  command: (
+    args: string[],
+    actor?: string,
+    environment?: NodeJS.ProcessEnv,
+  ) => Promise<CommandResult>;
 }
 
 export async function withBeads<T>(
@@ -81,6 +85,7 @@ export async function withBeads<T>(
   const command = async (
     args: string[],
     actor = "trial",
+    environment: NodeJS.ProcessEnv = {},
   ): Promise<CommandResult> => {
     try {
       const result = await execute(
@@ -88,7 +93,7 @@ export async function withBeads<T>(
         ["--sandbox", "--actor", actor, ...args],
         {
           cwd: workspace,
-          env,
+          env: { ...env, ...environment },
           encoding: "utf8",
           timeout: 30_000,
           maxBuffer: 4 * 1024 * 1024,

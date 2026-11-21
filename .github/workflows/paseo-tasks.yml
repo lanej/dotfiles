@@ -3,10 +3,35 @@ name: Paseo tasks
 on:
   workflow_dispatch:
   pull_request:
-    paths: ['paseo-tasks/**', 'scripts/install-worktree-manager', 'bootstrap/tools.toml', 'pi/extensions/paseo-questions.mjs', 'pi/extensions/firstmate-questions.mjs', 'pi/extensions/paseo-router.mjs', 'pi/paseo-tasks.models.json', 'scripts/paseo-tasks-config.mjs', '.github/workflows/paseo-tasks.yml']
+    paths:
+      - 'paseo-tasks/**'
+      - 'tools/task-runtime/**'
+      - 'tools/beads/**'
+      - 'config/beads/**'
+      - 'scripts/install-worktree-manager'
+      - 'bootstrap/tools.toml'
+      - 'pi/extensions/paseo-questions.mjs'
+      - 'pi/extensions/firstmate-questions.mjs'
+      - 'pi/extensions/paseo-router.mjs'
+      - 'pi/paseo-tasks.models.json'
+      - 'scripts/paseo-tasks-config.mjs'
+      - '.github/workflows/paseo-tasks.yml'
   push:
-    branches: [master]
-    paths: ['paseo-tasks/**', 'scripts/install-worktree-manager', 'bootstrap/tools.toml', 'pi/extensions/paseo-questions.mjs', 'pi/extensions/firstmate-questions.mjs', 'pi/extensions/paseo-router.mjs', 'pi/paseo-tasks.models.json', 'scripts/paseo-tasks-config.mjs', '.github/workflows/paseo-tasks.yml']
+    branches:
+      - master
+    paths:
+      - 'paseo-tasks/**'
+      - 'tools/task-runtime/**'
+      - 'tools/beads/**'
+      - 'config/beads/**'
+      - 'scripts/install-worktree-manager'
+      - 'bootstrap/tools.toml'
+      - 'pi/extensions/paseo-questions.mjs'
+      - 'pi/extensions/firstmate-questions.mjs'
+      - 'pi/extensions/paseo-router.mjs'
+      - 'pi/paseo-tasks.models.json'
+      - 'scripts/paseo-tasks-config.mjs'
+      - '.github/workflows/paseo-tasks.yml'
 
 permissions:
   contents: read
@@ -37,6 +62,17 @@ jobs:
           version=$(python3 -c 'import tomllib; print(tomllib.load(open("bootstrap/tools.toml", "rb"))["tools"]["worktree-manager"]["version"])')
           sh scripts/install-worktree-manager "$version"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Stage pinned Beads service runtimes for isolated acceptance
+        run: |
+          python3 tools/beads/beads-service.py install --no-start
+          python3 - <<'PYTHON'
+          import json, os
+          from pathlib import Path
+          runtime = json.loads((Path.home() / ".local/share/beads-service/runtime.json").read_text())
+          with open(os.environ["GITHUB_ENV"], "a") as output:
+              print(f"PASEO_TASKS_NATIVE_BEADS={runtime['bd']}", file=output)
+              print(f"PASEO_TASKS_NATIVE_DOLT={runtime['dolt']}", file=output)
+          PYTHON
       - run: npm run check
         working-directory: paseo-tasks
       - run: make test-paseo-tasks

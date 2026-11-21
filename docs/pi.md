@@ -1,6 +1,6 @@
 # Pi
 
-[Pi](https://github.com/earendil-works/pi) is an optional coding-agent runtime. The dotfiles integration shares skills and role instructions. The opt-in [daily-driver foundation](../pi/daily-driver/README.md) adds the shared dotfiles theme, a compact TUI, idle compaction, explicit work/personal profiles, and read-only Beads task trees. Managed execution and automatic archival remain blocked by the evaluated Beads revision-guard gap; this integration does not change the default coding client.
+[Pi](https://github.com/earendil-works/pi) is an optional coding-agent runtime. The dotfiles integration shares skills and role instructions. The [daily driver](../pi/daily-driver/README.md) adds the shared theme, task browser, idle compaction, work/personal profiles and a terminal workflow for an existing Beads task. Start it from Zellij, steer the Pi worker in its managed checkout and inspect the outcome from a separate terminal with Paseo offline.
 
 The [runtime integration plan](../pi/daily-driver/RUNTIME.md) evaluates existing Pi packages for subagent delegation and session management, with adapters for the native worktree manager, Beads authority, Octo feedback delivery, and the merge/removal/archive sequence. It separates the next read-only delegation increment from task-bound coding and the complete delivery lifecycle.
 
