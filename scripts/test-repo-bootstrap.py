@@ -29,7 +29,9 @@ def run(command, cwd=None, expected=0, env=None):
 
 
 def git(root, *args):
+    # Snapshot assertions must not race background maintenance in fixture repositories.
     return run(["git", "-C", str(root), "-c", "core.hooksPath=/dev/null",
+                "-c", "maintenance.auto=false", "-c", "gc.auto=0",
                 "-c", "commit.gpgsign=false", "-c", "user.name=Bootstrap acceptance",
                 "-c", "user.email=bootstrap@example.invalid", *args]).strip()
 
@@ -828,7 +830,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
             git(domain, "add", ".")
             git(domain, "commit", "-qm", "Select project domain guidance")
             clone = workspace / "portable domain clone"
-            run(["git", "clone", "--quiet", str(domain), str(clone)])
+            git(workspace, "clone", "--quiet", str(domain), str(clone))
             run([str(cli), "validate", "--repo", str(clone), "--strict"])
             run(["python3", str(VALIDATOR), *[str(clone / ".agents/skills" / name) for name in policy["skills"]]])
         else:
@@ -884,7 +886,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     git(portable_config, "add", ".")
     git(portable_config, "commit", "-qm", "Share project profile")
     config_clone = workspace / "configuration clone"
-    run(["git", "clone", "--quiet", str(portable_config), str(config_clone)])
+    git(workspace, "clone", "--quiet", str(portable_config), str(config_clone))
     run([str(cli), "validate", "--repo", str(config_clone), "--strict"])
     run([str(cli), "upgrade", "--repo", str(config_clone)])
     assert (config_clone / "source-code.toml").read_text() == tracked_config.read_text()
@@ -964,7 +966,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     git(proto_project, "add", ".")
     git(proto_project, "commit", "--quiet", "-m", "Install portable Protobuf policy")
     proto_clone = workspace / "portable Protobuf clone"
-    run(["git", "clone", "--quiet", str(proto_project), str(proto_clone)])
+    git(workspace, "clone", "--quiet", str(proto_project), str(proto_clone))
     run([str(cli), "validate", "--repo", str(proto_clone), "--strict"])
 
     # Nested Buf workspaces also select checks; ignored/vendor schemas do not classify the project.
@@ -1104,7 +1106,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     git(project, "add", ".")
     git(project, "commit", "-qm", "Adopt repository guidance")
     shared = workspace / "colleague checkout"
-    run(["git", "clone", "--quiet", str(project), str(shared)])
+    git(workspace, "clone", "--quiet", str(project), str(shared))
     assert (shared / ".claude/skills/pull-request/SKILL.md").is_file()
     assert (shared / ".claude/skills/library-code-comments/SKILL.md").is_file()
     assert (shared / ".agents/skills/code-comments/references/standard.md").is_file()
