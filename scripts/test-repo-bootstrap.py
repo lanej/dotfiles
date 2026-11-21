@@ -45,7 +45,7 @@ def rendered_skill(root, name):
     entrypoint = root / ".agents/skills" / name / "SKILL.md"
     assert entrypoint.is_file() and not entrypoint.is_symlink(), entrypoint
     text = entrypoint.read_text()
-    assert "<!-- source-code:" not in text and "<!-- /source-code:" not in text, entrypoint
+    assert "<!-- source-code:" not in text, entrypoint
     selectors = re.findall(r"(?<![a-z0-9_-])(?:profile|rollout|authority|adoption|kinds|kind|auto-merge|notification-instructions|automation)(?:-[a-z]+)?\.md", text)
     assert not selectors, (entrypoint, selectors)
     return text
@@ -322,12 +322,12 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         # Malformed source templates must fail before touching a configured installation.
         template = source / "ai/skills/.maturity-profiles/research/go/SKILL.md"
         original_template = template.read_text()
-        assert "<!-- /source-code:verification -->" in original_template, template
+        assert "<!-- source-code:verification -->" in original_template, template
         before = tree(staged_testing)
         try:
-            template.write_text(original_template.replace("<!-- /source-code:verification -->", ""))
+            template.write_text(original_template.replace("<!-- source-code:verification -->", ""))
             output = run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(staged_testing)], expected=1)
-            assert "missing or malformed skill template block: .agents/skills/go/SKILL.md" in output, output
+            assert "missing or malformed skill template" in output and ".agents/skills/go/SKILL.md" in output, output
             assert tree(staged_testing) == before, "malformed template changed the installation"
         finally:
             template.write_text(original_template)
@@ -350,6 +350,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         assert "### merged\n\nReport the deployment handoff." in followup
         assert "### ready\n\nNo default follow-up instruction is enabled for this state." in followup
         assert "### checks_failed" in followup  # Unoverridden states retain Octo's defaults.
+        assert "Inspect reconciliation evidence before retrying an uncertain operation." in followup, followup
         config.write_text(authored.replace("false", "true"))
         run([*command, "--stage", "beta"])
         followup = rendered_skill(staged_testing, "octo-manager")
@@ -366,125 +367,17 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
             assert tree(staged_testing) == before, output
         config.write_text(authored.replace("false", "true"))
         run([*command, "--stage", "research"])
-        if storage == "linked":
-            # Canonical updates keep older directory links readable until their next upgrade.
-            legacy_references = {
-                "go": ("profile.md", "rollout.md"),
-                "typescript": ("profile.md", "rollout.md"),
-                "python": ("profile.md",),
-                "protobuf": ("profile.md",),
-                "source-code-lifecycle": ("authority.md", "adoption.md", "kinds.md"),
-                "octo-manager": ("auto-merge.md", "notification-instructions.md", "automation.md"),
-            }
-            state_path = staged_testing / ".agents/repo-bootstrap.json"
-            state = json.loads(state_path.read_text())
-            for name, references in legacy_references.items():
-                prefix = f".agents/skills/{name}"
-                directory = staged_testing / prefix
-                state["files"] = {path: entry for path, entry in state["files"].items() if not path.startswith(prefix + "/")}
-                shutil.rmtree(directory)
-                origin = source / "ai/skills" / (f".maturity-profiles/research/{name}" if name in maturity_skills else name)
-                directory.symlink_to(origin, target_is_directory=True)
-                state["files"][prefix] = {"kind": "link", "target": str(origin)}
-                for reference in references:
-                    assert (directory / "references" / reference).is_file(), (name, reference)
-            state_path.write_text(json.dumps(state))
-            run([str(cli), "validate", "--repo", str(staged_testing), "--strict"])
-            run([str(cli), "upgrade", "--repo", str(staged_testing)])
-            for name, references in legacy_references.items():
-                directory = staged_testing / ".agents/skills" / name
-                assert not directory.is_symlink(), name
-                guide = rendered_skill(staged_testing, name)
-                for reference in references:
-                    assert not (directory / "references" / reference).exists(), (name, reference)
-                if name in {"go", "typescript", "python", "protobuf"}:
-                    assert "python3 scripts/check-source-code.py " + name not in guide, (name, guide)
-            assert "Authority: owned" in rendered_skill(staged_testing, "source-code-lifecycle")
-            octo_guide = rendered_skill(staged_testing, "octo-manager")
-            assert "Automatic merging enabled" in octo_guide, octo_guide
-            assert "Report the deployment handoff." in octo_guide, octo_guide
-            # Missing selected policy sources must fail before changing installed guidance.
-            canonical = source / "ai/skills/source-code-lifecycle/references/authority-owned.md"
-            original = canonical.read_bytes()
-            before = tree(staged_testing)
-            try:
-                canonical.unlink()
-                output = run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(staged_testing)], expected=1)
-                assert "authority-owned.md" in output, output
-                assert tree(staged_testing) == before, "missing canonical policy changed the installation"
-            finally:
-                canonical.write_bytes(original)
-            # Previously selected file links must retain their routes before rerendering.
-            (staged_testing / "package.json").write_text('{"name":"legacy-selected-guidance","private":true}\n')
-            (staged_testing / "tsconfig.json").write_text('{"compilerOptions":{"strict":true}}\n')
-            run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(staged_testing),
-                 "--go", "--go-rollout", "ratchet", "--typescript", "--typescript-rollout", "strict"])
-            state = json.loads(state_path.read_text())
-            legacy_links = {
-                "go/SKILL.md": ".maturity-profiles/research/go/SKILL.md",
-                "go/references/profile.md": "go/references/profile-installed.md",
-                "go/references/rollout.md": "go/references/rollout-ratchet.md",
-                "typescript/SKILL.md": ".maturity-profiles/research/typescript/SKILL.md",
-                "typescript/references/profile.md": "typescript/references/profile-installed.md",
-                "typescript/references/rollout.md": "typescript/references/rollout-strict.md",
-                "octo-manager/references/automation.md": "octo-manager/references/automation.md",
-                "octo-manager/references/auto-merge.md": "octo-manager/references/auto-merge-enabled.md",
-            }
-            for relative, origin in legacy_links.items():
-                destination = staged_testing / ".agents/skills" / relative
-                if destination.exists() or destination.is_symlink():
-                    destination.unlink()
-                canonical = source / "ai/skills" / origin
-                destination.symlink_to(canonical)
-                state["files"][destination.relative_to(staged_testing).as_posix()] = {"kind": "link", "target": str(canonical)}
-            legacy_files = {
-                "octo-manager/SKILL.md": "---\nname: octo-manager\ndescription: Use when publishing repository pull requests through Octo Manager.\n---\n\n# Repository PR publication\n\nRead [automation evidence and reconciliation](references/automation.md).\n",
-                "octo-manager/references/notification-instructions.md": "# Project notification follow-up\n\n## merged\n\nReport the deployment handoff.\n",
-            }
-            for relative, text in legacy_files.items():
-                destination = staged_testing / ".agents/skills" / relative
-                destination.write_text(text)
-                state["files"][destination.relative_to(staged_testing).as_posix()] = {"kind": "file", "sha256": hashlib.sha256(destination.read_bytes()).hexdigest(), "executable": False}
-            state_path.write_text(json.dumps(state))
-            for name, rollout in (("go", "ratchet"), ("typescript", "strict")):
-                directory = staged_testing / ".agents/skills" / name
-                assert "references/profile.md" in (directory / "SKILL.md").read_text()
-                profile = (directory / "references/profile.md").read_text()
-                assert "python3 scripts/check-source-code.py " + name in profile and "references/rollout.md" in profile, profile
-                assert f"Enforcement: {rollout}" in (directory / "references/rollout.md").read_text()
-            octo_directory = staged_testing / ".agents/skills/octo-manager"
-            assert "references/automation.md" in (octo_directory / "SKILL.md").read_text()
-            automation = (octo_directory / "references/automation.md").read_text()
-            assert "auto-merge.md" in automation and "notification-instructions.md" in automation, automation
-            assert "Automatic merging enabled" in (octo_directory / "references/auto-merge.md").read_text()
-            assert "Report the deployment handoff." in (octo_directory / "references/notification-instructions.md").read_text()
-            run([str(cli), "validate", "--repo", str(staged_testing), "--strict"])
-            run([str(cli), "upgrade", "--repo", str(staged_testing)])
-            for name, rollout in (("go", "ratchet"), ("typescript", "strict")):
-                guide = rendered_skill(staged_testing, name)
-                assert "python3 scripts/check-source-code.py " + name in guide and f"Enforcement: {rollout}" in guide, guide
-            guide = rendered_skill(staged_testing, "octo-manager")
-            assert "Automatic merging enabled" in guide and "Report the deployment handoff." in guide, guide
-            assert "Inspect reconciliation evidence before retrying an uncertain operation." in guide, guide
-            for relative in (*legacy_links, *legacy_files):
-                if relative.endswith("/SKILL.md"):
-                    continue
-                assert not (staged_testing / ".agents/skills" / relative).exists(), relative
-        else:
-            # Remove old copied variants only when they still match the manifest.
-            obsolete = staged_testing / ".agents/skills/go/references/profile-installed.md"
-            obsolete.write_text("Legacy profile variant.\n")
-            state_path = staged_testing / ".agents/repo-bootstrap.json"
-            state = json.loads(state_path.read_text())
-            state["files"][obsolete.relative_to(staged_testing).as_posix()] = {"kind": "file", "sha256": hashlib.sha256(obsolete.read_bytes()).hexdigest(), "executable": False}
-            state_path.write_text(json.dumps(state))
-            obsolete.write_text("Customized profile variant.\n")
-            before = tree(staged_testing)
-            run([str(cli), "upgrade", "--repo", str(staged_testing)], expected=1)
-            assert tree(staged_testing) == before
-            obsolete.write_text("Legacy profile variant.\n")
-            run([str(cli), "upgrade", "--repo", str(staged_testing)])
-            assert not obsolete.exists()
+        # Missing selected policy sources must fail before changing installed guidance.
+        canonical = source / "ai/skills/source-code-lifecycle/references/authority-owned.md"
+        original = canonical.read_bytes()
+        before = tree(staged_testing)
+        try:
+            canonical.unlink()
+            output = run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(staged_testing)], expected=1)
+            assert "authority-owned.md" in output, output
+            assert tree(staged_testing) == before, "missing canonical policy changed the installation"
+        finally:
+            canonical.write_bytes(original)
         # Shared technical and Octo resources stay live only in linked installations.
         for relative, canonical in (
             ("go/references/common.md", source / "ai/skills/go/references/common.md"),

@@ -1115,17 +1115,19 @@ def validate_octo_issues(config: object) -> None:
 
 
 def render_skill_template(template: str, blocks: Mapping[str, str], source: str) -> str:
-    """Replace closed policy blocks; canonical fallbacks remain readable before setup."""
+    """Replace each named placeholder with its resolved project guidance."""
     marker = re.compile(r"<!--\s*/?source-code:")
-    pattern = re.compile(r"<!-- source-code:([a-z-]+) -->\n(.*?)\n<!-- /source-code:\1 -->", re.DOTALL)
+    pattern = re.compile(r"^<!-- source-code:([a-z-]+) -->$", re.MULTILINE)
     seen = set()
     for match in pattern.finditer(template):
         name = match[1]
-        if name not in blocks or name in seen or marker.search(match[2]):
-            raise ValueError(f"invalid or duplicate skill template block {name}: {source}")
+        if name not in blocks or name in seen:
+            raise ValueError(f"invalid or duplicate skill template placeholder {name}: {source}")
         seen.add(name)
     if seen != blocks.keys() or marker.search(pattern.sub("", template)):
-        raise ValueError(f"missing or malformed skill template block: {source}; expected {', '.join(sorted(blocks))}")
+        raise ValueError(
+            f"missing or malformed skill template placeholder: {source}; expected {', '.join(sorted(blocks))}"
+        )
     return pattern.sub(lambda match: blocks[match[1]].strip(), template)
 
 
@@ -1152,14 +1154,11 @@ def configure_skill_packages(
     """Resolve project choices before exposing skills to either agent host."""
     source = Path(resolved["skill_source"]) if resolved["skill_storage"] == "linked" else SOURCE / "ai/skills"
 
-    def reference(skill: str, variant: str, blocks: Mapping[str, str] | None = None) -> str:
+    def reference(skill: str, variant: str) -> str:
         origin = source / skill / "references" / variant
         if origin.is_symlink() or not origin.is_file():
             raise ValueError(f"missing or linked policy source: {origin}")
-        text = origin.read_text()
-        if blocks is not None:
-            text = render_skill_template(text, blocks, str(origin))
-        return inline_skill_reference(text)
+        return inline_skill_reference(origin.read_text())
 
     def render(skill: str, blocks: Mapping[str, str]) -> None:
         destination = f".agents/skills/{skill}/SKILL.md"
@@ -1190,12 +1189,7 @@ def configure_skill_packages(
         render(skill, {"project-policy": "\n\n".join(policies)})
         omit(
             skill,
-            (
-                path.name
-                for path in refs.glob("*.md")
-                if path.name.startswith(("authority-", "adoption-", "kind-"))
-                or path.name in {"authority.md", "adoption.md", "kinds.md"}
-            ),
+            (path.name for path in refs.glob("*.md") if path.name.startswith(("authority-", "adoption-", "kind-"))),
         )
         if resolved["adoption"] == "hold":
             omit(skill, ["tool-catalog.md"])
@@ -1213,8 +1207,7 @@ def configure_skill_packages(
             }[language]
             in state["files"]
         )
-        legacy = {"legacy-routing": ""} if active and language in {"go", "typescript"} else None
-        verification = [reference(language, "profile-installed.md" if active else "profile-uninstalled.md", legacy)]
+        verification = [reference(language, "profile-installed.md" if active else "profile-uninstalled.md")]
         if active and language in {"go", "typescript"}:
             setting = f".{language}-quality.json"
             settings = (
@@ -1228,10 +1221,8 @@ def configure_skill_packages(
         omit(
             language,
             [
-                "profile.md",
                 "profile-installed.md",
                 "profile-uninstalled.md",
-                "rollout.md",
                 "rollout-strict.md",
                 "rollout-ratchet.md",
             ],
@@ -1282,15 +1273,13 @@ def configure_skill_packages(
             raise ValueError("Octo notification instruction exceeds 1000 UTF-8 bytes")
         followup += f"\n### {name}\n\n{instruction or 'No default follow-up instruction is enabled for this state.'}\n"
     followup += "\nFor a state without a configured instruction, inspect the current action evidence and report the missing follow-up; do not invent instructions.\n"
-    evidence = reference("octo-manager", "automation.md", {"legacy-routing": ""})
+    evidence = reference("octo-manager", "automation.md")
     render("octo-manager", {"automation": automation + "\n\n" + followup + "\n\n" + evidence})
     omit(
         "octo-manager",
         [
-            "auto-merge.md",
             "auto-merge-enabled.md",
             "auto-merge-disabled.md",
-            "notification-instructions.md",
             "automation.md",
         ],
     )
@@ -1884,11 +1873,7 @@ def storage_migration(root: Path, state: Manifest, storage: str, desired: Mappin
     changing_storage = storage != state.get("skill_storage", "copied")
     names = recorded_skill_names(state)
     if not changing_storage:
-        names &= RENAMED_SKILLS.keys() | {
-            name
-            for name in CONFIGURED_SKILLS
-            if f".agents/skills/{name}" in state["files"] and f".agents/skills/{name}/SKILL.md" in desired
-        }
+        names &= RENAMED_SKILLS.keys()
     removals: set[str] = set()
     for name in names:
         relative = f".agents/skills/{name}"
@@ -1925,7 +1910,7 @@ def storage_migration(root: Path, state: Manifest, storage: str, desired: Mappin
             continue
         if f".agents/skills/{parts[2]}/SKILL.md" not in desired or path in removals:
             continue
-        if path not in desired or desired[path]["kind"] != expected["kind"]:
+        if path not in desired:
             if inspect(root, path) != expected:
                 raise ValueError(f"preserving customized policy content: {path}")
             removals.add(path)
