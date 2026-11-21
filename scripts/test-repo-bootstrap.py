@@ -290,6 +290,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
                 if configured and name != "source-code-lifecycle":
                     assert (installed / "references/profile.md").read_bytes() == (source / "ai/skills" / name / "references/profile-uninstalled.md").read_bytes()
                     assert not (installed / "references/profile-installed.md").exists()
+                    assert not (installed / "references/rollout.md").exists()
                     assert not (installed / "references/rollout-strict.md").exists()
                 assert (installed / "references").is_dir()
             octo_refs = staged_testing / ".agents/skills/octo-manager/references"
@@ -300,7 +301,10 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
             run([str(cli), "validate", "--repo", str(staged_testing), "--strict"])
         # Authored Octo overrides are compiled into guidance, even on a subset update.
         config = staged_testing / "octo-manager.toml"
-        authored = 'schema_version = 1\n[merging]\nauto_merge = false\n[notifications.instructions]\nmerged = "Report the deployment handoff."\nready = ""\n'
+        authored = ('schema_version = 1\n[issues]\nmax_concurrency = 2\n'
+                    + ''.join(f'[issues.profiles.{name}]\nharness = "codex"\nmodel = "configured"\n'
+                              for name in ("investigation", "implementation", "verification"))
+                    + '[merging]\nauto_merge = false\n[notifications.instructions]\nmerged = "Report the deployment handoff."\nready = ""\n')
         config.write_text(authored)
         before = tree(staged_testing)
         command = [str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(staged_testing), "--skills", "just"]
@@ -316,34 +320,64 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         config.write_text(authored.replace("false", "true"))
         run([*command, "--stage", "beta"])
         assert (octo_refs / "auto-merge.md").read_bytes() == (source / "ai/skills/octo-manager/references/auto-merge-enabled.md").read_bytes()
-        malformed = config.read_text().replace("true", '"invalid"')
-        config.write_text(malformed)
-        before = tree(staged_testing)
-        run(command, expected=1)
-        assert tree(staged_testing) == before
+        for malformed in (
+            config.read_text().replace("auto_merge = true", 'auto_merge = "invalid"'),
+            config.read_text().replace("schema_version = 1", "schema_version = 1\nunknown = true"),
+            config.read_text().replace("max_concurrency = 2", "max_concurrency = 0"),
+        ):
+            config.write_text(malformed)
+            before = tree(staged_testing)
+            output = run(command, expected=1)
+            assert "Octo" in output, output
+            assert tree(staged_testing) == before, output
         config.write_text(authored.replace("false", "true"))
         run([*command, "--stage", "research"])
         if storage == "linked":
-            # Upgrade an old whole-directory canonical link into a selected package.
-            directory = staged_testing / ".agents/skills/source-code-lifecycle"
+            # Canonical updates keep older directory links readable until their next upgrade.
+            legacy_references = {
+                "go": ("profile.md", "rollout.md"),
+                "typescript": ("profile.md", "rollout.md"),
+                "python": ("profile.md",),
+                "protobuf": ("profile.md",),
+                "source-code-lifecycle": ("authority.md", "adoption.md", "kinds.md"),
+                "octo-manager": ("auto-merge.md", "notification-instructions.md"),
+            }
             state_path = staged_testing / ".agents/repo-bootstrap.json"
             state = json.loads(state_path.read_text())
-            prefix = ".agents/skills/source-code-lifecycle"
-            state["files"] = {name: entry for name, entry in state["files"].items() if not name.startswith(prefix + "/")}
-            shutil.rmtree(directory)
-            origin = source / "ai/skills/.maturity-profiles/research/source-code-lifecycle"
-            directory.symlink_to(origin, target_is_directory=True)
-            state["files"][prefix] = {"kind": "link", "target": str(origin)}
+            for name, references in legacy_references.items():
+                prefix = f".agents/skills/{name}"
+                directory = staged_testing / prefix
+                state["files"] = {path: entry for path, entry in state["files"].items() if not path.startswith(prefix + "/")}
+                shutil.rmtree(directory)
+                origin = source / "ai/skills" / (f".maturity-profiles/research/{name}" if name in maturity_skills else name)
+                directory.symlink_to(origin, target_is_directory=True)
+                state["files"][prefix] = {"kind": "link", "target": str(origin)}
+                for reference in references:
+                    assert (directory / "references" / reference).is_file(), (name, reference)
             state_path.write_text(json.dumps(state))
+            run([str(cli), "validate", "--repo", str(staged_testing), "--strict"])
             run([str(cli), "upgrade", "--repo", str(staged_testing)])
-            assert not directory.is_symlink()
-            assert (directory / "references/authority.md").read_bytes() == (source / "ai/skills/source-code-lifecycle/references/authority-owned.md").read_bytes()
-            # The shared technical reference remains live without exposing other policies.
-            canonical = source / "ai/skills/go/references/common.md"
+            for name, references in legacy_references.items():
+                directory = staged_testing / ".agents/skills" / name
+                assert not directory.is_symlink(), name
+                for reference in references:
+                    assert (directory / "references" / reference).is_file() == (reference != "rollout.md"), (name, reference)
+                if name in {"go", "typescript", "python", "protobuf"}:
+                    assert (directory / "references/profile.md").read_bytes() == (source / "ai/skills" / name / "references/profile-uninstalled.md").read_bytes(), name
+            assert (staged_testing / ".agents/skills/source-code-lifecycle/references/authority.md").read_bytes() == (source / "ai/skills/source-code-lifecycle/references/authority-owned.md").read_bytes()
+            assert (octo_refs / "auto-merge.md").read_bytes() == (source / "ai/skills/octo-manager/references/auto-merge-enabled.md").read_bytes()
+            assert "Report the deployment handoff." in (octo_refs / "notification-instructions.md").read_text()
+            # Missing selected policy sources must fail before changing installed guidance.
+            canonical = source / "ai/skills/source-code-lifecycle/references/authority-owned.md"
             original = canonical.read_bytes()
-            canonical.write_bytes(original + b"\nShared technical update.\n")
-            assert (staged_testing / ".agents/skills/go/references/common.md").read_bytes() == canonical.read_bytes()
-            canonical.write_bytes(original)
+            before = tree(staged_testing)
+            try:
+                canonical.unlink()
+                output = run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(staged_testing)], expected=1)
+                assert "authority-owned.md" in output, output
+                assert tree(staged_testing) == before, "missing canonical policy changed the installation"
+            finally:
+                canonical.write_bytes(original)
         else:
             # Remove old copied variants only when they still match the manifest.
             obsolete = staged_testing / ".agents/skills/go/references/profile-installed.md"
@@ -359,6 +393,17 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
             obsolete.write_text("Legacy profile variant.\n")
             run([str(cli), "upgrade", "--repo", str(staged_testing)])
             assert not obsolete.exists()
+        # Shared technical and Octo resources stay live only in linked installations.
+        for relative in ("go/references/common.md", "octo-manager/references/automation.md"):
+            canonical = source / "ai/skills" / relative
+            original = canonical.read_bytes()
+            updated = original + b"\nShared guidance update.\n"
+            try:
+                canonical.write_bytes(updated)
+                expected = updated if storage == "linked" else original
+                assert (staged_testing / ".agents/skills" / relative).read_bytes() == expected, (storage, relative)
+            finally:
+                canonical.write_bytes(original)
         run([str(cli), "validate", "--repo", str(staged_testing), "--strict"])
         if storage == "copied":
             for name in ("testing", "go"):
@@ -541,6 +586,18 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         assert view["origins"]["authority"]["source"] == "saved"
         assert view["installed"]["adoption"] == adoption
         run([str(cli), "validate", "--repo", str(authority_project), "--strict"])
+        if adoption == "new":
+            git(authority_project, "add", ".")
+            git(authority_project, "commit", "-qm", "Track portable project policies")
+            # Changing policy may remove a tracked managed reference, but never an edited one.
+            catalog = refs / "tool-catalog.md"
+            original = catalog.read_bytes()
+            catalog.write_bytes(original + b"\nKeep this project-specific choice.\n")
+            before = tree(authority_project)
+            output = install(authority_project, "--authority", "shared", "--adoption", "hold", expected=1)
+            assert "preserving customized policy content" in output, output
+            assert tree(authority_project) == before, "policy transition overwrote local edits"
+            catalog.write_bytes(original)
     reject_incomplete_setup(authority_project)
     authored_authority = authority_project / "source-code.toml"
     authored_authority.write_text('schema_version = 1\nauthority = "shared"\nadoption = "hold"\n')

@@ -1008,7 +1008,7 @@ def package(
                     ("~/.local/share/software-standards/builder/SKILL.md", "../SKILL.md"),
                     ("~/.local/share/software-standards/builder/references/", ""),
                 ]
-            if skill == "octo-manager":
+            if skill == "octo-manager" and relative == Path("SKILL.md"):
                 replacements = [("../../../docs/octo-pr-submission.md", "references/submission.md")]
             if skill == "pull-request":
                 replacements = [
@@ -1086,6 +1086,41 @@ def template_conflicts(root: Path) -> list[str]:
     return found
 
 
+def validate_octo_issues(config: object) -> None:
+    """An invalid issues section also invalidates Octo's repository merge policy."""
+    booleans = {
+        "auto_implement",
+        "auto_publish",
+        "proceed_under_assumptions",
+        "auto_follow_ups",
+        "clarification_timeout_disabled",
+    }
+    integers = {"clarification_timeout_ms": (0, 604800000), "max_concurrency": (1, 10)}
+    if not isinstance(config, dict) or set(config) - booleans - integers.keys() - {"profiles"}:
+        raise ValueError("invalid Octo issues configuration")
+    for key in booleans & config.keys():
+        if type(config[key]) is not bool:
+            raise ValueError(f"Octo issues.{key} must be a boolean")
+    for key, (minimum, maximum) in integers.items():
+        if key in config and (type(config[key]) is not int or not minimum <= config[key] <= maximum):
+            raise ValueError(f"Octo issues.{key} must be an integer from {minimum} to {maximum}")
+    profiles = config.get("profiles")
+    if not isinstance(profiles, dict) or set(profiles) != {"investigation", "implementation", "verification"}:
+        raise ValueError("Octo issues.profiles requires investigation, implementation, and verification")
+    for role, profile in profiles.items():
+        if not isinstance(profile, dict) or set(profile) - {"harness", "model", "instructions", "timeout_ms"}:
+            raise ValueError(f"invalid Octo issues.profiles.{role}")
+        for field in ("harness", "model"):
+            if not isinstance(profile.get(field), str) or not profile[field]:
+                raise ValueError(f"Octo issues.profiles.{role}.{field} must be a nonempty string")
+        instruction = profile.get("instructions", "")
+        if not isinstance(instruction, str) or len(instruction.encode("utf-16-le")) > 8000:
+            raise ValueError(f"invalid Octo issues.profiles.{role}.instructions")
+        timeout = profile.get("timeout_ms", 1000)
+        if type(timeout) is not int or not 1000 <= timeout <= 86400000:
+            raise ValueError(f"Octo issues.profiles.{role}.timeout_ms must be an integer from 1000 to 86400000")
+
+
 def configure_skill_packages(
     root: Path,
     resolved: PolicySelection,
@@ -1099,6 +1134,8 @@ def configure_skill_packages(
     def select(skill: str, name: str, variant: str) -> None:
         destination = f".agents/skills/{skill}/references/{name}"
         origin = source / skill / "references" / variant
+        if origin.is_symlink() or not origin.is_file():
+            raise ValueError(f"missing or linked policy source: {origin}")
         if resolved["skill_storage"] == "linked":
             files[destination] = {"kind": "link", "target": str(origin)}
             payloads.pop(destination, None)
@@ -1148,7 +1185,10 @@ def configure_skill_packages(
             }[language]
             in state["files"]
         )
-        omit(language, ["profile-installed.md", "profile-uninstalled.md", "rollout-strict.md", "rollout-ratchet.md"])
+        omit(
+            language,
+            ["profile-installed.md", "profile-uninstalled.md", "rollout.md", "rollout-strict.md", "rollout-ratchet.md"],
+        )
         select(language, "profile.md", "profile-installed.md" if active else "profile-uninstalled.md")
         if active and language in {"go", "typescript"}:
             setting = f".{language}-quality.json"
@@ -1172,11 +1212,16 @@ def configure_skill_packages(
     )
     if snapshot is not None and digest(data) != snapshot["sha256"]:
         raise ValueError("Octo configuration changed while preparing guidance; retry")
+    if len(data) > 65536:
+        raise ValueError("Octo policy exceeds 64 KiB")
     config = tomllib.loads(data.decode())
     if type(config.get("schema_version")) is not int or config["schema_version"] != 1:
         raise ValueError("octo-manager.toml requires schema_version = 1")
-    if len(data) > 65536:
-        raise ValueError("Octo policy exceeds 64 KiB")
+    unknown = set(config) - {"schema_version", "issues", "merging", "notifications"}
+    if unknown:
+        raise ValueError("unknown Octo configuration keys: " + ", ".join(sorted(unknown)))
+    if "issues" in config:
+        validate_octo_issues(config["issues"])
     merging = config.get("merging", {})
     if not isinstance(merging, dict) or set(merging) - {"auto_merge"}:
         raise ValueError("invalid Octo merging configuration")
@@ -2181,10 +2226,14 @@ def install(args: Arguments) -> None:
         if "octo-manager.toml" in tracked:
             paths.discard("octo-manager.toml")
             visible_paths.discard("octo-manager.toml")
-        if ((paths if mode == "local" else local_paths) | set(removals)) & tracked:
+        hidden_paths = paths if mode == "local" else local_paths
+        if mode == "local" or storage == "linked":
+            hidden_paths = hidden_paths | removals
+        hidden_tracked = hidden_paths & tracked
+        if hidden_tracked:
             raise ValueError(
                 "local mode cannot hide tracked files: "
-                + ", ".join(sorted(((paths if mode == "local" else local_paths) | set(removals)) & tracked))
+                + ", ".join(sorted(hidden_tracked))
                 + "; keep tracked mode or explicitly remove them from the index first"
             )
     generated_config: bytes | None = None

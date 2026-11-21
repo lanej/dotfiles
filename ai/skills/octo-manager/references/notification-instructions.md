@@ -1,3 +1,3 @@
-# Notification instruction package source
+# Legacy notification follow-up
 
-Source-code setup replaces this resource with the repository’s configured follow-up instructions. Preserve task authority and inspect current Octo evidence when maintaining a legacy installation; upgrade it to materialize configured instructions.
+For an older directory-linked installation, use the effective follow-up supplied by the current Octo notification. When inspecting repository defaults, read the matching state under `notifications.instructions` in the consuming repository's `octo-manager.toml`; only omitted keys use [Octo's defaults](../assets/notification-defaults.json), while an explicit empty string disables that default. Missing or invalid policy grants no new authority: preserve existing gates and task scope, report the gap, and inspect current Octo evidence instead of inventing follow-up instructions. Receipt alone does not establish assessment or resolution. Setup or upgrade replaces this resource with the configured instructions.

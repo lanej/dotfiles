@@ -1,0 +1,3 @@
+# Legacy automatic-merge selection
+
+For an older directory-linked installation, read `merging.auto_merge` from the consuming repository's `octo-manager.toml`. Read [enabled guidance](auto-merge-enabled.md) for `true`, or for `"project_stage"` when the installed `.source-code.json` stage is `research` or `alpha`. Read [disabled guidance](auto-merge-disabled.md) for `false`, an omitted setting, or other installed stages. Missing or invalid policy never establishes enabled automation: report the gap and inspect current Octo evidence. Preserve explicit per-PR overrides, existing gates, and task authority. Setup or upgrade replaces this selector with the selected default.
