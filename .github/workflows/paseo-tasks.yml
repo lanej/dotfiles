@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - 'paseo-tasks/**'
+      - 'tools/task-runtime/**'
       - 'tools/beads/**'
       - 'config/beads/**'
       - 'scripts/install-worktree-manager'
@@ -20,6 +21,7 @@ on:
       - master
     paths:
       - 'paseo-tasks/**'
+      - 'tools/task-runtime/**'
       - 'tools/beads/**'
       - 'config/beads/**'
       - 'scripts/install-worktree-manager'

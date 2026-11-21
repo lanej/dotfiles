@@ -34,7 +34,7 @@ export function knownProvider(value: string): DefaultProvider | undefined {
   return parsed.success ? parsed.data : undefined;
 }
 
-const selection = z
+export const selection = z
   .object({
     provider: z.string().min(1),
     model: z.string().min(1),
@@ -67,6 +67,18 @@ export const configSchema = z
         database: z.string().min(1),
         branch: z.string().min(1),
         executable: z.string().min(1).default("bd"),
+      })
+      .strict()
+      .optional(),
+    beadsService: z
+      .object({
+        url: z.url(),
+        projectId: z.uuid(),
+        reviewOnly: z.boolean().optional(),
+        tokenFile: z
+          .string()
+          .refine(isAbsolute, "Use an absolute token-file path")
+          .optional(),
       })
       .strict()
       .optional(),
@@ -133,11 +145,9 @@ const roles = (provider: string, prefix: string) => ({
 
 export const exampleConfig = {
   idleCompaction: { enabled: true, idleMs: 300_000, minimumContextPercent: 60 },
-  beads: {
-    workspace: "/absolute/path/to/authoritative-workspace",
-    database: "YOUR_DATABASE",
-    branch: "main",
-    executable: "bd",
+  beadsService: {
+    url: "http://127.0.0.1:8790",
+    projectId: "11111111-1111-4111-8111-111111111111",
   },
   profiles: {
     [DriverProfile.Work]: roles(DefaultProvider.BedrockMantle, "openai."),

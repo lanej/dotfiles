@@ -112,7 +112,7 @@ await test("CLI reads the explicitly configured source and dispatch never alloca
     const before = await readFile(capture, "utf8");
     await assert.rejects(
       driver("start", "--profile", "personal"),
-      /per-task revision guard/,
+      /missing required argument/,
     );
     assert.equal(
       await readFile(capture, "utf8"),

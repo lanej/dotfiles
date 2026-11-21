@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - 'pi/daily-driver/**'
+      - 'tools/task-runtime/**'
+      - 'tools/beads/**'
+      - 'config/beads/**'
       - 'design-system/generated/pi.json'
       - 'bin/pi-driver'
       - 'scripts/configure-pi-driver.py'
@@ -12,6 +15,9 @@ on:
     branches: [master]
     paths:
       - 'pi/daily-driver/**'
+      - 'tools/task-runtime/**'
+      - 'tools/beads/**'
+      - 'config/beads/**'
       - 'design-system/generated/pi.json'
       - 'bin/pi-driver'
       - 'scripts/configure-pi-driver.py'
@@ -37,3 +43,12 @@ jobs:
       - run: npm --prefix pi/daily-driver ci --ignore-scripts
       - run: npm --prefix pi/daily-driver/.typescript-quality ci --ignore-scripts
       - run: make test-pi-driver
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+      - name: Verify admission and completion against the pinned Beads service
+        if: runner.os == 'Linux'
+        run: |
+          python3 tools/beads/beads-service.py install --no-start
+          manifest="$HOME/.local/share/beads-service/runtime.json"
+          npm --prefix pi/daily-driver run test:beads-native -- \
+            --bd "$(jq -er .bd "$manifest")" --dolt "$(jq -er .dolt "$manifest")"
