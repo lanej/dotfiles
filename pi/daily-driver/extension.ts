@@ -3,9 +3,16 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { z } from "zod";
-import { BeadsReader, taskDetails, taskLabel, taskTree } from "./beads.ts";
 import { registerArchives } from "./archives.ts";
+import {
+  BeadsReader,
+  taskDetails,
+  taskLabel,
+  taskSchema,
+  taskTree,
+} from "./beads.ts";
 import { delegateTool, registerDelegation } from "./delegation.ts";
+import { TaskBeads } from "./task-service.ts";
 import { dispatchGate } from "./capabilities.ts";
 import {
   AgentRole,
@@ -28,11 +35,14 @@ import { chooseTask, installFooter, showTask, statusPill } from "./ui.ts";
 const attemptType = "pi-driver:idle-attempt";
 const attemptSchema = z.object({ historyId: z.string() });
 
-export default function dailyDriver(pi: ExtensionAPI): void {
+export default function dailyDriver(
+  pi: ExtensionAPI,
+  managed?: { profile: DriverProfile; approvalPending: () => boolean },
+): void {
   const idle = new IdleSession();
   let removeInputListener: (() => void) | undefined;
   let lifecycle = 0;
-  let selectedProfile: DriverProfile | undefined;
+  let selectedProfile = managed?.profile;
 
   const delegation = registerDelegation(
     pi,
@@ -42,6 +52,10 @@ export default function dailyDriver(pi: ExtensionAPI): void {
     },
   );
   registerArchives(pi);
+  if (managed !== undefined)
+    pi.on("session_start", () => {
+      delegation.activate();
+    });
 
   const release = () => {
     lifecycle++;
@@ -79,6 +93,7 @@ export default function dailyDriver(pi: ExtensionAPI): void {
           settled: ctx.isIdle(),
           pendingInput:
             ctx.hasPendingMessages() ||
+            managed?.approvalPending() === true ||
             delegation.blocks(ctx.sessionManager.getSessionId()),
           editorText: ctx.ui.getEditorText(),
           percent: ctx.getContextUsage()?.percent ?? null,
@@ -156,7 +171,7 @@ export default function dailyDriver(pi: ExtensionAPI): void {
 
   pi.on(PiEvent.SessionStart, async (_event, ctx) => {
     idle.newSession();
-    selectedProfile = undefined;
+    selectedProfile = managed?.profile;
     await initialize(ctx);
   });
   pi.on(PiEvent.SessionShutdown, () => {
@@ -165,7 +180,7 @@ export default function dailyDriver(pi: ExtensionAPI): void {
   pi.on(PiEvent.SessionTree, async (_event, ctx) => initialize(ctx));
   pi.on(PiEvent.SessionCompact, async (_event, ctx) => initialize(ctx));
   pi.on(PiEvent.ModelSelect, () => {
-    selectedProfile = undefined;
+    selectedProfile = managed?.profile;
   });
   pi.on(PiEvent.Input, () => {
     idle.activity();
@@ -191,21 +206,38 @@ export default function dailyDriver(pi: ExtensionAPI): void {
     description: "Inspect the authoritative Beads containment tree (read-only)",
     handler: async (argument, ctx) => {
       const config = await loadConfig();
-      if (config.beads === undefined) {
+      if (config.beads === undefined && config.beadsService === undefined) {
         ctx.ui.notify(
-          "Configure beads.workspace, database, and branch in pi-driver/config.json first",
+          "Configure a Beads service or read-only workspace in pi-driver/config.json",
           "warning",
         );
         return;
       }
-      const reader = new BeadsReader(config.beads);
+      const service =
+        config.beadsService === undefined
+          ? undefined
+          : new TaskBeads(config.beadsService);
+      const reader =
+        service !== undefined
+          ? {
+              list: async () =>
+                z.array(taskSchema).parse((await service.list()).items),
+              show: async (id: string) =>
+                taskSchema.parse(await service.get(id)),
+            }
+          : config.beads === undefined
+            ? undefined
+            : new BeadsReader(config.beads);
+      if (reader === undefined) return;
+      const label =
+        config.beadsService?.projectId ?? config.beads?.database ?? "";
       let id = argument.trim();
       if (id.length === 0) {
         const tasks = await reader.list();
         const rows = taskTree(tasks);
         const selection = await chooseTask(
           ctx,
-          `Tasks · ${config.beads.database}${tasks.length === 1000 ? " · first 1000" : ""}`,
+          `Tasks · ${label}${tasks.length === 1000 ? " · first 1000" : ""}`,
           rows.map((row) => ({
             value: row.task.id,
             label: taskLabel(row, (status) => statusPill(status, ctx.ui.theme)),
@@ -218,9 +250,7 @@ export default function dailyDriver(pi: ExtensionAPI): void {
       const task = await reader.show(id);
       await showTask(
         ctx,
-        taskDetails(task, config.beads.database, (status) =>
-          statusPill(status, ctx.ui.theme),
-        ),
+        taskDetails(task, label, (status) => statusPill(status, ctx.ui.theme)),
       );
     },
   });

@@ -9,6 +9,10 @@ on:
       - 'scripts/configure-pi-driver.py'
       - 'scripts/install-worktree-manager'
       - 'bootstrap/tools.toml'
+      - 'tools/task-runtime/**'
+      - 'tools/beads/**'
+      - 'config/beads/**'
+      - 'scripts/install-zellij'
       - '.github/workflows/pi-driver.yml'
   push:
     branches: [master]
@@ -19,6 +23,10 @@ on:
       - 'scripts/configure-pi-driver.py'
       - 'scripts/install-worktree-manager'
       - 'bootstrap/tools.toml'
+      - 'tools/task-runtime/**'
+      - 'tools/beads/**'
+      - 'config/beads/**'
+      - 'scripts/install-zellij'
       - '.github/workflows/pi-driver.yml'
 
 jobs:
@@ -40,6 +48,9 @@ jobs:
           python-version: '3.11'
       - run: npm --prefix pi/daily-driver ci --ignore-scripts
       - run: npm --prefix pi/daily-driver/.typescript-quality ci --ignore-scripts
+      - name: Verify generated Zellij bindings against the runtime pin
+        if: runner.os == 'Linux'
+        run: npm --prefix pi/daily-driver run check:zellij
       - run: make test-pi-driver
         env:
           NODE_OPTIONS: --max-old-space-size=4096
@@ -51,3 +62,10 @@ jobs:
       - run: npm --prefix pi/daily-driver run test:delegation-native
       - run: npm --prefix pi/daily-driver run test:delegation-native -- --lost-allocation
       - run: npm --prefix pi/daily-driver run test:delegation-native -- --cancel
+      - name: Verify admission and completion against the pinned Beads service
+        if: runner.os == 'Linux'
+        run: |
+          python3 tools/beads/beads-service.py install --no-start
+          manifest="$HOME/.local/share/beads-service/runtime.json"
+          npm --prefix pi/daily-driver run test:beads-native -- \
+            --bd "$(jq -er .bd "$manifest")" --dolt "$(jq -er .dolt "$manifest")"

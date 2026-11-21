@@ -5,6 +5,7 @@ import { defineRpc } from "@getpaseo/plugin";
 import type { PluginServerContext } from "@getpaseo/plugin/server";
 import { z } from "zod";
 import { Connection } from "./server/connection";
+import { Beads } from "./server/beads";
 import { Feedback, GitHub } from "./server/github";
 import {
   candidate,
@@ -34,7 +35,6 @@ import {
   migrateRpc,
   task,
 } from "./shared/contracts";
-
 export default function contribute(server: PluginServerContext) {
   const home = process.env.PASEO_HOME ?? join(homedir(), ".paseo");
   const state = process.env.PASEO_TASKS_STATE ?? join(home, "tasks");
@@ -60,8 +60,34 @@ export default function contribute(server: PluginServerContext) {
   let service: TaskService | undefined;
   let stopped = false;
   let pending: Promise<void> | null = null;
-  const ready = connection.open().then(({ serverId, paseo }) => {
-    const store = new Store(join(state, "tasks.sqlite"), serverId);
+  const ready = connection.open().then(async ({ serverId, paseo }) => {
+    if (
+      process.env.PASEO_TASKS_BEADS_DIR ||
+      process.env.PASEO_TASKS_BEADS_AUTHORITY ||
+      process.env.PASEO_TASKS_BEADS_SSH_HOST
+    )
+      throw new Error(
+        "Embedded/SSH Beads settings are retired; configure PASEO_TASKS_BEADS_URL and PASEO_TASKS_BEADS_PROJECT_ID explicitly. Existing data is preserved.",
+      );
+    const url = process.env.PASEO_TASKS_BEADS_URL;
+    const project = process.env.PASEO_TASKS_BEADS_PROJECT_ID;
+    if (!url || !project)
+      throw new Error(
+        "Set PASEO_TASKS_BEADS_URL and PASEO_TASKS_BEADS_PROJECT_ID for the shared Beads service",
+      );
+    const tokenFile = process.env.PASEO_TASKS_BEADS_TOKEN_FILE;
+    const records = new Beads(
+      url,
+      project,
+      tokenFile ? readFileSync(tokenFile, "utf8").trim() : undefined,
+    );
+    await records.verifyAuthority();
+    const store = new Store(
+      join(state, "tasks.sqlite"),
+      serverId,
+      undefined,
+      records,
+    );
     const github = new GitHub();
     service = new TaskService(
       store,
@@ -82,7 +108,7 @@ export default function contribute(server: PluginServerContext) {
   const timer = setInterval(() => {
     if (stopped || pending) return;
     pending = ready
-      .then((value) => value.tick())
+      .then(async (value) => await value.tick())
       .catch((error) =>
         console.error("Task service recovery failed:", error.message),
       )
@@ -90,18 +116,21 @@ export default function contribute(server: PluginServerContext) {
         pending = null;
       });
   }, 10000);
-  server.handle(listRpc, async ({ aggregate }) =>
-    (await ready).list(aggregate),
+  server.handle(
+    listRpc,
+    async ({ aggregate }) => await (await ready).list(aggregate),
   );
-  server.handle(createRpc, async (input) => (await ready).create(input));
-  server.handle(bulkRpc, async (input) => (await ready).bulk(input));
-  server.handle(discoverRpc, async (input) =>
-    (await ready).discover(input.serverId),
+  server.handle(createRpc, async (input) => await (await ready).create(input));
+  server.handle(bulkRpc, async (input) => await (await ready).bulk(input));
+  server.handle(
+    discoverRpc,
+    async (input) => await (await ready).discover(input.serverId),
   );
-  server.handle(adoptRpc, async (input) => (await ready).adopt(input));
-  server.handle(acceptRpc, async (input) => (await ready).accept(input));
-  server.handle(managerRpc, async (input) =>
-    (await ready).newManager(input.cwd),
+  server.handle(adoptRpc, async (input) => await (await ready).adopt(input));
+  server.handle(acceptRpc, async (input) => await (await ready).accept(input));
+  server.handle(
+    managerRpc,
+    async (input) => await (await ready).newManager(input.cwd),
   );
   server.handle(
     defineRpc({
@@ -112,7 +141,7 @@ export default function contribute(server: PluginServerContext) {
     async (input) => {
       const value = await ready;
       value.assertHost(input.serverId);
-      return value.assignCoordinator(input, input.coordinator);
+      return await value.assignCoordinator(input, input.coordinator);
     },
   );
   server.handle(
@@ -137,7 +166,7 @@ export default function contribute(server: PluginServerContext) {
     async (input) => {
       const value = await ready;
       value.assertHost(input.serverId);
-      return value.reports.verification(input.id);
+      return await value.reports.verification(input.id);
     },
   );
   server.handle(
@@ -146,7 +175,7 @@ export default function contribute(server: PluginServerContext) {
       input: coordinatorReport,
       output: z.object({ delivery: z.enum(["received", "superseded"]) }),
     }),
-    async (input) => (await ready).reports.receive(input),
+    async (input) => await (await ready).reports.receive(input),
   );
   server.handle(
     defineRpc({
@@ -161,7 +190,7 @@ export default function contribute(server: PluginServerContext) {
     async (input) => {
       const value = await ready;
       value.assertHost(input.serverId);
-      return value.reports.collect(input.coordinatorHost, input.receipts);
+      return await value.reports.collect(input.coordinatorHost, input.receipts);
     },
   );
   server.handle(
@@ -173,9 +202,9 @@ export default function contribute(server: PluginServerContext) {
     async (input) => {
       const value = await ready;
       value.assertHost(input.serverId);
-      return value.store
-        .incomingReports()
-        .filter((entry) => entry.report.coordinator.agentId === input.agentId);
+      return (await value.store.incomingReports()).filter(
+        (entry) => entry.report.coordinator.agentId === input.agentId,
+      );
     },
   );
   server.handle(
@@ -184,7 +213,7 @@ export default function contribute(server: PluginServerContext) {
       input: z.object({ home: z.string() }),
       output: z.array(candidate),
     }),
-    async (input) => inventory(input.home),
+    async (input) => await inventory(input.home),
   );
   server.handle(
     defineRpc({
@@ -193,16 +222,21 @@ export default function contribute(server: PluginServerContext) {
       output: task,
     }),
     async (input) =>
-      stage((await ready).store, input.source, input.brief, input.requestId),
+      await stage(
+        (await ready).store,
+        input.source,
+        input.brief,
+        input.requestId,
+      ),
   );
   server.handle(migrateRpc, async (input) => {
     const value = await ready;
     value.assertHost(input.serverId);
-    return releaseAndImport(
+    return await releaseAndImport(
       value.store,
       input.taskId,
       async (source, taskId) => {
-        let agentId = value.store.get(taskId).worker?.agentId;
+        let agentId = (await value.store.get(taskId)).worker?.agentId;
         if (!agentId) {
           const matches = (await value.conversations()).filter(
             (agent) =>
@@ -256,7 +290,7 @@ export default function contribute(server: PluginServerContext) {
     async (input) => {
       const value = await ready;
       value.assertHost(input.serverId);
-      return value.store.addEvent(input.taskId, "feedback", input.text);
+      return await value.store.addEvent(input.taskId, "feedback", input.text);
     },
   );
   server.handle(
@@ -268,7 +302,7 @@ export default function contribute(server: PluginServerContext) {
     async (input) => {
       const value = await ready;
       value.assertHost(input.serverId);
-      return value.propose(input.taskId, input.brief);
+      return await value.propose(input.taskId, input.brief);
     },
   );
   server.handle(
@@ -280,7 +314,7 @@ export default function contribute(server: PluginServerContext) {
     async (input) => {
       const value = await ready;
       value.assertHost(input.serverId);
-      return value.link(input.taskId, input.url);
+      return await value.link(input.taskId, input.url);
     },
   );
   server.handle(
@@ -292,16 +326,16 @@ export default function contribute(server: PluginServerContext) {
     async (input) => {
       const value = await ready;
       value.assertHost(input.serverId);
-      value.store.get(input.taskId);
+      await value.store.get(input.taskId);
       return value.maintenance?.records(input.taskId) ?? [];
     },
   );
   server.addHook("agent.open.before", async ({ request }) => {
     const value = await ready;
-    let assigned = value.store.forAgent(request.agentId);
+    let assigned = await value.store.forAgent(request.agentId);
     const id = request.labels["tasks.id"];
     if (!assigned && id) {
-      const reserved = value.store.get(id);
+      const reserved = await value.store.get(id);
       if (
         !["reserved", "creating"].includes(reserved.launch) ||
         !request.workspaceId
@@ -331,29 +365,31 @@ export default function contribute(server: PluginServerContext) {
   });
   server.addHook("agent.turn.before", async ({ agent }) => {
     const value = await ready;
-    const assigned = value.store.forAgent(agent.id);
+    const assigned = await value.store.forAgent(agent.id);
     if (assigned)
-      value.store.change(assigned.taskId, (current) => {
+      await value.store.change(assigned.taskId, async (current) => {
         current.activity = "running";
         current.observedAt = value.store.now();
       });
   });
-  server.addHook("agent.turn.after", async ({ agent, outcome, turnId }) =>
-    (await ready).turnEnded(agent.id, outcome, turnId),
+  server.addHook(
+    "agent.turn.after",
+    async ({ agent, outcome, turnId }) =>
+      await (await ready).turnEnded(agent.id, outcome, turnId),
   );
   server.addHook("agent.permission.before", async ({ agent }) => {
     const value = await ready;
-    const assigned = value.store.forAgent(agent.id);
+    const assigned = await value.store.forAgent(agent.id);
     if (assigned)
-      value.store.change(assigned.taskId, (current) => {
+      await value.store.change(assigned.taskId, (current) => {
         current.activity = "question";
       });
   });
   server.addHook("agent.archive.after", async ({ agent }) => {
     const value = await ready;
-    const assigned = value.store.forAgent(agent.id);
+    const assigned = await value.store.forAgent(agent.id);
     if (assigned)
-      value.store.change(assigned.taskId, (current) => {
+      await value.store.change(assigned.taskId, (current) => {
         current.activity = "closed";
         current.control = "archived";
       });

@@ -1,6 +1,6 @@
 # Pi daily-driver runtime plan
 
-This is the implementation sequence beyond the [foundation](README.md). The driver supports opt-in read-only delegation in native managed worktrees and browsing existing archives. Task-bound coding, Pi-owned Octo delivery, and automatic archival remain planned. The target is one usable local coding workflow before expanding fleet and remote interfaces.
+This is the implementation sequence beyond the [foundation](README.md). The driver supports opt-in read-only delegation in native managed worktrees and browsing existing archives. Local Beads admission and interactive Zellij launch use the revision-guarded Beads HTTP service. Lead plan approval, Pi-owned Octo delivery, and automatic archival build on that launch path. The target is one usable local coding workflow before expanding fleet and remote interfaces.
 
 The current [task contract](https://github.com/lanej/dotfiles/issues/353) keeps task identity, accepted briefs, hierarchy and dependencies in Beads. The Pi integration owns execution attempts and native sessions; Octo owns GitHub operations and their receipts. A task can exist without a GitHub issue or PR. This follows the live [parent design](https://github.com/lanej/dotfiles/issues/349) and [Octo boundary](https://github.com/lanej/dotfiles/issues/356).
 
@@ -12,6 +12,9 @@ The driver uses [@tintinweb/pi-subagents](https://github.com/tintinweb/pi-subage
 | --- | --- | --- |
 | [@tintinweb/pi-subagents](https://github.com/tintinweb/pi-subagents) | Delegation and lifecycle controls with a documented cross-extension RPC. | Pinned to 0.26.2. The driver loads its child runner behind a managed adapter. |
 | [nicobailon/pi-subagents](https://github.com/nicobailon/pi-subagents) (`pi-subagents` on npm) | Structured delegation, launch preflight, capability ceilings and background-work integration. | Alternative if its [integration API](https://github.com/nicobailon/pi-subagents/blob/main/docs/extension-api.md) materially reduces the policy adapter. Published 0.89.1 and source 0.89.2 are distinct; compatibility remains untested here. |
+| [pi-git-diff](https://github.com/max-miller1204/pi-git-diff) | Native terminal viewer for staged, unstaged and untracked changes. | Pin 0.1.1 and load its operator-facing `/diff` command in managed lead sessions. |
+| [pi-smart-plan](https://github.com/jnardiello/pi-smart-plan) | Structured plans, approval, dependency validation and parallel execution. | The lead uses its existing revision-guarded Beads authority for task creation and approval. |
+| [pi-workgraph](https://github.com/gjtorikian/pi-workgraph) | Leases, planning, independent judgment and an executor protocol. | Its per-repository SQLite store supplies its own task authority. Beads remains the canonical task store. |
 | [pi-messenger](https://github.com/nicobailon/pi-messenger) | Peer messaging, presence and file reservations. | Optional later. Its Crew mode owns another task/dependency workflow, so it does not replace Beads in this design. |
 | [pi-beads](https://pi.dev/packages/pi-beads) | Existing Beads task editing interface. | Review later. It expects a project `.beads` directory and exposes mutations; it does not provide the required authority fence or the current explicitly configured read-only source contract. |
 | [pi-ext Session Snap](https://github.com/tomsej/pi-ext#session-snap) | Session archive browsing and restoration. | The driver adapts its archive browser and reads the existing SQLite format. |
