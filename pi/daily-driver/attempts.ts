@@ -36,6 +36,7 @@ export const attemptSchema = z.object({
   reservation: worktreeReservation,
   checkout: worktreeAllocation.nullable(),
   session: z.string().min(1),
+  zellijSocket: z.string().min(1).optional(),
   pane: z.number().int().nonnegative().nullable(),
   pid: z.number().int().positive().nullable(),
   transcript: z.string().nullable(),

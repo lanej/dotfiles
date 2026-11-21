@@ -42,7 +42,7 @@ pi-driver start "$BEAD_ID" --profile work -- make test
 pi-driver tasks "$BEAD_ID" --json
 ```
 
-The first command claims the current brief in Beads, allocates a dedicated worktree and opens the interactive Pi worker in a pane. Type guidance directly into that pane. Repeating the same command focuses the registered worker. If launch or ownership is uncertain, inspect its recorded attempt before recovering the checkout.
+The first command claims the current brief in Beads, allocates a dedicated worktree and opens the interactive Pi worker through Zellij’s native socket. It leaves focus in the caller pane. Choose a different tab with `--tab-id`. Repeating the same command focuses the registered worker so you can type guidance into its existing session. If launch or ownership is uncertain, inspect its recorded attempt before recovering the checkout.
 
 Pi can call `task_submit_result`. An operator can also type `/task-submit SUMMARY` in the same pane. The driver runs the agreed command in that checkout, checks that its Git state held throughout verification, and conditionally closes the bead with the result. Beads checks the accepted revision, owner and status together. Evidence includes the command, exit code, Git state and the last 8 KiB of verification output.
 

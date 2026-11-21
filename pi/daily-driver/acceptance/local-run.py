@@ -93,6 +93,11 @@ def main():
         f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> {shlex.quote(str(sentinel))}\nexit 99\n"
     )
     (guard / "paseo").chmod(0o755)
+    zellij_sentinel = work / "unexpected-zellij-subprocess"
+    (guard / "zellij").write_text(
+        f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> {shlex.quote(str(zellij_sentinel))}\nexit 99\n"
+    )
+    (guard / "zellij").chmod(0o755)
     env = {
         **{key: value for key, value in os.environ.items() if key in (
             "PATH", "LANG", "LC_ALL", "LC_CTYPE", "TZ", "DOLT_ROOT_PATH",
@@ -176,6 +181,8 @@ def main():
         shell = terminal.terminals()
         assert len(shell) == 1, shell
         launcher_pane = shell[0]["id"]
+        tab_id = next(p["tab_id"] for p in json.loads(
+            terminal.action("list-panes", "--all", "--json")) if p["id"] == launcher_pane)
         for scenario in ("accepted", "failed-check", "changed-brief"):
             created = json.loads(execute([
                 fixture["bd"], "--sandbox", "create", "--title", f"Native Pi {scenario}",
@@ -186,12 +193,16 @@ def main():
             exit_file = work / f"{scenario}.exit"
             verifier = ["/bin/sh", "-c", "printf 'native-check-evidence\\n'; exit " +
                         ("7" if scenario == "failed-check" else "0")]
-            start_command = shlex.join([driver, "start", bead, "--profile", "personal", "--", *verifier])
+            placement = ["--tab-id", str(tab_id)] if scenario == "accepted" else []
+            start_command = shlex.join([driver, "start", bead, "--profile", "personal",
+                                        *placement, "--", *verifier])
             command = f"cd {shlex.quote(str(repository))} && {start_command}; printf '%s' $? > {shlex.quote(str(exit_file))}"
             assert any(p["id"] == launcher_pane for p in terminal.terminals()), "Owned launcher disappeared"
             terminal.action("write-chars", "--pane-id", f"terminal_{launcher_pane}", command + "\r")
             terminal.until("start dispatch completes", exit_file.exists)
             assert exit_file.read_text() == "0", pane_text(launcher_pane)
+            assert any(p["id"] == launcher_pane and p["is_focused"]
+                       for p in terminal.terminals()), terminal.terminals()
             before = fresh(bead)
             assert before["attempt"]["phase"] == "running", before
             assert before["attempt"]["session"] == name, before
@@ -213,7 +224,7 @@ def main():
                 terminal.until("identical start focuses existing worker", repeat_exit.exists)
                 assert repeat_exit.read_text() == "0", pane_text(launcher_pane)
                 repeated = fresh(bead)
-                for key in ("id", "checkout", "pane", "pid"):
+                for key in ("id", "checkout", "pane", "pid", "transcript", "zellijSocket"):
                     assert repeated["attempt"][key] == before["attempt"][key], repeated
                 assert any(p["id"] == pane and p["is_focused"] for p in terminal.terminals()), terminal.terminals()
                 inventory = json.loads(execute([manager, "status", "--json"]).stdout)
@@ -263,8 +274,20 @@ def main():
             after_exit = fresh(bead)
             assert after_exit["attempt"]["verification"] == verification, after_exit
             assert after_exit["attempt"]["phase"] == expected[scenario], after_exit
+            if scenario == "failed-check":
+                stale_exit = work / "stale-start.exit"
+                stale_start = f"{start_command}; printf '%s' $? > {shlex.quote(str(stale_exit))}"
+                terminal.action("write-chars", "--pane-id", f"terminal_{launcher_pane}",
+                                stale_start + "\r")
+                terminal.until("exited worker rejects refocus", stale_exit.exists)
+                assert stale_exit.read_text() != "0", pane_text(launcher_pane)
+                assert "registered Pi process or pane has exited or changed" in pane_text(launcher_pane)
+                assert fresh(bead)["attempt"] == after_exit["attempt"]
             report["cases"].append({"scenario": scenario, "bead": bead, "evidence": after_exit})
         assert not sentinel.exists(), sentinel.read_text() if sentinel.exists() else ""
+        assert not zellij_sentinel.exists(), (
+            zellij_sentinel.read_text() if zellij_sentinel.exists() else ""
+        )
         report["outcome"] = "passed"
         (artifacts / "report.json").write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n")
         (artifacts / "provider-requests.json").write_text(json.dumps(Provider.requests, indent=2) + "\n")

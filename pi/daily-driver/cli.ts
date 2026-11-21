@@ -174,16 +174,23 @@ program
     "Start or focus one local Pi worker. Pass the agreed check as argv after --",
   )
   .requiredOption("--profile <name>", "work or personal")
+  .option("--tab-id <id>", "Place a new worker in this Zellij tab")
   .action(
-    async (id: string, verifier: string[], options: { profile: string }) => {
+    async (
+      id: string,
+      verifier: string[],
+      options: { profile: string; tabId?: string },
+    ) => {
       if (verifier.length > 0 && !process.argv.slice(2).includes("--"))
         throw new Error("Place the agreed verification command after --");
+      const { tabId } = await import("./zellij.ts");
       const { startTask } = await import("./task-run.ts");
       output(
         await startTask(
           id,
           driverProfileSchema.parse(options.profile),
           verifier,
+          options.tabId === undefined ? undefined : tabId(options.tabId),
         ),
       );
     },

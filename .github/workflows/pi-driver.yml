@@ -10,6 +10,7 @@ on:
       - 'design-system/generated/pi.json'
       - 'bin/pi-driver'
       - 'scripts/configure-pi-driver.py'
+      - 'scripts/install-zellij'
       - '.github/workflows/pi-driver.yml'
   push:
     branches: [master]
@@ -21,6 +22,7 @@ on:
       - 'design-system/generated/pi.json'
       - 'bin/pi-driver'
       - 'scripts/configure-pi-driver.py'
+      - 'scripts/install-zellij'
       - '.github/workflows/pi-driver.yml'
 
 jobs:
@@ -42,6 +44,9 @@ jobs:
           python-version: '3.11'
       - run: npm --prefix pi/daily-driver ci --ignore-scripts
       - run: npm --prefix pi/daily-driver/.typescript-quality ci --ignore-scripts
+      - name: Verify generated Zellij bindings against the runtime pin
+        if: runner.os == 'Linux'
+        run: npm --prefix pi/daily-driver run check:zellij
       - run: make test-pi-driver
         env:
           NODE_OPTIONS: --max-old-space-size=4096

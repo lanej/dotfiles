@@ -15,24 +15,13 @@ import {
   knownProvider,
   loadConfig,
 } from "./config.ts";
-import { processStart, run } from "./process.ts";
+import { processStart } from "./process.ts";
 import { ClaimRefused, TaskBeads } from "./task-service.ts";
+import { Zellij } from "./zellij.ts";
 
 const extension = fileURLToPath(
   new URL("./worker-extension.ts", import.meta.url),
 );
-const panesSchema = z.array(
-  z.object({
-    id: z.number(),
-    is_plugin: z.boolean(),
-    exited: z.boolean(),
-    terminal_command: z.string().nullish(),
-    pane_cwd: z.string().nullish(),
-  }),
-);
-const zellij = (session: string, ...args: string[]) =>
-  run("zellij", ["--session", session, "action", ...args]);
-
 async function piExecutable(): Promise<string> {
   const dirs = (process.env["PATH"] ?? "")
     .split(delimiter)
@@ -54,6 +43,7 @@ async function piExecutable(): Promise<string> {
 
 async function focus(
   record: Attempt,
+  zellij: Zellij,
   service: TaskBeads,
   primary: string,
   profile: DriverProfile,
@@ -74,20 +64,19 @@ async function focus(
     );
   }
   await service.requireCurrent(record.bead, record.revision, record.id);
-  const panes = panesSchema.parse(
-    JSON.parse(await zellij(record.session, "list-panes", "--all", "--json")),
-  );
+  if (record.zellijSocket !== zellij.identity)
+    throw new Error(
+      "This attempt has no binding to the current Zellij server. Inspect the retained attempt before resuming",
+    );
+  const panes = await zellij.panes();
   const pane = panes.find(
     (candidate) =>
       candidate.id === record.pane && !candidate.is_plugin && !candidate.exited,
   );
-  const argv = pane?.terminal_command?.split(/\s+/u) ?? [];
-  const marker = argv.indexOf("--session-id");
   if (
     !record.live ||
     record.checkout === null ||
-    marker < 0 ||
-    argv[marker + 1] !== record.id ||
+    !matchesAttempt(pane?.terminal_command, record.id) ||
     pane?.pane_cwd == null ||
     (await realpath(pane.pane_cwd)) !==
       (await realpath(record.checkout.path)) ||
@@ -97,18 +86,24 @@ async function focus(
       "The registered Pi process or pane has exited or changed. Inspect the retained attempt before resuming",
     );
   }
-  await zellij(
-    record.session,
-    "focus-pane-id",
-    `terminal_${String(record.pane)}`,
-  );
+  await zellij.focus(record.pane);
   return record;
+}
+
+function matchesAttempt(
+  command: string | null | undefined,
+  attempt: string,
+): boolean {
+  const argv = command?.split(/\s+/u) ?? [];
+  const marker = argv.indexOf("--session-id");
+  return marker >= 0 && argv[marker + 1] === attempt;
 }
 
 export async function startTask(
   id: string,
   profile: DriverProfile,
   check: string[],
+  targetTab?: number,
 ): Promise<Attempt> {
   const config = await loadConfig();
   const source = config.beadsService;
@@ -129,14 +124,15 @@ export async function startTask(
     .string()
     .min(1, "Start from the target Zellij session")
     .parse(process.env["ZELLIJ_SESSION_NAME"]);
+  const zellij = new Zellij(session);
   const attempt = randomUUID();
   const manager = new WorktreeManager();
   const service = new TaskBeads(source);
-  const [binary, reservation, bead] = await Promise.all([
+  const [binary, reservation, bead, tab] = await Promise.all([
     piExecutable(),
     manager.prepare(process.cwd(), attempt, `pi/bead-${attempt}`, "HEAD", "pi"),
     service.get(id),
-    zellij(session, "list-panes", "--json"),
+    zellij.launchTab(targetTab),
   ]);
   const db = new Attempts(stateDirectory());
   try {
@@ -153,6 +149,7 @@ export async function startTask(
       reservation,
       checkout: null,
       session,
+      zellijSocket: zellij.identity,
       pane: null,
       pid: null,
       transcript: null,
@@ -181,6 +178,7 @@ export async function startTask(
         throw new Error("The active attempt could not be identified");
       return await focus(
         existing,
+        zellij,
         service,
         reservation.primary,
         profile,
@@ -213,16 +211,7 @@ export async function startTask(
         const value = process.env[key];
         if (value !== undefined) environment.push(`${key}=${value}`);
       }
-      const response = await zellij(
-        session,
-        "new-pane",
-        "--cwd",
-        checkout.path,
-        "--name",
-        id,
-        "--close-on-exit",
-        "--",
-        "env",
+      const args = [
         ...environment,
         binary,
         "--session-id",
@@ -235,11 +224,25 @@ export async function startTask(
         model.model,
         "--thinking",
         model.reasoning,
-      );
-      const match = /^terminal_(\d+)$/u.exec(response.trim());
-      if (match?.[1] === undefined)
-        throw new Error("Zellij did not confirm a terminal pane identity");
-      const pane = Number(match[1]);
+      ];
+      let pane: number;
+      try {
+        pane = await zellij.launch(tab, id, checkout.path, args);
+      } catch (error) {
+        // The socket can disconnect after accepting a launch. Recover the existing
+        // pane by attempt identity and never send another launch for this attempt.
+        const candidates = await zellij.panes().catch(() => []);
+        const matching = candidates.filter(
+          (candidate) =>
+            candidate.tab_id === tab &&
+            !candidate.is_plugin &&
+            !candidate.exited &&
+            matchesAttempt(candidate.terminal_command, attempt),
+        );
+        const [recovered] = matching;
+        if (matching.length !== 1 || recovered === undefined) throw error;
+        pane = recovered.id;
+      }
       const deadline = Date.now() + 15000;
       do {
         const observed = db.get(attempt);
