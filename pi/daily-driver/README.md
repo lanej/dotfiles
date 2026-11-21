@@ -67,4 +67,4 @@ The driver loads the pinned tintinweb runner through a small adapter. The config
 
 Run `/archives` to search and preview existing Session Snap archives. The default database is `~/.pi/agent/session-archive.db`. Set `archives.database` to an absolute alternate path when needed. The picker shows up to the latest 1,000 archived sessions and opens a local, bounded preview. It opens the database read-only and does not modify transcript history.
 
-Verify real delegation with `python3 pi/daily-driver/acceptance/delegation.py` and an installed native worktree manager. The terminal acceptance script also exercises archive search and preview at 60 and 100 columns.
+Verify real delegation with `npm --prefix pi/daily-driver run test:delegation-native` and an installed native worktree manager. The terminal acceptance script also exercises archive search and preview at 60 and 100 columns.

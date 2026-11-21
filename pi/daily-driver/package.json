@@ -21,7 +21,8 @@
     "lint": "node scripts/check-typescript.mjs lint",
     "typecheck": "node scripts/check-typescript.mjs typecheck",
     "quality:tools": "node scripts/check-typescript.mjs tools",
-    "audit": "node scripts/check-typescript.mjs audit"
+    "audit": "node scripts/check-typescript.mjs audit",
+    "test:delegation-native": "node --import tsx acceptance/delegation.ts"
   },
   "dependencies": {
     "@tintinweb/pi-subagents": "0.26.2",
