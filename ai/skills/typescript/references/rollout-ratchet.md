@@ -1,4 +1,4 @@
-# TypeScript rollout: ratchet
+# Enforcement: ratchet
 
 Preserve the adopted diagnostic baseline. New diagnostics fail even in unchanged consumers. Original compilation, parser/configuration failures, missing modules, suppression-policy violations, original project checks, tests, audits, and Biome findings cannot be baselined when their checks run at the selected stage. Never add an allowance to unblock a feature or filter to changed lines.
 

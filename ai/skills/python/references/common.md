@@ -2,7 +2,7 @@
 
 Before selecting application tools or an API protocol, read [the project tool-choice policy](../../source-code-lifecycle/references/tool-choices.md). Apply the declared authority and adoption at the configured maturity; preserve external providers’ protocols and established stacks according to that policy.
 
-Read the installed `references/profile.md` in this skill package for the installed language gate. Use the installed testing guidance for proportionate evidence and preserve existing repository gates and root configuration.
+Follow the verification commands in this skill’s installed entrypoint. Use the installed testing guidance for proportionate evidence and preserve existing repository gates and root configuration.
 
 `uv` replaces pip, virtualenv, poetry, and pyenv. Standard `uv` subcommands work as documented;
 this file covers only the defaults to hold to and the traps that have actually cost time.

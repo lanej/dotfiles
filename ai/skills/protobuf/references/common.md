@@ -1,6 +1,6 @@
 # Protobuf
 
-Read the installed `references/profile.md` in this skill package for the installed language gate. Preserve existing project gates and Buf workspace, dependency, and generation configuration.
+Follow the verification commands in this skill’s installed entrypoint. Preserve existing project gates and Buf workspace, dependency, and generation configuration.
 
 Model structured data with explicit messages, enums, repeated fields, typed maps, and `oneof` variants. Do not serialize JSON into string fields in place of a typed contract. Application code can hide JSON in innocently named strings; a field-name check alone does not establish typed contracts throughout the application.
 

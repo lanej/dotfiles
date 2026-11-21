@@ -1,4 +1,4 @@
-# protobuf: installed check profile
+# Verification
 
 Run `python3 scripts/check-source-code.py protobuf` for the installed lifecycle gate. The selected stage entrypoint controls required checks; standalone modes describe available tools and do not add another stage’s gates. Preserve stronger repository requirements. Missing tools and failed checks require resolution or a reported limit, never a silent skip.
 

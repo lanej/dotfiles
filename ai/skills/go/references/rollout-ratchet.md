@@ -1,4 +1,4 @@
-# Go rollout: ratchet
+# Enforcement: ratchet
 
 Preserve the adopted baseline. New files have no allowance; new findings in old files fail, including untouched consumers affected by changed declarations. Do not use changed-line filters or enlarge the baseline. After repairs, run `bash scripts/check-go.sh ratchet` and commit the reduction with the fix. Normal lint requires resolved allowances to be removed.
 

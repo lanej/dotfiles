@@ -11,6 +11,8 @@ If `.octo/pr-contract.json` or `.agents/skills/pr-description/SKILL.md` is missi
 
 Run `octo-manager pr validate --title TITLE --body-file FILE` before publication and fix its findings. With user authorization, use `octo-manager submit-pr --title TITLE --body-file FILE`. A pending receipt confirms local acceptance only; inspect `octo-manager submission ID` for GitHub publication. Report unavailable tooling instead of bypassing the selected workflow. Publication does not require the daemon. Tracking is explicit with `--track --thread-id SESSION` and a supported actual owner identity; tracking failure does not undo publication. Keep local checks, remote publication, tracking, and merge state distinct.
 
+<!-- source-code:automation -->
 ## Repository automation
 
-Read [the installed automation policy](references/automation.md) when handling notifications or assessing automatic merging. It contains the repository merge default and configured notification follow-up; current per-PR evidence can override the default. Preserve authored configuration and existing task authority.
+Read [the installed automation policy](references/automation.md) for this project’s merge default, configured notification follow-up, and current action evidence. Preserve authored configuration and existing task authority.
+<!-- /source-code:automation -->

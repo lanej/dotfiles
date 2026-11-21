@@ -7,4 +7,8 @@ description: "Use when working in a project installed by source-code setup or ch
 
 Establish and protect working retained behavior, focusing on the primary happy paths. Keep provisional interfaces explicit and the iteration loop small. Follow the selected testing guidance for coverage and evidence.
 
+<!-- source-code:project-policy -->
+Read [project kind](references/kinds.md), [authority](references/authority.md), and [tool adoption](references/adoption.md) for this project’s installed policy.
+<!-- /source-code:project-policy -->
+
 Read [shared guidance](references/common.md) for invariant rules and tool mechanics. Command examples there describe available capabilities; they do not add checks beyond this selected entrypoint and the repository's requirements. When selecting verification, use the installed testing guidance for minimum effective coverage and useful CLI diagnostics. Preserve authored project requirements and explicit authority limits.
