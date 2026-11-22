@@ -61,7 +61,7 @@ octo-manager pr list --json
 octo-manager agent inbox --agent-id AGENT_ID --applicable-only
 ```
 
-PR attachment is the automatic enrollment path. CLI-only sessions or unattached PRs can enroll explicitly with `octo-manager pr track --url URL --thread-id THREAD_ID`. Receipt means the host received context; it does not accept or resolve actions or authorize repairs or merges.
+Publishing with a known Codex thread enrolls the PR by default. Use `--no-track` to opt out. The attachment hook enrolls existing PRs attached to the session. For an existing PR that was published without enrollment or never attached, use `octo-manager pr track --url URL --thread-id THREAD_ID`. Receipt means the host received context; it does not accept or resolve actions or authorize repairs or merges.
 
 ## Disable future installation
 
