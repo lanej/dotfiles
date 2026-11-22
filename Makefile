@@ -227,6 +227,9 @@ test-zellij-helpers: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-helpers.py"
 test-zellij-pane: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-helpers.py" --live-panes
+.PHONY: test-zellij-file-hints
+test-zellij-file-hints: zellij-helpers
+	@python3 "$(DOTFILES)/scripts/test-zellij-file-hints.py"
 .PHONY: test-zellij-notifications test-zellij-notifications-ui
 test-zellij-notifications: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-notifications.py"

@@ -65,14 +65,34 @@ A Kitty window is a terminal pane within a tab. Cmd+Q is mapped to close that wi
 
 `confirm_os_window_close 0` disables the global close guard, allowing OS-window closes and application quit requests during system restarts to proceed without a Kitty prompt. Cmd+W uses `close_tab_with_confirmation.py` to always ask before closing the tab, including at an idle shell prompt. Press **Y** to close or **N**, **Escape**, or **Enter** to keep the tab. The other three shortcuts use `close_window_with_confirmation` and also ask before closing. Reload configuration with **Cmd+Shift+R** after changing this setting.
 
-## Preview an image from a Zellij pane
+## Open a file from a Zellij pane
 
-Focus the pane containing the filename and press **Cmd+Shift+U**. Pick the label beside the image to open it in a split on the right. From a floating pane, the preview opens in another floating pane. Press **Enter** to close the preview. The same picker opens ordinary hyperlinks with Kitty.
+Focus the agent pane containing the filename and press **Cmd+Shift+U**. Pick a home-row hint to open the file. Text opens in an existing Neovim in the same Zellij tab, with keyboard focus moving to the editor. If several registered editors exist, choose one with the keyboard; Escape cancels. If none exists, Neovim opens in a split on the right. Unsaved buffers are preserved.
 
-Relative filenames resolve in the source pane's working directory. A wrapped `docs/screenshots/plan-viewer/fixture-running-overview.png` opens from that worktree. Over `zssh`, the remote host reads the file and streams the image to Kitty.
+References such as `src/main.rs:42:7` open at line 42, column 7. Absolute paths, `~/` paths, quoted paths with spaces, and `file://` hyperlinks work too. File-link fragments accept `#42`, `#L42`, `#L42C7`, and line ranges such as `#L42-L50`, which open at their first line. Common extensionless names such as `README` and `Makefile` are recognized.
 
-Run `make kitty-config zellij-helpers zellij-config` and reload Kitty with **Cmd+Shift+R**. On the machine running Zellij, use the managed 0.46 runtime, install `kitten`, and reload or restart the session. For a remote session, run `make zellij-helpers zellij-config` on that host too.
+Images open in a preview split on the right. From a floating source pane, a new editor or preview opens in another floating pane. Press **Enter** to close an image preview. The same picker opens ordinary hyperlinks with Kitty.
+
+Relative filenames resolve in the source pane's working directory. A wrapped `docs/screenshots/plan-viewer/fixture-running-overview.png` opens from that worktree. Over `zssh`, the remote host resolves files, routes them, and streams image previews to Kitty. Other files use the associated application on that host; a missing application produces an error without downloading the file.
+
+Run `make kitty-config zellij-helpers zellij-config vim-config` and reload Kitty with **Cmd+Shift+R**. On the machine running Zellij, use the managed 0.46 runtime and install Neovim, `file`, and `kitten`. Restart existing Neovim instances to register them for reuse. For a remote session, apply the helper, Zellij, and Neovim configuration on that host too. Older image-only helpers retain image hints until updated. Standalone Kitty retains its ordinary hyperlink behavior.
+
+### File routing
+
+Edit [the extension-routing table](../zellij/file-routes.toml), installed as `~/.config/zellij/file-routes.toml`. It is read on every selection. Extension matching ignores case and prefers the longest suffix, so `tar.gz` takes precedence over `gz`. Assign each extension once. Built-in handlers are `neovim`, `image`, and `system`; the last uses `open` on macOS or `xdg-open` on Linux. Unmatched files use MIME detection: text opens in Neovim, supported images use the preview, and other files use the system opener.
+
+Custom programs use separate arguments and run without a shell. `launch = "pane"` opens an interactive pane beside the source; `launch = "background"` starts the program without a pane. The placeholders `{path}`, `{line}`, and `{column}` expand once, with missing positions defaulting to 1. For example:
+
+```toml
+[[routes]]
+extensions = ["drawio"]
+handler = "command"
+command = ["drawio", "{path}"]
+launch = "background"
+```
+
+Missing files, invalid routes, unavailable programs, and immediate application failures leave an error in the temporary hint pane until Enter. A successful background launch confirms that the program started; it does not confirm that an application displayed the file.
 
 ## Kitty hint selection
 
-Cmd+Shift+U selects hyperlinks and image previews; Ctrl+Shift+E selects visible URLs. Both use `asdfghjkl` labels ordered from top to bottom. Unmatched text dims to Nord gray, link text turns Nord white, and labels use Nord purple with dark lettering. Escape cancels and restores the original pane colors.
+Cmd+Shift+U selects hyperlinks and file references; Ctrl+Shift+E selects visible URLs. Both use `asdfghjkl` labels ordered from top to bottom. Unmatched text dims to Nord gray, link text turns Nord white, and labels use Nord purple with dark lettering. Escape cancels and restores the original pane colors.

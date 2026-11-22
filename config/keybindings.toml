@@ -26,7 +26,7 @@ id = "kitty.select-hyperlink"
 app = "kitty"
 chord = "cmd+shift+u"
 action = "kitten select_hint.py"
-description = "Select a hyperlink or preview an image from the current Zellij pane."
+description = "Select a hyperlink or open a file from the current Zellij pane."
 
 [[binding]]
 id = "skhd.focus-kitty"

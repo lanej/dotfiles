@@ -16,7 +16,7 @@ binary=$checkout/zellij/target/release/lane-zellij
 fail() {
     printf 'zellij-image-hints: %s\n' "$1" >&2
     if [[ -t 0 && -t 1 ]]; then
-        printf '\033[H\033]8;;dotfiles-hints-error\033\\Image preview update failed. Press Enter to close.\033]8;;\033\\\r'
+        printf '\033[H\033]8;;dotfiles-hints-error\033\\File opener update failed. Press Enter to close.\033]8;;\033\\\r'
         IFS= read -r _ || true
     fi
     exit 1
@@ -25,6 +25,7 @@ fail() {
 inputs=(
     "$checkout/zellij/Cargo.toml"
     "$checkout/zellij/Cargo.lock"
+    "$checkout/zellij/file-routes.toml"
     "$checkout/zellij/cli/Cargo.toml"
     "$checkout/zellij/cli/src"
     "$checkout/zellij/protocol/Cargo.toml"
@@ -45,7 +46,7 @@ if "$rebuild"; then
     command -v cargo >/dev/null 2>&1 || fail "Cargo is required to update this helper. Install Rust, then run make zellij-helpers."
     if [[ -t 0 && -t 1 ]]; then
         # Keep the cursor marker visible while Cargo runs so Kitty can wait for the build.
-        printf '\033[H\033]8;;dotfiles-hints-building\033\\Updating the Zellij image helper...\033]8;;\033\\\r'
+        printf '\033[H\033]8;;dotfiles-hints-building\033\\Updating the Zellij file helper...\033]8;;\033\\\r'
         build_log=$(/usr/bin/mktemp "${TMPDIR:-/tmp}/zellij-helper-build.XXXXXX") ||
             fail "Cannot create a temporary build log."
         if ! /bin/bash "$checkout/scripts/build-zellij-helpers.sh" >"$build_log" 2>&1; then
