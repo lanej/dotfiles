@@ -16,9 +16,12 @@
     "check": "npm run format:check && npm run lint && npm run typecheck"
   },
   "dependencies": {
+    "@earendil-works/pi-coding-agent": "1.4.0",
     "@getpaseo/client": "0.15.1",
     "@getpaseo/plugin": "0.15.1",
+    "@lanej/task-runtime": "file:../tools/task-runtime",
     "@octokit/rest": "^22.0.1",
+    "commander": "14.0.2",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -33,5 +36,10 @@
     "tsx": "^4.20.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "8.72.1"
+  },
+  "overrides": {
+    "@earendil-works/pi-coding-agent": {
+      "undici": "8.12.2"
+    }
   }
 }
