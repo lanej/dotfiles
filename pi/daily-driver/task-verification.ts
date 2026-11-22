@@ -3,6 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Attempts, Phase } from "./attempts.ts";
+import { LeadMode } from "./lead-plan.ts";
 import { run } from "./process.ts";
 import { BeadChanged, TaskBeads, type Verification } from "./task-service.ts";
 
@@ -116,6 +117,11 @@ export async function submitResult(
     return "Beads confirmed the previous result and closure";
   }
   const current = db.change(id, (row) => {
+    if (
+      row.leadPlan !== undefined &&
+      row.leadPlan.mode !== LeadMode.Implementing
+    )
+      throw new Error("Approve the lead plan before submitting a result");
     if (
       row.phase !== Phase.Running &&
       row.phase !== Phase.CheckFailed &&

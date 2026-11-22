@@ -8,7 +8,7 @@ import { lstat, realpath } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { Type } from "typebox";
 import { z } from "zod";
-import type { Attempts, Attempt } from "./attempts.ts";
+import { type Attempts, type Attempt, Phase } from "./attempts.ts";
 import { readDeliveryInbox } from "./delivery.ts";
 import { appendOctoEvents } from "./transcript-events.ts";
 import { delegateTool } from "./delegation.ts";
@@ -270,9 +270,7 @@ export function registerLeadControls(
     description: "Read a revised Beads brief before drafting a new plan",
     async handler(_argument, ctx) {
       if (!ctx.isIdle()) throw new Error("Wait for the lead turn to settle");
-      const { record, beads } = await accepted(ctx);
-      if (record.leadPlan?.mode === LeadMode.Applying)
-        throw new Error("Inspect the in-flight plan receipt before refreshing");
+      const { record, revision, beads } = await accepted(ctx);
       const current = await beads.get(record.bead.id);
       if (
         current.assignee !== owner(id) ||
@@ -281,6 +279,22 @@ export function registerLeadControls(
       )
         throw new Error("This lead no longer owns the task");
       db.change(id, (row) => {
+        if (row.revision !== revision)
+          throw new Error("The accepted brief changed during refresh. Retry.");
+        if (row.leadPlan?.mode === LeadMode.Applying)
+          throw new Error(
+            "Inspect the in-flight plan receipt before refreshing",
+          );
+        if (
+          (row.phase !== Phase.Running &&
+            row.phase !== Phase.Verified &&
+            row.phase !== Phase.CheckFailed &&
+            row.phase !== Phase.NeedsReview) ||
+          row.delivery?.merge !== undefined
+        )
+          throw new Error(
+            "Settle the active verification or delivery before refreshing",
+          );
         if (row.specification !== undefined) {
           row.specHistory = [...(row.specHistory ?? []), row.specification];
           row.specification = {
@@ -294,6 +308,10 @@ export function registerLeadControls(
         row.bead = current;
         row.revision = current.revision;
         row.leadPlan = { mode: LeadMode.Planning, draft: null };
+        row.phase = Phase.Running;
+        row.verification = null;
+        row.message =
+          "The refreshed brief requires plan approval and verification";
       });
       applyTools(ctx);
       ctx.ui.notify(

@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { z } from "zod";
 import { Attempts, Phase, stateDirectory, type Attempt } from "./attempts.ts";
+import { LeadMode } from "./lead-plan.ts";
 import { loadConfig } from "./config.ts";
 import { run } from "./process.ts";
 import { TaskBeads } from "./task-service.ts";
@@ -133,7 +134,7 @@ export async function publishLead(
   try {
     const record = db.latest(config.beadsService.projectId, bead);
     if (
-      record?.leadPlan === undefined ||
+      record?.leadPlan?.mode !== LeadMode.Implementing ||
       record.checkout === null ||
       record.revision === null ||
       record.phase !== Phase.Verified ||
@@ -168,6 +169,7 @@ export async function publishLead(
     const requestId = `pi:${record.id}:${head}`;
     db.change(record.id, (row) => {
       if (
+        row.leadPlan?.mode !== LeadMode.Implementing ||
         row.phase !== Phase.Verified ||
         row.revision !== record.revision ||
         row.verification?.gitHead !== head
@@ -242,6 +244,7 @@ export async function leadDeliveryDecision(
     const record = db.latest(config.beadsService.projectId, bead);
     if (
       record === null ||
+      record.leadPlan?.mode !== LeadMode.Implementing ||
       record.checkout === null ||
       record.revision === null ||
       record.phase !== Phase.Verified ||

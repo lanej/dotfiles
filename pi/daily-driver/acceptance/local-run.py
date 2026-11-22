@@ -337,6 +337,30 @@ def main():
                 terminal.action("write", "--pane-id", f"terminal_{pane}", "15")
                 terminal.until("verification folds again", lambda:
                                f"▸ ● Verification passed · {bead}" in pane_text(pane))
+                if scenario == "lead-plan":
+                    execute([fixture["bd"], "--sandbox", "update", bead, "--acceptance",
+                             "Verify the revised criteria before delivery"])
+                    terminal.action("write-chars", "--pane-id", f"terminal_{pane}", "/plan-refresh\r")
+                    terminal.until("refreshed brief invalidates evidence", lambda:
+                                   fresh(bead)["attempt"]["verification"] is None)
+                    refreshed = fresh(bead)
+                    assert refreshed["attempt"]["phase"] == "running", refreshed
+                    assert refreshed["attempt"]["leadPlan"]["mode"] == "planning", refreshed
+                    assert refreshed["attempt"]["revision"] != verified["attempt"]["revision"], refreshed
+                    assert refreshed["attempt"]["revision"] == refreshed["task"]["revision"], refreshed
+                    terminal.action("write-chars", "--pane-id", f"terminal_{pane}",
+                                    "/task-submit The old result should not pass\r")
+                    terminal.until("unapproved verification refused", lambda:
+                                   "plan before submitting a result" in pane_text(pane))
+                    draft = work / "refresh-draft.md"
+                    draft.write_text("Delivery should require new verification.\n")
+                    publication = execute([driver, "publish", bead, "--title", "feat: verify refreshed brief",
+                                           "--body-file", str(draft), "--base", "main"], check=False)
+                    assert publication.returncode != 0 and "Verify the managed lead result" in publication.stderr, publication
+                    ready = execute([driver, "ready", bead, "--head",
+                                     verified["attempt"]["verification"]["gitHead"]], check=False)
+                    assert ready.returncode != 0 and "Verify and commit" in ready.stderr, ready
+                    assert fresh(bead)["attempt"]["verification"] is None
                 terminal.action("write", "--pane-id", f"terminal_{pane}", "4")
                 terminal.until("lead Pi exit", lambda: all(p["id"] != pane or p["exited"] for p in terminal.terminals()))
                 if scenario == "socrates":

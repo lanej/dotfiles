@@ -260,11 +260,6 @@ export default function managedWorker(pi: ExtensionAPI): void {
     if (binding === undefined)
       throw new Error("This Pi session has no verified local task binding");
     const current = db.get(id);
-    if (
-      current.leadPlan !== undefined &&
-      current.leadPlan.mode !== LeadMode.Implementing
-    )
-      throw new Error("Approve the lead plan before submitting a result");
     const signal =
       toolSignal === undefined
         ? lifetime.signal
