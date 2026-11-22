@@ -479,6 +479,14 @@ def read_state(root: Path) -> tuple[Manifest, Snapshot | None]:
                                 )
                             )
                         )
+                        or path == ".agents/skills/source-code-lifecycle"
+                        and entry.get("target")
+                        == str(
+                            Path(state["skill_source"])
+                            / ".maturity-profiles"
+                            / state.get("stage", "beta")
+                            / "source-code-lifecycle"
+                        )
                         or path == ".agents/skills/testing"
                         and entry.get("target")
                         == str(
@@ -1910,7 +1918,7 @@ def storage_migration(root: Path, state: Manifest, storage: str, desired: Mappin
     if not changing_storage:
         names &= RENAMED_SKILLS.keys() | {
             name
-            for name in SHARED_GUIDANCE
+            for name in CONFIGURED_SKILLS
             if f".agents/skills/{name}" in state["files"] and f".agents/skills/{name}/SKILL.md" in desired
         }
     removals: set[str] = set()

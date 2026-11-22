@@ -365,17 +365,18 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
             # Previous linked installs have whole-directory links for these two skills.
             manifest = staged_testing / ".agents/repo-bootstrap.json"
             state = json.loads(manifest.read_text())
-            for name in ("code-comments", "testing", "rust"):
+            migrated = ("code-comments", "testing", "rust", "source-code-lifecycle", "octo-manager")
+            for name in migrated:
                 relative = f".agents/skills/{name}"
                 skill = staged_testing / relative
                 shutil.rmtree(skill)
-                origin = source / "ai/skills/.maturity-profiles/research" / name
+                origin = source / ("ai/skills" if name == "octo-manager" else "ai/skills/.maturity-profiles/research") / name
                 skill.symlink_to(origin, target_is_directory=True)
                 state["files"] = {path: entry for path, entry in state["files"].items() if not path.startswith(relative + "/")}
                 state["files"][relative] = {"kind": "link", "target": str(origin)}
             manifest.write_text(json.dumps(state))
             run([str(cli), "upgrade", "--repo", str(staged_testing)])
-            for name in ("code-comments", "testing", "rust"):
+            for name in migrated:
                 assert not (staged_testing / ".agents/skills" / name).is_symlink()
                 rendered_skill(staged_testing, name)
             run([str(cli), "validate", "--repo", str(staged_testing), "--strict"])
