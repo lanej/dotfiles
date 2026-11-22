@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { questionHints } from "../question-selector.ts";
+import { questionHints } from "../tui/question-selector.ts";
 
 await test("small question menus use single-key hints", () => {
   assert.deepEqual(questionHints(3), ["a", "s", "d"]);

@@ -4,6 +4,21 @@ Run an existing Beads task in an interactive Pi lead session, guide it in Zellij
 
 The driver also provides the dotfiles theme, task browser and idle compaction. The [runtime plan](RUNTIME.md) covers subagent delegation, Pi-owned Octo delivery and worktree archival.
 
+## Package layout
+
+`cli.ts`, `extension.ts`, `lead-extension.ts`, and `worker-extension.ts` are stable entry points. Internal code is grouped by capability when its owner and callers are clear:
+
+| Location | Responsibility |
+| --- | --- |
+| `socrates/controls.ts` | Socrates commands and tools, pending-question presentation, answer persistence, revision checks, specification freeze and approval |
+| `socrates/spec.ts` | Persisted specification, question and decision schemas and transitions |
+| `socrates/guidance.ts`, `socrates/host.md` | Load the shared Socrates skill from this checkout and adapt it to the managed Pi host |
+| `tui/question-selector.ts` | Reusable choice rendering, Vim movement, transient hints, detail views and explicit selection |
+| `tui/question-evidence.ts`, `tui/question-links.ts` | Evidence shapes, terminal-safe text and source/URL link rendering shared by the selector and its callers |
+| `tests/`, `acceptance/` | Workflow checks and independently runnable native acceptance fixtures |
+
+The TUI returns a choice or a request for text; it does not save answers, own a pending question, inspect accepted revisions or authorize work. Socrates owns those decisions. Keep question side-chat orchestration with its Socrates caller and reusable interaction widgets in `tui/`. Task browsing and plan review remain with their existing callers in `ui.ts`; add further capability directories when they have a clear owner rather than creating empty layers. Shared skill paths resolve relative to this package, including when it is installed from a managed worktree.
+
 ## Enable
 
 ```sh

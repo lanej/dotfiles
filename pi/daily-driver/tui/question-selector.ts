@@ -17,7 +17,7 @@ import {
   questionText,
   renderQuestionEvidence,
 } from "./question-links.ts";
-import { NavigationKey } from "./runtime.ts";
+import { NavigationKey } from "../runtime.ts";
 
 export interface QuestionChoice {
   label: string;
