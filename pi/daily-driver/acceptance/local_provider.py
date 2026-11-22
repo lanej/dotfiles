@@ -122,7 +122,10 @@ def complete(request: CompletionRequest) -> ToolDelta | TextDelta:
     spec = specification_tool(request)
     if spec is not None:
         calls = sum(bool(message.get("tool_calls")) for message in messages)
-        return tool_delta(f"fixture-spec-{calls}", spec.name, asdict(spec.arguments))
+        arguments = asdict(spec.arguments, dict_factory=lambda fields: {
+            name: value for name, value in fields if value is not None
+        })
+        return tool_delta(f"fixture-spec-{calls}", spec.name, arguments)
     if last["role"] == "user":
         tool = user_tool(request, text)
         if tool is not None:

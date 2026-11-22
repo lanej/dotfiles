@@ -2,7 +2,7 @@ import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
+import { hyperlink, Text } from "@earendil-works/pi-tui";
 import { isDeepStrictEqual } from "node:util";
 import { Type } from "typebox";
 import type { Attempt, Attempts } from "./attempts.ts";
@@ -17,9 +17,26 @@ import {
   specText,
   type SpecQuestion,
 } from "./lead-spec.ts";
+import {
+  chooseQuestion,
+  questionText,
+  QuestionSelectionKind,
+} from "./question-selector.ts";
 import { socratesGuidance } from "./socrates-guidance.ts";
 import { TaskBeads } from "./task-service.ts";
 import { reviewPlan, showTask } from "./ui.ts";
+
+const evidence = Type.Optional(
+  Type.Array(
+    Type.Object({
+      label: Type.String(),
+      url: Type.String({
+        description: "HTTP(S) URL for the relevant evidence",
+      }),
+    }),
+    { maxItems: 8 },
+  ),
+);
 
 export const askTool = "ask_user_question";
 export const specTool = "draft_socrates_specification";
@@ -82,8 +99,23 @@ export function registerSocrates(
     parameters: Type.Object({
       decisionId: Type.String(),
       question: Type.String(),
+      context: Type.Optional(
+        Type.String({ description: "Optional context for the question" }),
+      ),
+      evidence,
       options: Type.Array(
-        Type.Object({ label: Type.String(), description: Type.String() }),
+        Type.Object({
+          label: Type.String(),
+          description: Type.String({
+            description: "Short tradeoff shown beside the choice",
+          }),
+          details: Type.Optional(
+            Type.String({
+              description: "Longer explanation shown in the detail view",
+            }),
+          ),
+          evidence,
+        }),
         { maxItems: 4 },
       ),
     }),
@@ -364,25 +396,23 @@ async function ask(
   const options = signal === undefined ? undefined : { signal };
   if (aborted()) return undefined;
   if (prompt.options.length > 0) {
-    const choices = prompt.options.map(
-      ({ label, description }, index) =>
-        `${String(index + 1)}. ${label} · ${description}`,
-    );
-    const custom = `${String(choices.length + 1)}. Type an answer`;
-    const selected = await ctx.ui.select(
-      prompt.question,
-      [...choices, custom],
-      options,
-    );
+    const selected = await chooseQuestion(ctx, prompt, signal);
     if (selected === undefined || aborted()) return undefined;
-    const choice = prompt.options[choices.indexOf(selected)];
-    if (choice !== undefined)
+    if (selected.kind === QuestionSelectionKind.Choice) {
+      const choice = prompt.options[selected.index];
+      if (choice === undefined)
+        throw new Error("Pi returned an unknown choice");
       return { kind: "option" as const, text: choice.label };
-    if (selected !== custom) throw new Error("Pi returned an unknown choice");
+    }
   }
-  const text = (
-    await ctx.ui.input(prompt.question, undefined, options)
-  )?.trim();
+  const title = [
+    questionText(prompt.question),
+    ...(prompt.context === undefined ? [] : [questionText(prompt.context)]),
+    ...(prompt.evidence ?? []).map(({ label, url }) =>
+      hyperlink(questionText(label), url),
+    ),
+  ].join("\n\n");
+  const text = (await ctx.ui.input(title, undefined, options))?.trim();
   if (text === undefined || text.length === 0 || aborted()) return undefined;
   if (text.length > 2000)
     throw new Error("Use at most 2000 characters in a Socrates answer");

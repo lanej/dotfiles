@@ -83,11 +83,32 @@ export const specDraft = z
     }
   });
 
+const questionEvidence = z
+  .array(
+    z.strictObject({
+      label: text,
+      url: z.url({ protocol: /^https?$/u, normalize: true }),
+    }),
+  )
+  .max(8)
+  .optional();
+
 export const specQuestion = z
   .strictObject({
     decisionId,
     question: text,
-    options: z.array(z.strictObject({ label: text, description: text })).max(4),
+    context: text.optional(),
+    evidence: questionEvidence,
+    options: z
+      .array(
+        z.strictObject({
+          label: text,
+          description: text,
+          details: text.optional(),
+          evidence: questionEvidence,
+        }),
+      )
+      .max(4),
   })
   .superRefine(({ options }, ctx) => {
     const labels = options.map(({ label }) => label);

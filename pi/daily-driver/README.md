@@ -48,7 +48,9 @@ The first command validates the selected lead profile, claims the current brief 
 
 The lead starts in read-only planning mode. Use `/socrates` to work through scope and evidence using the shared Socrates procedure. The lead saves consequential questions before opening a native Pi dialog. Escape leaves a question open, and `/socrates` resumes it. A complete brief can go straight to specification review. Use `/spec-freeze` to review and freeze the specification before asking Pi for its implementation plan. Use `/plan` to inspect the task graph and `/plan-approve` to review its dependency waves and authorize implementation. The approval creates child beads and their containment and blocker edges in one revision-guarded batch. The graph and review patterns are adapted from [Smart Plan](https://github.com/jnardiello/pi-smart-plan/tree/3e51e33acd63a7743391e21598042438746aafa0). Use `/plan-refresh` to read a changed brief and reopen the specification. Use `/diff` to review working-tree changes inside Pi.
 
-![Native Pi Socrates question dialog in a 60-column Zellij pane, rendered from a terminal capture](../../docs/assets/pi-driver/socrates-question.png)
+Use `j` and `k` to move through choices, `;` and a letter hint to jump, `l` to inspect details, and `h` to return. In fullscreen Pi, hover a choice to preview its explanation beside the list without changing keyboard focus. A `▸` beside a choice indicates a longer explanation or evidence links. Press `Enter` to select the focused choice. Escape backs out of hints or details before it dismisses the question.
+
+![Pi Socrates selector with single-letter hints and a hover preview in a 60-column Zellij pane, reconstructed from a terminal capture](../../docs/assets/pi-driver/socrates-question.png)
 
 Run `pi-driver resume "$BEAD_ID"` in Zellij after Pi exits. The driver revalidates the Beads claim and opens the original transcript in the same managed checkout.
 

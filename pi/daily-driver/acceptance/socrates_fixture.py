@@ -34,9 +34,17 @@ class CompletionRequest(TypedDict):
 
 
 @dataclass(frozen=True)
+class Evidence:
+    label: str
+    url: str
+
+
+@dataclass(frozen=True)
 class Choice:
     label: str
     description: str
+    details: str | None = None
+    evidence: tuple[Evidence, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -54,6 +62,8 @@ class AskArguments:
     decisionId: str
     question: str
     options: list[Choice]
+    context: str | None = None
+    evidence: tuple[Evidence, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -85,11 +95,16 @@ class Exchange:
     question: str
     answer: str
     choices: tuple[Choice, ...] = ()
+    context: str | None = None
+    evidence: tuple[Evidence, ...] | None = None
 
     def ask(self) -> ToolCall:
         return ToolCall(
             "ask_user_question",
-            AskArguments(decisionId=self.id, question=self.question, options=list(self.choices)),
+            AskArguments(
+                decisionId=self.id, question=self.question, options=list(self.choices),
+                context=self.context, evidence=self.evidence,
+            ),
         )
 
     def open_decision(self) -> Decision:
@@ -118,13 +133,22 @@ ARCHIVE = Exchange(
     "D1", "Choose recovery behavior after an archive failure",
     "If the archive fails, what should happen to the checkout?", KEEP_CHECKOUT,
     (
-        Choice(KEEP_CHECKOUT, "Retry with the checkout in place"),
+        Choice(
+            KEEP_CHECKOUT, "Retry in the same checkout",
+            "Keeping the checkout preserves the exact worktree for a retry.\n\n"
+            + "\n".join(f"Recovery log entry {i}" for i in range(1, 33)),
+            (Evidence("Recovery procedure", "https://github.com/fixture/repo/issues/7"),),
+        ),
         Choice("Remove it", "Recover from the saved transcript"),
     ),
+    context="Octo has confirmed the merge, and the transcript archive failed.",
+    evidence=(Evidence("Archive report", "https://github.com/fixture/repo/issues/8"),),
 )
 RECEIPT = Exchange(
     "D2", "Choose the operator receipt", "What receipt should the operator see?",
     "Show the archived transcript path.",
+    context="The operator needs to know where to find the transcript.",
+    evidence=(Evidence("Receipt instructions", "https://github.com/fixture/repo/issues/9"),),
 )
 RESUME_DRAFT = "Resume Socrates discovery for the accepted bead."
 RESUME_ANSWER = "Resume Socrates discovery using the recorded operator answer."
