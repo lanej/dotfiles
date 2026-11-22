@@ -12,6 +12,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { setTimeout as delay } from "node:timers/promises";
 import { promisify } from "node:util";
 import { z } from "zod";
 import {
@@ -108,15 +109,35 @@ const call = async (name: string, args: unknown) => {
     .map((item) => item.text)
     .join("\n");
 };
+async function eventually(
+  operation: () => Promise<string>,
+  expected: RegExp,
+): Promise<void> {
+  const deadline = Date.now() + 30_000;
+  let observed = "";
+  do {
+    observed = await operation();
+    if (expected.test(observed)) return;
+    await delay(100);
+  } while (Date.now() < deadline);
+  assert.match(
+    observed,
+    expected,
+    "Language-server result did not settle before the acceptance deadline",
+  );
+}
 try {
-  await call(lspTool, { action: "diagnostics", path: "b.ts" });
-  const definition = await call(lspTool, {
-    action: "definition",
-    path: "b.ts",
-    line: 2,
-    column: 31,
-  });
-  assert.match(definition, /a\.ts/u);
+  // Initialization can precede project indexing; assert the semantic result when it settles.
+  await eventually(
+    () =>
+      call(lspTool, {
+        action: "definition",
+        path: "b.ts",
+        line: 2,
+        column: 31,
+      }),
+    /a\.ts/u,
+  );
   const references = await call(lspTool, {
     action: "references",
     path: "a.ts",
@@ -130,22 +151,15 @@ try {
   });
   // The server may publish after the bounded automatic feedback window.
   assert.match(introduced, /lsp/u);
-  let diagnostics = "";
-  for (let attempt = 0; attempt < 5; attempt++) {
-    diagnostics = await call(lspTool, { action: "diagnostics", path: "b.ts" });
-    if (diagnostics.includes("2322")) break;
-  }
-  assert.match(
-    diagnostics,
+  await eventually(
+    () => call(lspTool, { action: "diagnostics", path: "b.ts" }),
     /2322/u,
-    "real server must report the introduced type error",
   );
   await call("write", { path: "b.ts", content: valid });
-  for (let attempt = 0; attempt < 5; attempt++) {
-    diagnostics = await call(lspTool, { action: "diagnostics", path: "b.ts" });
-    if (diagnostics.includes('"total": 0')) break;
-  }
-  assert.match(diagnostics, /"total": 0/u);
+  await eventually(
+    () => call(lspTool, { action: "diagnostics", path: "b.ts" }),
+    /"total": 0/u,
+  );
   const preview = z
     .object({
       token: z.string(),
