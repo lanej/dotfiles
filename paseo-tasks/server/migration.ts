@@ -8,7 +8,6 @@ import type { Brief } from "../shared/contracts";
 import { digest, githubObject } from "./github";
 import { sessionEntries } from "./pi-session";
 import type { Store } from "./store";
-
 const legacyId = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]*$/);
 export const candidate = z.object({
   home: z.string(),
@@ -176,7 +175,7 @@ export async function stage(
       "This Firstmate worker has no recorded resumable Pi session; preserve it under its old owner",
     );
   }
-  const existing = store.list().find((value) => value.taskId === id);
+  const existing = (await store.list()).find((value) => value.taskId === id);
   if (existing) {
     if (
       existing.migration?.home !== source.home ||
@@ -204,18 +203,16 @@ export async function stage(
       "Firstmate ownership changed; refresh the migration inventory",
     );
   }
-  return store.transaction(() => {
+  return await store.transaction(async () => {
     if (
-      store
-        .list()
-        .some(
-          (value) =>
-            value.migration &&
-            ((value.migration.home === source.home &&
-              value.migration.legacyId === source.legacyId) ||
-              value.migration.sessionId === source.sessionId ||
-              value.migration.sessionFile === source.sessionFile),
-        )
+      (await store.list()).some(
+        (value) =>
+          value.migration &&
+          ((value.migration.home === source.home &&
+            value.migration.legacyId === source.legacyId) ||
+            value.migration.sessionId === source.sessionId ||
+            value.migration.sessionFile === source.sessionFile),
+      )
     ) {
       throw new Error(
         "This Firstmate task or Pi session already has a staged owner",
@@ -223,10 +220,10 @@ export async function stage(
     }
     for (const url of source.github) {
       githubObject(url);
-      if (store.list().some((value) => value.github.includes(url)))
+      if ((await store.list()).some((value) => value.github.includes(url)))
         throw new Error("GitHub discussion already belongs to another task");
     }
-    const value = store.create(brief, null, id, "paused", {
+    const value = await store.create(brief, null, id, "paused", {
       migration: {
         home: source.home,
         legacyId: source.legacyId,
@@ -239,11 +236,16 @@ export async function stage(
       nextAction:
         "Verify session import and stop Firstmate ownership before activation",
     });
-    store.addEvent(id, "feedback", "Retained Firstmate ownership inventory", {
-      id: `migration:${id}`,
-      payload: { source },
-      source: join(source.home, "data", source.legacyId, "brief.md"),
-    });
+    await store.addEvent(
+      id,
+      "feedback",
+      "Retained Firstmate ownership inventory",
+      {
+        id: `migration:${id}`,
+        payload: { source },
+        source: join(source.home, "data", source.legacyId, "brief.md"),
+      },
+    );
     return value;
   });
 }
@@ -260,7 +262,7 @@ export async function releaseAndImport(
     sessionId: string | null;
   }>,
 ) {
-  const value = store.get(id);
+  const value = await store.get(id);
   if (!value.migration)
     throw new Error("Task is not a staged Firstmate migration");
   if (
@@ -270,8 +272,8 @@ export async function releaseAndImport(
   )
     return value;
   const source = candidate.parse(
-    store.events(id).find((item) => item.id === `migration:${id}`)?.payload
-      .source,
+    (await store.events(id)).find((item) => item.id === `migration:${id}`)
+      ?.payload.source,
   );
   const path = join(source.home, "state", `${source.legacyId}.meta`);
   const archive = join(
@@ -323,7 +325,7 @@ export async function releaseAndImport(
       "Retained Firstmate ownership archive does not match the staged generation",
     );
   }
-  store.change(id, (current) => {
+  await store.change(id, (current) => {
     current.migration!.ownership = "released";
     current.launch = "reserved";
     current.control = "paused";
@@ -338,7 +340,7 @@ export async function releaseAndImport(
       "Paseo import did not confirm the original session and checkout; migration remains paused",
     );
   }
-  store.bind(id, imported.agentId, imported.workspaceId, imported.cwd);
+  await store.bind(id, imported.agentId, imported.workspaceId, imported.cwd);
   for (const url of source.github) {
     const objectText = await read(
       join(
@@ -351,17 +353,22 @@ export async function releaseAndImport(
     );
     if (objectText) {
       const object = JSON.parse(objectText);
-      store.write("objects", url, {
+      await store.write("objects", url, {
         seen: object.seen,
         state: null,
         version: object.stateVersion ?? 0,
       });
       for (const pending of object.pending ?? []) {
-        store.addEvent(id, "github", pending.body ?? "GitHub observation", {
-          id: pending.id,
-          source: pending.source,
-          payload: pending,
-        });
+        await store.addEvent(
+          id,
+          "github",
+          pending.body ?? "GitHub observation",
+          {
+            id: pending.id,
+            source: pending.source,
+            payload: pending,
+          },
+        );
       }
     }
   }
@@ -385,13 +392,13 @@ export async function releaseAndImport(
       const pending = JSON.parse(
         body.slice("FIRSTMATE_GITHUB_EVENT v1\n".length),
       );
-      store.addEvent(id, "github", pending.body ?? "GitHub observation", {
+      await store.addEvent(id, "github", pending.body ?? "GitHub observation", {
         id: pending.id,
         source: pending.source,
         payload: pending,
       });
     } else
-      store.addEvent(id, "feedback", body, {
+      await store.addEvent(id, "feedback", body, {
         id: digest([source.home, source.legacyId, filename, body]),
       });
   }
@@ -406,22 +413,22 @@ export async function releaseAndImport(
     /^[a-f0-9]{64}\.json$/.test(name),
   )) {
     const record = JSON.parse((await read(join(replies, filename)))!);
-    store.write("replies", filename.slice(0, -5), {
+    await store.write("replies", filename.slice(0, -5), {
       ...record,
       state: record.source ? "confirmed" : "unknown",
       source: record.source ?? null,
     });
   }
-  store.saveEvent({
-    ...store.events(id).find((item) => item.id === `migration:${id}`)!,
+  await store.saveEvent({
+    ...(await store.events(id)).find((item) => item.id === `migration:${id}`)!,
     delivery: "handled",
   });
-  store.addEvent(
+  await store.addEvent(
     id,
     "continue",
     "Your existing Firstmate task was transferred with its Pi history, checkout, pending feedback, and reply reconciliation. Read task_context and task_inbox before continuing.",
   );
-  return store.change(id, (current) => {
+  return await store.change(id, (current) => {
     current.control = "running";
     current.error = null;
   });
