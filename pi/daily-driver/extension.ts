@@ -285,10 +285,15 @@ export default function dailyDriver(pi: ExtensionAPI): void {
         leadSelection.model,
       );
       if (lead === undefined) return;
-      if (await pi.setModel(lead)) {
-        pi.setThinkingLevel(leadSelection.reasoning);
-        selectedProfile = name;
+      if (!(await pi.setModel(lead))) {
+        ctx.ui.notify(
+          `Cannot switch to ${name}. Authenticate with ${leadSelection.provider} and retry. The current model is still active.`,
+          "error",
+        );
+        return;
       }
+      pi.setThinkingLevel(leadSelection.reasoning);
+      selectedProfile = name;
     },
   });
 
