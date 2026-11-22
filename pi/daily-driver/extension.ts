@@ -1,3 +1,4 @@
+import { registerCodeIntelligence } from "./code-intelligence/extension.ts";
 import { registerSearchRendering } from "./search-renderer.ts";
 import { installFooter } from "./footer.ts";
 import type {
@@ -55,6 +56,7 @@ export default function dailyDriver(
     trackedPullRequest: () => string | undefined;
   },
 ): void {
+  const intelligence = registerCodeIntelligence(pi);
   const idle = new IdleSession();
   let removeInputListener: (() => void) | undefined;
   let lifecycle = 0;
@@ -426,7 +428,10 @@ export default function dailyDriver(
   pi.registerCommand("driver-status", {
     description: "Inspect the daily-driver capability boundary",
     handler: (_argument, ctx) => {
-      ctx.ui.notify(dispatchGate.reason, "warning");
+      ctx.ui.notify(
+        `${dispatchGate.reason}\n${intelligence.status()}`,
+        "warning",
+      );
       return Promise.resolve();
     },
   });

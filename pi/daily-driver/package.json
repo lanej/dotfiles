@@ -25,14 +25,17 @@
     "test:delegation-native": "node --import tsx acceptance/delegation.ts",
     "generate:zellij": "node scripts/generate-zellij.mjs",
     "check:zellij": "node scripts/generate-zellij.mjs --check",
-    "build:aot": "node scripts/build-aot.mjs"
+    "build:aot": "node scripts/build-aot.mjs",
+    "test:lsp-native": "node --import tsx acceptance/lsp.ts"
   },
   "dependencies": {
     "@bufbuild/protobuf": "2.16.0",
     "@lanej/task-runtime": "file:../../tools/task-runtime",
     "@tintinweb/pi-subagents": "0.26.2",
     "commander": "^14.0.0",
+    "diff": "8.0.4",
     "pi-git-diff": "0.1.1",
+    "vscode-languageserver-protocol": "3.18.6",
     "zod": "^4.0.0"
   },
   "devDependencies": {

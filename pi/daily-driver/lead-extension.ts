@@ -1,3 +1,4 @@
+import { lspTool, renameTool } from "./code-intelligence/extension.ts";
 import { githubLink, renderReferences } from "./github-links.ts";
 import { FooterStatus } from "./runtime.ts";
 import type {
@@ -29,10 +30,16 @@ const inspectTools = new Set([
   "ls",
   "find",
   "grep",
+  lspTool,
   delegateTool,
   planTool,
 ]);
-const implementationTools = new Set(["write", "edit", "task_submit_result"]);
+const implementationTools = new Set([
+  "write",
+  "edit",
+  "task_submit_result",
+  renameTool,
+]);
 
 async function worktreeWritePath(cwd: string, input: unknown): Promise<string> {
   const { path } = z.object({ path: z.string().min(1) }).parse(input);

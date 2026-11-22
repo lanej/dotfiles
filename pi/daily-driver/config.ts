@@ -51,6 +51,10 @@ const profile = z
   .strict();
 export const configSchema = z
   .object({
+    lsp: z
+      .object({ enabled: z.boolean().default(true) })
+      .strict()
+      .default({ enabled: true }),
     delegation: z
       .object({ enabled: z.boolean().default(false) })
       .strict()
@@ -157,6 +161,7 @@ const roles = (provider: string, prefix: string) => ({
 });
 
 export const exampleConfig = {
+  lsp: { enabled: true },
   delegation: { enabled: false },
   idleCompaction: { enabled: true, idleMs: 300_000, minimumContextPercent: 60 },
   beadsService: {
