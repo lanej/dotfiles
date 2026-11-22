@@ -12,6 +12,11 @@ export const address = z
 export const conversationAddress = z
   .object({ serverId: z.string().min(1), agentId: z.string().min(1) })
   .strict();
+export const authorizeTurnRpc = defineRpc({
+  name: "tasks.authorize_turn",
+  input: address.extend({ agentId: conversationAddress.shape.agentId }),
+  output: z.literal(true),
+});
 export const brief = z
   .object({
     title: z.string().trim().min(1).max(200),

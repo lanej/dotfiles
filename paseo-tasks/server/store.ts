@@ -241,12 +241,20 @@ export class Store {
         : await this.transaction(apply);
     });
   }
-  async assertOwner(id: string) {
+  async assertOwner(id: string, agentId?: string) {
     return await this.transaction(async () => {
+      if (agentId !== undefined && workerTaskId(this.db, agentId) !== id)
+        throw new Error("This conversation is not bound to the requested task");
       if (await this.enrolled(id)) {
         if (!this.beads) throw new Error("Beads authority unavailable");
-        await this.beads.assertOwner(await this.get(id));
-      }
+        const worker = agentId ?? (await this.get(id)).worker?.agentId;
+        if (worker)
+          await this.beads.assertOwner(
+            { serverId: this.serverId, taskId: id },
+            worker,
+          );
+      } else if (agentId !== undefined)
+        throw new Error("Worker turns require an enrolled Beads task");
     });
   }
   async claim(id: string, worker: string) {

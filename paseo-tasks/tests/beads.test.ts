@@ -9,12 +9,14 @@ import { setTimeout as delay } from "node:timers/promises";
 import { promisify } from "node:util";
 import { test } from "node:test";
 import type { PaseoApi } from "@getpaseo/client";
+import { DaemonClient } from "@getpaseo/client/internal/daemon-client";
 import type { PluginServerContext } from "@getpaseo/plugin/server";
 import contribute from "../index.server";
 import { Beads, beadId } from "../server/beads";
 import { Connection } from "../server/connection";
 import { briefFingerprint, Store } from "../server/store";
-import type { Brief } from "../shared/contracts";
+import { authorizeTurnRpc, type Brief } from "../shared/contracts";
+import { checkRetainedPi } from "./retained-pi";
 
 const execute = promisify(execFile);
 const freePort = async () => {
@@ -229,8 +231,12 @@ await test("native Beads HTTP preserves task identity, guards, history and inter
     let closePlugin: (() => Promise<void>) | undefined;
     try {
       const hooks = new Map<string, (input: unknown) => Promise<unknown>>();
+      const handlers = new Map<string, (input: unknown) => Promise<unknown>>();
       closePlugin = contribute({
-        handle: () => {},
+        handle: (
+          rpc: { name: string },
+          handler: (input: unknown) => Promise<unknown>,
+        ) => handlers.set(rpc.name, handler),
         addHook: hooks.set.bind(hooks),
       } as unknown as PluginServerContext);
       const beforeTurn = hooks.get("agent.turn.before")!;
@@ -240,7 +246,43 @@ await test("native Beads HTTP preserves task identity, guards, history and inter
         /Beads ownership changed/,
       );
       assert.notEqual((await store.get(value.taskId)).activity, "running");
-      await bd("update", id, "--assignee", `paseo:mac/worker-a`, "--force");
+      const request = {
+        agentId: "worker-a",
+        labels: {},
+        purpose: "interactive",
+        env: {} as Record<string, string>,
+        tools: [],
+      };
+      await hooks.get("agent.open.before")!({ request });
+      assert.equal(request.env.PASEO_TASK_ROLE, "worker");
+      assert.equal(request.env.PASEO_TASK_ID, value.taskId);
+      const authorize = handlers.get(authorizeTurnRpc.name)!;
+      t.mock.method(Connection.prototype, "localServerId", async () => "mac");
+      t.mock.method(
+        DaemonClient.prototype,
+        "invokePluginRpc",
+        async (plugin: string, method: string, input: unknown) => {
+          assert.equal(plugin, "tasks");
+          assert.equal(method, authorizeTurnRpc.name);
+          return await authorize(authorizeTurnRpc.input.parse(input));
+        },
+      );
+      await checkRetainedPi(
+        root,
+        { ...request.env, PASEO_AGENT_ID: request.agentId },
+        async () => {
+          await bd("update", id, "--assignee", "paseo:mac/worker-a", "--force");
+        },
+      );
+      await assert.rejects(
+        () =>
+          authorize({
+            serverId: "mac",
+            taskId: value.taskId,
+            agentId: "unbound-worker",
+          }),
+        /not bound/,
+      );
       await beforeTurn(directPrompt);
       assert.equal((await store.get(value.taskId)).activity, "running");
     } finally {
