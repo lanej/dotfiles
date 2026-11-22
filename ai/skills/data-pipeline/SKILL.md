@@ -5,7 +5,7 @@ description: Use when designing or implementing data pipelines in a project that
 
 # Data Pipeline Patterns
 
-This is optional project engineering guidance installed through `source-code setup --skills data-pipeline`. Read [source-code lifecycle](../source-code-lifecycle/SKILL.md) for the selected stage, authority, and adoption. Preserve established pipeline architecture under hold/new and follow project agreement for shared/upstream changes; this package does not authorize a warehouse migration.
+This is optional project engineering guidance installed through `source-code setup --skills data-pipeline`. Read [installed project policy](../source-code-lifecycle/SKILL.md) for the selected authority and adoption. Preserve established pipeline architecture under hold/new and follow project agreement for shared/upstream changes; this package does not authorize a warehouse migration.
 
 Architecture patterns and best practices for data pipeline design, with focus on the medallion architecture (Raw → Staging → Enriched) and declarative schema management.
 

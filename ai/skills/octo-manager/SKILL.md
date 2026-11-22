@@ -11,6 +11,4 @@ If `.octo/pr-contract.json` or `.agents/skills/pr-description/SKILL.md` is missi
 
 Run `octo-manager pr validate --title TITLE --body-file FILE` before publication and fix its findings. With user authorization, use `octo-manager submit-pr --title TITLE --body-file FILE`. A pending receipt confirms local acceptance only; inspect `octo-manager submission ID` for GitHub publication. Report unavailable tooling instead of bypassing the selected workflow. Publication does not require the daemon. Tracking is explicit with `--track --thread-id SESSION` and a supported actual owner identity; tracking failure does not undo publication. Keep local checks, remote publication, tracking, and merge state distinct.
 
-## Repository automation
-
-Read `octo-manager.toml` when acting on Octo notifications. Source-code seeds it when this integration is selected and preserves authored settings on later setup runs. The `project_stage` auto-merge default follows the installed source-code stage: research and alpha enable it; beta, production, and unknown stages disable it. Explicit per-PR settings take precedence. State-specific instructions describe the requested follow-up; receipt alone does not complete that work. Follow installed project guidance and existing user authority.
+<!-- source-code:automation -->

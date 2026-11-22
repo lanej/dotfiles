@@ -5,8 +5,8 @@ description: "Use when writing or reviewing TypeScript, enforcing exhaustive sta
 
 # typescript: research
 
-Use the generated lifecycle gate for strict type checking and exercise the real experiment. Keep a useful steel-thread check without automatically adding the full lint, test, and dependency-audit suite.
+Resolve the experiment’s consequential question through a narrow real steel thread. Retain minimum useful regression protection and report observations and limits.
 
-When `typescript` is listed in `.source-code.json` languages, run `python3 scripts/check-source-code.py typescript` for the configured gate. Otherwise follow existing repository checks; guidance installation alone does not add a runtime profile.
+<!-- source-code:verification -->
 
-Read [shared guidance](references/common.md) for invariant rules and tool mechanics. Command examples there describe available capabilities; they do not add checks beyond this selected entrypoint and the repository's requirements. When selecting verification, use the installed testing guidance for minimum effective coverage and useful CLI diagnostics. Preserve authored project requirements and explicit authority limits.
+<!-- source-code:shared-guidance -->
