@@ -272,8 +272,10 @@ await test("/cd carries the active conversation and tree into rebuilt native Pi 
     assert.ok(profileCommand !== undefined);
     await profileCommand.handler("work", driver.createCommandContext());
     assert.ok(runtime.session.getActiveToolNames().includes(delegateTool));
+    runtime.session.setThinkingLevel("high");
     await cd(target);
     assert.ok(runtime.session.getActiveToolNames().includes(delegateTool));
+    assert.equal(runtime.session.thinkingLevel, "high");
     await writeFile(configFile, JSON.stringify({ ...config, profiles: {} }));
     await cd(source);
     assert.equal(

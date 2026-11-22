@@ -208,7 +208,7 @@ export default function dailyDriver(
           // Consume the handoff before revalidation so a later resume does not
           // override a model or profile the user selected after this switch.
           pi.appendEntry(directoryProfileType, null);
-          await selectProfile(profile.data, ctx);
+          await selectProfile(profile.data, ctx, true);
         }
       }
     }
@@ -318,6 +318,7 @@ export default function dailyDriver(
   async function selectProfile(
     argument: string,
     ctx: ExtensionContext,
+    restoring = false,
   ): Promise<void> {
     if (process.env["PI_DRIVER_ATTEMPT"] !== undefined) {
       ctx.ui.notify("Set the profile on pi-driver start.", "warning");
@@ -393,6 +394,19 @@ export default function dailyDriver(
       leadSelection.model,
     );
     if (lead === undefined) return;
+    if (
+      restoring &&
+      (ctx.model?.provider !== lead.provider || ctx.model.id !== lead.id)
+    ) {
+      ctx.ui.notify(
+        "The driver profile no longer matches the current model. Select /driver-profile again to enable delegation.",
+        "warning",
+      );
+      return;
+    }
+    const reasoning = restoring
+      ? pi.getThinkingLevel()
+      : leadSelection.reasoning;
     if (!(await pi.setModel(lead))) {
       ctx.ui.notify(
         `Cannot switch to ${name}. Authenticate with ${leadSelection.provider} and retry. The current model is still active.`,
@@ -400,13 +414,13 @@ export default function dailyDriver(
       );
       return;
     }
-    pi.setThinkingLevel(leadSelection.reasoning);
+    pi.setThinkingLevel(reasoning);
     selectedProfile = name;
     delegation.activate();
   }
   pi.registerCommand("driver-profile", {
     description: "Explicitly select the work or personal lead model",
-    handler: selectProfile,
+    handler: (argument, ctx) => selectProfile(argument, ctx),
   });
 
   pi.registerCommand("driver-status", {
