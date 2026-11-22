@@ -32,7 +32,7 @@ class Terminal:
     def __init__(self, pty: Pty, package: Path, env: dict[str, str], name: str) -> None:
         self.pty = pty
         self.client = subprocess.Popen(
-            ["node", "--import", "tsx", "acceptance/zellij-control.ts", name],
+            ["bun", "acceptance/zellij-control.ts", name],
             cwd=package, env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=0,
         )
 

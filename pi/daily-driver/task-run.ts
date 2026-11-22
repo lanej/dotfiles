@@ -2,7 +2,7 @@ import { getAgentDir, ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { WorktreeManager } from "@lanej/task-runtime/worktrees";
 import { randomUUID } from "node:crypto";
 import { constants } from "node:fs";
-import { access, realpath, stat } from "node:fs/promises";
+import { access, open, realpath, stat } from "node:fs/promises";
 import { delimiter, dirname, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
@@ -28,23 +28,28 @@ const packageRoot = modulePath.startsWith("/$bunfs/")
   ? dirname(dirname(process.execPath))
   : dirname(modulePath);
 const extension = join(packageRoot, "worker-extension.ts");
-async function piExecutable(): Promise<string> {
+export async function piExecutable(): Promise<string> {
   const dirs = (process.env["PATH"] ?? "")
     .split(delimiter)
     .filter((dir) => dir.length > 0);
-  const candidates = [
-    ...dirs.map((dir) => join(dir, "pi")),
-    join(packageRoot, "node_modules", ".bin", "pi"),
-  ];
-  for (const candidate of candidates) {
+  for (const dir of dirs) {
+    const candidate = join(dir, "pi");
     try {
       await access(candidate, constants.X_OK);
-      return await realpath(candidate);
+      const resolved = await realpath(candidate);
+      const file = await open(resolved);
+      try {
+        const prefix = Buffer.alloc(2);
+        const { bytesRead } = await file.read(prefix);
+        if (bytesRead === 2 && prefix.toString() !== "#!") return resolved;
+      } finally {
+        await file.close();
+      }
     } catch {
       // Keep searching the executable path.
     }
   }
-  throw new Error("Install the configured Pi runtime before starting a bead");
+  throw new Error("Install standalone Pi on PATH before starting a bead");
 }
 
 async function focus(

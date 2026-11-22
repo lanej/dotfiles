@@ -531,7 +531,7 @@ def check_worker_reuse(case: Case, report: Report) -> None:
     pane_text, fresh, execute = case.capture, case.harness.fresh, case.harness.execute
     work, root = case.harness.options.work, case.harness.options.root
     manager, artifacts = case.harness.manager, case.harness.artifacts
-    pi = root / "pi/daily-driver/node_modules/.bin/pi"
+    pi = "pi"
     extension = root / "pi/daily-driver/extension.ts"
     browser = shlex.join([str(pi), "--offline", "--no-session", "--no-mcp",
                           "--extension", str(extension), "--model", "openai-codex/gpt-6.1-sol"])

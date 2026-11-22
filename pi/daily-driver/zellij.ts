@@ -33,7 +33,11 @@ function absolute(value: string | undefined): string | undefined {
   return value !== undefined && isAbsolute(value) ? value : undefined;
 }
 
-function sessionSocket(session: string, uid: number): string {
+function sessionSocket(
+  session: string,
+  uid: number,
+  cacheDirectory?: string,
+): string {
   const override = process.env["ZELLIJ_SOCKET_DIR"];
   if (override !== undefined && !isAbsolute(override))
     throw new Error("Zellij socket directory must be absolute");
@@ -48,12 +52,14 @@ function sessionSocket(session: string, uid: number): string {
         : join(runtime, "zellij")),
     namespace,
   );
-  const cache = linux
-    ? join(
-        absolute(process.env["XDG_CACHE_HOME"]) ?? join(homedir(), ".cache"),
-        "zellij",
-      )
-    : join(homedir(), "Library", "Caches", "org.Zellij-Contributors.Zellij");
+  const cache =
+    cacheDirectory ??
+    (linux
+      ? join(
+          absolute(process.env["XDG_CACHE_HOME"]) ?? join(homedir(), ".cache"),
+          "zellij",
+        )
+      : join(homedir(), "Library", "Caches", "org.Zellij-Contributors.Zellij"));
   const index =
     override === undefined
       ? "session_index.sqlite"
@@ -105,11 +111,14 @@ export class Zellij {
   private readonly path: string;
   private readonly terminal: number | undefined;
 
-  constructor(private readonly session: string) {
+  constructor(
+    private readonly session: string,
+    private readonly cacheDirectory?: string,
+  ) {
     const uid = process.getuid?.();
     if (uid === undefined) throw new Error("Zellij requires a Unix user ID");
     this.uid = uid;
-    this.path = sessionSocket(session, uid);
+    this.path = sessionSocket(session, uid, this.cacheDirectory);
     this.identity = socketIdentity(this.path, uid);
     const terminal = /^(?:terminal_)?(\d+)$/u.exec(
       process.env["ZELLIJ_PANE_ID"] ?? "",
@@ -119,7 +128,8 @@ export class Zellij {
 
   private validate(): void {
     if (
-      sessionSocket(this.session, this.uid) !== this.path ||
+      sessionSocket(this.session, this.uid, this.cacheDirectory) !==
+        this.path ||
       socketIdentity(this.path, this.uid) !== this.identity
     )
       throw new Error("Zellij session now belongs to a different server");

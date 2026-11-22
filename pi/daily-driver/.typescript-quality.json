@@ -13,11 +13,11 @@
   "commands": {
     "legacy": [],
     "test": [
-      "npm",
+      "bun",
       "test"
     ],
     "audit": [
-      "npm",
+      "bun",
       "audit",
       "--audit-level=high"
     ]
