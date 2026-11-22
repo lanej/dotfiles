@@ -1,26 +1,26 @@
 # Pi daily-driver runtime plan
 
-The [local coding workflow](README.md#run-a-bead-locally) starts a single task-bound Pi worker in a manager-owned checkout and Zellij pane. This plan covers the additional work for lead-to-worker delegation, Pi-owned Octo delivery and automatic archival.
+This is the implementation sequence beyond the [foundation](README.md). The driver supports opt-in read-only delegation in native managed worktrees and browsing existing archives. Local Beads admission and interactive Zellij launch use the revision-guarded Beads HTTP service. Lead plan approval, Pi-owned Octo delivery, and automatic archival build on that launch path. The target is one usable local coding workflow before expanding fleet and remote interfaces.
 
 The current [task contract](https://github.com/lanej/dotfiles/issues/353) keeps task identity, accepted briefs, hierarchy and dependencies in Beads. The Pi integration owns execution attempts and native sessions; Octo owns GitHub operations and their receipts. A task can exist without a GitHub issue or PR. This follows the live [parent design](https://github.com/lanej/dotfiles/issues/349) and [Octo boundary](https://github.com/lanej/dotfiles/issues/356).
 
 ## Reuse existing Pi packages
 
-Evaluate [@tintinweb/pi-subagents](https://github.com/tintinweb/pi-subagents) first for child execution. It supplies role-specific models/reasoning, background runs, steering, persistent sessions, a fleet view and lifecycle events. Keep the dotfiles extension focused on policy and integration. Do not build another subagent engine around the raw SDK.
+The driver uses [@tintinweb/pi-subagents](https://github.com/tintinweb/pi-subagents) for child execution. It supplies role-specific models/reasoning, background runs, steering, persistent sessions, a fleet view and lifecycle events. Keep the dotfiles extension focused on policy and integration. Do not build another subagent engine around the raw SDK.
 
 | Package | Useful capability | Decision for this workflow |
 | --- | --- | --- |
-| [@tintinweb/pi-subagents](https://github.com/tintinweb/pi-subagents) | Delegation and lifecycle controls with a documented cross-extension RPC. | First candidate, pinned to 0.26.2 for the compatibility spike. Use its public control interface behind the driver adapter. |
+| [@tintinweb/pi-subagents](https://github.com/tintinweb/pi-subagents) | Delegation and lifecycle controls with a documented cross-extension RPC. | Pinned to 0.26.2. The driver loads its child runner behind a managed adapter. |
 | [nicobailon/pi-subagents](https://github.com/nicobailon/pi-subagents) (`pi-subagents` on npm) | Structured delegation, launch preflight, capability ceilings and background-work integration. | Alternative if its [integration API](https://github.com/nicobailon/pi-subagents/blob/main/docs/extension-api.md) materially reduces the policy adapter. Published 0.89.1 and source 0.89.2 are distinct; compatibility remains untested here. |
 | [pi-messenger](https://github.com/nicobailon/pi-messenger) | Peer messaging, presence and file reservations. | Optional later. Its Crew mode owns another task/dependency workflow, so it does not replace Beads in this design. |
 | [pi-beads](https://pi.dev/packages/pi-beads) | Existing Beads task editing interface. | Review later. It expects a project `.beads` directory and exposes mutations; it does not provide the required authority fence or the current explicitly configured read-only source contract. |
-| [pi-ext Session Snap](https://github.com/tomsej/pi-ext#session-snap) | Session archive browsing and restoration. | Evaluate its preservation behavior for the archive adapter. Its cleaner can delete sessions, so the full cleanup policy is not adopted. |
+| [pi-ext Session Snap](https://github.com/tomsej/pi-ext#session-snap) | Session archive browsing and restoration. | The driver adapts its archive browser and reads the existing SQLite format. |
 
-An isolated Pi 1.4.0 session loaded `@tintinweb/pi-subagents@0.26.2` alongside the foundation and successfully answered `ping` and `list`. It advertised protocol 2 with owned lifecycle, steering, stop settlement, settling and pending-notification features. This establishes loading and discovery only; model execution, role enforcement, cancellation and managed-worktree behavior remain acceptance work. No plugin is enabled in the user's Pi configuration by this plan.
+An isolated Pi 1.4.0 session loaded `@tintinweb/pi-subagents@0.26.2` alongside the foundation and successfully answered `ping` and `list`. It advertised protocol 2 with owned lifecycle, steering, stop settlement, settling and pending-notification features. The native acceptance fixture exercises model and tool selection, persistent sessions and exact checkout binding against a deterministic local provider.
 
-The built-in worktree lifecycle is unsuitable for the requested manager-owned cleanup: the candidate creates its own worktrees and removes them when a child finishes. Set `worktreeIsolation: false` and gate delegation through the driver: allocate with the native manager first, then pass its exact path as RPC `options.cwd`. Unmanaged `Agent`, workflow and scheduler launches must not bypass that binding. A setup hook that runs after another allocator has created a checkout is insufficient.
+The driver loads the pinned plugin’s child runner without registering its standalone launch tools, workflows, schedules or mention handlers. The preparation script supplies an exact tool list and private session directory to that runner. Each child executes in the path returned by the native worktree manager. The lead awaits the tool result, so Pi’s pending tool turn and the private attempt record both protect against compaction. The standalone plugin’s event bus is not needed for this path.
 
-Use the candidate's [public RPC contract](https://github.com/tintinweb/pi-subagents/blob/master/docs/rpc.md), with version/feature checks, bounded replies and stable IDs. Snapshot current state before declaring the session idle. Active descendants, unsettled stops and pending completion notifications all matter; a final status alone does not establish quiescence. Preserve the conservative unknown-child guard for other extensions.
+The archive picker reads Session Snap’s SQLite format through a read-only connection and previews retained JSONL locally. The borrowed format and picker design are credited in [LICENSE.session-snap](LICENSE.session-snap). Automatic archive creation still depends on completion and cleanup receipts.
 
 ## Lead and delegated roles
 
@@ -56,7 +56,7 @@ The runtime tracks actual child activity, cancellation and settled results. Idle
 | Octo review round trip | A Pi-owned delivery binding publishes a PR and routes native GitHub feedback back to the responsible task/attempt. | Add native Pi ownership/delivery support and prove that legacy Octo dispatch cannot launch a competing writer for that binding. |
 | Merge cleanup and archive | A verified outcome and settled PR obligation lead to recoverable worktree removal and an archived runtime record. | Verify retained transcripts/refs/artifacts, quiescence and exact manager cleanup receipts under [#361](https://github.com/lanej/dotfiles/issues/361). |
 
-The first increment is the next implementation PR: pin and configure the delegation package, add the manager adapter and connect lifecycle observations to idle compaction. It extends the single-worker local workflow to lead-managed delegation. It does not present read-only analysis as coding delegation or completion of the full v1.
+The plugin integration adds read-only Explorer and Reviewer delegation beside the single-worker local workflow. Lead-managed coding delegation remains a separate step.
 
 ## Current integration gaps
 
@@ -77,7 +77,7 @@ For a task with a PR delivery obligation, confirm that PR's merge through Octo a
 
 The manager's normal minimum commit age is 24 hours. Immediate cleanup after merge needs the narrowly scoped `--accept-recent` policy; keep the other safety checks. Test squash/rebase integration through the manager's `--integrated` behavior, including a base that advances afterward. A merge receipt does not justify `--force`, discarding local work or bypassing manager protection.
 
-Pi 1.4.0's public [session interface](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/sessions.md) provides persistent JSONL, resume and export, without an archive operation. Evaluate an existing archive extension before implementing that adapter. Retain a private manifest and runtime lifecycle record with verified transcript preservation, and define presentation in the harness session browser. Do not delete native history to emulate archiving. Preserve evidence before pruning even though the final archived state is recorded afterward. This distinguishes recoverability from the user's visible completion order: merged PR, removed worktree, archived session.
+Pi 1.4.0's public [session interface](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/sessions.md) provides persistent JSONL, resume and export, without an archive operation. For automatic archival, retain a private manifest and runtime lifecycle record with verified transcript preservation, and define presentation in the harness session browser. Do not delete native history to emulate archiving. Preserve evidence before pruning even though the final archived state is recorded afterward. This distinguishes recoverability from the user's visible completion order: merged PR, removed worktree, archived session.
 
 ## Acceptance path
 

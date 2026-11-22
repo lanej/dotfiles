@@ -5,10 +5,12 @@
 """Exercise native Pi keyboard flows in owned PTYs and retain rendered screenshots."""
 import argparse
 import fcntl
+import gzip
 import json
 import os
 from pathlib import Path
 import select
+import sqlite3
 import struct
 import subprocess
 import sys
@@ -30,6 +32,18 @@ with tempfile.TemporaryDirectory(prefix="pi-driver-terminal-") as directory:
     home = Path(directory)
     agent = home / ".pi/agent"
     agent.mkdir(parents=True)
+    archive_file = agent / "session-archive.db"
+    with sqlite3.connect(archive_file) as archive:
+        archive.executescript("""
+            CREATE TABLE sessions(id TEXT PRIMARY KEY, name TEXT, cwd TEXT, first_message TEXT, archived_at INTEGER);
+            CREATE TABLE session_data(session_id TEXT PRIMARY KEY, jsonl_gzip BLOB);
+            INSERT INTO sessions VALUES ('first', 'Archive run', '/fixture', 'Preserved dialogue', 2);
+            INSERT INTO sessions VALUES ('second', 'Damaged entry', '/fixture', 'Failed to open', 1);
+        """)
+        body = json.dumps({"type": "message", "message": {"role": "user", "content": "Preserved dialogue"}})
+        archive.executemany("INSERT INTO session_data VALUES (?, ?)", [("first", gzip.compress(body.encode())), ("second", b"corrupt")])
+    archive.close()
+    archive_before = archive_file.read_bytes()
     (agent / "models.json").write_text('{"providers":{"fixture":{"baseUrl":"http://127.0.0.1:9/v1","api":"openai-completions","apiKey":"fixture","models":[{"id":"tiny"}]}}}')
     workspace = home / "beads"
     workspace.mkdir()
@@ -111,6 +125,31 @@ elif 'show' in sys.argv: print(json.dumps([{'id':sys.argv[-1],'title':'Idle comp
             capture("task-details")
             os.write(master, b"\x1b")
             pump(.2)
+            os.write(master, b"/archives\r")
+            pump(.5)
+            assert "Archive run" in "\n".join(screen.display), screen.display
+            os.write(master, b"Archive run")
+            pump(.2)
+            assert "Damaged entry" not in "\n".join(screen.display), screen.display
+            capture("archives")
+            os.write(master, b"\r")
+            pump(.5)
+            assert "Preserved dialogue" in "\n".join(screen.display), screen.display
+            capture("archive-preview")
+            os.write(master, b"\x1b")
+            pump(.35)
+            os.write(master, b"\x1b")
+            pump(.35)
+            os.write(master, b"/archives Damaged\r")
+            pump(.5)
+            os.write(master, b"\r")
+            pump(.5)
+            assert "corrupt" in "\n".join(screen.display), screen.display
+            os.write(master, b"\x1b")
+            pump(.35)
+            os.write(master, b"\x1b")
+            pump(.35)
+            assert archive_file.read_bytes() == archive_before
             os.write(master, b"unfinished instruction")
             pump(.2)
             assert "unfinished instruction" in "\n".join(screen.display)

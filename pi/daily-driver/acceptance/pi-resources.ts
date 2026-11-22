@@ -106,7 +106,12 @@ try {
           data: z.object({ commands: z.array(z.object({ name: z.string() })) }),
         })
         .parse(envelope);
-      for (const name of ["tasks", "driver-profile", "driver-status"])
+      for (const name of [
+        "tasks",
+        "archives",
+        "driver-profile",
+        "driver-status",
+      ])
         assert.ok(
           event.data.commands.some(
             (command: { name: string }) => command.name === name,
@@ -150,7 +155,10 @@ try {
   assert.ok(found, errors);
   assert.ok(checkedModel, "Pi did not return the active model");
   assert.ok(rejectedSwitch, "Pi silently rejected the unauthenticated profile");
-  assert.doesNotMatch(errors, /Failed to load|Error loading|Cannot load/);
+  assert.doesNotMatch(
+    errors,
+    /Failed to load|Error loading|Cannot load|Warning: Extension package/,
+  );
   console.log(
     "Pi 1.4.0 discovered the daily-driver commands and kept the current model after a rejected profile switch.",
   );

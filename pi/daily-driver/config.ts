@@ -51,6 +51,19 @@ const profile = z
   .strict();
 export const configSchema = z
   .object({
+    delegation: z
+      .object({ enabled: z.boolean().default(false) })
+      .strict()
+      .default({ enabled: false }),
+    archives: z
+      .object({
+        database: z
+          .string()
+          .refine(isAbsolute, "Use an absolute archive database path")
+          .optional(),
+      })
+      .strict()
+      .default({}),
     idleCompaction: z
       .object({
         enabled: z.boolean().default(true),
@@ -144,6 +157,7 @@ const roles = (provider: string, prefix: string) => ({
 });
 
 export const exampleConfig = {
+  delegation: { enabled: false },
   idleCompaction: { enabled: true, idleMs: 300_000, minimumContextPercent: 60 },
   beadsService: {
     url: "http://127.0.0.1:8790",

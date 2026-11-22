@@ -2,7 +2,7 @@
 
 Run an existing Beads task in an ordinary interactive Pi worker, guide it in Zellij, and inspect the result from another terminal. Beads owns the task. The native worktree manager allocates its checkout. This workflow runs with Paseo offline and supports both the work and personal model profiles.
 
-The driver also provides the dotfiles theme, task browser and idle compaction. The [runtime plan](RUNTIME.md) covers subagent delegation, Pi-owned Octo delivery and worktree archival.
+The driver also provides the dotfiles theme, task browser, idle compaction, opt-in read-only delegation, and archive browsing. The [runtime plan](RUNTIME.md) covers coding delegation, Pi-owned Octo delivery, and automatic archival.
 
 ## Enable
 
@@ -25,7 +25,7 @@ Compaction requires five settled idle minutes **and** at least 60% context-windo
 
 The timer resets on terminal activity, input, tool execution, and blocking dialogs. Unknown context usage, active execution, pending input, editor drafts, and dialogs prevent compaction. Attempt markers are native session entries outside model context, scoped to the active branch. One new stretch of conversation history gets one idle attempt; failures remain visible and can be retried manually with `/compact`. Native/manual compaction also satisfies the current history. Reload, tree navigation, and session replacement discard old timers.
 
-Managed subagents are not enabled. If a third-party tool with a subagent/delegation name executes, idle compaction is conservatively suspended for that runtime because that tool supplies no verified active-child count. Tree navigation and manual/native compaction preserve this guard; session startup clears it. Reload after independently confirming its work is settled. This does not establish compatibility with arbitrary background-agent extensions.
+Managed children keep idle compaction blocked during execution or uncertainty. If another third-party tool with a subagent/delegation name executes, idle compaction is conservatively suspended for that runtime because that tool supplies no verified active-child count. Tree navigation and manual/native compaction preserve this guard; session startup clears it. Reload after independently confirming its work is settled. This does not establish compatibility with arbitrary background-agent extensions.
 
 ## Task inspection and profiles
 
@@ -77,3 +77,13 @@ The separately invoked `uv run --script pi/daily-driver/acceptance/terminal.py -
 ![Native Pi task browser at 100 columns](../../docs/assets/pi-driver/tasks-100.png)
 
 ![Native Pi task details at 60 columns](../../docs/assets/pi-driver/task-details-60.png)
+
+## Delegation and archives
+
+Set `"delegation": { "enabled": true }` in the driver configuration, then select a lead with `/driver-profile work` or `/driver-profile personal` in a persistent session. Pi offers `driver_delegate` for Explorer and Reviewer assignments. Each assignment inspects the current committed revision in a native manager-owned checkout. The child receives a fresh context with only snapshot inspection tools, and its result returns to the lead. Configure the provider and model catalog through Pi. Unload standalone subagent packages for managed sessions.
+
+The driver loads the pinned tintinweb runner through a small adapter. The configuration command prepares that runner after the package install. Attempts, checkout receipts and child sessions are retained privately under `${XDG_STATE_HOME:-~/.local/state}/pi-driver`. An uncertain attempt blocks further delegation and idle compaction for its lead session. Inspect its recorded manager owner and native session before recovery. Use the native manager to finish and prune eligible read-only checkouts after reviewing their retained state.
+
+Run `/archives` to search and preview existing Session Snap archives. The default database is `~/.pi/agent/session-archive.db`. Set `archives.database` to an absolute alternate path when needed. The picker shows up to the latest 1,000 archived sessions and opens a local, bounded preview. It opens the database read-only and does not modify transcript history.
+
+Verify real delegation with `npm --prefix pi/daily-driver run test:delegation-native` and an installed native worktree manager. The terminal acceptance script also exercises archive search and preview at 60 and 100 columns.
