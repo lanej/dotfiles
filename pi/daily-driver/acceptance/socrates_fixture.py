@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, TypedDict
+from typing import Literal, TypedDict, Union
 
 
 class ContentBlock(TypedDict, total=False):
@@ -34,9 +34,25 @@ class CompletionRequest(TypedDict):
 
 
 @dataclass(frozen=True)
-class Evidence:
+class WebEvidence:
     label: str
     url: str
+
+
+@dataclass(frozen=True)
+class SourceEvidence:
+    label: str
+    path: str
+    line: int
+
+
+@dataclass(frozen=True)
+class ObservationEvidence:
+    label: str
+    observation: str
+
+
+Evidence = Union[WebEvidence, SourceEvidence, ObservationEvidence]
 
 
 @dataclass(frozen=True)
@@ -137,7 +153,11 @@ ARCHIVE = Exchange(
             KEEP_CHECKOUT, "Retry in the same checkout",
             "Keeping the checkout preserves the exact worktree for a retry.\n\n"
             + "\n".join(f"Recovery log entry {i}" for i in range(1, 33)),
-            (Evidence("Recovery procedure", "https://github.com/fixture/repo/issues/7"),),
+            (
+                WebEvidence("Recovery procedure", "https://github.com/fixture/repo/issues/7"),
+                SourceEvidence("Fixture source", "README.md", 1),
+                ObservationEvidence("Observed outcome", "The retry fixture exited with status 7."),
+            ),
         ),
         Choice("Remove it", "Recover from the saved transcript"),
     ),
@@ -145,13 +165,13 @@ ARCHIVE = Exchange(
         "Octo has confirmed the merge, and the transcript archive failed. "
         "See the [recovery log](https://example.com/recovery)."
     ),
-    evidence=(Evidence("Archive report", "https://github.com/fixture/repo/issues/8"),),
+    evidence=(WebEvidence("Archive report", "https://github.com/fixture/repo/issues/8"),),
 )
 RECEIPT = Exchange(
     "D2", "Choose the operator receipt", "What receipt should the operator see?",
     "Show the archived transcript path.",
     context="The operator needs to know where to find the transcript.",
-    evidence=(Evidence("Receipt instructions", "https://github.com/fixture/repo/issues/9"),),
+    evidence=(WebEvidence("Receipt instructions", "https://github.com/fixture/repo/issues/9"),),
 )
 RESUME_DRAFT = "Resume Socrates discovery for the accepted bead."
 RESUME_ANSWER = "Resume Socrates discovery using the recorded operator answer."

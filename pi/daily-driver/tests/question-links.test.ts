@@ -5,7 +5,12 @@ import {
   stripTerminalSequences,
   wrapTextWithAnsi,
 } from "@earendil-works/pi-tui";
-import { questionLink, questionLinks } from "../question-links.ts";
+import { questionEvidence } from "../question-evidence.ts";
+import {
+  questionLink,
+  questionLinks,
+  renderQuestionEvidence,
+} from "../question-links.ts";
 
 await test("question prose emits OSC 8 for labeled and bare links", () => {
   const rendered = questionLinks(
@@ -27,4 +32,39 @@ await test("evidence keeps its OSC 8 target across wrapped rows", () => {
   assert.equal(rows.length, 2);
   for (const row of rows) assert.equal(getOsc8LinkAtColumn(row, 0), url);
   assert.equal(questionLink("blocked", "file:///tmp/private"), "blocked");
+});
+
+await test("source references link to the managed worktree and retain the line", () => {
+  const rendered = renderQuestionEvidence(
+    { label: "Parser", path: "src/input parser.ts", line: 12 },
+    "/workspace/task",
+  );
+  assert.equal(
+    stripTerminalSequences(rendered),
+    "Parser · src/input parser.ts:12",
+  );
+  assert.equal(
+    getOsc8LinkAtColumn(rendered, 0),
+    "file:///workspace/task/src/input%20parser.ts#L12",
+  );
+  for (const path of ["../main.ts", "/etc/hosts", ".git/config"]) {
+    assert.equal(
+      questionEvidence.safeParse([{ label: "Source", path }]).success,
+      false,
+    );
+  }
+});
+
+await test("observations and existing web links are both valid evidence", () => {
+  const items = [
+    { label: "Verifier", observation: "exit status 7" },
+    { label: "Issue", url: "https://example.com/issue" },
+  ];
+  assert.deepEqual(questionEvidence.parse(items), items);
+  const rendered = renderQuestionEvidence(
+    { label: "Verifier", observation: "exit status 7" },
+    "/workspace",
+  );
+  assert.equal(rendered, "Verifier\nexit status 7");
+  assert.equal(getOsc8LinkAtColumn(rendered, 0), undefined);
 });

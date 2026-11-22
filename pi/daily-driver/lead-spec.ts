@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { questionEvidence } from "./question-evidence.ts";
 
 export enum SpecStatus {
   Interrogating = "interrogating",
@@ -82,16 +83,6 @@ export const specDraft = z
       });
     }
   });
-
-const questionEvidence = z
-  .array(
-    z.strictObject({
-      label: text,
-      url: z.url({ protocol: /^https?$/u, normalize: true }),
-    }),
-  )
-  .max(8)
-  .optional();
 
 export const specQuestion = z
   .strictObject({

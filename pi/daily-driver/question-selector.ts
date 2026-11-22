@@ -6,22 +6,25 @@ import {
   visibleWidth,
   wrapTextWithAnsi,
 } from "@earendil-works/pi-tui";
-import { questionLink, questionLinks, questionText } from "./question-links.ts";
+import type { QuestionEvidence } from "./question-evidence.ts";
+import {
+  questionLinks,
+  questionText,
+  renderQuestionEvidence,
+} from "./question-links.ts";
 import { NavigationKey } from "./runtime.ts";
-
-type EvidenceLink = { label: string; url: string };
 
 export interface QuestionChoice {
   label: string;
   description: string;
   details?: string | undefined;
-  evidence?: EvidenceLink[] | undefined;
+  evidence?: QuestionEvidence[] | undefined;
 }
 
 interface Question {
   question: string;
   context?: string | undefined;
-  evidence?: EvidenceLink[] | undefined;
+  evidence?: QuestionEvidence[] | undefined;
   options: QuestionChoice[];
 }
 
@@ -64,15 +67,21 @@ function oneLine(value: string): string {
   return questionText(value).replace(/\s+/gu, " ");
 }
 
-function evidenceRows(items: EvidenceLink[], theme: Theme): string[] {
-  return items.map(({ label, url }) =>
-    theme.fg("accent", questionLink(label, url)),
-  );
+function evidenceRows(
+  items: QuestionEvidence[],
+  worktree: string,
+  theme: Theme,
+): string[] {
+  return items.map((item) => {
+    const content = renderQuestionEvidence(item, worktree);
+    return "observation" in item ? content : theme.fg("accent", content);
+  });
 }
 
 function details(
   prompt: Question,
   choice: QuestionChoice,
+  worktree: string,
   theme: Theme,
 ): string {
   const paragraphs = [
@@ -88,6 +97,7 @@ function details(
   ];
   const links = evidenceRows(
     [...(prompt.evidence ?? []), ...(choice.evidence ?? [])],
+    worktree,
     theme,
   );
   if (links.length > 0) paragraphs.push(links.join("\n"));
@@ -99,13 +109,14 @@ const splitWidth = 50;
 
 function preview(
   choice: QuestionChoice,
+  worktree: string,
   theme: Theme,
   width: number,
 ): string[] {
   const content = [
     questionLinks(choice.description),
     questionLinks(choice.details ?? ""),
-    ...evidenceRows(choice.evidence ?? [], theme),
+    ...evidenceRows(choice.evidence ?? [], worktree, theme),
   ].filter((section) => section.length > 0);
   return wrapTextWithAnsi(content.join("\n\n"), width);
 }
@@ -184,7 +195,10 @@ export async function chooseQuestion(
             const body =
               choice === undefined
                 ? []
-                : wrapTextWithAnsi(details(prompt, choice, theme), inner);
+                : wrapTextWithAnsi(
+                    details(prompt, choice, ctx.cwd, theme),
+                    inner,
+                  );
             maxScroll = Math.max(0, body.length - height);
             scroll = Math.min(scroll, maxScroll);
             return body.slice(scroll, scroll + height).map(panel);
@@ -257,7 +271,10 @@ export async function chooseQuestion(
           const lines =
             choice === undefined
               ? []
-              : preview(choice, theme, previewWidth).slice(0, previewHeight);
+              : preview(choice, ctx.cwd, theme, previewWidth).slice(
+                  0,
+                  previewHeight,
+                );
           const body = split
             ? previewColumns(
                 width,

@@ -17,23 +17,12 @@ import {
   specText,
   type SpecQuestion,
 } from "./lead-spec.ts";
-import { questionLink, questionLinks } from "./question-links.ts";
+import { questionEvidenceParameter } from "./question-evidence.ts";
+import { questionLinks, renderQuestionEvidence } from "./question-links.ts";
 import { chooseQuestion, QuestionSelectionKind } from "./question-selector.ts";
 import { socratesGuidance } from "./socrates-guidance.ts";
 import { TaskBeads } from "./task-service.ts";
 import { reviewPlan, showTask } from "./ui.ts";
-
-const evidence = Type.Optional(
-  Type.Array(
-    Type.Object({
-      label: Type.String(),
-      url: Type.String({
-        description: "HTTP(S) URL for the relevant evidence",
-      }),
-    }),
-    { maxItems: 8 },
-  ),
-);
 
 export const askTool = "ask_user_question";
 export const specTool = "draft_socrates_specification";
@@ -99,7 +88,7 @@ export function registerSocrates(
       context: Type.Optional(
         Type.String({ description: "Optional context for the question" }),
       ),
-      evidence,
+      evidence: questionEvidenceParameter,
       options: Type.Array(
         Type.Object({
           label: Type.String(),
@@ -111,7 +100,7 @@ export function registerSocrates(
               description: "Longer explanation shown in the detail view",
             }),
           ),
-          evidence,
+          evidence: questionEvidenceParameter,
         }),
         { maxItems: 4 },
       ),
@@ -405,8 +394,8 @@ async function ask(
   const title = [
     questionLinks(prompt.question),
     ...(prompt.context === undefined ? [] : [questionLinks(prompt.context)]),
-    ...(prompt.evidence ?? []).map(({ label, url }) =>
-      questionLink(label, url),
+    ...(prompt.evidence ?? []).map((item) =>
+      renderQuestionEvidence(item, ctx.cwd),
     ),
   ].join("\n\n");
   const text = (await ctx.ui.input(title, undefined, options))?.trim();

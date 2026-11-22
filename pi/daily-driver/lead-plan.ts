@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { taskWaves } from "./smart-plan-graph.ts";
+import { worktreeRelativePath } from "./worktree-path.ts";
 
 export enum LeadMode {
   Planning = "planning",
@@ -24,29 +25,7 @@ export const draftSchema = z
             .array(z.string().regex(/^R[1-9]\d*$/u))
             .max(20)
             .default([]),
-          owns: z
-            .array(
-              z
-                .string()
-                .trim()
-                .min(1)
-                .max(1024)
-                .refine(
-                  (path) =>
-                    path
-                      .split("/")
-                      .every(
-                        (part) =>
-                          part !== "" &&
-                          part !== ".." &&
-                          part !== "." &&
-                          part !== ".git",
-                      ) && !/[\\*?\p{Cc}]/u.test(path),
-                  "Use normalized worktree-relative paths",
-                ),
-            )
-            .max(20)
-            .default([]),
+          owns: z.array(worktreeRelativePath).max(20).default([]),
         }),
       )
       .max(12),

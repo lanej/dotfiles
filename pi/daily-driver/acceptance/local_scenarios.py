@@ -165,11 +165,13 @@ def exercise_selector(case: Case) -> None:
     terminal.send_to_pane(pane, "\r")
     assert "answer" not in case.specification()["exchange"]
     for _ in range(35):
-        if "Recovery procedure" in view():
+        if "The retry fixture exited with status 7." in view():
             break
         terminal.send_to_pane(pane, "j")
     terminal.until("details scroll to evidence links", lambda:
-                   "Recovery procedure" in view() and "Archive report" in view())
+                   "Recovery procedure" in view() and "Archive report" in view()
+                   and "Fixture source · README.md:1" in view()
+                   and "The retry fixture exited with status 7." in view())
     terminal.send_to_pane(pane, "h")
     terminal.until("h restores the original focused choice", lambda: f"→ {ARCHIVE.answer}" in view())
 
@@ -255,7 +257,9 @@ def exercise_question_exchange(case: Case) -> None:
                    (draft := current.get("draft")) is not None and not draft["blockingQuestions"] and
                    draft["decisions"][-1]["evidence"] == RECEIPT.answer)
 
+    checkout = Path(case.before["attempt"]["checkout"]["path"]).resolve()
     for url in (
+        (checkout / "README.md").as_uri() + "#L1",
         "https://example.com/recovery",
         "https://github.com/fixture/repo/issues/7",
         "https://github.com/fixture/repo/issues/8",
