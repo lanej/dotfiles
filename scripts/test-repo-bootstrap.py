@@ -332,7 +332,10 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
             if shared_policy is None:
                 shared_policy = policy
             assert policy == shared_policy, "stage change altered the installed project policy"
-            assert not (staged_testing / ".agents/skills/source-code-lifecycle/references/lifecycle.md").exists()
+            assert "Apply the authority and adoption policy above" in policy, policy
+            assert "references/common.md" not in policy, policy
+            for reference in ("common.md", "lifecycle.md"):
+                assert not (staged_testing / ".agents/skills/source-code-lifecycle/references" / reference).exists()
             octo_refs = staged_testing / ".agents/skills/octo-manager/references"
             expected_merge = "enabled" if stage in {"research", "alpha"} else "disabled"
             guide = rendered_skill(staged_testing, "octo-manager")
