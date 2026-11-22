@@ -178,10 +178,8 @@ function panelRow(
   const inner = Math.max(1, width - 2);
   const clipped = truncateToWidth(text, inner);
   const padding = " ".repeat(Math.max(0, width - 1 - visibleWidth(clipped)));
-  return theme.bg(
-    focused ? "selectedBg" : "userMessageBg",
-    ` ${clipped}${padding}`,
-  );
+  const row = ` ${clipped}${padding}`;
+  return focused ? theme.style(row, { bg: "selectedBg" }) : row;
 }
 
 export async function chooseQuestion(
@@ -389,7 +387,11 @@ export async function chooseQuestion(
     },
     {
       overlay: true,
-      overlayOptions: { anchor: "center", width: "100%", margin: 1 },
+      overlayOptions: {
+        anchor: "center",
+        width: "100%",
+        margin: { top: 1, bottom: 1 },
+      },
     },
   );
 }
