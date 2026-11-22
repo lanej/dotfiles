@@ -76,8 +76,8 @@ const pack = (value: Record<string, unknown>) =>
     Object.entries(value).map(([key, entry]) => [`paseo.${key}`, entry]),
   );
 export const beadId = (id: string) => `tasks-${z.uuid().parse(id)}`;
-const actor = (value: Task, worker = value.worker?.agentId ?? value.taskId) =>
-  `paseo:${value.serverId}/${worker}`;
+const actor = (serverId: string, worker: string) =>
+  `paseo:${serverId}/${worker}`;
 
 export class Beads extends BeadsHttp {
   private async readIssue(
@@ -133,11 +133,15 @@ export class Beads extends BeadsHttp {
   }
   async create(value: Task) {
     await this.verifyAuthority();
+    const creator = actor(
+      value.serverId,
+      value.worker?.agentId ?? value.taskId,
+    );
     try {
       await this.result(
         this.client.POST("/v0/beads/issues", {
           body: {
-            actor: actor(value),
+            actor: creator,
             issue_type: "task",
             id: beadId(value.taskId),
             force_id_prefix: true,
@@ -156,7 +160,7 @@ export class Beads extends BeadsHttp {
               serverId: value.serverId,
             }),
             external_ref: `paseo:${value.serverId}/${value.taskId}`,
-            ...(value.worker ? { assignee: actor(value) } : {}),
+            ...(value.worker ? { assignee: creator } : {}),
           },
         }),
       );
@@ -178,8 +182,10 @@ export class Beads extends BeadsHttp {
     )
       throw new Error("Beads creation readback differs from requested content");
   }
-  async assertOwner(value: Task) {
-    if (value.worker && (await this.readIssue(value)).assignee !== actor(value))
+  async assertOwner(value: Pick<Task, "taskId" | "serverId">, worker: string) {
+    if (
+      (await this.readIssue(value)).assignee !== actor(value.serverId, worker)
+    )
       throw new Error(
         "Beads ownership changed; pause and reconcile the retained worker before more execution",
       );
@@ -193,7 +199,7 @@ export class Beads extends BeadsHttp {
       throw new Error(
         "Beads task is not active; refusing to reopen or launch it",
       );
-    const owner = actor(value, worker);
+    const owner = actor(value.serverId, worker);
     if (observed.assignee && observed.assignee !== owner)
       throw new Error("Beads task is claimed by another actor");
     await this.result(
@@ -218,10 +224,11 @@ export class Beads extends BeadsHttp {
       next = taskContent(after);
     if (JSON.stringify(previous) === JSON.stringify(next)) return;
     const observed = await this.readIssue(before);
-    if (
-      (before.worker || observed.assignee) &&
-      observed.assignee !== actor(before)
-    )
+    const owner = actor(
+      before.serverId,
+      before.worker?.agentId ?? before.taskId,
+    );
+    if ((before.worker || observed.assignee) && observed.assignee !== owner)
       throw new Error(
         "Beads task ownership changed or is claimed by another actor",
       );
@@ -256,7 +263,7 @@ export class Beads extends BeadsHttp {
       this.client.PATCH("/v0/beads/issues/{id}", {
         params: { path: { id: observed.id } },
         body: {
-          actor: actor(before),
+          actor: owner,
           force_close_policy: false,
           force_assignee_transfer: false,
           expected_version: observed.revision,

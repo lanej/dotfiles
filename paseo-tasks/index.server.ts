@@ -22,6 +22,7 @@ import {
   acceptRpc,
   address,
   adoptRpc,
+  authorizeTurnRpc,
   brief,
   bulkRpc,
   conversationAddress,
@@ -136,6 +137,12 @@ export default function contribute(server: PluginServerContext) {
     async (input) => await (await ready()).discover(input.serverId),
   );
   server.handle(adoptRpc, async (input) => await (await ready()).adopt(input));
+  server.handle(authorizeTurnRpc, async ({ serverId, taskId, agentId }) => {
+    const value = await ready();
+    value.assertHost(serverId);
+    await value.store.assertOwner(taskId, agentId);
+    return true as const;
+  });
   server.handle(
     acceptRpc,
     async (input) => await (await ready()).accept(input),
@@ -373,6 +380,9 @@ export default function contribute(server: PluginServerContext) {
         ...workerTools(value, assigned.taskId, request.agentId),
       );
       request.env.PASEO_TASK_ROLE = "worker";
+      request.env.PASEO_TASK_ID = assigned.taskId;
+      request.env.PASEO_TASK_SERVER_ID = value.store.serverId;
+      request.env.PASEO_HOME = home;
       value.sessionOpened(request.agentId, "worker");
     } else if (manager) {
       request.tools.push(...managerTools(value));
