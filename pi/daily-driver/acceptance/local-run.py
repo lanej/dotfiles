@@ -13,9 +13,10 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 from types import FrameType
 
-from local_fixture import Fixture, Report, RunOptions, Terminal, make_fixture
+from local_fixture import Fixture, Report, RunOptions, make_fixture
 from local_provider import ADMITTED_MODEL, Provider
 from local_scenarios import SCENARIOS, launch
+from zellij_terminal import Terminal
 
 
 def run_cases(fixture: Fixture, terminal: Terminal, report: Report) -> None:
@@ -23,7 +24,7 @@ def run_cases(fixture: Fixture, terminal: Terminal, report: Report) -> None:
     shell = terminal.terminals()
     assert len(shell) == 1, shell
     launcher = shell[0]["id"]
-    panes = json.loads(terminal.action("list-panes", "--all", "--json"))
+    panes = terminal.pane_listing()
     tab_id = next(p["tab_id"] for p in panes if p["id"] == launcher)
     selected = fixture.options.scenario
     for scenario in SCENARIOS if selected is None else (selected,):

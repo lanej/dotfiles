@@ -11,9 +11,10 @@ import subprocess
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Protocol, Sequence, TypedDict
+from typing import Any, Sequence, TypedDict
 
 from local_provider import ADMITTED_MODEL, ALTERNATE_MODEL
+from zellij_terminal import Pane, Pty, Terminal
 
 
 class Scenario(str, Enum):
@@ -136,23 +137,6 @@ class FixturePaths:
         }))
 
 
-class Pane(TypedDict):
-    id: int
-    is_focused: bool
-    exited: bool
-
-
-class Terminal(Protocol):
-    output: bytearray
-
-    def action(self, *args: str) -> str: ...
-    def until(self, description: str, predicate: Callable[[], object]) -> object: ...
-    def terminals(self) -> list[Pane]: ...
-    def capture_pane(self, pane: int, *, full: bool = False, ansi: bool = False) -> str: ...
-    def send_to_pane(self, pane: int, text: str) -> None: ...
-    def close(self) -> None: ...
-
-
 class Allocation(TypedDict):
     task_id: str
     path: str
@@ -173,7 +157,7 @@ class CaseEvidence(TypedDict):
 
 class ReportObservations(TypedDict, total=False):
     registered_process: str
-    registered_pane: dict[str, object]
+    registered_pane: Pane
 
 
 class Report(ReportObservations):
@@ -235,8 +219,12 @@ class Fixture:
 
     def start_terminal(self) -> Terminal:
         workflow = runpy.run_path(str(self.options.root / "scripts/test-zellij.py"))
-        terminal: Terminal = workflow["Terminal"](self.binary, self.env, self.name, install_navigation=False)
-        return terminal
+        pty: Pty = workflow["Terminal"](self.binary, self.env, self.name, install_navigation=False)
+        try:
+            return Terminal(pty, self.options.root / "pi/daily-driver", self.env, self.name)
+        except OSError:
+            pty.close()
+            raise
 
     def check_sentinels(self) -> None:
         for sentinel in self.paths.sentinels.values():

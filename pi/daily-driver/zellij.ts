@@ -95,6 +95,10 @@ export function tabId(value: string): number {
   return uint32.parse(Number(value));
 }
 
+function terminalPane(pane: number) {
+  return { paneType: { case: "terminal", value: pane } } as const;
+}
+
 export class Zellij {
   readonly identity: string;
   private readonly uid: number;
@@ -214,14 +218,46 @@ export class Zellij {
     });
   }
 
+  async paneListing(): Promise<string> {
+    return await this.request({
+      case: "listPanes",
+      value: { showAll: true, outputJson: true },
+    });
+  }
+
   async panes(): Promise<z.infer<typeof panes>> {
-    return panes.parse(
-      JSON.parse(
-        await this.request({
-          case: "listPanes",
-          value: { showAll: true, outputJson: true },
-        }),
-      ),
+    return panes.parse(JSON.parse(await this.paneListing()));
+  }
+
+  async capture(pane: number, full: boolean, ansi: boolean): Promise<string> {
+    return await this.request({
+      case: "dumpScreen",
+      value: {
+        paneId: terminalPane(pane),
+        dumpToStdout: true,
+        includeScrollback: full,
+        ansi,
+      },
+    });
+  }
+
+  async writeText(pane: number, text: string): Promise<void> {
+    await this.request(
+      {
+        case: "writeCharsToPaneId",
+        value: { paneId: terminalPane(pane), chars: text },
+      },
+      false,
+    );
+  }
+
+  async writeBytes(pane: number, bytes: number[]): Promise<void> {
+    await this.request(
+      {
+        case: "writeToPaneId",
+        value: { paneId: terminalPane(pane), bytes },
+      },
+      false,
     );
   }
 
@@ -264,7 +300,7 @@ export class Zellij {
     await this.request(
       {
         case: "focusPaneByPaneId",
-        value: { paneId: { paneType: { case: "terminal", value: pane } } },
+        value: { paneId: terminalPane(pane) },
       },
       false,
     );

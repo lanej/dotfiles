@@ -10,8 +10,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, TypedDict
 
-from local_fixture import Allocation, Fixture, Report, Scenario, TaskSnapshot, Terminal
+from local_fixture import Allocation, Fixture, Report, Scenario, TaskSnapshot
 from local_provider import Provider
+from zellij_terminal import Terminal
 from socrates_fixture import ARCHIVE, RECEIPT, AskArguments, DraftArguments
 
 
@@ -70,7 +71,7 @@ class Case:
         return spec
 
     def exit_pi(self, description: str) -> None:
-        self.terminal.action("write", "--pane-id", f"terminal_{self.pane}", "4")
+        self.terminal.write_to_pane(self.pane, 4)
         self.terminal.until(description, lambda: all(
             p["id"] != self.pane or p["exited"] for p in self.terminal.terminals()
         ))
@@ -97,7 +98,7 @@ def launch(
                                 *placement, "--", *verifier])
     command = f"cd {shlex.quote(str(repository))} && {start_command}; printf '%s' $? > {shlex.quote(str(exit_file))}"
     assert any(p["id"] == launcher_pane for p in terminal.terminals()), "Owned launcher disappeared"
-    terminal.action("write-chars", "--pane-id", f"terminal_{launcher_pane}", command + "\r")
+    terminal.send_to_pane(launcher_pane, command + "\r")
     terminal.until("start dispatch completes", exit_file.exists)
     assert exit_file.read_text() == "0", terminal.capture_pane(launcher_pane, full=True)
     assert any(p["id"] == launcher_pane and p["is_focused"]
@@ -124,7 +125,7 @@ def wait_for_lead(case: Case) -> None:
                        for line in pane_text(pane).splitlines()))
     terminal.until("footer observes the linked worktree", lambda:
                    any("▣ " in line and "⊛ 6.1 \uE30D" in line for line in pane_text(pane).splitlines()))
-    terminal.action("focus-pane-id", f"terminal_{pane}")
+    terminal.focus_pane(pane)
 
 
 def exercise_question_exchange(case: Case) -> None:
@@ -145,7 +146,7 @@ def exercise_question_exchange(case: Case) -> None:
     (artifacts / "socrates-question.txt").write_text(terminal.capture_pane(pane))
     (artifacts / "socrates-question.ansi").write_text(
         terminal.capture_pane(pane, ansi=True))
-    terminal.action("write", "--pane-id", f"terminal_{pane}", "27")
+    terminal.write_to_pane(pane, 27)
     terminal.until("question stays open after Escape", lambda:
                    "Question remains open" in case.capture(pane))
     assert spec()["exchange"] == first
@@ -207,20 +208,20 @@ def approve_lead_plan(case: Case) -> ApprovedPlan:
     terminal, bead, pane = case.terminal, case.bead, case.pane
     fresh, pane_text = case.harness.fresh, case.capture
     execute, driver = case.harness.execute, case.harness.driver
-    terminal.action("write-chars", "--pane-id", f"terminal_{pane}", "/diff\r")
+    terminal.send_to_pane(pane, "/diff\r")
     terminal.until("review extension renders", lambda: "Git diff" in pane_text(pane))
-    terminal.action("write", "--pane-id", f"terminal_{pane}", "27")
+    terminal.write_to_pane(pane, 27)
     terminal.until("review viewer closes", lambda: "Git diff" not in
-                   terminal.action("dump-screen", "--pane-id", f"terminal_{pane}"))
-    terminal.action("write-chars", "--pane-id", f"terminal_{pane}", "/plan-approve\r")
+                   terminal.capture_pane(pane))
+    terminal.send_to_pane(pane, "/plan-approve\r")
     terminal.until("operator approval prompt", lambda: "Approve the plan for " + bead in pane_text(pane))
     for _ in range(8):
-        if "Enter start implementation" in terminal.action("dump-screen", "--pane-id", f"terminal_{pane}"):
+        if "Enter start implementation" in terminal.capture_pane(pane):
             break
-        terminal.action("write-chars", "--pane-id", f"terminal_{pane}", "\r")
+        terminal.send_to_pane(pane, "\r")
     else:
         raise AssertionError(pane_text(pane))
-    terminal.action("write-chars", "--pane-id", f"terminal_{pane}", "\r")
+    terminal.send_to_pane(pane, "\r")
     terminal.until("approved task breakdown persisted", lambda:
                    fresh(bead)["attempt"]["leadPlan"]["mode"] == "implementing")
     approved = fresh(bead)
@@ -238,7 +239,7 @@ def approve_lead_plan(case: Case) -> ApprovedPlan:
                    for edge in views[child]["dependencies"]), views[child]
     assert any(edge["id"] == plan["children"]["inspect"] and edge["dependency_type"] == "blocks"
                for edge in views[plan["children"]["verify"]]["dependencies"])
-    terminal.action("write-chars", "--pane-id", f"terminal_{pane}", "/plan-approve\r")
+    terminal.send_to_pane(pane, "/plan-approve\r")
     terminal.until("second approval refused", lambda: "No draft to approve" in pane_text(pane))
     assert fresh(bead)["attempt"]["leadPlan"] == plan
     return plan
@@ -247,8 +248,7 @@ def approve_lead_plan(case: Case) -> ApprovedPlan:
 def verify_lead(case: Case) -> TaskSnapshot:
     terminal, bead, pane = case.terminal, case.bead, case.pane
     fresh, pane_text = case.harness.fresh, case.capture
-    terminal.action("write-chars", "--pane-id", f"terminal_{pane}",
-                    "/task-submit Acceptance lead verification at src/driver.ts:12 "
+    terminal.send_to_pane(pane, "/task-submit Acceptance lead verification at src/driver.ts:12 "
                     "https://github.com/fixture/repo/blob/main/src/driver.ts#L12\r")
     terminal.until("lead verification persisted", lambda:
                    fresh(bead)["attempt"]["phase"] == "verified")
@@ -257,11 +257,11 @@ def verify_lead(case: Case) -> TaskSnapshot:
     assert verified["attempt"]["verification"]["exitCode"] == 0, verified
     terminal.until("verification event is collapsed", lambda:
                    f"▸ ● Verification passed · {bead}" in pane_text(pane))
-    terminal.action("write", "--pane-id", f"terminal_{pane}", "15")
+    terminal.write_to_pane(pane, 15)
     terminal.until("verification expands typed code links", lambda:
                    "‹›" in pane_text(pane) and "driver.ts:12" in pane_text(pane) and
                    "▾ ● Verification passed" in pane_text(pane))
-    terminal.action("write", "--pane-id", f"terminal_{pane}", "15")
+    terminal.write_to_pane(pane, 15)
     terminal.until("verification folds again", lambda:
                    f"▸ ● Verification passed · {bead}" in pane_text(pane))
     return verified
@@ -273,7 +273,7 @@ def check_refreshed_plan(case: Case, plan: ApprovedPlan, verified: TaskSnapshot)
     execute, driver = case.harness.execute, case.harness.driver
     work = case.harness.options.work
     case.harness.update_bead(bead, "--acceptance", "Verify the revised criteria before delivery")
-    terminal.action("write-chars", "--pane-id", f"terminal_{pane}", "/plan-refresh\r")
+    terminal.send_to_pane(pane, "/plan-refresh\r")
     terminal.until("refreshed brief invalidates evidence", lambda:
                    fresh(bead)["attempt"]["verification"] is None)
     refreshed = fresh(bead)
@@ -281,8 +281,7 @@ def check_refreshed_plan(case: Case, plan: ApprovedPlan, verified: TaskSnapshot)
     assert refreshed["attempt"]["leadPlan"]["mode"] == "planning", refreshed
     assert refreshed["attempt"]["revision"] != verified["attempt"]["revision"], refreshed
     assert refreshed["attempt"]["revision"] == refreshed["task"]["revision"], refreshed
-    terminal.action("write-chars", "--pane-id", f"terminal_{pane}",
-                    "/task-submit The old result should not pass\r")
+    terminal.send_to_pane(pane, "/task-submit The old result should not pass\r")
     terminal.until("unapproved verification refused", lambda:
                    "plan before submitting a result" in pane_text(pane))
     draft = work / "refresh-draft.md"
@@ -294,19 +293,17 @@ def check_refreshed_plan(case: Case, plan: ApprovedPlan, verified: TaskSnapshot)
                      verified["attempt"]["verification"]["gitHead"]], check=False)
     assert ready.returncode != 0 and "Verify and commit" in ready.stderr, ready
     assert fresh(bead)["attempt"]["verification"] is None
-    terminal.action("write-chars", "--pane-id", f"terminal_{pane}",
-                    "Draft a revised plan without new children.\r")
+    terminal.send_to_pane(pane, "Draft a revised plan without new children.\r")
     terminal.until("revised plan drafted", lambda:
                    fresh(bead)["attempt"]["leadPlan"].get("draft") is not None)
-    terminal.action("write-chars", "--pane-id", f"terminal_{pane}", "/plan-approve\r")
+    terminal.send_to_pane(pane, "/plan-approve\r")
     terminal.until("revised approval is visible", lambda:
                    "Enter start implementation" in pane_text(pane))
-    terminal.action("write-chars", "--pane-id", f"terminal_{pane}", "\r")
+    terminal.send_to_pane(pane, "\r")
     terminal.until("revised plan approved", lambda:
                    fresh(bead)["attempt"]["leadPlan"]["mode"] == "implementing")
     assert fresh(bead)["attempt"]["leadPlan"]["children"] == plan["children"]
-    terminal.action("write-chars", "--pane-id", f"terminal_{pane}",
-                    "/task-submit Verified against the refreshed brief\r")
+    terminal.send_to_pane(pane, "/task-submit Verified against the refreshed brief\r")
     terminal.until("fresh verification persisted", lambda:
                    fresh(bead)["attempt"]["phase"] == "verified")
     assert fresh(bead)["attempt"]["verification"]["summary"] == "Verified against the refreshed brief"
@@ -319,9 +316,8 @@ def resume_lead(case: Case) -> ResumedLead:
     original = fresh(bead)["attempt"]
     resume_exit = work / "socrates-resume.exit"
     resume_command = shlex.join([driver, "resume", bead])
-    terminal.action("focus-pane-id", f"terminal_{launcher_pane}")
-    terminal.action("write-chars", "--pane-id", f"terminal_{launcher_pane}",
-                    f"{resume_command}; printf '%s' $? > {shlex.quote(str(resume_exit))}\r")
+    terminal.focus_pane(launcher_pane)
+    terminal.send_to_pane(launcher_pane, f"{resume_command}; printf '%s' $? > {shlex.quote(str(resume_exit))}\r")
     terminal.until("resume returns", resume_exit.exists)
     assert resume_exit.read_text() == "0", pane_text(launcher_pane)
     reopened = fresh(bead)["attempt"]
@@ -398,20 +394,20 @@ def deliver_and_archive(case: Case, plan: ApprovedPlan) -> None:
     artifacts, allocations = case.harness.artifacts, case.harness.allocations
     execute([driver, "publish", bead, "--title", "feat: deliver fixture",
              "--body-file", str(description), "--base", "main"])
-    terminal.action("focus-pane-id", f"terminal_{pane}")
+    terminal.focus_pane(pane)
     for _ in range(2):
-        terminal.action("write-chars", "--pane-id", f"terminal_{pane}", "/octo-inbox\r")
+        terminal.send_to_pane(pane, "/octo-inbox\r")
         terminal.until("Octo inbox shows typed PR and issue links", lambda:
                        " fixture/repo#1" in pane_text(pane) and "! fixture/repo#7" in pane_text(pane))
-        terminal.action("write", "--pane-id", f"terminal_{pane}", "27")
+        terminal.write_to_pane(pane, 27)
         terminal.until("Octo receipt renders in the transcript", lambda:
                        "Octo receipt ·  fixture/repo#1" in pane_text(pane))
     terminal.until("Octo inbox closes", lambda: "Fixture ready" not in
-                   terminal.action("dump-screen", "--pane-id", f"terminal_{pane}"))
+                   terminal.capture_pane(pane))
     terminal.until("footer shows the tracked PR", lambda:
                    any("▣ " in line and " #1" in line and "⊛ 6.1 \uE30D" in line
                        for line in pane_text(pane).splitlines()))
-    terminal.action("write", "--pane-id", f"terminal_{pane}", "4")
+    terminal.write_to_pane(pane, 4)
     terminal.until("resumed Pi exits", lambda: all(p["id"] != pane or p["exited"] for p in terminal.terminals()))
     execute([driver, "merge", bead, "--head", head, "--notice", receipt_id])
     pending = execute([driver, "archive", bead], check=False)
@@ -448,12 +444,12 @@ def check_worker_reuse(case: Case, report: Report) -> None:
     extension = root / "pi/daily-driver/extension.ts"
     browser = shlex.join([str(pi), "--offline", "--no-session", "--no-mcp",
                           "--extension", str(extension), "--model", "openai-codex/gpt-6.1-sol"])
-    terminal.action("write-chars", "--pane-id", f"terminal_{launcher_pane}", browser + "\r")
+    terminal.send_to_pane(launcher_pane, browser + "\r")
     terminal.until("task browser Pi starts", lambda: "clear/exit" in pane_text(launcher_pane))
     for name, marker in (("SED", "sedMarker"), ("RG", "rgMarker")):
-        terminal.action("write-chars", "--pane-id", f"terminal_{launcher_pane}", f"HL_FIXTURE_{name}\r")
+        terminal.send_to_pane(launcher_pane, f"HL_FIXTURE_{name}\r")
         def highlighted_output() -> str | None:
-            ansi = terminal.action("dump-screen", "--full", "--ansi", "--pane-id", f"terminal_{launcher_pane}")
+            ansi = terminal.capture_pane(launcher_pane, full=True, ansi=True)
             executable, argument = ("sed", "1,3p") if name == "SED" else ("rg", "--with-filename")
             style = r"\x1b\[[0-9;]*m"
             if not any(
@@ -475,22 +471,22 @@ def check_worker_reuse(case: Case, report: Report) -> None:
         assert highlighted is not None
         (artifacts / f"{name.lower()}-highlighted.ansi").write_text(highlighted)
 
-    terminal.action("write-chars", "--pane-id", f"terminal_{launcher_pane}", "/tasks\r")
+    terminal.send_to_pane(launcher_pane, "/tasks\r")
     terminal.until("task overlay shows pane focus action", lambda: "Focus pane" in pane_text(launcher_pane))
-    terminal.action("write", "--pane-id", f"terminal_{launcher_pane}", "27", "91", "67")
+    terminal.write_to_pane(launcher_pane, 27, 91, 67)
     terminal.until("task tree focuses the managed worker", lambda:
                    any(p["id"] == pane and p["is_focused"] for p in terminal.terminals()))
-    terminal.action("write", "--pane-id", f"terminal_{launcher_pane}", "4")
+    terminal.write_to_pane(launcher_pane, 4)
     terminal.until("launcher shell returns", lambda: "local-run-ready>" in
-                   terminal.action("dump-screen", "--pane-id", f"terminal_{launcher_pane}"))
+                   terminal.capture_pane(launcher_pane))
     report["registered_process"] = execute(["ps", "-p", str(before["attempt"]["pid"]),
                                             "-o", "command="]).stdout.strip()
     report["registered_pane"] = next(p for p in
-        json.loads(terminal.action("list-panes", "--all", "--json")) if p["id"] == pane)
-    terminal.action("focus-pane-id", f"terminal_{launcher_pane}")
+        terminal.pane_listing() if p["id"] == pane)
+    terminal.focus_pane(launcher_pane)
     repeat_exit = work / "repeated-start.exit"
     repeat_command = f"{start_command}; printf '%s' $? > {shlex.quote(str(repeat_exit))}"
-    terminal.action("write-chars", "--pane-id", f"terminal_{launcher_pane}", repeat_command + "\r")
+    terminal.send_to_pane(launcher_pane, repeat_command + "\r")
     terminal.until("identical start focuses existing worker", repeat_exit.exists)
     assert repeat_exit.read_text() == "0", pane_text(launcher_pane)
     repeated = fresh(bead)
@@ -499,12 +495,10 @@ def check_worker_reuse(case: Case, report: Report) -> None:
     assert any(p["id"] == pane and p["is_focused"] for p in terminal.terminals()), terminal.terminals()
     inventory = json.loads(execute([manager, "status", "--json"]).stdout)
     assert len(inventory["result"]["tasks"]) == 1, inventory
-    terminal.action("write-chars", "--pane-id", f"terminal_{pane}",
-                    "/driver-profile personal\r")
+    terminal.send_to_pane(pane, "/driver-profile personal\r")
     terminal.until("managed Pi refuses the lead profile command", lambda:
                    "Set the profile on pi-driver start." in pane_text(pane))
-    terminal.action("write-chars", "--pane-id", f"terminal_{pane}",
-                    "/model alternate-fixture/different-model\r")
+    terminal.send_to_pane(pane, "/model alternate-fixture/different-model\r")
     terminal.until("managed Pi refuses the alternate route", lambda:
                    "Managed Pi requires its admitted model" in pane_text(pane))
 
@@ -515,7 +509,7 @@ def check_worker_submission(case: Case) -> TaskSnapshot:
     pane_text, fresh = case.capture, case.harness.fresh
     artifacts = case.harness.artifacts
     guidance = f"GUIDANCE_{scenario.replace('-', '_')} for accepted bead {bead}"
-    terminal.action("write-chars", "--pane-id", f"terminal_{pane}", guidance + "\r")
+    terminal.send_to_pane(pane, guidance + "\r")
     terminal.until("Pi responds to guidance in its original pane", lambda:
                    "ACK_GUIDANCE_" + scenario.replace("-", "_") in pane_text(pane))
     observed = json.dumps(Provider.requests)
@@ -523,8 +517,7 @@ def check_worker_submission(case: Case) -> TaskSnapshot:
     if scenario == "changed-brief":
         case.harness.update_bead(bead, "--description", "Changed acceptance scope while Pi owns the old brief")
     # Both native submission surfaces reach the same guarded verification path.
-    terminal.action("write-chars", "--pane-id", f"terminal_{pane}",
-                    "SUBMIT_WITH_TOOL_accepted\r" if scenario == "accepted" else
+    terminal.send_to_pane(pane, "SUBMIT_WITH_TOOL_accepted\r" if scenario == "accepted" else
                     f"/task-submit Acceptance {scenario} evidence\r")
     terminal.until("submission persisted", lambda:
                    fresh(bead)["attempt"]["phase"] not in ("running", "checking"))
@@ -551,7 +544,7 @@ def check_worker_submission(case: Case) -> TaskSnapshot:
         assert "pi.result" not in submitted["task"]["metadata"], submitted
     (artifacts / f"{scenario}.screen.txt").write_text(pane_text(pane))
     (artifacts / f"{scenario}.screen.ansi").write_text(
-        terminal.action("dump-screen", "--full", "--ansi", "--pane-id", f"terminal_{pane}"))
+        terminal.capture_pane(pane, full=True, ansi=True))
     # Empty-editor Ctrl-D exits Pi; retain its caller shell for the next independent bead.
     case.exit_pi("Pi exit")
     after_exit = fresh(bead)
@@ -576,8 +569,7 @@ def failed_check(case: Case, _report: Report) -> TaskSnapshot:
     after_exit = check_worker_submission(case)
     stale_exit = case.harness.options.work / "stale-start.exit"
     stale_start = f"{case.start_command}; printf '%s' $? > {shlex.quote(str(stale_exit))}"
-    case.terminal.action("write-chars", "--pane-id", f"terminal_{case.launcher}",
-                    stale_start + "\r")
+    case.terminal.send_to_pane(case.launcher, stale_start + "\r")
     case.terminal.until("exited worker rejects refocus", stale_exit.exists)
     assert stale_exit.read_text() != "0", case.capture(case.launcher)
     assert "registered Pi process or pane has exited or changed" in case.capture(case.launcher)
