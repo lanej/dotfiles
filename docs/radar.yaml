@@ -5,7 +5,7 @@ entries:
     name: Beads and Dolt
     ring: trial
     rationale: |-
-      [Beads](beads.md) provides a shared local work graph through one managed HTTP endpoint backed by a private Dolt SQL server. Native binaries are pinned and checksum-verified. Octo retains dispatch ownership; issue synchronization and an Octo adapter require separate integration.
+      [Beads](beads.md) provides a shared local work graph through one managed HTTP endpoint backed by a private Dolt SQL server. Native binaries are pinned and checksum-verified. Pi's local task workflow reads and claims native beads over HTTP. Octo owns GitHub delivery. Issue synchronization requires separate integration.
   - id: neovim
     name: Neovim
     ring: adopt
@@ -153,7 +153,7 @@ entries:
     ring: assess
     icon: pi.svg
     rationale: |-
-      [Pi](pi.md): a composable agent runtime under assessment, with shared skills and role instructions. Its opt-in daily-driver foundation adds idle compaction, explicit work/personal model selection, and read-only Beads task trees. The [runtime plan](../pi/daily-driver/RUNTIME.md) evaluates existing delegation packages with native worktree-manager and Octo adapters. Managed dispatch and archival remain blocked by the evaluated Beads accepted-scope revision gap; full daily-driver adoption is not established.
+      [Pi](pi.md): a composable agent runtime under assessment, with shared skills and role instructions. Its opt-in [daily driver](../pi/daily-driver/README.md) runs one ready bead in a managed worktree and interactive Zellij pane, records verification and supports independent CLI inspection. The [runtime plan](../pi/daily-driver/RUNTIME.md) covers agent delegation, Octo delivery and archival.
   - id: zellij
     name: Zellij
     ring: adopt

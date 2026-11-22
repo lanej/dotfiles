@@ -1,9 +1,23 @@
 #!/usr/bin/env node
 import { Command } from "commander";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { z } from "zod";
-import { BeadsReader, taskDetails, taskLabel, taskTree } from "./beads.ts";
+import {
+  BeadsReader,
+  taskDetails,
+  taskLabel,
+  taskSchema,
+  taskTree,
+} from "./beads.ts";
+import { TaskBeads } from "./task-service.ts";
 import { dispatchGate, requireDispatch } from "./capabilities.ts";
-import { configPath, exampleConfig, loadConfig } from "./config.ts";
+import {
+  configPath,
+  driverProfileSchema,
+  exampleConfig,
+  loadConfig,
+} from "./config.ts";
 
 enum HelpTopic {
   Tasks = "tasks",
@@ -15,7 +29,7 @@ enum HelpTopic {
 const program = new Command()
   .name("pi-driver")
   .description(
-    "Pi daily-driver configuration, read-only Beads task trees, and capability inspection",
+    "Run a local Pi worker on an existing bead and inspect task state",
   )
   .version("0.1.0");
 const output = (value: unknown): void => {
@@ -54,8 +68,30 @@ program
         };
       }
     }
-    output({ beads, dispatch: dispatchGate, profiles: config.profiles });
-    process.exitCode = 1;
+    let beadsService: {
+      configured: boolean;
+      verified: boolean;
+      error?: string;
+    } = { configured: false, verified: false };
+    if (config.beadsService !== undefined) {
+      try {
+        await new TaskBeads(config.beadsService).verifyAuthority();
+        beadsService = { configured: true, verified: true };
+      } catch (cause) {
+        beadsService = {
+          configured: true,
+          verified: false,
+          error: cause instanceof Error ? cause.message : String(cause),
+        };
+      }
+    }
+    output({
+      beads,
+      beadsService,
+      dispatch: dispatchGate,
+      profiles: config.profiles,
+    });
+    process.exitCode = beadsService.verified ? 0 : 1;
   });
 program
   .command("tasks [id]")
@@ -65,6 +101,43 @@ program
   .option("--json", "Print structured task data")
   .action(async (id: string | undefined, options: { json?: boolean }) => {
     const config = await loadConfig();
+    if (config.beadsService !== undefined) {
+      const service = new TaskBeads(config.beadsService);
+      const projectId = config.beadsService.projectId;
+      if (id !== undefined) {
+        const task = await service.get(id);
+        const { Attempts, stateDirectory } = await import("./attempts.ts");
+        const directory = stateDirectory();
+        let attempt = null;
+        if (existsSync(join(directory, "attempts.sqlite"))) {
+          const db = new Attempts(directory, true);
+          try {
+            attempt = db.latest(projectId, id);
+          } finally {
+            db.close();
+          }
+        }
+        if (options.json === true) output({ projectId, task, attempt });
+        else {
+          console.log(taskDetails(taskSchema.parse(task), projectId));
+          if (attempt !== null)
+            console.log(`${attempt.phase} · ${attempt.message}`);
+        }
+      } else {
+        const page = await service.list();
+        const tasks = z.array(taskSchema).parse(page.items);
+        if (options.json === true)
+          output({ projectId, tasks, possiblyTruncated: page.has_more });
+        else {
+          for (const row of taskTree(tasks)) console.log(taskLabel(row));
+          if (page.has_more)
+            console.error(
+              "Additional tasks are available. Inspect a task by its full ID.",
+            );
+        }
+      }
+      return;
+    }
     if (config.beads === undefined)
       throw new Error(
         `Configure an explicit Beads workspace, database, and branch in ${configPath()}; discovery never initializes one`,
@@ -96,10 +169,32 @@ program
     }
   });
 program
-  .command("start")
-  .description("Report the prerequisite blocking managed task launch")
-  .option("--profile <name>", "work or personal")
-  .action(requireDispatch);
+  .command("start <bead-id> [verifier...]")
+  .description(
+    "Start or focus one local Pi worker. Pass the agreed check as argv after --",
+  )
+  .requiredOption("--profile <name>", "work or personal")
+  .option("--tab-id <id>", "Place a new worker in this Zellij tab")
+  .action(
+    async (
+      id: string,
+      verifier: string[],
+      options: { profile: string; tabId?: string },
+    ) => {
+      if (verifier.length > 0 && !process.argv.slice(2).includes("--"))
+        throw new Error("Place the agreed verification command after --");
+      const { tabId } = await import("./zellij.ts");
+      const { startTask } = await import("./task-run.ts");
+      output(
+        await startTask(
+          id,
+          driverProfileSchema.parse(options.profile),
+          verifier,
+          options.tabId === undefined ? undefined : tabId(options.tabId),
+        ),
+      );
+    },
+  );
 program
   .command("resume")
   .description("Report the prerequisite blocking managed task recovery")
@@ -111,12 +206,13 @@ program
   .action((options: { topic?: string }) => {
     const topics = {
       [HelpTopic.Tasks]:
-        "Use pi-driver tasks [FULL_ID] [--json]. Reads require an explicit workspace/database/branch and never initialize a database. Containment and blockers remain separate. Observed descriptions are not accepted execution scope.",
+        "Use pi-driver tasks [FULL_ID] [--json]. Use beadsService.url and projectId for the HTTP workflow. Existing workspace/database/branch settings still support read-only inspection. Containment and blockers remain separate. Observed descriptions are not accepted execution scope.",
       [HelpTopic.Compaction]:
         "Load the Pi package to enable idle compaction. Defaults: five settled minutes AND 60% context use. Active work, drafts, dialogs, queued input, unknown usage, and active child work prevent compaction. Failed attempts do not loop. Pi near-limit compaction remains independent.",
       [HelpTopic.Profiles]:
         "Configure work/personal roles using pi-driver config --example. /driver-profile explicitly selects the lead model in Pi after registry validation. Work requires a configured Bedrock Mantle endpoint; personal uses Pi openai-codex authentication. No credential copies or automatic cross-profile fallback.",
-      [HelpTopic.Dispatch]: dispatchGate.reason,
+      [HelpTopic.Dispatch]:
+        "From the repository in Zellij: pi-driver start BEAD_ID --profile work -- make test. Supply a check that covers the accepted criteria; omit it for human review. Repeat the command to focus the registered worker. Use /task-submit SUMMARY in its Pi pane. Inspect pi-driver tasks BEAD_ID --json for the result.",
     } satisfies Record<HelpTopic, string>;
     const topic =
       options.topic === undefined
@@ -125,7 +221,7 @@ program
     console.log(
       topic !== undefined
         ? topics[topic]
-        : `# Pi daily driver\n\nRead-only foundation; managed dispatch is blocked by Beads scope fencing.\n\nCommands: config, doctor, tasks, start, resume.\nTopics: ${Object.keys(topics).join(", ")}. Read one with pi-driver skill --topic NAME.\n\n${topics[HelpTopic.Dispatch]}`,
+        : `# Pi daily driver\n\nStart one bead locally in Pi or inspect its result from the CLI.\n\nCommands: config, doctor, tasks, start, resume.\nTopics: ${Object.keys(topics).join(", ")}. Read one with pi-driver skill --topic NAME.\n\n${topics[HelpTopic.Dispatch]}`,
     );
   });
 

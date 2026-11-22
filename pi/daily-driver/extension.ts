@@ -3,7 +3,14 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { z } from "zod";
-import { BeadsReader, taskDetails, taskLabel, taskTree } from "./beads.ts";
+import {
+  BeadsReader,
+  taskDetails,
+  taskLabel,
+  taskSchema,
+  taskTree,
+} from "./beads.ts";
+import { TaskBeads } from "./task-service.ts";
 import { dispatchGate } from "./capabilities.ts";
 import {
   AgentRole,
@@ -177,21 +184,38 @@ export default function dailyDriver(pi: ExtensionAPI): void {
     description: "Inspect the authoritative Beads containment tree (read-only)",
     handler: async (argument, ctx) => {
       const config = await loadConfig();
-      if (config.beads === undefined) {
+      if (config.beads === undefined && config.beadsService === undefined) {
         ctx.ui.notify(
-          "Configure beads.workspace, database, and branch in pi-driver/config.json first",
+          "Configure a Beads service or read-only workspace in pi-driver/config.json",
           "warning",
         );
         return;
       }
-      const reader = new BeadsReader(config.beads);
+      const service =
+        config.beadsService === undefined
+          ? undefined
+          : new TaskBeads(config.beadsService);
+      const reader =
+        service !== undefined
+          ? {
+              list: async () =>
+                z.array(taskSchema).parse((await service.list()).items),
+              show: async (id: string) =>
+                taskSchema.parse(await service.get(id)),
+            }
+          : config.beads === undefined
+            ? undefined
+            : new BeadsReader(config.beads);
+      if (reader === undefined) return;
+      const label =
+        config.beadsService?.projectId ?? config.beads?.database ?? "";
       let id = argument.trim();
       if (id.length === 0) {
         const tasks = await reader.list();
         const rows = taskTree(tasks);
         const selection = await chooseTask(
           ctx,
-          `Tasks · ${config.beads.database}${tasks.length === 1000 ? " · first 1000" : ""}`,
+          `Tasks · ${label}${tasks.length === 1000 ? " · first 1000" : ""}`,
           rows.map((row) => ({
             value: row.task.id,
             label: taskLabel(row, (status) => statusPill(status, ctx.ui.theme)),
@@ -204,9 +228,7 @@ export default function dailyDriver(pi: ExtensionAPI): void {
       const task = await reader.show(id);
       await showTask(
         ctx,
-        taskDetails(task, config.beads.database, (status) =>
-          statusPill(status, ctx.ui.theme),
-        ),
+        taskDetails(task, label, (status) => statusPill(status, ctx.ui.theme)),
       );
     },
   });
@@ -214,6 +236,10 @@ export default function dailyDriver(pi: ExtensionAPI): void {
   pi.registerCommand("driver-profile", {
     description: "Explicitly select the work or personal lead model",
     handler: async (argument, ctx) => {
+      if (process.env["PI_DRIVER_ATTEMPT"] !== undefined) {
+        ctx.ui.notify("Set the profile on pi-driver start.", "warning");
+        return;
+      }
       if (!ctx.isIdle() || ctx.hasPendingMessages()) {
         ctx.ui.notify(
           "Wait for the conversation and queued messages to settle before changing profiles",
