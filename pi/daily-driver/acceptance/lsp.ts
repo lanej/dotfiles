@@ -20,6 +20,7 @@ import {
   createAgentSessionServices,
   SessionManager,
   SettingsManager,
+  ProjectTrustStore,
 } from "@earendil-works/pi-coding-agent";
 import {
   registerCodeIntelligence,
@@ -30,6 +31,9 @@ import {
 const root = await realpath(await mkdtemp(join(tmpdir(), "pi-lsp-native-")));
 const agentDir = join(root, "agent");
 await mkdir(agentDir);
+const previousAgentDir = process.env["PI_CODING_AGENT_DIR"];
+process.env["PI_CODING_AGENT_DIR"] = agentDir;
+new ProjectTrustStore(agentDir).set(root, true);
 await mkdir(join(root, "node_modules"));
 await symlink(
   fileURLToPath(new URL("../node_modules/typescript", import.meta.url)),
@@ -260,5 +264,7 @@ try {
     reason: "quit",
   });
   session.dispose();
+  if (previousAgentDir === undefined) delete process.env["PI_CODING_AGENT_DIR"];
+  else process.env["PI_CODING_AGENT_DIR"] = previousAgentDir;
   await rm(root, { recursive: true, force: true });
 }

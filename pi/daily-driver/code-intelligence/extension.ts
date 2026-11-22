@@ -1,5 +1,12 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { readFile } from "node:fs/promises";
+import type {
+  ExtensionAPI,
+  ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
+import {
+  getAgentDir,
+  ProjectTrustStore,
+} from "@earendil-works/pi-coding-agent";
+import { readFile, realpath } from "node:fs/promises";
 import { Type } from "typebox";
 import { z } from "zod";
 import { loadConfig } from "../config.ts";
@@ -39,11 +46,71 @@ const message = (error: unknown) =>
 export function registerCodeIntelligence(pi: ExtensionAPI): CodeIntelligence {
   const intelligence = new CodeIntelligence();
   const renameCalls = new Set<string>();
+  let approvedProject: string | undefined;
+  let lifecycle = 0;
+  const approved = async (ctx: ExtensionContext): Promise<boolean> => {
+    if (!ctx.isProjectTrusted()) return false;
+    const root = await realpath(ctx.cwd);
+    return (
+      approvedProject === root ||
+      new ProjectTrustStore(getAgentDir()).get(root) === true
+    );
+  };
+  const requireTrust = async (ctx: ExtensionContext): Promise<void> => {
+    if (await approved(ctx)) return;
+    approvedProject = undefined;
+    await intelligence.stop();
+    throw new Error(
+      "LSP requires explicit project trust before starting language servers. Use /lsp-trust to approve execution for this session, or record trust through Pi's normal trust flow.",
+    );
+  };
+  pi.registerCommand("lsp-trust", {
+    description:
+      "Approve language-server execution for this project in this session",
+    handler: async (_argument, ctx) => {
+      if (await approved(ctx)) {
+        ctx.ui.notify(
+          "Language-server execution is already approved for this project",
+          "info",
+        );
+        return;
+      }
+      if (!ctx.isProjectTrusted()) {
+        ctx.ui.notify(
+          "Approve the project through Pi's normal trust flow first, then use /lsp-trust",
+          "warning",
+        );
+        return;
+      }
+      const generation = lifecycle;
+      const root = await realpath(ctx.cwd);
+      const allowed = await ctx.ui.confirm(
+        "Allow language-server execution?",
+        `${root}\n\nLanguage servers can execute project code, including Rust build scripts and proc macros. Allow this for the current session?`,
+      );
+      if (
+        !allowed ||
+        generation !== lifecycle ||
+        !ctx.isProjectTrusted() ||
+        (await realpath(ctx.cwd)) !== root
+      )
+        return;
+      approvedProject = root;
+      ctx.ui.notify(
+        "Language-server execution approved for this project in this session",
+        "info",
+      );
+    },
+  });
   pi.on("session_start", async () => {
+    lifecycle++;
+    approvedProject = undefined;
     await intelligence.stop();
     intelligence.enabled = (await loadConfig()).lsp.enabled;
   });
   pi.on("session_shutdown", async () => {
+    lifecycle++;
+    approvedProject = undefined;
     await intelligence.stop();
   });
   pi.on("before_agent_start", (event) => ({
@@ -61,8 +128,9 @@ export function registerCodeIntelligence(pi: ExtensionAPI): CodeIntelligence {
     }),
     async execute(_id, args, signal, _update, ctx) {
       try {
-        return await intelligence.serial(async () =>
-          result(
+        return await intelligence.serial(async () => {
+          await requireTrust(ctx);
+          return result(
             await intelligence.lookup(
               ctx.cwd,
               args.action,
@@ -72,8 +140,8 @@ export function registerCodeIntelligence(pi: ExtensionAPI): CodeIntelligence {
               args.query ?? "",
               signal,
             ),
-          ),
-        );
+          );
+        });
       } catch (error) {
         return result({ error: message(error) }, true);
       }
@@ -98,6 +166,7 @@ export function registerCodeIntelligence(pi: ExtensionAPI): CodeIntelligence {
     async execute(_id, args, signal, _update, ctx) {
       try {
         return await intelligence.serial(async () => {
+          await requireTrust(ctx);
           if (args.action === "preview")
             return result(
               intelligence.describe(
@@ -190,9 +259,10 @@ export function registerCodeIntelligence(pi: ExtensionAPI): CodeIntelligence {
     const input = z.object({ path: z.string() }).safeParse(event.input);
     if (!input.success) return;
     try {
-      const diagnostics = await intelligence.serial(() =>
-        intelligence.diagnostics(ctx.cwd, input.data.path),
-      );
+      const diagnostics = await intelligence.serial(async () => {
+        await requireTrust(ctx);
+        return intelligence.diagnostics(ctx.cwd, input.data.path);
+      });
       return {
         content: [...event.content, ...result({ lsp: diagnostics }).content],
       };
