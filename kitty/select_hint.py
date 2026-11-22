@@ -14,10 +14,11 @@ from kitty.fast_data_types import add_timer, remove_timer
 EXT = r"\.(?:png|jpe?g|webp|gif|bmp|tiff?|avif|ico|svg|heic|jxl)"
 IMAGE_END = re.compile(EXT + "$", re.I)
 TOKEN = r"""[^\s<>"'`()\[\]{},;│┃]+"""
+QUOTED_POSITION = r"(?::[1-9][0-9]*(?::[1-9][0-9]*)?:?)?"
 PATH = re.compile(
-    r'"(?P<double_quoted>[^"\n]+)"'
-    r"|'(?P<single_quoted>[^'\n]+)'"
-    r"|`(?P<backtick_quoted>[^`\n]+)`"
+    rf'"(?P<double_quoted>[^"\n]+)"{QUOTED_POSITION}'
+    rf"|'(?P<single_quoted>[^'\n]+)'{QUOTED_POSITION}"
+    rf"|`(?P<backtick_quoted>[^`\n]+)`{QUOTED_POSITION}"
     rf"""|(?P<bare>{TOKEN})""")
 POSITION = re.compile(r"^(.*?):([1-9][0-9]*)(?::([1-9][0-9]*))?$")
 FRAGMENT = re.compile(r"(?:L)?([1-9][0-9]*)(?:C([1-9][0-9]*))?(?:-(?:L)?[1-9][0-9]*)?$")
@@ -81,7 +82,7 @@ def file_target(value):
         return None
     value = value.rstrip(".,;!?")
     target = {}
-    position = POSITION.fullmatch(value)
+    position = POSITION.fullmatch(value.removesuffix(":"))
     if position:
         value = position[1]
         target["line"] = int(position[2])
@@ -149,6 +150,8 @@ def picker_input(rows, rect, ticket, files=True):
         group = match.lastgroup
         start, end = match.span(group)
         path = text[start:end]
+        if group != "bare":
+            path += text[end + 1:match.end()]
         image = file_target(path)
         if not image or (not files and not IMAGE_END.search(image["path"])):
             continue

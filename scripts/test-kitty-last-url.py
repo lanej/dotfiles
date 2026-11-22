@@ -81,6 +81,7 @@ def check_image_hints(root):
 
     references = {
         "src/main.rs:42:7": {"path": "src/main.rs", "line": 42, "column": 7},
+        "src/main.rs:42:7:": {"path": "src/main.rs", "line": 42, "column": 7},
         "file:///tmp/source%20file.lua#L8C3": {"path": "/tmp/source file.lua", "host": "", "line": 8, "column": 3},
         "file://localhost/tmp/a.py#L9-L12": {"path": "/tmp/a.py", "host": "localhost", "line": 9},
         "README": {"path": "README"},
@@ -110,6 +111,13 @@ def check_image_hints(root):
     _, quoted_files = picker.picker_input(picker.capture(quoted), (0, 0, 80, 8), "quoted")
     if {entry["path"] for entry in quoted_files.values()} != {"docs/it's here.md", 'docs/a "quoted" file.rs'}:
         raise AssertionError(f"Opposite quotes split a quoted filename: {quoted_files}")
+    diagnostics = Screen(None, 8, 80, 8)
+    parse_bytes(diagnostics, b'src/main.rs:42:7: error: failed\r\n"src/a b.rs":42:7\r\n`src/main.rs`:42\r\n')
+    _, diagnostic_files = picker.picker_input(picker.capture(diagnostics), (0, 0, 80, 8), "diagnostics")
+    if {(entry["path"], entry.get("line"), entry.get("column")) for entry in diagnostic_files.values()} != {
+        ("src/main.rs", 42, 7), ("src/a b.rs", 42, 7), ("src/main.rs", 42, None)
+    }:
+        raise AssertionError(f"Diagnostic or quoted positions were lost: {diagnostic_files}")
     wrapped = Screen(None, 8, 60, 8)
     parse_bytes(wrapped, ("src/very-long-module-".rjust(58) + "\r\n  name.rs:42:7\r\n" +
                           "screenshots/overview.p".rjust(58) + "\r\n  ng\r\n").encode())
