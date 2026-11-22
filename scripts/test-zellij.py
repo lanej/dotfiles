@@ -129,6 +129,13 @@ class Terminal:
                 raise error
             return stdout
 
+    def capture_pane(self, pane: int, *, full: bool = False, ansi: bool = False) -> str:
+        flags = (["--full"] if full else []) + (["--ansi"] if ansi else [])
+        return self.action("dump-screen", *flags, "--pane-id", f"terminal_{pane}")
+
+    def send_to_pane(self, pane: int, text: str) -> None:
+        self.action("write-chars", "--pane-id", f"terminal_{pane}", text)
+
     def panes(self, session=None):
         return json.loads(self.action("list-panes", "--json", session=session))
 
