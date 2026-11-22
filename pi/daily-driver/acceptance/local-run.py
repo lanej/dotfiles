@@ -36,7 +36,8 @@ class Provider(BaseHTTPRequestHandler):
         tool = request["messages"][-1]["role"] == "user" and "SUBMIT_WITH_TOOL_accepted" in str(message)
         planning = request["messages"][-1]["role"] == "user" and str(message).startswith("Draft a plan for ")
         spec = request["messages"][-1]["role"] == "user" and str(message).startswith("Begin Socrates discovery")
-        planning = planning or (request["messages"][-1]["role"] == "user" and str(message).startswith("The operator froze"))
+        refreshed = request["messages"][-1]["role"] == "user" and message == "Draft a revised plan without new children."
+        planning = planning or refreshed or (request["messages"][-1]["role"] == "user" and str(message).startswith("The operator froze"))
         if search:
             command = ("sed -n '1,3p' highlight-fixture.ts" if search.group(1) == "SED"
                        else "rg -n --with-filename rgMarker highlight-fixture.ts")
@@ -63,7 +64,7 @@ class Provider(BaseHTTPRequestHandler):
             ]
             delta = {"role": "assistant", "tool_calls": [{"index": 0, "id": "fixture-draft-plan",
                      "type": "function", "function": {"name": "draft_implementation_plan",
-                     "arguments": json.dumps({"summary": "Plan native fixture delivery", "tasks": tasks})}}]}
+                     "arguments": json.dumps({"summary": "Plan native fixture delivery", "tasks": [] if refreshed else tasks})}}]}
         elif tool:
             assert any(item["function"]["name"] == "task_submit_result" for item in request["tools"]), request
             delta = {"role": "assistant", "tool_calls": [{"index": 0, "id": "fixture-task-submit",
@@ -361,6 +362,22 @@ def main():
                                      verified["attempt"]["verification"]["gitHead"]], check=False)
                     assert ready.returncode != 0 and "Verify and commit" in ready.stderr, ready
                     assert fresh(bead)["attempt"]["verification"] is None
+                    terminal.action("write-chars", "--pane-id", f"terminal_{pane}",
+                                    "Draft a revised plan without new children.\r")
+                    terminal.until("revised plan drafted", lambda:
+                                   fresh(bead)["attempt"]["leadPlan"].get("draft") is not None)
+                    terminal.action("write-chars", "--pane-id", f"terminal_{pane}", "/plan-approve\r")
+                    terminal.until("revised approval is visible", lambda:
+                                   "Enter start implementation" in pane_text(pane))
+                    terminal.action("write-chars", "--pane-id", f"terminal_{pane}", "\r")
+                    terminal.until("revised plan approved", lambda:
+                                   fresh(bead)["attempt"]["leadPlan"]["mode"] == "implementing")
+                    assert fresh(bead)["attempt"]["leadPlan"]["children"] == plan["children"]
+                    terminal.action("write-chars", "--pane-id", f"terminal_{pane}",
+                                    "/task-submit Verified against the refreshed brief\r")
+                    terminal.until("fresh verification persisted", lambda:
+                                   fresh(bead)["attempt"]["phase"] == "verified")
+                    assert fresh(bead)["attempt"]["verification"]["summary"] == "Verified against the refreshed brief"
                 terminal.action("write", "--pane-id", f"terminal_{pane}", "4")
                 terminal.until("lead Pi exit", lambda: all(p["id"] != pane or p["exited"] for p in terminal.terminals()))
                 if scenario == "socrates":

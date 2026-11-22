@@ -51,7 +51,7 @@ export function registerSocrates(
           draft: null,
           acceptedRevision,
         };
-        row.leadPlan = { mode: LeadMode.Planning, draft: null };
+        row.leadPlan = { ...row.leadPlan, draft: null };
       });
       pi.sendUserMessage(
         "Begin Socrates discovery for this bead. Establish the objective, scope, observable acceptance criteria and evidence. Ask about blocking choices. Save the proposed specification with draft_socrates_specification.",

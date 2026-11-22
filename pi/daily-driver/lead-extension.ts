@@ -134,7 +134,11 @@ export function registerLeadControls(
     } catch (cause) {
       if (cause instanceof BeadChanged) {
         db.change(id, (row) => {
-          row.leadPlan = { mode: LeadMode.Planning, draft: null };
+          row.leadPlan = {
+            mode: LeadMode.Planning,
+            draft: null,
+            children: row.leadPlan?.children,
+          };
         });
         applyTools(ctx);
       }
@@ -208,7 +212,7 @@ export function registerLeadControls(
               "Every frozen requirement must be covered by the task breakdown",
             );
         }
-        row.leadPlan = { mode: LeadMode.Planning, draft };
+        row.leadPlan = { ...row.leadPlan, draft };
       });
       return {
         content: [
@@ -307,7 +311,11 @@ export function registerLeadControls(
         }
         row.bead = current;
         row.revision = current.revision;
-        row.leadPlan = { mode: LeadMode.Planning, draft: null };
+        row.leadPlan = {
+          mode: LeadMode.Planning,
+          draft: null,
+          children: row.leadPlan?.children,
+        };
         row.phase = Phase.Running;
         row.verification = null;
         row.message =
@@ -366,6 +374,7 @@ export function registerLeadControls(
             throw new Error("The displayed plan or task revision changed");
           row.leadPlan = {
             mode: LeadMode.Applying,
+            children: row.leadPlan.children,
             draft,
             digest,
             specificationVersion,
@@ -385,7 +394,11 @@ export function registerLeadControls(
           // Keep the attempted digest and require reconciliation before another write.
           if (cause instanceof BeadChanged && draft.tasks.length === 0)
             db.change(id, (row) => {
-              row.leadPlan = { mode: LeadMode.Planning, draft: null };
+              row.leadPlan = {
+                mode: LeadMode.Planning,
+                draft: null,
+                children: row.leadPlan?.children,
+              };
             });
           throw cause;
         }
@@ -403,7 +416,7 @@ export function registerLeadControls(
             draft,
             digest,
             specificationVersion,
-            children: result.children,
+            children: { ...row.leadPlan.children, ...result.children },
           };
         });
         applyTools(ctx);

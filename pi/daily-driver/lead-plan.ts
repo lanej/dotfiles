@@ -75,23 +75,26 @@ export const draftSchema = z
   });
 
 export type LeadDraft = z.infer<typeof draftSchema>;
+const childBeads = z.record(taskKey, z.string().min(1));
 export const leadPlanSchema = z.discriminatedUnion("mode", [
   z.strictObject({
     mode: z.literal(LeadMode.Planning),
     draft: draftSchema.nullable(),
+    children: childBeads.optional(),
   }),
   z.strictObject({
     mode: z.literal(LeadMode.Applying),
     draft: draftSchema,
     digest: z.string(),
     specificationVersion: z.number().int().positive().optional(),
+    children: childBeads.optional(),
   }),
   z.strictObject({
     mode: z.literal(LeadMode.Implementing),
     draft: draftSchema,
     digest: z.string(),
     specificationVersion: z.number().int().positive().optional(),
-    children: z.record(taskKey, z.string().min(1)),
+    children: childBeads,
   }),
 ]);
 
