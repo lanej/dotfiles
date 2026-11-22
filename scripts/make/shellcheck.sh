@@ -39,5 +39,4 @@ shellcheck -x \
 	"$dotfiles/bin/git-worktree-policy" \
 	"$dotfiles/bin/dotfiles-fzf" \
 	"$dotfiles/bin/sync-codex-mcp-servers" \
-	"$dotfiles/paseo-tasks/coordinator/init.sh" \
-	"$dotfiles/paseo-tasks/coordinator/bin/commit-state"
+	"$dotfiles/paseo-tasks/coordinator/init.sh"

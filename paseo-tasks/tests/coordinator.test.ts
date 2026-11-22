@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { test } from "node:test";
 import { fileURLToPath, URL } from "node:url";
 
-await test("coordinator preserves memory and requires OctoManager for PR work", () => {
+await test("coordinator installs guidance and preserves operator notes", () => {
   const result = spawnSync(
     "python3",
     [

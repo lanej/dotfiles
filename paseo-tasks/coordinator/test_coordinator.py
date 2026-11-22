@@ -1,4 +1,4 @@
-"""Exercise memory initialization and upgrade boundaries against real local Git."""
+"""Exercise coordinator guidance installation in isolated Git repositories."""
 
 import os
 import shutil
@@ -9,8 +9,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 GIT = shutil.which("git")
-BASH = shutil.which("bash")
-POLICY = "Read PR-WORKFLOW.md before PR work. It governs the PR lifecycle when older local instructions disagree."
 RETIRED = (
     "merge-seq.sh",
     "merge-seq.py",
@@ -27,22 +25,12 @@ class Coordinator(unittest.TestCase):
         self.bin = self.root / "tools"
         self.bin.mkdir()
         # An isolated PATH makes missing-tool evidence independent of the host install.
-        for name in (
-            "git",
-            "dirname",
-            "mkdir",
-            "cp",
-            "chmod",
-            "grep",
-            "mktemp",
-            "cat",
-            "mv",
-        ):
+        for name in ("bash", "git", "dirname", "mkdir", "cp", "cmp"):
             (self.bin / name).symlink_to(shutil.which(name))
         self.octo = self.bin / "octo-manager"
         self.octo.write_text("#!/bin/sh\nexit 99\n")
         self.octo.chmod(0o755)
-        self.dest = self.root / "memory"
+        self.dest = self.root / "notes"
         self.env = dict(
             os.environ,
             PATH=str(self.bin),
@@ -61,7 +49,7 @@ class Coordinator(unittest.TestCase):
 
     def initialize(self):
         return subprocess.run(
-            [BASH, str(ROOT / "init.sh"), str(self.dest)],
+            [str(ROOT / "init.sh"), str(self.dest)],
             env=self.env,
             text=True,
             capture_output=True,
@@ -80,59 +68,86 @@ class Coordinator(unittest.TestCase):
 
     def assert_ready(self, result):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("coordinator state ready:", result.stdout)
+        self.assertIn(str(self.dest / "PR-WORKFLOW.md"), result.stdout)
+
+    def test_fresh_setup_tracks_the_guides_and_is_repeatable(self):
+        self.assert_ready(self.initialize())
+        guides = {"README.md", "LESSONS.md", "INSTRUCTIONS.md", "PR-WORKFLOW.md"}
+        self.assertEqual({p.name for p in self.dest.iterdir()}, guides | {".git"})
+        self.assertEqual(set(self.git("ls-files").splitlines()), guides)
+        before = self.git("rev-parse", "HEAD")
+        self.assert_ready(self.initialize())
+        self.assertEqual(self.git("rev-parse", "HEAD"), before)
         self.assertEqual(self.git("status", "--porcelain"), "")
 
-    def test_fresh_install_persists_memory_and_only_state_helper(self):
+    def test_refresh_updates_workflow_and_preserves_notes_archives_and_staging(self):
         self.assert_ready(self.initialize())
+        workflow = self.dest / "PR-WORKFLOW.md"
+        workflow.write_text("old managed workflow\n")
+        self.git("commit", "-qm", "earlier workflow", "--", workflow.name)
+
+        # Stage a note independently of its working copy, as a partial commit would.
+        instructions = self.dest / "INSTRUCTIONS.md"
+        working_copy = instructions.read_bytes()
+        instructions.write_text("staged operator instruction\n")
+        self.git("add", "--", instructions.name)
+        instructions.write_bytes(working_copy)
+        (self.dest / "unrelated.md").write_text("staged separately\n")
+        self.git("add", "--", "unrelated.md")
+        retained = {
+            "README.md": "operator introduction\n",
+            "LESSONS.md": "local lessons\n",
+            "STATE.md": "handwritten history\n",
+            "initiatives/work.md": "operator’s initiative\n",
+            "bin/commit-state": "customized old helper\n",
+        }
+        for name, content in retained.items():
+            path = self.dest / name
+            path.parent.mkdir(exist_ok=True)
+            path.write_text(content)
+        self.assert_ready(self.initialize())
+        for name, content in retained.items():
+            self.assertEqual((self.dest / name).read_text(), content, name)
         self.assertEqual(
-            sorted(p.name for p in (self.dest / "bin").iterdir()), ["commit-state"]
+            workflow.read_bytes(), (ROOT / "templates" / workflow.name).read_bytes()
         )
         self.assertEqual(
-            (self.dest / "PR-WORKFLOW.md").read_text(),
-            (ROOT / "templates/PR-WORKFLOW.md").read_text(),
+            self.git("diff", "--name-only", "HEAD^", "HEAD"), workflow.name
         )
-        self.assertIn(POLICY, (self.dest / "INSTRUCTIONS.md").read_text())
+        self.assertEqual(
+            self.git("diff", "--cached", "--name-only").splitlines(),
+            [instructions.name, "unrelated.md"],
+        )
+        self.assertEqual(
+            self.git("show", ":INSTRUCTIONS.md"), "staged operator instruction"
+        )
+        self.assertEqual(instructions.read_bytes(), working_copy)
         before = self.git("rev-parse", "HEAD")
         self.assert_ready(self.initialize())
         self.assertEqual(self.git("rev-parse", "HEAD"), before)
 
-    def test_upgrade_preserves_authored_state_and_refreshes_workflow(self):
+    def test_staged_workflow_requires_the_operator_to_finish_the_edit(self):
         self.assert_ready(self.initialize())
-        retained = {
-            "STATE.md": "operator state and authorizations\n",
-            "INSTRUCTIONS.md": "local standing instructions\n",
-            "LESSONS.md": "local lessons\n",
-            "initiatives/work.md": "valuable current work\n",
-            "bin/custom-helper": "operator-owned script\n",
-        }
-        for name, content in retained.items():
-            (self.dest / name).write_text(content)
-        (self.dest / "PR-WORKFLOW.md").write_text("old managed workflow\n")
-        self.assert_ready(self.initialize())
-        for name, content in retained.items():
-            expected = (
-                POLICY + "\n\n" + content if name == "INSTRUCTIONS.md" else content
-            )
-            self.assertEqual((self.dest / name).read_text(), expected, name)
-        self.assertEqual(
-            (self.dest / "PR-WORKFLOW.md").read_text(),
-            (ROOT / "templates/PR-WORKFLOW.md").read_text(),
-        )
-        self.assert_ready(self.initialize())
-        self.assertEqual((self.dest / "INSTRUCTIONS.md").read_text().count(POLICY), 1)
+        workflow = self.dest / "PR-WORKFLOW.md"
+        workflow.write_text("staged version\n")
+        self.git("add", "--", workflow.name)
+        workflow.write_text("additional edit\n")
+        result = self.initialize()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(str(workflow), result.stderr)
+        self.assertEqual(self.git("show", ":PR-WORKFLOW.md"), "staged version")
+        self.assertEqual(workflow.read_text(), "additional edit\n")
 
     def test_missing_octo_is_reported_before_writing(self):
         self.octo.unlink()
         result = self.initialize()
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("octo-manager is required", result.stderr)
-        self.assertFalse(
-            self.dest.exists(), "missing integration must not seed partial state"
-        )
+        self.assertFalse(self.dest.exists(), "unexpected partial notes installation")
 
     def test_retired_helpers_block_upgrade_without_deleting_work(self):
         self.assert_ready(self.initialize())
+        (self.dest / "bin").mkdir()
         state = self.dest / "STATE.md"
         state.write_text("uncommitted operator work\n")
         before = self.git("rev-parse", "HEAD")
@@ -143,7 +158,6 @@ class Coordinator(unittest.TestCase):
                 failed = self.initialize()
                 self.assertNotEqual(failed.returncode, 0, failed.stdout + failed.stderr)
                 self.assertIn(str(path), failed.stderr)
-                self.assertNotIn("coordinator state ready:", failed.stdout)
                 self.assertEqual(
                     path.read_text(), "potentially customized legacy helper\n"
                 )
@@ -155,10 +169,7 @@ class Coordinator(unittest.TestCase):
         self.assertNotEqual(failed.returncode, 0, failed.stdout + failed.stderr)
         self.assertTrue(path.is_symlink(), "even dangling legacy links need inspection")
 
-    def test_persistence_failure_propagates_and_preserves_state(self):
-        self.assert_ready(self.initialize())
-        (self.dest / "STATE.md").write_text("new state needing persistence\n")
-        before = self.git("rev-parse", "HEAD")
+    def test_failed_initial_commit_can_be_retried(self):
         shim = self.bin / "git"
         shim.unlink()
         shim.write_text(
@@ -168,11 +179,12 @@ class Coordinator(unittest.TestCase):
         shim.chmod(0o755)
         failed = self.initialize()
         self.assertEqual(failed.returncode, 17, failed.stdout + failed.stderr)
-        self.assertNotIn("coordinator state ready:", failed.stdout)
-        self.assertEqual(self.git("rev-parse", "HEAD"), before)
-        self.assertEqual(
-            (self.dest / "STATE.md").read_text(), "new state needing persistence\n"
-        )
+        self.assertNotIn("guidance ready", failed.stdout)
+        shim.unlink()
+        shim.symlink_to(GIT)
+        self.assert_ready(self.initialize())
+        self.assertEqual(self.git("rev-list", "--count", "HEAD"), "1")
+        self.assertEqual(self.git("status", "--porcelain"), "")
 
 
 if __name__ == "__main__":
