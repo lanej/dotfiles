@@ -86,7 +86,10 @@ export function registerSocrates(
       decisionId: Type.String(),
       question: Type.String(),
       context: Type.Optional(
-        Type.String({ description: "Optional context for the question" }),
+        Type.String({
+          description:
+            "Optional question context, rendered as Markdown in the detail view",
+        }),
       ),
       evidence: questionEvidenceParameter,
       options: Type.Array(
@@ -97,7 +100,8 @@ export function registerSocrates(
           }),
           details: Type.Optional(
             Type.String({
-              description: "Longer explanation shown in the detail view",
+              description:
+                "Longer Markdown explanation shown in the preview and detail view",
             }),
           ),
           evidence: questionEvidenceParameter,

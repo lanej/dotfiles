@@ -151,7 +151,8 @@ ARCHIVE = Exchange(
     (
         Choice(
             KEEP_CHECKOUT, "Retry in the same checkout",
-            "Keeping the checkout preserves the exact worktree for a retry.\n\n"
+            "Keeping the checkout preserves **the exact worktree** for a retry.\n\n"
+            "- Run `archive --retry` after the [retention check](https://example.com/retention).\n\n"
             + "\n".join(f"Recovery log entry {i}" for i in range(1, 33)),
             (
                 WebEvidence("Recovery procedure", "https://github.com/fixture/repo/issues/7"),

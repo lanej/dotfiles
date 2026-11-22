@@ -1,5 +1,10 @@
-import type { ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
 import {
+  getMarkdownTheme,
+  type ExtensionContext,
+  type Theme,
+} from "@earendil-works/pi-coding-agent";
+import {
+  Markdown,
   matchesKey,
   parseKey,
   truncateToWidth,
@@ -78,30 +83,54 @@ function evidenceRows(
   });
 }
 
+function markdownRows(value: string | undefined, width: number): string[] {
+  return value === undefined
+    ? []
+    : new Markdown(questionText(value), 0, 0, getMarkdownTheme()).render(width);
+}
+
+function joinBlocks(blocks: string[][]): string[] {
+  return blocks
+    .filter((block) => block.length > 0)
+    .flatMap((block, index) => (index === 0 ? block : ["", ...block]));
+}
+
+function evidenceBlock(
+  items: QuestionEvidence[],
+  worktree: string,
+  theme: Theme,
+  width: number,
+): string[] {
+  return items.length === 0
+    ? []
+    : wrapTextWithAnsi(evidenceRows(items, worktree, theme).join("\n"), width);
+}
+
 function details(
   prompt: Question,
   choice: QuestionChoice,
   worktree: string,
   theme: Theme,
-): string {
-  const paragraphs = [
-    questionLinks(prompt.question),
-    ...(prompt.context === undefined ? [] : [questionLinks(prompt.context)]),
-    [
-      theme.bold(questionLinks(oneLine(choice.label))),
-      questionLinks(choice.description),
-    ]
-      .filter(Boolean)
-      .join("\n"),
-    ...(choice.details === undefined ? [] : [questionLinks(choice.details)]),
-  ];
-  const links = evidenceRows(
-    [...(prompt.evidence ?? []), ...(choice.evidence ?? [])],
-    worktree,
-    theme,
-  );
-  if (links.length > 0) paragraphs.push(links.join("\n"));
-  return paragraphs.join("\n\n");
+  width: number,
+): string[] {
+  const heading = [
+    theme.bold(questionLinks(oneLine(choice.label))),
+    questionLinks(choice.description),
+  ]
+    .filter(Boolean)
+    .join("\n");
+  return joinBlocks([
+    wrapTextWithAnsi(questionLinks(prompt.question), width),
+    markdownRows(prompt.context, width),
+    wrapTextWithAnsi(heading, width),
+    markdownRows(choice.details, width),
+    evidenceBlock(
+      [...(prompt.evidence ?? []), ...(choice.evidence ?? [])],
+      worktree,
+      theme,
+      width,
+    ),
+  ]);
 }
 
 const columnDivider = " │ ";
@@ -113,12 +142,13 @@ function preview(
   theme: Theme,
   width: number,
 ): string[] {
-  const content = [
-    questionLinks(choice.description),
-    questionLinks(choice.details ?? ""),
-    ...evidenceRows(choice.evidence ?? [], worktree, theme),
-  ].filter((section) => section.length > 0);
-  return wrapTextWithAnsi(content.join("\n\n"), width);
+  return joinBlocks([
+    choice.description === ""
+      ? []
+      : wrapTextWithAnsi(questionLinks(choice.description), width),
+    markdownRows(choice.details, width),
+    evidenceBlock(choice.evidence ?? [], worktree, theme, width),
+  ]);
 }
 
 function previewColumns(
@@ -195,10 +225,7 @@ export async function chooseQuestion(
             const body =
               choice === undefined
                 ? []
-                : wrapTextWithAnsi(
-                    details(prompt, choice, ctx.cwd, theme),
-                    inner,
-                  );
+                : details(prompt, choice, ctx.cwd, theme, inner);
             maxScroll = Math.max(0, body.length - height);
             scroll = Math.min(scroll, maxScroll);
             return body.slice(scroll, scroll + height).map(panel);

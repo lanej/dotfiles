@@ -159,7 +159,10 @@ def exercise_selector(case: Case) -> None:
                    f"→ {ARCHIVE.answer}" in view() and "Retry in the same checkout" in view())
     terminal.send_to_pane(pane, "l")
     terminal.until("choice details open with question context", lambda:
-                   "Keeping the checkout preserves" in view() and "Octo has confirmed the merge" in view())
+                   "Keeping the checkout preserves" in view() and "Octo has confirmed the merge" in view()
+                   and "Run archive --retry" in view() and "retention check" in view())
+    assert "**the exact worktree**" not in view() and "`archive --retry`" not in view()
+    assert "https://example.com/retention" not in view()
     assert "h back" not in view() and "j/k scroll" not in view()
     (artifacts / "socrates-details.ansi").write_text(terminal.capture_pane(pane, ansi=True))
     terminal.send_to_pane(pane, "\r")
@@ -261,6 +264,7 @@ def exercise_question_exchange(case: Case) -> None:
     for url in (
         (checkout / "README.md").as_uri() + "#L1",
         "https://example.com/recovery",
+        "https://example.com/retention",
         "https://github.com/fixture/repo/issues/7",
         "https://github.com/fixture/repo/issues/8",
         "https://github.com/fixture/repo/issues/9",
