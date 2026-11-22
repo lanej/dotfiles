@@ -1,3 +1,4 @@
+import { FooterStatus } from "./runtime.ts";
 import type {
   ExtensionAPI,
   ExtensionContext,
@@ -14,6 +15,11 @@ import { DriverProfile } from "./config.ts";
 import { processStart } from "./process.ts";
 import { TaskBeads } from "./task-service.ts";
 import { submitResult } from "./task-verification.ts";
+import {
+  appendVerificationEvent,
+  registerTranscriptEvents,
+  VerificationOutcome,
+} from "./transcript-events.ts";
 
 async function matchWorker(
   ctx: ExtensionContext,
@@ -46,6 +52,7 @@ export default function managedWorker(pi: ExtensionAPI): void {
   const id = process.env["PI_DRIVER_ATTEMPT"];
   if (id === undefined) return;
   z.uuid().parse(id);
+  registerTranscriptEvents(pi);
   const db = new Attempts(stateDirectory());
   let lifetime = new AbortController();
   const submissions = new Set<Promise<string>>();
@@ -57,6 +64,12 @@ export default function managedWorker(pi: ExtensionAPI): void {
     dailyDriver(pi, {
       profile: lead.profile,
       approvalPending: () => approvalPending,
+      trackedPullRequest: () => {
+        const delivery = db.get(id).delivery;
+        return delivery?.pr !== undefined && delivery.agent !== undefined
+          ? delivery.url
+          : undefined;
+      },
     });
     applyLeadTools = registerLeadControls(
       pi,
@@ -131,7 +144,7 @@ export default function managedWorker(pi: ExtensionAPI): void {
           row.message = "Pi is running in the managed worktree";
         }
       });
-      ctx.ui.setStatus("pi-bead", record.bead.id);
+      ctx.ui.setStatus(FooterStatus.Bead, record.bead.id);
       if (record.leadPlan !== undefined) {
         pi.setSessionName(`${record.bead.id} · ${record.bead.title}`);
         applyLeadTools?.(ctx);
@@ -202,9 +215,31 @@ export default function managedWorker(pi: ExtensionAPI): void {
       toolSignal === undefined
         ? lifetime.signal
         : AbortSignal.any([lifetime.signal, toolSignal]);
-    const result = matchWorker(ctx, db.get(id)).then(() =>
-      submitResult(db, id, summary, signal),
-    );
+    const result = matchWorker(ctx, db.get(id)).then(async () => {
+      const message = await submitResult(db, id, summary, signal);
+      const { phase, bead, verification } = db.get(id);
+      if (
+        verification !== null &&
+        current.phase !== Phase.Closed &&
+        !signal.aborted
+      ) {
+        const outcome =
+          phase === Phase.Closed || phase === Phase.Verified
+            ? VerificationOutcome.Passed
+            : phase === Phase.CheckFailed
+              ? VerificationOutcome.Failed
+              : VerificationOutcome.Review;
+        appendVerificationEvent(
+          pi,
+          outcome,
+          bead.id,
+          outcome === VerificationOutcome.Passed
+            ? verification.summary
+            : message,
+        );
+      }
+      return message;
+    });
     submissions.add(result);
     try {
       return await result;
@@ -215,7 +250,9 @@ export default function managedWorker(pi: ExtensionAPI): void {
   pi.registerCommand("task-submit", {
     description: "Verify a result against this bead's accepted criteria",
     handler: async (summary, ctx) => {
-      ctx.ui.notify(await submit(summary, ctx), "info");
+      const closed = db.get(id).phase === Phase.Closed;
+      const result = await submit(summary, ctx);
+      if (closed) ctx.ui.notify(result, "info");
     },
   });
   pi.registerTool({

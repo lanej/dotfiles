@@ -114,6 +114,23 @@ export class Attempts {
       .get(project, bead);
     return raw === undefined ? null : decode(raw);
   }
+  livePaneBeads(project: string, session: string): Set<string> {
+    return new Set(
+      z
+        .array(z.object({ bead: z.string() }))
+        .parse(
+          this.db
+            .prepare(
+              `SELECT bead FROM attempts WHERE project=? AND active=1
+          AND json_extract(record,'$.session')=?
+          AND json_extract(record,'$.live')=1
+          AND json_type(record,'$.pane')='integer'`,
+            )
+            .all(project, session),
+        )
+        .map(({ bead }) => bead),
+    );
+  }
   reserve(attempt: Attempt): boolean {
     const result = this.db
       .prepare(

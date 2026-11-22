@@ -18,7 +18,7 @@ import {
   loadConfig,
 } from "./config.ts";
 import { LeadMode } from "./lead-plan.ts";
-import { processStart, run } from "./process.ts";
+import { processFailure, processStart, run } from "./process.ts";
 import { ClaimRefused, TaskBeads } from "./task-service.ts";
 import { Zellij } from "./zellij.ts";
 
@@ -61,6 +61,57 @@ async function focus(
       "The existing attempt has a different repository, profile or verification command",
     );
   }
+  return focusRegisteredPane(record, zellij, service);
+}
+
+export async function taskPaneBeads(project: string): Promise<Set<string>> {
+  const session = process.env["ZELLIJ_SESSION_NAME"];
+  if (session === undefined || session === "") return new Set();
+  const directory = stateDirectory();
+  try {
+    await stat(join(directory, "attempts.sqlite"));
+  } catch (error) {
+    if (processFailure(error).code === "ENOENT") return new Set();
+    throw error;
+  }
+  const db = new Attempts(directory, true);
+  try {
+    return db.livePaneBeads(project, session);
+  } finally {
+    db.close();
+  }
+}
+
+export async function focusTaskPane(
+  source: Attempt["source"],
+  bead: string,
+): Promise<void> {
+  const session = z
+    .string()
+    .min(1, "Open the task tree inside Zellij to focus a pane")
+    .parse(process.env["ZELLIJ_SESSION_NAME"]);
+  const db = new Attempts(stateDirectory(), true);
+  try {
+    const record = db.latest(source.projectId, bead);
+    if (record === null || record.session !== session)
+      throw new Error(
+        "This task has no registered Pi pane in the current Zellij session",
+      );
+    await focusRegisteredPane(
+      record,
+      new Zellij(session),
+      new TaskBeads(source),
+    );
+  } finally {
+    db.close();
+  }
+}
+
+async function focusRegisteredPane(
+  record: Attempt,
+  zellij: Zellij,
+  service: TaskBeads,
+): Promise<Attempt> {
   if (record.pid === null || record.pane === null || record.revision === null) {
     throw new Error(
       `Attempt ${record.id} is ${record.phase}. ${record.message}. Inspect pi-driver tasks ${record.bead.id} --json`,

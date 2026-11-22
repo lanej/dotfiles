@@ -1,4 +1,3 @@
-import { basename } from "node:path";
 import {
   type ExtensionContext,
   type Theme,
@@ -8,158 +7,120 @@ import {
 import {
   matchesKey,
   SelectList,
-  styleText,
   Text,
   truncateToWidth,
   visibleWidth,
+  type OverlayOptions,
 } from "@earendil-works/pi-tui";
 import { knownTaskStatus, TaskStatus } from "./beads.ts";
-import {
-  ArrowSequence,
-  isEntry,
-  isMessageRole,
-  NavigationKey,
-  PiEntryType,
-  PiMessageRole,
-} from "./runtime.ts";
+import { ArrowSequence, NavigationKey } from "./runtime.ts";
 
 const statusTones = {
-  [TaskStatus.Open]: "muted",
-  [TaskStatus.InProgress]: "accent",
-  [TaskStatus.Blocked]: "error",
-  [TaskStatus.Deferred]: "warning",
-  [TaskStatus.Closed]: "success",
-} satisfies Record<TaskStatus, ThemeColor>;
+  [TaskStatus.Open]: { glyph: "○", tone: "muted" },
+  [TaskStatus.InProgress]: { glyph: "◐", tone: "accent" },
+  [TaskStatus.Blocked]: { glyph: "×", tone: "error" },
+  [TaskStatus.Deferred]: { glyph: "–", tone: "warning" },
+  [TaskStatus.Closed]: { glyph: "●", tone: "success" },
+} satisfies Record<TaskStatus, { glyph: string; tone: ThemeColor }>;
 
-export function statusPill(status: string, theme: Theme): string {
+export function taskStatusGlyph(status: string, theme: Theme): string {
   const recognized = knownTaskStatus(status);
-  const tone = recognized === undefined ? "muted" : statusTones[recognized];
-  const label = status
-    .replaceAll("_", " ")
-    .replace(/\p{C}/gu, " ")
-    .toUpperCase();
-  return styleText(
-    ` ${label} `,
-    {
-      fg: theme.colors.userMessageBg,
-      bg: theme.colors[tone],
-      bold: true,
-    },
-    theme.getColorMode(),
-  );
+  const { glyph, tone } =
+    recognized === undefined
+      ? { glyph: "?", tone: "muted" as const }
+      : statusTones[recognized];
+  return theme.fg(tone, glyph);
 }
 
-export function installFooter(
-  ctx: ExtensionContext,
-  reasoning: () => string,
-  profile: () => string | undefined,
-): void {
-  ctx.ui.setFooter((tui, theme, data) => ({
-    dispose: data.onBranchChange(() => {
-      tui.requestRender();
-    }),
-    invalidate() {},
-    render(width) {
-      const usage = ctx.getContextUsage();
-      let cost = 0;
-      for (const entry of ctx.sessionManager.getEntries()) {
-        if (
-          isEntry(entry, PiEntryType.Message) &&
-          isMessageRole(entry.message, PiMessageRole.Assistant)
-        ) {
-          cost += entry.message.usage.cost.total;
-        } else if (
-          isEntry(entry, PiEntryType.Message) &&
-          isMessageRole(entry.message, PiMessageRole.ToolResult)
-        ) {
-          cost += entry.message.usage?.cost.total ?? 0;
-        } else if (
-          isEntry(entry, PiEntryType.Usage) ||
-          isEntry(entry, PiEntryType.Compaction) ||
-          isEntry(entry, PiEntryType.BranchSummary)
-        ) {
-          cost += entry.usage?.cost.total ?? 0;
-        }
-      }
-      const metrics = [
-        ctx.model?.reasoning === true ? reasoning() : undefined,
-        usage?.percent != null && usage.percent > 0
-          ? `${Math.round(usage.percent).toString()}% ctx`
-          : undefined,
-        cost > 0 ? `$${cost.toFixed(2)}` : undefined,
-      ]
-        .filter(Boolean)
-        .join(" · ");
-      const model = truncateToWidth(
-        ctx.model?.id ?? "No model",
-        Math.max(8, width - visibleWidth(metrics) - 3),
-      );
-      const right = [model, metrics].filter(Boolean).join(" · ");
-      const branch = data.getGitBranch();
-      const project = [profile(), basename(ctx.cwd), branch]
-        .filter(Boolean)
-        .join(" · ");
-      const leftWidth = Math.max(0, width - visibleWidth(right) - 2);
-      const left = leftWidth >= 8 ? truncateToWidth(project, leftWidth) : "";
-      const spacing =
-        left.length > 0
-          ? " ".repeat(
-              Math.max(1, width - visibleWidth(left) - visibleWidth(right)),
-            )
-          : "";
-      const statuses = [...data.getExtensionStatuses()].map(([, value]) =>
-        truncateToWidth(value, width),
-      );
-      return [
-        theme.fg("muted", truncateToWidth(left + spacing + right, width)),
-        ...statuses,
-      ];
-    },
-  }));
+const taskOverlay = {
+  anchor: "top-right",
+  width: "48%",
+  minWidth: 42,
+  margin: 1,
+} satisfies OverlayOptions;
+
+type TaskChoice = { id: string; action: TaskAction };
+export enum TaskAction {
+  Inspect = "inspect",
+  FocusPane = "focus_pane",
+}
+
+export function taskStatusLabel(status: string, theme: Theme): string {
+  return `${taskStatusGlyph(status, theme)} ${status.replaceAll("_", " ").replace(/\p{C}/gu, " ").toUpperCase()}`;
 }
 
 export async function chooseTask(
   ctx: ExtensionContext,
-  title: string,
-  items: { value: string; label: string }[],
-): Promise<string | undefined> {
+  items: { value: string; label: string; canFocus: boolean }[],
+  limitReached: boolean,
+): Promise<TaskChoice | undefined> {
   if (items.length === 0) return undefined;
-  return ctx.ui.custom<string | undefined>((tui, theme, _keys, done) => {
-    const heading = new Text(theme.fg("accent", title), 0, 0);
-    const list = new SelectList(
-      items,
-      Math.max(3, Math.min(12, tui.terminal.rows - 8)),
-      {
-        ...getSelectListTheme(),
-        selectedText: (text) => theme.bg("selectedBg", theme.fg("text", text)),
-      },
-    );
-    list.onSelect = (item) => {
-      done(item.value);
-    };
-    list.onCancel = () => {
-      done(undefined);
-    };
-    return {
-      invalidate() {
-        heading.invalidate();
-        list.invalidate();
-      },
-      render(width) {
-        return [...heading.render(width), "", ...list.render(width)];
-      },
-      handleInput(input) {
-        list.handleInput(
-          matchesKey(input, NavigationKey.VimDown)
-            ? ArrowSequence.Down
-            : matchesKey(input, NavigationKey.VimUp)
-              ? ArrowSequence.Up
-              : input,
-        );
-        tui.requestRender();
-      },
-    };
-  });
+  const focusable = new Set(
+    items.filter((item) => item.canFocus).map((item) => item.value),
+  );
+  return ctx.ui.custom<TaskChoice | undefined>(
+    (tui, theme, _keys, done) => {
+      const list = new SelectList(
+        items,
+        Math.max(3, Math.min(12, tui.terminal.rows - 8)),
+        {
+          ...getSelectListTheme(),
+          selectedText: (text) =>
+            theme.bg("selectedBg", theme.fg("text", text)),
+        },
+      );
+      list.onSelect = (item) => {
+        done({ id: item.value, action: TaskAction.Inspect });
+      };
+      list.onCancel = () => {
+        done(undefined);
+      };
+      return {
+        invalidate() {
+          list.invalidate();
+        },
+        render(width) {
+          const inner = Math.max(1, width - 2);
+          const selected = list.getSelectedItem();
+          const notes = [
+            ...(selected !== null && focusable.has(selected.value)
+              ? [theme.fg("muted", "→ Focus pane")]
+              : []),
+            ...(limitReached ? [theme.fg("muted", "First 1000 shown")] : []),
+          ];
+          return [...list.render(inner), ...notes]
+            .slice(0, Math.max(1, tui.terminal.rows - 2))
+            .map((line) => {
+              const rendered = truncateToWidth(line, inner);
+              return theme.bg(
+                "userMessageBg",
+                ` ${rendered}${" ".repeat(Math.max(0, width - 1 - visibleWidth(rendered)))}`,
+              );
+            });
+        },
+        handleInput(input) {
+          const selected = list.getSelectedItem();
+          if (
+            matchesKey(input, NavigationKey.Right) &&
+            selected !== null &&
+            focusable.has(selected.value)
+          ) {
+            done({ id: selected.value, action: TaskAction.FocusPane });
+            return;
+          }
+          list.handleInput(
+            matchesKey(input, NavigationKey.VimDown)
+              ? ArrowSequence.Down
+              : matchesKey(input, NavigationKey.VimUp)
+                ? ArrowSequence.Up
+                : input,
+          );
+          tui.requestRender();
+        },
+      };
+    },
+    { overlay: true, overlayOptions: taskOverlay },
+  );
 }
 
 export async function showTask(

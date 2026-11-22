@@ -328,7 +328,11 @@ export async function leadDeliveryDecision(
 export async function readDeliveryInbox(
   db: Attempts,
   attempt: Attempt,
-): Promise<string> {
+): Promise<{
+  text: string;
+  url?: string;
+  receipts: { id: string; body: string }[];
+}> {
   const record = await refreshPublication(db, attempt);
   const delivery = record.delivery;
   if (
@@ -337,7 +341,7 @@ export async function readDeliveryInbox(
     delivery.pr === undefined ||
     delivery.url === undefined
   )
-    return record.message;
+    return { text: record.message, receipts: [] };
   const cwd = record.checkout.path;
   const { pr } = tracked.parse(await octo(cwd, "pr", "show", delivery.pr));
   if (
@@ -414,13 +418,18 @@ export async function readDeliveryInbox(
       throw new Error("Octo inbox cursor did not advance");
     after = page.nextSequence;
   }
-  return [
-    delivery.url,
-    ...Object.values(db.get(record.id).delivery?.inbox ?? {}).map((notice) => {
+  const notices = Object.values(db.get(record.id).delivery?.inbox ?? {});
+  const text = notices
+    .map((notice) => {
       const head = ready.get(notice.id);
       return head === undefined
         ? `${notice.id}\n${notice.body}`
         : `Ready · ${head}\n${notice.id}\n${notice.body}`;
-    }),
-  ].join("\n\n");
+    })
+    .join("\n\n");
+  return {
+    text,
+    url: delivery.url,
+    receipts: notices.filter((notice) => notice.acknowledged),
+  };
 }

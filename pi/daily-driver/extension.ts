@@ -1,3 +1,5 @@
+import { registerSearchRendering } from "./search-renderer.ts";
+import { installFooter } from "./footer.ts";
 import type {
   ExtensionAPI,
   ExtensionContext,
@@ -6,10 +8,12 @@ import { z } from "zod";
 import { registerArchives } from "./archives.ts";
 import {
   BeadsReader,
+  knownTaskStatus,
   taskDetails,
-  taskLabel,
+  taskOverlayLabel,
   taskSchema,
   taskTree,
+  TaskStatus,
 } from "./beads.ts";
 import { delegateTool, registerDelegation } from "./delegation.ts";
 import { TaskBeads } from "./task-service.ts";
@@ -30,14 +34,25 @@ import {
   PiMode,
   piModeSchema,
 } from "./runtime.ts";
-import { chooseTask, installFooter, showTask, statusPill } from "./ui.ts";
+import { focusTaskPane, taskPaneBeads } from "./task-run.ts";
+import {
+  chooseTask,
+  showTask,
+  taskStatusGlyph,
+  taskStatusLabel,
+  TaskAction,
+} from "./ui.ts";
 
 const attemptType = "pi-driver:idle-attempt";
 const attemptSchema = z.object({ historyId: z.string() });
 
 export default function dailyDriver(
   pi: ExtensionAPI,
-  managed?: { profile: DriverProfile; approvalPending: () => boolean },
+  managed?: {
+    profile: DriverProfile;
+    approvalPending: () => boolean;
+    trackedPullRequest: () => string | undefined;
+  },
 ): void {
   const idle = new IdleSession();
   let removeInputListener: (() => void) | undefined;
@@ -52,6 +67,7 @@ export default function dailyDriver(
     },
   );
   registerArchives(pi);
+  registerSearchRendering(pi);
   if (managed !== undefined)
     pi.on("session_start", () => {
       delegation.activate();
@@ -76,7 +92,7 @@ export default function dailyDriver(
         installFooter(
           ctx,
           () => pi.getThinkingLevel(),
-          () => selectedProfile,
+          managed?.trackedPullRequest,
         );
       if (!config.idleCompaction.enabled || mode !== PiMode.Tui) return;
       const entries = () => ctx.sessionManager.getBranch();
@@ -235,22 +251,42 @@ export default function dailyDriver(
       if (id.length === 0) {
         const tasks = await reader.list();
         const rows = taskTree(tasks);
+        const live =
+          config.beadsService === undefined
+            ? new Set<string>()
+            : await taskPaneBeads(config.beadsService.projectId);
         const selection = await chooseTask(
           ctx,
-          `Tasks · ${label}${tasks.length === 1000 ? " · first 1000" : ""}`,
           rows.map((row) => ({
             value: row.task.id,
-            label: taskLabel(row, (status) => statusPill(status, ctx.ui.theme)),
+            label: taskOverlayLabel(
+              row,
+              (status) => taskStatusGlyph(status, ctx.ui.theme),
+              (branch) => ctx.ui.theme.fg("muted", branch),
+            ),
+            canFocus:
+              live.has(row.task.id) &&
+              knownTaskStatus(row.task.status) === TaskStatus.InProgress,
           })),
+          tasks.length === 1000,
         );
         if (selection === undefined) return;
-        id = selection;
+        if (
+          selection.action === TaskAction.FocusPane &&
+          config.beadsService !== undefined
+        ) {
+          await focusTaskPane(config.beadsService, selection.id);
+          return;
+        }
+        id = selection.id;
       }
       if (id.length === 0) return;
       const task = await reader.show(id);
       await showTask(
         ctx,
-        taskDetails(task, label, (status) => statusPill(status, ctx.ui.theme)),
+        taskDetails(task, label, (status) =>
+          taskStatusLabel(status, ctx.ui.theme),
+        ),
       );
     },
   });

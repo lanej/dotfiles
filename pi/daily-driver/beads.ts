@@ -64,6 +64,7 @@ export type Task = z.infer<typeof taskSchema>;
 export interface TreeRow {
   task: Task;
   depth: number;
+  branch?: string;
   warning?: string;
 }
 
@@ -92,17 +93,46 @@ export function taskTree(tasks: Task[]): TreeRow[] {
   }
   const rows: TreeRow[] = [];
   const seen = new Set<string>();
-  const visit = (root: Task, depth: number, warning?: string) => {
-    const stack: TreeRow[] = [
-      { task: root, depth, ...(warning === undefined ? {} : { warning }) },
+  const visit = (root: Task, warning?: string) => {
+    const stack: (TreeRow & { guides: string; moreSiblings: boolean })[] = [
+      {
+        task: root,
+        depth: 0,
+        guides: "",
+        moreSiblings: false,
+        ...(warning === undefined ? {} : { warning }),
+      },
     ];
     while (stack.length > 0) {
       const row = stack.pop();
       if (row === undefined || seen.has(row.task.id)) continue;
-      seen.add(row.task.id);
-      rows.push(row);
-      for (const child of [...(children.get(row.task.id) ?? [])].reverse())
-        stack.push({ task: child, depth: row.depth + 1 });
+      const { task, depth, guides, moreSiblings, warning } = row;
+      seen.add(task.id);
+      rows.push({
+        task,
+        depth,
+        ...(depth === 0
+          ? {}
+          : {
+              branch: `${depth > 5 ? "… " : ""}${guides}${moreSiblings ? "├─ " : "└─ "}`,
+            }),
+        ...(warning === undefined ? {} : { warning }),
+      });
+      // Keep deep guides within the panel's width while retaining nearby ancestry.
+      const childGuides =
+        depth === 0
+          ? ""
+          : `${guides}${moreSiblings ? "│  " : "   "}`.slice(-12);
+      const directChildren = (children.get(task.id) ?? [])
+        .filter((child) => !seen.has(child.id))
+        .reverse();
+      for (const [index, child] of directChildren.entries())
+        stack.push({
+          task: child,
+          depth: depth + 1,
+          guides: childGuides,
+          moreSiblings: index !== 0,
+        });
     }
   };
   for (const task of tasks) {
@@ -110,7 +140,6 @@ export function taskTree(tasks: Task[]): TreeRow[] {
     if (parent === undefined || !byId.has(parent))
       visit(
         task,
-        0,
         parent !== undefined
           ? `Parent ${parent} is outside this result`
           : undefined,
@@ -118,18 +147,26 @@ export function taskTree(tasks: Task[]): TreeRow[] {
   }
   for (const task of tasks)
     if (!seen.has(task.id))
-      visit(task, 0, "Cyclic containment; inspect source tasks");
+      visit(task, "Cyclic containment; inspect source tasks");
   return rows;
 }
 
-export function taskLabel(
-  row: TreeRow,
-  renderStatus: (status: string) => string = (status) => status,
-): string {
-  const label = inlineText(
-    `${"  ".repeat(Math.min(row.depth, 12))}${row.depth > 12 ? "… " : ""}${row.task.id} · ${row.task.title}`,
+export function taskLabel(row: TreeRow): string {
+  const indent = "  ".repeat(Math.min(row.depth, 12));
+  const omitted = row.depth > 12 ? "… " : "";
+  return inlineText(
+    `${indent}${omitted}${row.task.id} · ${row.task.title}  ${row.task.status}${row.warning === undefined ? "" : " ⚠"}`,
   );
-  return `${label}  ${renderStatus(inlineText(row.task.status))}${row.warning !== undefined ? " ⚠" : ""}`;
+}
+
+export function taskOverlayLabel(
+  row: TreeRow,
+  renderStatus: (status: string) => string,
+  renderBranch: (branch: string) => string,
+): string {
+  const branch = row.branch === undefined ? "" : renderBranch(row.branch);
+  const label = inlineText(`${row.task.id} · ${row.task.title}`);
+  return `${branch}${renderStatus(inlineText(row.task.status))} ${label}${row.warning === undefined ? "" : " ⚠"}`;
 }
 
 export function taskDetails(

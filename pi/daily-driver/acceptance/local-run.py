@@ -29,11 +29,18 @@ class Provider(BaseHTTPRequestHandler):
             message = "".join(item.get("text", "") for item in message if isinstance(item, dict))
         token = re.search(r"GUIDANCE_[a-z_]+", str(message))
         content = "ACK_" + (token.group(0) if token else "ACCEPTED_CONTEXT")
+        search = re.search(r"HL_FIXTURE_(SED|RG)", str(message)) if request["messages"][-1]["role"] == "user" else None
         tool = request["messages"][-1]["role"] == "user" and "SUBMIT_WITH_TOOL_accepted" in str(message)
         planning = request["messages"][-1]["role"] == "user" and str(message).startswith("Draft a plan for ")
         spec = request["messages"][-1]["role"] == "user" and str(message).startswith("Begin Socrates discovery")
         planning = planning or (request["messages"][-1]["role"] == "user" and str(message).startswith("The operator froze"))
-        if spec:
+        if search:
+            command = ("sed -n '1,3p' highlight-fixture.ts" if search.group(1) == "SED"
+                       else "rg -n --with-filename rgMarker highlight-fixture.ts")
+            delta = {"role": "assistant", "tool_calls": [{"index": 0, "id": "fixture-search-" + search.group(1),
+                     "type": "function", "function": {"name": "bash",
+                     "arguments": json.dumps({"command": command})}}]}
+        elif spec:
             delta = {"role": "assistant", "tool_calls": [{"index": 0, "id": "fixture-spec",
                      "type": "function", "function": {"name": "draft_socrates_specification",
                      "arguments": json.dumps({
@@ -66,7 +73,7 @@ class Provider(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Connection", "close")
         self.end_headers()
-        for delta, finish in ((delta, None), ({}, "tool_calls" if tool or planning or spec else "stop")):
+        for delta, finish in ((delta, None), ({}, "tool_calls" if tool or planning or spec or search else "stop")):
             self.wfile.write(("data: " + json.dumps({
                 "id": "fixture-completion", "object": "chat.completion.chunk", "created": 1,
                 "model": "gpt-6.1-sol", "choices": [{"index": 0, "delta": delta, "finish_reason": finish}],
@@ -174,7 +181,10 @@ def main():
     driver = str(root / "bin/pi-driver")
     (repository / ".gitignore").write_text(".beads/\n.worktrees/\n")
     (repository / "README.md").write_text("Disposable native Pi acceptance repository.\n")
-    execute(["git", "add", ".gitignore", "README.md"])
+    (repository / "highlight-fixture.ts").write_text(
+        'const sedMarker: number = 42;\nconst rgMarker: string = "fixture";\n'
+    )
+    execute(["git", "add", ".gitignore", "README.md", "highlight-fixture.ts"])
     execute(["git", "-c", "user.name=Acceptance", "-c", "user.email=acceptance@example.invalid",
              "-c", "core.hooksPath=/dev/null", "commit", "-qm", "Initialize fixture"])
     execute(["git", "branch", "-M", "main"])
@@ -247,6 +257,11 @@ def main():
                 terminal.until("read-only lead drafts plan", lambda:
                                fresh(bead)["attempt"].get("leadPlan", {}).get("draft") is not None)
                 assert "pi.plan" not in fresh(bead)["task"]["metadata"], fresh(bead)
+                terminal.until("lead footer groups the bead, mode and model", lambda:
+                               any(bead in line and "◇" in line and "▣" in line and "⊛ 6.1 \uE30D" in line and "personal" not in line
+                                   for line in pane_text(pane).splitlines()))
+                terminal.until("footer observes the linked worktree", lambda:
+                               any("▣ " in line and "⊛ 6.1 \uE30D" in line for line in pane_text(pane).splitlines()))
                 terminal.action("focus-pane-id", f"terminal_{pane}")
                 if scenario == "socrates":
                     terminal.action("write-chars", "--pane-id", f"terminal_{pane}", "/socrates\r")
@@ -294,12 +309,22 @@ def main():
                 terminal.until("second approval refused", lambda: "No draft to approve" in pane_text(pane))
                 assert fresh(bead)["attempt"]["leadPlan"] == plan
                 terminal.action("write-chars", "--pane-id", f"terminal_{pane}",
-                                "/task-submit Acceptance lead verification\r")
+                                "/task-submit Acceptance lead verification at src/driver.ts:12 "
+                                "https://github.com/fixture/repo/blob/main/src/driver.ts#L12\r")
                 terminal.until("lead verification persisted", lambda:
                                fresh(bead)["attempt"]["phase"] == "verified")
                 verified = fresh(bead)
                 assert verified["task"]["status"] == "in_progress", verified
                 assert verified["attempt"]["verification"]["exitCode"] == 0, verified
+                terminal.until("verification event is collapsed", lambda:
+                               f"▸ ● Verification passed · {bead}" in pane_text(pane))
+                terminal.action("write", "--pane-id", f"terminal_{pane}", "15")
+                terminal.until("verification expands typed code links", lambda:
+                               "‹›" in pane_text(pane) and "driver.ts:12" in pane_text(pane) and
+                               "▾ ● Verification passed" in pane_text(pane))
+                terminal.action("write", "--pane-id", f"terminal_{pane}", "15")
+                terminal.until("verification folds again", lambda:
+                               f"▸ ● Verification passed · {bead}" in pane_text(pane))
                 terminal.action("write", "--pane-id", f"terminal_{pane}", "4")
                 terminal.until("lead Pi exit", lambda: all(p["id"] != pane or p["exited"] for p in terminal.terminals()))
                 if scenario == "socrates":
@@ -316,6 +341,8 @@ def main():
                         assert reopened[key] == original[key], reopened
                     assert reopened["pid"] != original["pid"] and reopened["live"], reopened
                     pane = reopened["pane"]
+                    terminal.until("verification entry survives resume", lambda:
+                                   f"● Verification passed · {bead}" in pane_text(pane))
 
                     # Exercise transport at the Octo CLI boundary. Octo's real CLI runs its own
                     # coordinator/receipt acceptance against a controlled GitHub provider.
@@ -352,7 +379,7 @@ def main():
                             ("agent", "inbox"): {
                                 "messages": [{"id": receipt_id, "recipientAgentId": "fixture-agent",
                                               "workflowPrId": "fixture-pr", "actionId": "",
-                                              "applicable": True, "body": "Fixture ready", "readyHead": head}],
+                                              "applicable": True, "body": "Fixture ready https://github.com/fixture/repo/issues/7", "readyHead": head}],
                                 "nextSequence": 1, "hasMore": False,
                             },
                             ("acknowledge-message",): {"message": receipt_id, "applicable": True},
@@ -371,11 +398,18 @@ def main():
                     execute([driver, "publish", bead, "--title", "feat: deliver fixture",
                              "--body-file", str(description), "--base", "main"])
                     terminal.action("focus-pane-id", f"terminal_{pane}")
-                    terminal.action("write-chars", "--pane-id", f"terminal_{pane}", "/octo-inbox\r")
-                    terminal.until("Octo notice reaches native Pi inbox", lambda: "Fixture ready" in pane_text(pane))
-                    terminal.action("write", "--pane-id", f"terminal_{pane}", "27")
+                    for _ in range(2):
+                        terminal.action("write-chars", "--pane-id", f"terminal_{pane}", "/octo-inbox\r")
+                        terminal.until("Octo inbox shows typed PR and issue links", lambda:
+                                       " fixture/repo#1" in pane_text(pane) and "! fixture/repo#7" in pane_text(pane))
+                        terminal.action("write", "--pane-id", f"terminal_{pane}", "27")
+                        terminal.until("Octo receipt renders in the transcript", lambda:
+                                       "Octo receipt ·  fixture/repo#1" in pane_text(pane))
                     terminal.until("Octo inbox closes", lambda: "Fixture ready" not in
                                    terminal.action("dump-screen", "--pane-id", f"terminal_{pane}"))
+                    terminal.until("footer shows the tracked PR", lambda:
+                                   any("▣ " in line and " #1" in line and "⊛ 6.1 \uE30D" in line
+                                       for line in pane_text(pane).splitlines()))
                     terminal.action("write", "--pane-id", f"terminal_{pane}", "4")
                     terminal.until("resumed Pi exits", lambda: all(p["id"] != pane or p["exited"] for p in terminal.terminals()))
                     execute([driver, "merge", bead, "--head", head, "--notice", receipt_id])
@@ -389,13 +423,55 @@ def main():
                     assert not Path(checkout["path"]).exists(), archived
                     assert fresh(bead)["task"]["status"] == "closed"
                     manifest = Path(archived["archiveManifest"])
-                    assert manifest.is_file() and manifest.with_name(reopened["id"] + ".jsonl").is_file()
+                    transcript = manifest.with_name(reopened["id"] + ".jsonl")
+                    assert manifest.is_file() and transcript.is_file()
+                    entries = [json.loads(line) for line in transcript.read_text().splitlines()]
+                    events = [entry["data"] for entry in entries if entry["type"] == "custom" and
+                              entry.get("customType") == "pi-driver:transcript-event"]
+                    assert len(events) == 3, events
+                    assert [(event["kind"], event.get("notice")) for event in events] == [
+                        ("verification", None), ("octo", None), ("octo", receipt_id),
+                    ], events
                     assert json.loads(execute([driver, "archive", bead]).stdout) == archived
                     shutil.copytree(manifest.parent, artifacts / "archive")
                     allocations.remove(checkout)
                 report["cases"].append({"scenario": scenario, "bead": bead, "evidence": fresh(bead)})
                 continue
             if scenario == "accepted":
+                pi = root / "pi/daily-driver/node_modules/.bin/pi"
+                extension = root / "pi/daily-driver/extension.ts"
+                browser = shlex.join([str(pi), "--offline", "--no-session", "--no-mcp",
+                                      "--extension", str(extension), "--model", "openai-codex/gpt-6.1-sol"])
+                terminal.action("write-chars", "--pane-id", f"terminal_{launcher_pane}", browser + "\r")
+                terminal.until("task browser Pi starts", lambda: "clear/exit" in pane_text(launcher_pane))
+                for name, marker in (("SED", "sedMarker"), ("RG", "rgMarker")):
+                    terminal.action("write-chars", "--pane-id", f"terminal_{launcher_pane}", f"HL_FIXTURE_{name}\r")
+                    def highlighted_output():
+                        ansi = terminal.action("dump-screen", "--full", "--ansi", "--pane-id", f"terminal_{launcher_pane}")
+                        if name == "SED" and not any(
+                            "sed -n" in line and "1,3p" in line and
+                            re.search(r"\x1b\[[0-9;]*m", line[line.index("sed -n"):line.index("1,3p")])
+                            for line in ansi.splitlines()
+                        ):
+                            return None
+                        for line in reversed(ansi.splitlines()):
+                            if marker not in line or "const" not in line:
+                                continue
+                            code = line[line.index("const"):line.index(marker) + len(marker)]
+                            if re.search(r"\x1b\[[0-9;]*m", code):
+                                return ansi
+                        return None
+                    terminal.until(f"{name.lower()} emits syntax colors", highlighted_output)
+                    (artifacts / f"{name.lower()}-highlighted.ansi").write_text(highlighted_output())
+
+                terminal.action("write-chars", "--pane-id", f"terminal_{launcher_pane}", "/tasks\r")
+                terminal.until("task overlay shows pane focus action", lambda: "Focus pane" in pane_text(launcher_pane))
+                terminal.action("write", "--pane-id", f"terminal_{launcher_pane}", "27", "91", "67")
+                terminal.until("task tree focuses the managed worker", lambda:
+                               any(p["id"] == pane and p["is_focused"] for p in terminal.terminals()))
+                terminal.action("write", "--pane-id", f"terminal_{launcher_pane}", "4")
+                terminal.until("launcher shell returns", lambda: "local-run-ready>" in
+                               terminal.action("dump-screen", "--pane-id", f"terminal_{launcher_pane}"))
                 report["registered_process"] = execute(["ps", "-p", str(before["attempt"]["pid"]),
                                                         "-o", "command="]).stdout.strip()
                 report["registered_pane"] = next(p for p in

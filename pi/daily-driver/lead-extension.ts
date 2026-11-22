@@ -1,3 +1,5 @@
+import { githubLink, renderReferences } from "./github-links.ts";
+import { FooterStatus } from "./runtime.ts";
 import type {
   ExtensionAPI,
   ExtensionContext,
@@ -8,6 +10,7 @@ import { Type } from "typebox";
 import { z } from "zod";
 import type { Attempts, Attempt } from "./attempts.ts";
 import { readDeliveryInbox } from "./delivery.ts";
+import { appendOctoEvents } from "./transcript-events.ts";
 import { delegateTool } from "./delegation.ts";
 import {
   describePlan,
@@ -88,10 +91,7 @@ export function registerLeadControls(
         .filter((tool) => permits(tool.name))
         .map((tool) => tool.name),
     );
-    ctx.ui.setStatus(
-      "pi-plan",
-      mode() === LeadMode.Implementing ? "Implementing" : "Planning",
-    );
+    ctx.ui.setStatus(FooterStatus.Plan, mode() ?? LeadMode.Planning);
   };
   const accepted = async (ctx: ExtensionContext) => {
     const record = await requireBinding(ctx);
@@ -232,7 +232,23 @@ export function registerLeadControls(
       }
       approvalPending(true);
       try {
-        await showTask(ctx, await readDeliveryInbox(db, record));
+        const inbox = await readDeliveryInbox(db, record);
+        if (inbox.url !== undefined)
+          appendOctoEvents(pi, ctx, inbox.url, inbox.receipts);
+        await showTask(
+          ctx,
+          inbox.url === undefined
+            ? inbox.text
+            : [
+                githubLink(inbox.url) ?? inbox.url,
+                renderReferences(
+                  inbox.text.replace(/(?!\n)\p{Cc}/gu, ""),
+                  (link) => ctx.ui.theme.fg("accent", link),
+                ),
+              ]
+                .filter((line) => line !== "")
+                .join("\n\n"),
+        );
       } finally {
         approvalPending(false);
       }
