@@ -16,6 +16,84 @@ import tempfile
 import threading
 
 
+ARCHIVE_QUESTION = "If the archive fails, what should happen to the checkout?"
+RECEIPT_QUESTION = "What receipt should the operator see?"
+RESUME_DRAFT = "Resume Socrates discovery for the accepted bead."
+RESUME_ANSWER = "Resume Socrates discovery using the recorded operator answer."
+REFRESH_SPEC = "Reassess Socrates discovery against the refreshed Beads brief."
+KEEP_CHECKOUT = "Keep the checkout"
+RECEIPT = "Show the archived transcript path."
+
+
+def decision(identity, choice, *, answer=None):
+    return {
+        "id": identity, "decision": choice, "basis": "observed" if answer is None else "decided",
+        "evidence": "Beads acceptance criteria" if answer is None else answer,
+        "disposition": "open" if answer is None else "resolved",
+        "uncertainty": "The missing choice changes the acceptance check" if answer is None else "None",
+    }
+
+
+def message_text(message):
+    content = message["content"]
+    if isinstance(content, list):
+        return "".join(item.get("text", "") for item in content if isinstance(item, dict))
+    return str(content)
+
+
+def specification_tool(request, message):
+    last = request["messages"][-1]
+    system = "\n".join(str(entry["content"]) for entry in request["messages"] if entry["role"] == "system")
+    names = {tool["function"]["name"] for tool in request["tools"]}
+    if "draft_socrates_specification" not in names:
+        return None
+    assert "Harmony" in system and "Parsimony" in system and "Readiness gate" in system, system
+    assert "ask_user_question" in names and "draft_implementation_plan" not in names, names
+    ready = "Native Pi socrates-ready" in system
+    archive = decision("D1", "Choose recovery behavior after an archive failure", answer=KEEP_CHECKOUT)
+    if last["role"] == "user" and message.startswith("Begin Socrates discovery"):
+        entries, questions = ([archive], []) if ready else (
+            [decision("D1", "Choose recovery behavior after an archive failure")], [ARCHIVE_QUESTION])
+    elif last["role"] == "user" and (message == RESUME_ANSWER or message.startswith(REFRESH_SPEC)):
+        if message == RESUME_ANSWER:
+            assert f"Operator answer · {KEEP_CHECKOUT}" in system, system
+            # Leave the first recorded answer unapplied so /socrates has to recover it.
+            if sum(message_text(entry) == RESUME_ANSWER for entry in request["messages"]) == 1:
+                return None
+        else:
+            assert "Verify the revised Socrates receipt" in system, system
+        entries = [archive, decision("D2", "Choose the operator receipt")]
+        questions = [RECEIPT_QUESTION]
+    elif last["role"] == "tool" and message == f"Operator answer for D2: {RECEIPT}":
+        entries = [archive, decision("D2", "Choose the operator receipt", answer=RECEIPT)]
+        questions = []
+    elif (last["role"] == "tool" and message.startswith("Draft saved. Resolve")
+          or last["role"] == "user" and message == RESUME_DRAFT):
+        if last["role"] == "tool" and not any(
+            message_text(entry) == RESUME_DRAFT for entry in request["messages"] if entry["role"] == "user"
+        ):
+            # Stop after the first saved draft so /socrates must resume before the dialog exists.
+            return None
+        question = RECEIPT_QUESTION if any(
+            message_text(entry) == RESUME_ANSWER or message_text(entry).startswith(REFRESH_SPEC)
+            for entry in request["messages"] if entry["role"] == "user") else ARCHIVE_QUESTION
+        return "ask_user_question", {
+            "decisionId": "D1" if question == ARCHIVE_QUESTION else "D2", "question": question,
+            "options": [{"label": KEEP_CHECKOUT, "description": "Retry with the checkout in place"},
+                        {"label": "Remove it", "description": "Recover from the saved transcript"}]
+            if question == ARCHIVE_QUESTION else [],
+        }
+    else:
+        return None
+    return "draft_socrates_specification", {
+        "objective": "Verify the native lead handoff",
+        "scope": ["Disposable Beads checkout"],
+        "requirements": [{"id": "R1", "outcome": "Preserve approval evidence", "acceptance": "Verify the Beads graph"}],
+        "decisions": entries,
+        "blockingQuestions": questions,
+    }
+
+
 class Provider(BaseHTTPRequestHandler):
     """The real Pi SDK consumes this deterministic, loopback-only completion stream."""
 
@@ -27,15 +105,13 @@ class Provider(BaseHTTPRequestHandler):
         self.requests.append(request)
         if self.path.startswith("/alternate/"):
             self.alternate_requests.append(request)
-        message = request["messages"][-1]["content"]
-        if isinstance(message, list):
-            message = "".join(item.get("text", "") for item in message if isinstance(item, dict))
+        message = message_text(request["messages"][-1])
         token = re.search(r"GUIDANCE_[a-z_]+", str(message))
         content = "ACK_" + (token.group(0) if token else "ACCEPTED_CONTEXT")
         search = re.search(r"HL_FIXTURE_(SED|RG)", str(message)) if request["messages"][-1]["role"] == "user" else None
         tool = request["messages"][-1]["role"] == "user" and "SUBMIT_WITH_TOOL_accepted" in str(message)
         planning = request["messages"][-1]["role"] == "user" and str(message).startswith("Draft a plan for ")
-        spec = request["messages"][-1]["role"] == "user" and str(message).startswith("Begin Socrates discovery")
+        spec = specification_tool(request, message)
         refreshed = request["messages"][-1]["role"] == "user" and message == "Draft a revised plan without new children."
         planning = planning or refreshed or (request["messages"][-1]["role"] == "user" and str(message).startswith("The operator froze"))
         if search:
@@ -45,15 +121,10 @@ class Provider(BaseHTTPRequestHandler):
                      "type": "function", "function": {"name": "bash",
                      "arguments": json.dumps({"command": command})}}]}
         elif spec:
-            delta = {"role": "assistant", "tool_calls": [{"index": 0, "id": "fixture-spec",
-                     "type": "function", "function": {"name": "draft_socrates_specification",
-                     "arguments": json.dumps({
-                         "objective": "Verify the native lead handoff",
-                         "scope": ["Disposable Beads checkout"],
-                         "requirements": [{"id": "R1", "outcome": "Preserve approval evidence", "acceptance": "Verify the Beads graph"}],
-                         "decisions": [{"decision": "Use the fixture verifier", "basis": "observed", "evidence": "Beads acceptance criteria"}],
-                         "blockingQuestions": [],
-                     })}}]}
+            name, arguments = spec
+            calls = sum(any(message.get("tool_calls", [])) for message in request["messages"])
+            delta = {"role": "assistant", "tool_calls": [{"index": 0, "id": f"fixture-spec-{calls}",
+                     "type": "function", "function": {"name": name, "arguments": json.dumps(arguments)}}]}
         elif planning:
             names = {item["function"]["name"] for item in request["tools"]}
             assert "draft_implementation_plan" in names and not names.intersection({"write", "edit", "bash"}), names
@@ -126,7 +197,12 @@ def main():
                     "reasoning": False, "input": ["text"], "contextWindow": 32768, "maxTokens": 2048,
                     "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}}],
     }}}))
-    (agent / "settings.json").write_text(json.dumps({"packages": [str(root / "pi/daily-driver")]}))
+    settings = {"packages": [str(root / "pi/daily-driver")]}
+    if fixture.get("scenario") in ("socrates", "socrates-ready"):
+        settings.update({"theme": "dotfiles", "quietStartup": True})
+        (agent / "themes").mkdir()
+        (agent / "themes/dotfiles.json").symlink_to(root / "design-system/generated/pi.json")
+    (agent / "settings.json").write_text(json.dumps(settings))
     config_dir = home / ".config/zellij"
     config_dir.mkdir(parents=True)
     (config_dir / "config.kdl").write_text(
@@ -231,7 +307,7 @@ def main():
         launcher_pane = shell[0]["id"]
         tab_id = next(p["tab_id"] for p in json.loads(
             terminal.action("list-panes", "--all", "--json")) if p["id"] == launcher_pane)
-        scenarios = ("accepted", "failed-check", "changed-brief", "lead-plan", "socrates")
+        scenarios = ("accepted", "failed-check", "changed-brief", "lead-plan", "socrates", "socrates-ready")
         selected = fixture.get("scenario")
         assert selected is None or selected in scenarios, selected
         for scenario in scenarios if selected is None else (selected,):
@@ -245,7 +321,7 @@ def main():
             verifier = ["/bin/sh", "-c", "printf 'native-check-evidence\\n'; exit " +
                         ("7" if scenario == "failed-check" else "0")]
             placement = ["--tab-id", str(tab_id)] if scenario == "accepted" else []
-            worker_flag = [] if scenario in ("lead-plan", "socrates") else ["--worker"]
+            worker_flag = [] if scenario in ("lead-plan", "socrates", "socrates-ready") else ["--worker"]
             start_command = shlex.join([driver, "start", bead, "--profile", "personal", *worker_flag,
                                         *placement, "--", *verifier])
             command = f"cd {shlex.quote(str(repository))} && {start_command}; printf '%s' $? > {shlex.quote(str(exit_file))}"
@@ -263,10 +339,10 @@ def main():
             allocations.append(before["attempt"]["checkout"])
             pane = before["attempt"]["pane"]
             assert pane != launcher_pane, before
-            if scenario not in ("lead-plan", "socrates"):
+            if scenario not in ("lead-plan", "socrates", "socrates-ready"):
                 terminal.until("the admitted provider responded", lambda:
                                "ACK_ACCEPTED_CONTEXT" in pane_text(pane))
-            if scenario in ("lead-plan", "socrates"):
+            if scenario in ("lead-plan", "socrates", "socrates-ready"):
                 terminal.until("read-only lead drafts plan", lambda:
                                fresh(bead)["attempt"].get("leadPlan", {}).get("draft") is not None)
                 assert "pi.plan" not in fresh(bead)["task"]["metadata"], fresh(bead)
@@ -276,10 +352,68 @@ def main():
                 terminal.until("footer observes the linked worktree", lambda:
                                any("▣ " in line and "⊛ 6.1 \uE30D" in line for line in pane_text(pane).splitlines()))
                 terminal.action("focus-pane-id", f"terminal_{pane}")
-                if scenario == "socrates":
-                    terminal.action("write-chars", "--pane-id", f"terminal_{pane}", "/socrates\r")
-                    terminal.until("Socrates draft saved", lambda:
-                                   fresh(bead)["attempt"].get("specification", {}).get("draft") is not None)
+                if scenario in ("socrates", "socrates-ready"):
+                    target = f"terminal_{pane}"
+                    def spec():
+                        return fresh(bead)["attempt"].get("specification", {})
+                    def viewport():
+                        return terminal.action("dump-screen", "--pane-id", target)
+                    def send(text):
+                        terminal.action("write-chars", "--pane-id", target, text)
+
+                    send("/socrates\r")
+                    if scenario == "socrates":
+                        terminal.until("Socrates stops after saving the open decision", lambda:
+                                       (spec().get("draft") or {}).get("blockingQuestions") == [ARCHIVE_QUESTION]
+                                       and "ACK_TOOL_SUBMITTED" in viewport())
+                        assert "exchange" not in spec()
+                        send("/socrates\r")
+                        terminal.until("Socrates choice dialog", lambda:
+                                       ARCHIVE_QUESTION in " ".join(viewport().split()) and KEEP_CHECKOUT in viewport())
+                        first = spec()["exchange"]
+                        assert first["prompt"]["decisionId"] == "D1" and "answer" not in first, first
+                        (artifacts / "socrates-question.txt").write_text(viewport())
+                        (artifacts / "socrates-question.ansi").write_text(
+                            terminal.action("dump-screen", "--ansi", "--pane-id", target))
+                        terminal.action("write", "--pane-id", target, "27")
+                        terminal.until("question stays open after Escape", lambda:
+                                       "Question remains open" in pane_text(pane))
+                        assert spec()["exchange"] == first
+                        send("/spec-freeze\r")
+                        terminal.until("open question blocks freeze", lambda:
+                                       "Resolve the blocking questions" in viewport())
+                        send("/socrates\r")
+                        terminal.until("same original choice reopened", lambda: KEEP_CHECKOUT in viewport())
+                        send("\r")
+                        terminal.until("selected answer persisted without applying it", lambda:
+                                       spec().get("exchange", {}).get("answer") ==
+                                       {"kind": "option", "text": KEEP_CHECKOUT}
+                                       and "ACK_ACCEPTED_CONTEXT" in viewport())
+                        send("/socrates\r")
+                        terminal.until("free-text question follows recovered answer", lambda:
+                                       RECEIPT_QUESTION in viewport() and
+                                       spec().get("exchange", {}).get("prompt", {}).get("decisionId") == "D2")
+                        execute([fixture["bd"], "--sandbox", "update", bead, "--acceptance",
+                                 "Verify the revised Socrates receipt"])
+                        send("An answer against the old brief.\r")
+                        terminal.until("stale answer is rejected", lambda:
+                                       "accepted brief, revision or owner changed" in " ".join(pane_text(pane).split()))
+                        assert "answer" not in spec()["exchange"], spec()
+                        old_revision = spec()["acceptedRevision"]
+                        send("/plan-refresh\r")
+                        terminal.until("free-text question reevaluated against new revision", lambda:
+                                       RECEIPT_QUESTION in viewport() and
+                                       spec()["acceptedRevision"] != old_revision and
+                                       spec().get("exchange", {}).get("prompt", {}).get("decisionId") == "D2")
+                        send(RECEIPT + "\r")
+                        terminal.until("typed answer incorporated into the draft", lambda:
+                                       (spec().get("draft") or {}).get("blockingQuestions") == [] and
+                                       spec()["draft"]["decisions"][-1]["evidence"] == RECEIPT and
+                                       "exchange" not in spec())
+                    else:
+                        terminal.until("complete brief reaches a draft without a question", lambda:
+                                       (spec().get("draft") or {}).get("blockingQuestions") == [])
+                        assert "exchange" not in spec()
                     assert "pi.plan" not in fresh(bead)["task"]["metadata"]
                     terminal.action("write-chars", "--pane-id", f"terminal_{pane}", "/spec-freeze\r")
                     terminal.until("specification review opens", lambda: "Freeze specification for " + bead in pane_text(pane))

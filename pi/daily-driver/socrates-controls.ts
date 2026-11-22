@@ -2,13 +2,26 @@ import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
+import { Text } from "@earendil-works/pi-tui";
+import { isDeepStrictEqual } from "node:util";
 import { Type } from "typebox";
 import type { Attempt, Attempts } from "./attempts.ts";
 import { LeadMode } from "./lead-plan.ts";
-import { SpecStatus, specDraft, specText } from "./lead-spec.ts";
+import {
+  DecisionDisposition,
+  SpecStatus,
+  isTrackedDecision,
+  preserveDecisions,
+  specDraft,
+  specQuestion,
+  specText,
+  type SpecQuestion,
+} from "./lead-spec.ts";
+import { socratesGuidance } from "./socrates-guidance.ts";
 import { TaskBeads } from "./task-service.ts";
 import { reviewPlan, showTask } from "./ui.ts";
 
+export const askTool = "ask_user_question";
 export const specTool = "draft_socrates_specification";
 
 export function registerSocrates(
@@ -18,15 +31,159 @@ export function registerSocrates(
   requireBinding: (ctx: ExtensionContext) => Promise<Attempt>,
   approvalPending: (active: boolean) => void,
 ) {
+  async function showQuestion(
+    ctx: ExtensionContext,
+    spec: NonNullable<Attempt["specification"]>,
+    signal?: AbortSignal,
+  ) {
+    const exchange = spec.exchange;
+    if (exchange === undefined || exchange.answer !== undefined)
+      throw new Error("There is no unanswered Socrates question");
+    if (!ctx.hasUI) throw new Error("Open the managed Pi TUI to answer");
+    const record = await requireBinding(ctx);
+    const beads = new TaskBeads(record.source);
+    await beads.requireCurrent(record.bead, spec.acceptedRevision, id);
+    approvalPending(true);
+    try {
+      const answer = await ask(ctx, exchange.prompt, signal);
+      if (answer === undefined) return undefined;
+      await requireBinding(ctx);
+      await beads.requireCurrent(record.bead, spec.acceptedRevision, id);
+      db.change(id, (row) => {
+        if (
+          row.leadPlan?.mode !== LeadMode.Planning ||
+          row.revision !== spec.acceptedRevision ||
+          !isDeepStrictEqual(row.specification, spec)
+        )
+          throw new Error(
+            "This Socrates question changed before the answer was saved",
+          );
+        row.specification = { ...spec, exchange: { ...exchange, answer } };
+      });
+      return answer;
+    } finally {
+      approvalPending(false);
+    }
+  }
+
+  pi.registerTool({
+    name: askTool,
+    label: "Ask a question",
+    description:
+      "Ask one open Socrates decision from the saved draft. Use an empty options list for free text. A cancelled dialog leaves the question open until the operator invokes /socrates.",
+    executionMode: "sequential",
+    renderCall(_args, theme) {
+      return new Text(
+        theme.fg("toolTitle", theme.bold("Ask a question")),
+        0,
+        0,
+      );
+    },
+    parameters: Type.Object({
+      decisionId: Type.String(),
+      question: Type.String(),
+      options: Type.Array(
+        Type.Object({ label: Type.String(), description: Type.String() }),
+        { maxItems: 4 },
+      ),
+    }),
+    async execute(_call, params, signal, _update, ctx) {
+      if (!ctx.hasUI) throw new Error("Open the managed Pi TUI to answer");
+      const record = await requireBinding(ctx);
+      const prompt = specQuestion.parse(params);
+      const spec = record.specification;
+      if (
+        spec?.status !== SpecStatus.Interrogating ||
+        record.leadPlan?.mode !== LeadMode.Planning ||
+        spec.acceptedRevision !== record.revision ||
+        spec.exchange !== undefined
+      )
+        throw new Error(
+          "Resolve the saved Socrates question before asking another",
+        );
+      if (
+        spec.draft?.blockingQuestions.includes(prompt.question) !== true ||
+        !spec.draft.decisions.some(
+          (entry) =>
+            isTrackedDecision(entry) &&
+            entry.id === prompt.decisionId &&
+            entry.disposition === DecisionDisposition.Open,
+        )
+      )
+        throw new Error(
+          "Save this exact question and its open decision in the draft first",
+        );
+      await new TaskBeads(record.source).requireCurrent(
+        record.bead,
+        spec.acceptedRevision,
+        id,
+      );
+      const pending = { ...spec, exchange: { prompt } };
+      db.change(id, (row) => {
+        if (
+          row.leadPlan?.mode !== LeadMode.Planning ||
+          row.revision !== spec.acceptedRevision ||
+          !isDeepStrictEqual(row.specification, spec)
+        )
+          throw new Error("The Socrates draft changed before asking");
+        row.specification = pending;
+      });
+      const answer = await showQuestion(ctx, pending, signal);
+      return {
+        content: [
+          {
+            type: "text",
+            text:
+              answer === undefined
+                ? "Question remains open. Wait for the operator to resume with /socrates."
+                : `Operator answer for ${prompt.decisionId}: ${answer.text}`,
+          },
+        ],
+        details: { answer, decisionId: prompt.decisionId },
+      };
+    },
+  });
+
   pi.registerCommand("socrates", {
     description: "Start or inspect Socrates discovery for this Beads task",
     async handler(_argument, ctx) {
       if (!ctx.isIdle()) throw new Error("Wait for the lead turn to settle");
       const record = await requireBinding(ctx);
-      if (record.specification !== undefined) {
+      const spec = record.specification;
+      if (spec?.status === SpecStatus.Interrogating) {
+        await socratesGuidance();
+        if (record.revision !== spec.acceptedRevision)
+          throw new Error("Refresh the Socrates brief before resuming");
+        await new TaskBeads(record.source).requireCurrent(
+          record.bead,
+          spec.acceptedRevision,
+          id,
+        );
+        if (spec.exchange !== undefined) {
+          if (
+            spec.exchange.answer !== undefined ||
+            (await showQuestion(ctx, spec)) !== undefined
+          )
+            pi.sendUserMessage(
+              "Resume Socrates discovery using the recorded operator answer.",
+            );
+          return;
+        }
+        if (
+          spec.draft === null ||
+          spec.draft.blockingQuestions.length > 0 ||
+          !specDraft.safeParse(spec.draft).success
+        ) {
+          pi.sendUserMessage(
+            "Resume Socrates discovery for the accepted bead.",
+          );
+          return;
+        }
+      }
+      if (spec !== undefined) {
         approvalPending(true);
         try {
-          await showTask(ctx, specText(record.specification));
+          await showTask(ctx, specText(spec));
         } finally {
           approvalPending(false);
         }
@@ -37,7 +194,13 @@ export function registerSocrates(
         record.leadPlan?.mode !== LeadMode.Planning
       )
         throw new Error("Start Socrates before approving implementation");
+      await socratesGuidance();
       const acceptedRevision = record.revision;
+      await new TaskBeads(record.source).requireCurrent(
+        record.bead,
+        acceptedRevision,
+        id,
+      );
       db.change(id, (row) => {
         if (
           row.specification !== undefined ||
@@ -54,7 +217,7 @@ export function registerSocrates(
         row.leadPlan = { ...row.leadPlan, draft: null };
       });
       pi.sendUserMessage(
-        "Begin Socrates discovery for this bead. Establish the objective, scope, observable acceptance criteria and evidence. Ask about blocking choices. Save the proposed specification with draft_socrates_specification.",
+        "Begin Socrates discovery for the accepted bead using the shared procedure.",
       );
     },
   });
@@ -75,7 +238,14 @@ export function registerSocrates(
       ),
       decisions: Type.Array(
         Type.Object({
+          id: Type.String(),
           decision: Type.String(),
+          disposition: Type.Enum(DecisionDisposition),
+          uncertainty: Type.String({
+            description:
+              "Remaining uncertainty, consequence, and check, or None",
+          }),
+          supersedes: Type.Optional(Type.String()),
           basis: Type.Union([
             Type.Literal("observed"),
             Type.Literal("decided"),
@@ -87,16 +257,33 @@ export function registerSocrates(
       blockingQuestions: Type.Array(Type.String()),
     }),
     async execute(_call, params, _signal, _update, ctx) {
-      await requireBinding(ctx);
+      const record = await requireBinding(ctx);
       const draft = specDraft.parse(params);
+      if (record.revision === null)
+        throw new Error("The accepted revision is missing");
+      await new TaskBeads(record.source).requireCurrent(
+        record.bead,
+        record.revision,
+        id,
+      );
       db.change(id, (row) => {
         const specification = row.specification;
         if (
           specification?.status !== SpecStatus.Interrogating ||
-          specification.acceptedRevision !== row.revision
+          specification.acceptedRevision !== row.revision ||
+          record.revision !== row.revision ||
+          row.leadPlan?.mode !== LeadMode.Planning
         )
           throw new Error("Start or refresh Socrates before drafting");
-        row.specification = { ...specification, draft };
+        if (
+          specification.exchange !== undefined &&
+          specification.exchange.answer === undefined
+        )
+          throw new Error(
+            "Resume /socrates to resolve the open question before replacing the draft",
+          );
+        preserveDecisions(specification.draft, draft);
+        row.specification = { ...specification, draft, exchange: undefined };
       });
       return {
         content: [
@@ -122,6 +309,8 @@ export function registerSocrates(
         spec?.status !== SpecStatus.Interrogating ||
         spec.draft === null ||
         spec.draft.blockingQuestions.length > 0 ||
+        spec.exchange !== undefined ||
+        !specDraft.safeParse(spec.draft).success ||
         record.revision !== spec.acceptedRevision
       )
         throw new Error(
@@ -145,7 +334,7 @@ export function registerSocrates(
         );
         db.change(id, (row) => {
           if (
-            JSON.stringify(row.specification) !== JSON.stringify(spec) ||
+            !isDeepStrictEqual(row.specification, spec) ||
             row.leadPlan?.mode !== LeadMode.Planning ||
             row.revision !== spec.acceptedRevision
           )
@@ -164,4 +353,38 @@ export function registerSocrates(
       );
     },
   });
+}
+
+async function ask(
+  ctx: ExtensionContext,
+  prompt: SpecQuestion,
+  signal?: AbortSignal,
+) {
+  const aborted = () => signal?.aborted === true;
+  const options = signal === undefined ? undefined : { signal };
+  if (aborted()) return undefined;
+  if (prompt.options.length > 0) {
+    const choices = prompt.options.map(
+      ({ label, description }, index) =>
+        `${String(index + 1)}. ${label} · ${description}`,
+    );
+    const custom = `${String(choices.length + 1)}. Type an answer`;
+    const selected = await ctx.ui.select(
+      prompt.question,
+      [...choices, custom],
+      options,
+    );
+    if (selected === undefined || aborted()) return undefined;
+    const choice = prompt.options[choices.indexOf(selected)];
+    if (choice !== undefined)
+      return { kind: "option" as const, text: choice.label };
+    if (selected !== custom) throw new Error("Pi returned an unknown choice");
+  }
+  const text = (
+    await ctx.ui.input(prompt.question, undefined, options)
+  )?.trim();
+  if (text === undefined || text.length === 0 || aborted()) return undefined;
+  if (text.length > 2000)
+    throw new Error("Use at most 2000 characters in a Socrates answer");
+  return { kind: "custom" as const, text };
 }
