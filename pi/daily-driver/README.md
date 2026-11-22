@@ -13,11 +13,12 @@ The driver also provides the dotfiles theme, task browser and idle compaction. T
 | `socrates/controls.ts` | Socrates commands and tools, pending-question presentation, answer persistence, revision checks, specification freeze and approval |
 | `socrates/spec.ts` | Persisted specification, question and decision schemas and transitions |
 | `socrates/guidance.ts`, `socrates/host.md` | Load the shared Socrates skill from this checkout and adapt it to the managed Pi host |
-| `tui/question-selector.ts` | Reusable choice rendering, Vim movement, transient hints, detail views and explicit selection |
-| `tui/question-evidence.ts`, `tui/question-links.ts` | Evidence shapes, terminal-safe text and source/URL link rendering shared by the selector and its callers |
+| `socrates/selector.ts` | Adapt persisted questions and evidence to the reusable selector; own typed-answer choice and cancellation |
+| `socrates/evidence.ts`, `socrates/links.ts` | Validate question evidence and resolve its source links in the managed checkout |
+| [`@lanej/pi-components`](../../tools/pi-components/README.md) | Independent terminal components: choice rendering, Vim movement, transient hints, detail views and explicit selection |
 | `tests/`, `acceptance/` | Workflow checks and independently runnable native acceptance fixtures |
 
-The TUI returns a choice or a request for text; it does not save answers, own a pending question, inspect accepted revisions or authorize work. Socrates owns those decisions. Keep question side-chat orchestration with its Socrates caller and reusable interaction widgets in `tui/`. Task browsing and plan review remain with their existing callers in `ui.ts`; add further capability directories when they have a clear owner rather than creating empty layers. Shared skill paths resolve relative to this package, including when it is installed from a managed worktree.
+The selector returns an item index or cancellation. Socrates owns the typed-answer option, pending question, answer persistence, accepted revisions and approvals. Keep question side-chat orchestration with its Socrates caller and reusable interaction widgets in the component package. Task browsing and plan review remain with their existing callers in `ui.ts`; add further capability directories when they have a clear owner rather than creating empty layers. Shared skill paths resolve relative to this package, including when it is installed from a managed worktree.
 
 ## Enable
 

@@ -5,12 +5,12 @@ import {
   stripTerminalSequences,
   wrapTextWithAnsi,
 } from "@earendil-works/pi-tui";
-import { questionEvidence } from "../tui/question-evidence.ts";
+import { questionEvidence } from "../socrates/evidence.ts";
 import {
   questionLink,
   questionLinks,
   renderQuestionEvidence,
-} from "../tui/question-links.ts";
+} from "../socrates/links.ts";
 
 await test("question prose emits OSC 8 for labeled and bare links", () => {
   const rendered = questionLinks(

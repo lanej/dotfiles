@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { questionEvidence } from "../tui/question-evidence.ts";
+import { questionEvidence } from "./evidence.ts";
 
 export enum SpecStatus {
   Interrogating = "interrogating",

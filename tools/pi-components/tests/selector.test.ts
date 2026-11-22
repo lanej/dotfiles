@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { questionHints } from "../tui/question-selector.ts";
+import { selectorHints } from "../index.ts";
 
 await test("small question menus use single-key hints", () => {
-  assert.deepEqual(questionHints(3), ["a", "s", "d"]);
-  assert.ok(questionHints(5).every((hint) => hint.length === 1));
+  assert.deepEqual(selectorHints(3), ["a", "s", "d"]);
+  assert.ok(selectorHints(5).every((hint) => hint.length === 1));
 });
 
 await test("a larger visible menu reserves a prefix without shadowing any hint", () => {
-  const hints = questionHints(12);
+  const hints = selectorHints(12);
   assert.equal(new Set(hints).size, 12);
   assert.ok(
     hints.every((hint) =>

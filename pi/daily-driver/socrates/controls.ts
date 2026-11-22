@@ -17,15 +17,9 @@ import {
   specText,
   type SpecQuestion,
 } from "./spec.ts";
-import { questionEvidenceParameter } from "../tui/question-evidence.ts";
-import {
-  questionLinks,
-  renderQuestionEvidence,
-} from "../tui/question-links.ts";
-import {
-  chooseQuestion,
-  QuestionSelectionKind,
-} from "../tui/question-selector.ts";
+import { questionEvidenceParameter } from "./evidence.ts";
+import { questionLinks, renderQuestionEvidence } from "./links.ts";
+import { chooseQuestion, QuestionSelectionKind } from "./selector.ts";
 import { socratesGuidance } from "./guidance.ts";
 import { TaskBeads } from "../task-service.ts";
 import { reviewPlan, showTask } from "../ui.ts";

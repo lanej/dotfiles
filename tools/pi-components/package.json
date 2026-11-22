@@ -1,0 +1,27 @@
+{
+  "name": "@lanej/pi-components",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "files": [
+    "*.ts"
+  ],
+  "peerDependencies": {
+    "@earendil-works/pi-tui": "^1.4.0"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-tui": "1.4.0",
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0"
+  },
+  "scripts": {
+    "test": "node --import tsx --test tests/*.test.ts",
+    "check": "node scripts/check-typescript.mjs all",
+    "quality:tools": "node scripts/check-typescript.mjs tools",
+    "format": "node scripts/check-typescript.mjs fmt",
+    "typecheck": "node scripts/check-typescript.mjs typecheck"
+  }
+}
