@@ -4,29 +4,29 @@ on:
   pull_request:
     paths:
       - 'pi/daily-driver/**'
-      - 'tools/task-runtime/**'
-      - 'tools/beads/**'
-      - 'config/beads/**'
       - 'design-system/generated/pi.json'
       - 'bin/pi-driver'
       - 'scripts/configure-pi-driver.py'
-      - 'scripts/install-zellij'
       - 'scripts/install-worktree-manager'
       - 'bootstrap/tools.toml'
+      - 'tools/task-runtime/**'
+      - 'tools/beads/**'
+      - 'config/beads/**'
+      - 'scripts/install-zellij'
       - '.github/workflows/pi-driver.yml'
   push:
     branches: [master]
     paths:
       - 'pi/daily-driver/**'
-      - 'tools/task-runtime/**'
-      - 'tools/beads/**'
-      - 'config/beads/**'
       - 'design-system/generated/pi.json'
       - 'bin/pi-driver'
       - 'scripts/configure-pi-driver.py'
-      - 'scripts/install-zellij'
       - 'scripts/install-worktree-manager'
       - 'bootstrap/tools.toml'
+      - 'tools/task-runtime/**'
+      - 'tools/beads/**'
+      - 'config/beads/**'
+      - 'scripts/install-zellij'
       - '.github/workflows/pi-driver.yml'
 
 jobs:
@@ -54,6 +54,14 @@ jobs:
       - run: make test-pi-driver
         env:
           NODE_OPTIONS: --max-old-space-size=4096
+      - name: Install pinned worktree manager
+        run: |
+          version=$(python3 -c 'import tomllib; print(tomllib.load(open("bootstrap/tools.toml","rb"))["tools"]["worktree-manager"]["version"])')
+          HOME="$RUNNER_TEMP/manager" sh scripts/install-worktree-manager "$version"
+          echo "$RUNNER_TEMP/manager/.local/bin" >> "$GITHUB_PATH"
+      - run: npm --prefix pi/daily-driver run test:delegation-native
+      - run: npm --prefix pi/daily-driver run test:delegation-native -- --lost-allocation
+      - run: npm --prefix pi/daily-driver run test:delegation-native -- --cancel
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: pi/daily-driver/.bun-version
@@ -68,11 +76,3 @@ jobs:
           manifest="$HOME/.local/share/beads-service/runtime.json"
           npm --prefix pi/daily-driver run test:beads-native -- \
             --bd "$(jq -er .bd "$manifest")" --dolt "$(jq -er .dolt "$manifest")"
-      - name: Install pinned worktree manager
-        run: |
-          version=$(python3 -c 'import tomllib; print(tomllib.load(open("bootstrap/tools.toml","rb"))["tools"]["worktree-manager"]["version"])')
-          HOME="$RUNNER_TEMP/manager" sh scripts/install-worktree-manager "$version"
-          echo "$RUNNER_TEMP/manager/.local/bin" >> "$GITHUB_PATH"
-      - run: npm --prefix pi/daily-driver run test:delegation-native
-      - run: npm --prefix pi/daily-driver run test:delegation-native -- --lost-allocation
-      - run: npm --prefix pi/daily-driver run test:delegation-native -- --cancel

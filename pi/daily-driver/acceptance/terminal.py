@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import select
+import shutil
 import sqlite3
 import struct
 import subprocess
@@ -29,7 +30,7 @@ output = Path(args.output)
 output.mkdir(parents=True, exist_ok=True)
 
 with tempfile.TemporaryDirectory(prefix="pi-driver-terminal-") as directory:
-    home = Path(directory)
+    home = Path(directory).resolve()
     agent = home / ".pi/agent"
     agent.mkdir(parents=True)
     archive_file = agent / "session-archive.db"
@@ -54,15 +55,34 @@ with tempfile.TemporaryDirectory(prefix="pi-driver-terminal-") as directory:
 import json, sys
 if '--readonly' not in sys.argv: raise SystemExit(31)
 if 'sql' in sys.argv: print(json.dumps([{'branch':'main'}]))
-elif 'list' in sys.argv: print(json.dumps([{'id':'daily-1','title':'Pi daily driver','status':'in_progress'},{'id':'daily-1.1','title':'Idle compaction','status':'open','parent':'daily-1'}]))
+elif 'list' in sys.argv: print(json.dumps([
+    {'id':'daily-1','title':'Pi daily driver','status':'in_progress'},
+    {'id':'daily-1.1','title':'Idle compaction','status':'open','parent':'daily-1'},
+    {'id':'daily-1.1.1','title':'Check idle guard','status':'closed','parent':'daily-1.1'},
+    {'id':'daily-1.2','title':'Deliver through Octo','status':'open','parent':'daily-1'},
+]))
 elif 'show' in sys.argv: print(json.dumps([{'id':sys.argv[-1],'title':'Idle compaction','status':'open','parent':'daily-1','description':'Compact settled sessions after five minutes and 60%.','acceptance_criteria':'Preserve drafts, task identity, and pending effects.'}]))
 ''')
     boundary.chmod(0o755)
     (home / "config.json").write_text(json.dumps({"beads": {"workspace": str(workspace), "database": "fixture", "branch": "main", "executable": str(boundary)}}))
     env = {**os.environ, "HOME": str(home), "PI_CODING_AGENT_DIR": str(agent), "PI_DRIVER_CONFIG": str(home / "config.json"), "TERM": "xterm-256color", "COLORTERM": "truecolor", "PI_TELEMETRY": "0", "PI_SKIP_VERSION_CHECK": "1"}
     subprocess.run([sys.executable, str(root / "../../scripts/configure-pi-driver.py"), str(root), str(agent)], env=env, check=True, stdout=subprocess.DEVNULL)
-    project = home / "dotfiles"
-    project.mkdir()
+    (home / "design").mkdir()
+    project = home / "development/dotfiles"
+    project.mkdir(parents=True)
+    def git(*args):
+        subprocess.run(["git", *args], cwd=project, env=env, check=True, capture_output=True)
+    git("init", "--initial-branch=main")
+    tracked = project / "tracked.txt"
+    tracked.write_text("old\nkeep\n")
+    git("add", "tracked.txt")
+    git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+        "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "commit", "-m", "fixture")
+    tracked.write_text("new\nkeep\n")
+    git("add", "tracked.txt")
+    tracked.write_text("new\nkeep\nextra\n")
+    (project / "untracked.txt").touch()
+    directory_label = "~/dev/dotfiles" if shutil.which("shortpath") else "~/development/dotfiles"
     try:
         font = ImageFont.truetype("/System/Library/Fonts/Menlo.ttc", 14)
     except OSError:
@@ -106,17 +126,26 @@ elif 'show' in sys.argv: print(json.dumps([{'id':sys.argv[-1],'title':'Idle comp
             image.save(output / f"{name}-{columns}.png")
         try:
             pump(1)
+            footer = next((line for line in screen.display if "tiny" in line and directory_label in line), "")
+            assert footer and len(footer) == columns, screen.display
+            assert "↱ main" in footer and "Δ1 +2 −1 ?1" in footer, screen.display
             os.write(master, b"/tasks\r")
             pump(1)
-            assert "daily-1" in "\n".join(screen.display), screen.display
+            assert any("→ ◐ daily-1" in line for line in screen.display), screen.display
+            assert all(line.strip() != "Tasks" for line in screen.display), screen.display
             for noise in ["navigation", "Pi can explain", "[Extensions]", "[Extension issues]", "Warning: Extension", "idle compact", "escape/ctrl+c"]:
                 assert noise not in "\n".join(screen.display), screen.display
             colors = {screen.buffer[y][x].fg.upper() for y in range(rows) for x in range(columns)}
             assert palette["roles"]["accent"].lstrip("#") in colors, colors
-            backgrounds = {screen.buffer[y][x].bg.upper() for y in range(rows) for x in range(columns)}
-            assert palette["roles"]["accent"].lstrip("#") in backgrounds, backgrounds
-            assert palette["roles"]["text.muted"].lstrip("#") in backgrounds, backgrounds
-            assert "IN PROGRESS" in "\n".join(screen.display) and "OPEN" in "\n".join(screen.display)
+            progress = [(y, line.index("◐")) for y, line in enumerate(screen.display) if "◐" in line]
+            opened = [(y, line.index("○")) for y, line in enumerate(screen.display) if "○" in line]
+            assert progress and opened, screen.display
+            for (y, x), tone in [(progress[0], "accent"), (opened[0], "text.muted")]:
+                assert x >= columns // 4, screen.display
+                assert screen.buffer[y][x].fg.upper() == palette["roles"][tone].lstrip("#"), screen.display
+            assert any("├─ ○ daily-1.1" in line for line in screen.display), screen.display
+            assert any("│  └─ ● daily-1.1.1" in line for line in screen.display), screen.display
+            assert any("└─ ○ daily-1.2" in line for line in screen.display), screen.display
             capture("tasks")
             os.write(master, b"j\r")
             pump(.5)

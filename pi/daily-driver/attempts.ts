@@ -8,6 +8,9 @@ import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
 import { configSchema, driverProfileSchema, selection } from "./config.ts";
+import { deliverySchema } from "./delivery-record.ts";
+import { specRecord } from "./lead-spec.ts";
+import { leadPlanSchema } from "./lead-plan.ts";
 import { beadSchema, verificationSchema } from "./task-service.ts";
 
 export enum Phase {
@@ -16,9 +19,12 @@ export enum Phase {
   Launching = "launching",
   Running = "running",
   Checking = "checking",
+  Verified = "verified",
   CheckFailed = "check_failed",
   NeedsReview = "needs_review",
   Closed = "closed",
+  Archiving = "archiving",
+  Archived = "archived",
   Reconcile = "reconcile",
   Rejected = "rejected",
 }
@@ -32,6 +38,11 @@ export const attemptSchema = z.object({
   profile: driverProfileSchema,
   model: selection,
   live: z.boolean(),
+  leadPlan: leadPlanSchema.optional(),
+  delivery: deliverySchema.optional(),
+  archiveManifest: z.string().optional(),
+  specification: specRecord.optional(),
+  specHistory: z.array(specRecord).optional(),
   processStarted: z.string().nullable(),
   reservation: worktreeReservation,
   checkout: worktreeAllocation.nullable(),
@@ -41,6 +52,9 @@ export const attemptSchema = z.object({
   pid: z.number().int().positive().nullable(),
   transcript: z.string().nullable(),
   phase: z.enum(Phase),
+  resumePhase: z
+    .enum([Phase.Running, Phase.Verified, Phase.CheckFailed])
+    .optional(),
   verification: verificationSchema.nullable(),
   message: z.string(),
 });
@@ -79,6 +93,14 @@ export class Attempts {
   close(): void {
     this.db.close();
   }
+  archives(): Attempt[] {
+    return this.db
+      .prepare(
+        "SELECT record FROM attempts WHERE json_extract(record, '$.phase')=? ORDER BY rowid DESC LIMIT 1000",
+      )
+      .all(Phase.Archived)
+      .map(decode);
+  }
   get(id: string): Attempt {
     return decode(
       this.db.prepare("SELECT record FROM attempts WHERE id=?").get(id),
@@ -91,6 +113,23 @@ export class Attempts {
       )
       .get(project, bead);
     return raw === undefined ? null : decode(raw);
+  }
+  livePaneBeads(project: string, session: string): Set<string> {
+    return new Set(
+      z
+        .array(z.object({ bead: z.string() }))
+        .parse(
+          this.db
+            .prepare(
+              `SELECT bead FROM attempts WHERE project=? AND active=1
+          AND json_extract(record,'$.session')=?
+          AND json_extract(record,'$.live')=1
+          AND json_type(record,'$.pane')='integer'`,
+            )
+            .all(project, session),
+        )
+        .map(({ bead }) => bead),
+    );
   }
   reserve(attempt: Attempt): boolean {
     const result = this.db
@@ -111,7 +150,9 @@ export class Attempts {
       const current = this.get(id);
       update(current);
       const active =
-        current.phase !== Phase.Closed && current.phase !== Phase.Rejected;
+        current.phase !== Phase.Closed &&
+        current.phase !== Phase.Archived &&
+        current.phase !== Phase.Rejected;
       this.db
         .prepare("UPDATE attempts SET record=?,active=? WHERE id=?")
         .run(JSON.stringify(current), Number(active), id);

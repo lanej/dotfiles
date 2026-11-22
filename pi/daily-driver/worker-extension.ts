@@ -1,3 +1,4 @@
+import { FooterStatus } from "./runtime.ts";
 import type {
   ExtensionAPI,
   ExtensionContext,
@@ -6,10 +7,19 @@ import { realpath } from "node:fs/promises";
 import { Type } from "typebox";
 import { z } from "zod";
 import { Attempts, Phase, stateDirectory, type Attempt } from "./attempts.ts";
+import dailyDriver from "./extension.ts";
+import { registerLeadControls } from "./lead-extension.ts";
+import { SpecStatus, specText } from "./lead-spec.ts";
+import { LeadMode } from "./lead-plan.ts";
 import { DriverProfile } from "./config.ts";
 import { processStart } from "./process.ts";
 import { TaskBeads } from "./task-service.ts";
 import { submitResult } from "./task-verification.ts";
+import {
+  appendVerificationEvent,
+  registerTranscriptEvents,
+  VerificationOutcome,
+} from "./transcript-events.ts";
 
 async function matchWorker(
   ctx: ExtensionContext,
@@ -42,6 +52,7 @@ export default function managedWorker(pi: ExtensionAPI): void {
   const id = process.env["PI_DRIVER_ATTEMPT"];
   if (id === undefined) return;
   z.uuid().parse(id);
+  registerTranscriptEvents(pi);
   const db = new Attempts(stateDirectory());
   let lifetime = new AbortController();
   const submissions = new Set<Promise<string>>();
@@ -60,6 +71,36 @@ export default function managedWorker(pi: ExtensionAPI): void {
     ctx.abort();
     ctx.ui.notify(blocked, "error");
   };
+  const lead = db.get(id);
+  let approvalPending = false;
+  let applyLeadTools: ((ctx: ExtensionContext) => void) | undefined;
+  if (lead.leadPlan !== undefined) {
+    dailyDriver(pi, {
+      profile: lead.profile,
+      approvalPending: () => approvalPending,
+      trackedPullRequest: () => {
+        const delivery = db.get(id).delivery;
+        return delivery?.pr !== undefined && delivery.agent !== undefined
+          ? delivery.url
+          : undefined;
+      },
+    });
+    applyLeadTools = registerLeadControls(
+      pi,
+      db,
+      id,
+      async (ctx) => {
+        if (!matchesBinding(ctx))
+          throw new Error("This Pi session has no verified task binding");
+        const record = db.get(id);
+        await matchWorker(ctx, record);
+        return record;
+      },
+      (active) => {
+        approvalPending = active;
+      },
+    );
+  }
   pi.on("session_start", async (event, ctx) => {
     binding = undefined;
     lifetime = new AbortController();
@@ -84,10 +125,17 @@ export default function managedWorker(pi: ExtensionAPI): void {
           "The work worker must resolve to its configured HTTPS Bedrock Mantle endpoint",
         );
       }
+      const registeredModel = ctx.modelRegistry.find(
+        record.model.provider,
+        record.model.model,
+      );
       if (
         model?.id !== record.model.model ||
         model.provider !== record.model.provider ||
-        model.api === "pi-virtual"
+        model.api === "pi-virtual" ||
+        (record.leadPlan !== undefined &&
+          (registeredModel === undefined ||
+            !ctx.modelRegistry.hasConfiguredAuth(registeredModel)))
       )
         throw new Error(
           "Pi selected a different model from the accepted worker profile",
@@ -111,15 +159,26 @@ export default function managedWorker(pi: ExtensionAPI): void {
         row.pid = process.pid;
         row.transcript = ctx.sessionManager.getSessionFile() ?? null;
         if (first) {
-          row.phase = Phase.Running;
+          row.phase = row.resumePhase ?? Phase.Running;
+          delete row.resumePhase;
           row.message = "Pi is running in the managed worktree";
         }
       });
       binding = { record: admitted, model };
-      ctx.ui.setStatus("pi-bead", record.bead.id);
-      if (first && event.reason === "startup")
+      ctx.ui.setStatus(FooterStatus.Bead, record.bead.id);
+      if (record.leadPlan !== undefined) {
+        pi.setSessionName(`${record.bead.id} · ${record.bead.title}`);
+        applyLeadTools?.(ctx);
+      }
+      if (
+        first &&
+        record.resumePhase === undefined &&
+        event.reason === "startup"
+      )
         pi.sendUserMessage(
-          `Work on the accepted bead ${record.bead.id}: ${record.bead.title}`,
+          record.leadPlan === undefined
+            ? `Work on the accepted bead ${record.bead.id}: ${record.bead.title}`
+            : `Draft a plan for ${record.bead.id}: ${record.bead.title}. Include optional child tasks with acceptance criteria and dependencies. Save it with draft_implementation_plan, then wait for operator approval.`,
         );
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : String(cause);
@@ -168,7 +227,8 @@ export default function managedWorker(pi: ExtensionAPI): void {
       rejectInference(ctx);
       return;
     }
-    const { bead, check } = binding.record;
+    const current = db.get(id);
+    const { bead } = current;
     return {
       systemPrompt:
         event.systemPrompt +
@@ -178,9 +238,18 @@ export default function managedWorker(pi: ExtensionAPI): void {
           title: bead.title,
           description: bead.description,
           acceptance_criteria: bead.acceptance_criteria,
-          verifier: check,
+          verifier: current.check,
         }) +
-        "\nUse task_submit_result to submit the outcome. The driver runs the operator's agreed check and records the result.",
+        (current.specification === undefined
+          ? ""
+          : "\nSocrates plan workflow. Establish evidence and decisions, leave unanswered blocking questions open, and separate readiness from execution authority.\n" +
+            specText(current.specification)) +
+        (current.specification?.status === SpecStatus.Interrogating
+          ? "\nDraft the Socrates specification first. Wait for operator freeze before drafting tasks."
+          : "") +
+        (current.leadPlan?.mode === LeadMode.Planning
+          ? "\nPlanning mode. Use read-only tools and save a proposed plan with draft_implementation_plan. Wait for operator approval before implementing."
+          : "\nUse task_submit_result to submit the outcome. The driver runs the operator's agreed check and records the result."),
     };
   });
   const submit = async (
@@ -190,13 +259,36 @@ export default function managedWorker(pi: ExtensionAPI): void {
   ) => {
     if (binding === undefined)
       throw new Error("This Pi session has no verified local task binding");
+    const current = db.get(id);
     const signal =
       toolSignal === undefined
         ? lifetime.signal
         : AbortSignal.any([lifetime.signal, toolSignal]);
-    const result = matchWorker(ctx, db.get(id)).then(() =>
-      submitResult(db, id, summary, signal),
-    );
+    const result = matchWorker(ctx, db.get(id)).then(async () => {
+      const message = await submitResult(db, id, summary, signal);
+      const { phase, bead, verification } = db.get(id);
+      if (
+        verification !== null &&
+        current.phase !== Phase.Closed &&
+        !signal.aborted
+      ) {
+        const outcome =
+          phase === Phase.Closed || phase === Phase.Verified
+            ? VerificationOutcome.Passed
+            : phase === Phase.CheckFailed
+              ? VerificationOutcome.Failed
+              : VerificationOutcome.Review;
+        appendVerificationEvent(
+          pi,
+          outcome,
+          bead.id,
+          outcome === VerificationOutcome.Passed
+            ? verification.summary
+            : message,
+        );
+      }
+      return message;
+    });
     submissions.add(result);
     try {
       return await result;
@@ -207,7 +299,9 @@ export default function managedWorker(pi: ExtensionAPI): void {
   pi.registerCommand("task-submit", {
     description: "Verify a result against this bead's accepted criteria",
     handler: async (summary, ctx) => {
-      ctx.ui.notify(await submit(summary, ctx), "info");
+      const closed = db.get(id).phase === Phase.Closed;
+      const result = await submit(summary, ctx);
+      if (closed) ctx.ui.notify(result, "info");
     },
   });
   pi.registerTool({

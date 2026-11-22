@@ -22,16 +22,17 @@
     "typecheck": "node scripts/check-typescript.mjs typecheck",
     "quality:tools": "node scripts/check-typescript.mjs tools",
     "audit": "node scripts/check-typescript.mjs audit",
+    "test:delegation-native": "node --import tsx acceptance/delegation.ts",
     "generate:zellij": "node scripts/generate-zellij.mjs",
     "check:zellij": "node scripts/generate-zellij.mjs --check",
-    "build:aot": "node scripts/build-aot.mjs",
-    "test:delegation-native": "node --import tsx acceptance/delegation.ts"
+    "build:aot": "node scripts/build-aot.mjs"
   },
   "dependencies": {
     "@bufbuild/protobuf": "2.16.0",
     "@lanej/task-runtime": "file:../../tools/task-runtime",
     "@tintinweb/pi-subagents": "0.26.2",
     "commander": "^14.0.0",
+    "pi-git-diff": "0.1.1",
     "zod": "^4.0.0"
   },
   "devDependencies": {

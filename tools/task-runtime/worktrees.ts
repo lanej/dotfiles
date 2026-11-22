@@ -72,6 +72,14 @@ const managedTask = z.object({
 
 export class WorktreeManager implements Worktrees {
   constructor(readonly executable = "worktree") {}
+  async requireAllocation(allocation: Allocation): Promise<void> {
+    const inventory = await inspectTasks(allocation.primary, "worktree");
+    const task = managedTask.parse(inventory.find((entry) => entry["id"] === allocation.task_id));
+    if (task.owner_id !== allocation.owner_id || task.agent !== allocation.agent ||
+        task.path !== allocation.path || task.branch !== allocation.branch || task.state !== "active")
+      throw new Error("The worktree manager cannot verify this active allocation");
+  }
+
   async prepare(
     repository: string,
     holder: string,

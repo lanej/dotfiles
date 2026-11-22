@@ -3,6 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Attempts, Phase } from "./attempts.ts";
+import { LeadMode } from "./lead-plan.ts";
 import { run } from "./process.ts";
 import { BeadChanged, TaskBeads, type Verification } from "./task-service.ts";
 
@@ -116,7 +117,16 @@ export async function submitResult(
     return "Beads confirmed the previous result and closure";
   }
   const current = db.change(id, (row) => {
-    if (row.phase !== Phase.Running && row.phase !== Phase.CheckFailed)
+    if (
+      row.leadPlan !== undefined &&
+      row.leadPlan.mode !== LeadMode.Implementing
+    )
+      throw new Error("Approve the lead plan before submitting a result");
+    if (
+      row.phase !== Phase.Running &&
+      row.phase !== Phase.CheckFailed &&
+      row.phase !== Phase.Verified
+    )
       throw new Error(
         `Result submission requires a running worker. Current state: ${row.phase}. ${row.message}`,
       );
@@ -166,6 +176,15 @@ export async function submitResult(
       throw new Error("The tested Git state changed while the check ran");
     await service.requireCurrent(current.bead, current.revision, id);
     signal?.throwIfAborted();
+    if (current.leadPlan !== undefined) {
+      db.change(id, (row) => {
+        row.phase = Phase.Verified;
+        row.verification = verification;
+        row.message =
+          "Verification passed. Waiting for Octo delivery and confirmed merge";
+      });
+      return "Verification passed. The bead remains in progress until delivery is confirmed.";
+    }
     // The evidence must survive a process exit after Beads commits and before local confirmation.
     db.change(id, (row) => {
       row.verification = verification;

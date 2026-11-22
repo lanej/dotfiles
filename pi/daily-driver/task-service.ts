@@ -7,6 +7,7 @@ import { readFileSync } from "node:fs";
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
 import type { DriverConfig } from "./config.ts";
+import { orderedTasks, type LeadDraft } from "./lead-plan.ts";
 
 export const beadSchema = z.looseObject({
   id: z.string().min(1),
@@ -45,6 +46,7 @@ export function sameBrief(left: NativeBead, right: NativeBead): boolean {
 }
 
 export class TaskBeads extends BeadsHttp {
+  private readonly reviewOnly: boolean;
   constructor(settings: NonNullable<DriverConfig["beadsService"]>) {
     super(
       settings.url,
@@ -53,6 +55,7 @@ export class TaskBeads extends BeadsHttp {
         ? undefined
         : readFileSync(settings.tokenFile, "utf8").trim(),
     );
+    this.reviewOnly = settings.reviewOnly === true;
   }
 
   async get(id: string): Promise<NativeBead> {
@@ -69,11 +72,39 @@ export class TaskBeads extends BeadsHttp {
 
   async list() {
     await this.verifyAuthority();
-    return this.result(
+    const page = await this.result(
       this.client.GET("/v0/beads/issues", {
         params: { query: { limit: 1000, all: true } },
       }),
     );
+    const relationships = new Map<
+      string,
+      components["schemas"]["Dependency"][]
+    >();
+    for (let offset = 0; offset < page.items.length; offset += 100) {
+      const ids = page.items.slice(offset, offset + 100).map((task) => task.id);
+      const batch = await this.result(
+        this.client.GET("/v0/beads/dependencies", {
+          params: { query: { issue_id: ids } },
+        }),
+      );
+      if (batch.missing.length > 0)
+        throw new Error(
+          "The Beads graph changed while reading tasks. Refresh the tree",
+        );
+      for (const edge of batch.items) {
+        const edges = relationships.get(edge.issue_id);
+        if (edges === undefined) relationships.set(edge.issue_id, [edge]);
+        else edges.push(edge);
+      }
+    }
+    return {
+      ...page,
+      items: page.items.map((task) => ({
+        ...task,
+        dependencies: relationships.get(task.id) ?? [],
+      })),
+    };
   }
 
   private async write(
@@ -179,6 +210,97 @@ export class TaskBeads extends BeadsHttp {
       );
     }
     return current;
+  }
+
+  async applyPlan(
+    accepted: NativeBead,
+    revision: string,
+    attempt: string,
+    digest: string,
+    draft: LeadDraft,
+  ): Promise<{ revision: string; children: Record<string, string> }> {
+    if (this.reviewOnly)
+      throw new Error("This Beads service requires operator-managed changes");
+    const current = await this.requireCurrent(accepted, revision, attempt);
+    if (draft.tasks.length === 0)
+      return { revision: current.revision, children: {} };
+    if (current.metadata["pi.plan"] !== undefined)
+      throw new Error(
+        "A task breakdown is already recorded. Inspect the Beads tree",
+      );
+    const items: components["schemas"]["ApplyItem"][] = [
+      {
+        kind: "update",
+        update: {
+          target: { id: current.id },
+          expected_version: revision,
+          expected_status: current.status,
+          expected_assignee: owner(attempt),
+          patch: { metadata: { merge: { "pi.plan": digest } } },
+          force_close_policy: false,
+          force_assignee_transfer: false,
+        },
+      },
+    ];
+    for (const task of orderedTasks(draft)) {
+      items.push(
+        {
+          kind: "create",
+          create: {
+            key: task.key,
+            title: task.title,
+            description: task.description,
+            acceptance_criteria: task.acceptance,
+            issue_type: "task",
+            ephemeral: false,
+            no_history: false,
+            metadata: { "pi.plan": digest, "pi.plan_key": task.key },
+          },
+        },
+        {
+          kind: "dep_add",
+          dep_add: {
+            source: { key: task.key },
+            target: { id: current.id },
+            type: "parent-child",
+          },
+        },
+      );
+      for (const blocker of task.blockedBy)
+        items.push({
+          kind: "dep_add",
+          dep_add: {
+            source: { key: task.key },
+            target: { key: blocker },
+            type: "blocks",
+          },
+        });
+    }
+    const result = await this.result(
+      this.client.POST("/v0/beads/issues:batchApply", {
+        body: {
+          actor: owner(attempt),
+          items,
+          force_id_prefix: false,
+          skip_per_edge_cycle_check: false,
+        },
+      }),
+    );
+    const patch = result.items[0];
+    if (
+      patch?.kind !== "update" ||
+      patch.issue_id !== current.id ||
+      draft.tasks.some((task) => !Object.hasOwn(result.keys, task.key))
+    )
+      throw new Error("Beads did not return a complete plan receipt");
+    const confirmed = await this.requireCurrent(
+      accepted,
+      patch.revision,
+      attempt,
+    );
+    if (confirmed.metadata["pi.plan"] !== digest)
+      throw new Error("Beads did not confirm the approved plan");
+    return { revision: confirmed.revision, children: result.keys };
   }
 
   async complete(

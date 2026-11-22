@@ -11,7 +11,7 @@ import {
   taskTree,
 } from "./beads.ts";
 import { TaskBeads } from "./task-service.ts";
-import { dispatchGate, requireDispatch } from "./capabilities.ts";
+import { dispatchGate } from "./capabilities.ts";
 import {
   configPath,
   driverProfileSchema,
@@ -171,15 +171,16 @@ program
 program
   .command("start <bead-id> [verifier...]")
   .description(
-    "Start or focus one local Pi worker. Pass the agreed check as argv after --",
+    "Start or focus a lead Pi session. Pass the agreed check as argv after --",
   )
   .requiredOption("--profile <name>", "work or personal")
+  .option("--worker", "Start a direct worker without a lead plan")
   .option("--tab-id <id>", "Place a new worker in this Zellij tab")
   .action(
     async (
       id: string,
       verifier: string[],
-      options: { profile: string; tabId?: string },
+      options: { profile: string; tabId?: string; worker?: boolean },
     ) => {
       if (verifier.length > 0 && !process.argv.slice(2).includes("--"))
         throw new Error("Place the agreed verification command after --");
@@ -191,14 +192,66 @@ program
           driverProfileSchema.parse(options.profile),
           verifier,
           options.tabId === undefined ? undefined : tabId(options.tabId),
+          options.worker !== true,
         ),
       );
     },
   );
 program
-  .command("resume")
-  .description("Report the prerequisite blocking managed task recovery")
-  .action(requireDispatch);
+  .command("resume <bead-id>")
+  .description("Resume a settled lead in its existing worktree")
+  .option("--tab-id <id>", "Place the reopened lead in this Zellij tab")
+  .action(async (id: string, options: { tabId?: string }) => {
+    const { resumeLead } = await import("./task-run.ts");
+    const { tabId } = await import("./zellij.ts");
+    output(
+      await resumeLead(
+        id,
+        options.tabId === undefined ? undefined : tabId(options.tabId),
+      ),
+    );
+  });
+program
+  .command("publish <bead-id>")
+  .description("Publish the verified lead commit through Octo")
+  .requiredOption("--title <title>", "Reviewed PR title")
+  .requiredOption("--body-file <path>", "Reviewed PR description")
+  .requiredOption("--base <branch>", "GitHub base branch")
+  .action(
+    async (
+      id: string,
+      options: { title: string; bodyFile: string; base: string },
+    ) => {
+      const { publishLead } = await import("./delivery.ts");
+      output(
+        await publishLead(id, options.title, options.bodyFile, options.base),
+      );
+    },
+  );
+program
+  .command("ready <bead-id>")
+  .description("Record owner assessment of current PR feedback in Octo")
+  .requiredOption("--head <sha>", "Full verified commit SHA")
+  .action(async (id: string, options: { head: string }) => {
+    const { leadDeliveryDecision } = await import("./delivery.ts");
+    output(await leadDeliveryDecision(id, options.head, undefined));
+  });
+program
+  .command("merge <bead-id>")
+  .description("Request an exact-head merge from an Octo Ready notice")
+  .requiredOption("--head <sha>", "Full verified commit SHA")
+  .requiredOption("--notice <id>", "Ready notice ID from /octo-inbox")
+  .action(async (id: string, options: { head: string; notice: string }) => {
+    const { leadDeliveryDecision } = await import("./delivery.ts");
+    output(await leadDeliveryDecision(id, options.head, options.notice));
+  });
+program
+  .command("archive <bead-id>")
+  .description("Archive a settled lead after Octo confirms its merge")
+  .action(async (id: string) => {
+    const { archiveLead } = await import("./lead-archive.ts");
+    output(await archiveLead(id));
+  });
 program
   .command("skill")
   .description("Read compact agent guidance without configuration or services")

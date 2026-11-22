@@ -1,3 +1,4 @@
+import { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -6,13 +7,28 @@ import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
-import { AgentRole, DriverProfile, ReasoningLevel } from "../config.ts";
+import {
+  AgentRole,
+  DriverProfile,
+  exampleConfig,
+  ReasoningLevel,
+} from "../config.ts";
 import { run } from "../process.ts";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const temporary = await mkdtemp(join(tmpdir(), "pi-driver-resources-"));
 const agent = join(temporary, ".pi/agent");
 await mkdir(agent, { recursive: true });
+const registry = await ModelRuntime.create({
+  authPath: join(agent, "auth.json"),
+  modelsPath: join(agent, "models.json"),
+});
+for (const [role, selection] of Object.entries(exampleConfig.profiles.personal))
+  assert.ok(
+    registry.getModel(selection.provider, selection.model) !== undefined,
+    `The personal example's ${role} model is unavailable: ${selection.model}`,
+  );
+
 await run(
   "python3",
   [join(root, "../../scripts/configure-pi-driver.py"), root, agent],

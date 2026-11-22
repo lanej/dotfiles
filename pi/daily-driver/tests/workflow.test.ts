@@ -16,6 +16,10 @@ import { promisify } from "node:util";
 import { z } from "zod";
 import { taskDetails, taskLabel, taskSchema, taskTree } from "../beads.ts";
 
+import { githubLink, renderReferences } from "../github-links.ts";
+import { footerModelLabel } from "../footer.ts";
+import { highlightSearchOutput } from "../search-renderer.ts";
+
 const execute = promisify(execFile);
 const root = fileURLToPath(new URL("../", import.meta.url));
 
@@ -60,6 +64,77 @@ await test("task containment stays separate from blockers, including missing par
       depth: 0,
     }),
     /\p{Cc}/u,
+  );
+});
+
+await test("search rendering highlights only identifiable source, preserving prefixes", () => {
+  const color = (text: string, language: string) => [`[${language}]${text}`];
+  assert.equal(
+    highlightSearchOutput(
+      "bash",
+      { command: "sed -n '1,4p' 'src/a file.ts'" },
+      "const a = 1;",
+      color,
+    ),
+    "[typescript]const a = 1;",
+  );
+  const hits = "src/a.ts:9:const a = 1;\nsrc/b.py-8-print(a)\nunknown:2:plain";
+  assert.equal(
+    highlightSearchOutput("bash", { command: "rg -n needle src" }, hits, color),
+    "src/a.ts:9:[typescript]const a = 1;\nsrc/b.py-8-[python]print(a)\nunknown:2:plain",
+  );
+  assert.equal(
+    highlightSearchOutput("grep", {}, hits, color),
+    "src/a.ts:9:[typescript]const a = 1;\nsrc/b.py-8-[python]print(a)\nunknown:2:plain",
+  );
+  assert.equal(
+    highlightSearchOutput(
+      "bash",
+      { command: "rg --json needle src" },
+      hits,
+      color,
+    ),
+    hits,
+  );
+  assert.equal(
+    highlightSearchOutput(
+      "bash",
+      { command: "sed -n '1,4p' a.ts | wc" },
+      "4",
+      color,
+    ),
+    "4",
+  );
+});
+
+await test("compact model names preserve versions, variants, and unknown IDs", () => {
+  assert.equal(footerModelLabel("gpt-6.1-sol"), "⊛ 6.1 \uE30D");
+  assert.equal(footerModelLabel("openai.gpt-6.1-terra"), "⊛ 6.1 \uF0AC");
+  assert.equal(footerModelLabel("gpt-6.1-luna"), "⊛ 6.1 \uF186");
+  assert.equal(footerModelLabel("gpt-6.1-astra"), "⊛ 6.1 \uF005");
+  assert.equal(footerModelLabel("gpt-7-nova"), "⊛ 7 Nova");
+  assert.equal(footerModelLabel("gpt-4o-2024-11-20"), "⊛ 4o 2024-11-20");
+  assert.equal(footerModelLabel("o3-mini"), "⊛ o3 Mini");
+  assert.equal(footerModelLabel("claude-sonnet-4"), "claude-sonnet-4");
+});
+
+await test("inline GitHub references retain their exact destinations and line anchors", () => {
+  const code = "https://github.com/owner/repo/blob/main/src/driver.ts#L4-L9";
+  const issue = "https://github.com/owner/repo/issues/12";
+  const rendered = renderReferences(
+    `See [source](${code}) and ${issue}. Local src/driver.ts:4.`,
+    (text) => text,
+  );
+  assert.ok(rendered.includes(`\x1b]8;;${code}\x1b\\‹› driver.ts:4–9`));
+  assert.ok(rendered.includes(`\x1b]8;;${issue}\x1b\\! owner/repo#12`));
+  assert.ok(rendered.endsWith("Local src/driver.ts:4."));
+  assert.equal(
+    githubLink("https://github.com.example.test/owner/repo/pull/1"),
+    undefined,
+  );
+  assert.equal(
+    githubLink("https://github.com/owner/repo/pull/1\x1b]8;;malicious"),
+    undefined,
   );
 });
 

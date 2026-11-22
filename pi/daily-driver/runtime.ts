@@ -56,9 +56,15 @@ export function isMessageRole<K extends PiMessageRole>(
   return message.role === tag;
 }
 
+export enum FooterStatus {
+  Bead = "pi-bead",
+  Plan = "pi-plan",
+}
+
 export enum NavigationKey {
   Up = "up",
   Down = "down",
+  Right = "right",
   Escape = "escape",
   Enter = "enter",
   Cancel = "ctrl+c",

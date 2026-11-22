@@ -56,6 +56,7 @@ await withBeadsHttp(bd, dolt, async (fixture, source) => {
       bd,
       beadsService: source,
       output: process.env["PI_DRIVER_ACCEPTANCE_OUTPUT"],
+      scenario: process.env["PI_DRIVER_ACCEPTANCE_CASE"],
     }),
   );
   const result = await execute(
