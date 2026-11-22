@@ -90,7 +90,7 @@ elif 'show' in sys.argv: print(json.dumps([{'id':sys.argv[-1],'title':'Idle comp
     for columns, rows in [(100, 26), (60, 20)]:
         master, slave = os.openpty()
         fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", rows, columns, 0, 0))
-        process = subprocess.Popen(["node", str(root / "node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js"), "--offline", "--no-mcp", "--no-session", "--model", "fixture/tiny"], env=env, cwd=project, stdin=slave, stdout=slave, stderr=slave)
+        process = subprocess.Popen(["node", str(root / "node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js"), "--offline", "--no-mcp", "--model", "fixture/tiny"], env=env, cwd=project, stdin=slave, stdout=slave, stderr=slave)
         os.close(slave)
         screen = pyte.Screen(columns, rows)
         stream = pyte.Stream(screen)
@@ -179,6 +179,18 @@ elif 'show' in sys.argv: print(json.dumps([{'id':sys.argv[-1],'title':'Idle comp
             os.write(master, b"\x1b")
             pump(.35)
             assert archive_file.read_bytes() == archive_before
+            os.write(master, b"!echo remember-cobalt\r")
+            pump(.5)
+            assert "remember-cobalt" in "\n".join(screen.display), screen.display
+            os.write(master, b"/cd ../../design\r")
+            pump(1)
+            assert any("~/design" in line and "tiny" in line for line in screen.display), screen.display
+            assert "remember-cobalt" in "\n".join(screen.display), screen.display
+            capture("directory")
+            os.write(master, b"/cd missing-directory\r")
+            pump(.35)
+            assert "ENOENT" in "\n".join(screen.display), screen.display
+            assert any("~/design" in line and "tiny" in line for line in screen.display), screen.display
             os.write(master, b"unfinished instruction")
             pump(.2)
             assert "unfinished instruction" in "\n".join(screen.display)
@@ -187,4 +199,4 @@ elif 'show' in sys.argv: print(json.dumps([{'id':sys.argv[-1],'title':'Idle comp
             try: process.wait(timeout=5)
             except subprocess.TimeoutExpired: process.kill(); process.wait()
             os.close(master)
-print("Native Pi tree selection, Escape recovery, and draft editing passed.")
+print("Native Pi tree selection, Escape recovery, directory switching, and draft editing passed.")

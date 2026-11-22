@@ -6,6 +6,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { z } from "zod";
 import { registerArchives } from "./archives.ts";
+import { directoryProfileType, registerDirectory } from "./directory.ts";
 import {
   BeadsReader,
   knownTaskStatus,
@@ -67,6 +68,11 @@ export default function dailyDriver(
     },
   );
   registerArchives(pi);
+  registerDirectory(
+    pi,
+    (sessionId) => delegation.blocks(sessionId),
+    () => selectedProfile,
+  );
   registerSearchRendering(pi);
   if (managed !== undefined)
     pi.on("session_start", () => {
@@ -188,6 +194,24 @@ export default function dailyDriver(
   pi.on(PiEvent.SessionStart, async (_event, ctx) => {
     idle.newSession();
     selectedProfile = managed?.profile;
+    if (managed === undefined) {
+      const marker = ctx.sessionManager
+        .getBranch()
+        .findLast(
+          (entry) =>
+            isEntry(entry, PiEntryType.Custom) &&
+            entry.customType === directoryProfileType,
+        );
+      if (marker !== undefined && isEntry(marker, PiEntryType.Custom)) {
+        const profile = driverProfileSchema.safeParse(marker.data);
+        if (profile.success) {
+          // Consume the handoff before revalidation so a later resume does not
+          // override a model or profile the user selected after this switch.
+          pi.appendEntry(directoryProfileType, null);
+          await selectProfile(profile.data, ctx, true);
+        }
+      }
+    }
     await initialize(ctx);
   });
   pi.on(PiEvent.SessionShutdown, () => {
@@ -291,95 +315,112 @@ export default function dailyDriver(
     },
   });
 
+  async function selectProfile(
+    argument: string,
+    ctx: ExtensionContext,
+    restoring = false,
+  ): Promise<void> {
+    if (process.env["PI_DRIVER_ATTEMPT"] !== undefined) {
+      ctx.ui.notify("Set the profile on pi-driver start.", "warning");
+      return;
+    }
+    if (!ctx.isIdle() || ctx.hasPendingMessages()) {
+      ctx.ui.notify(
+        "Wait for the conversation and queued messages to settle before changing profiles",
+        "warning",
+      );
+      return;
+    }
+    const config = await loadConfig();
+    const parsedName = driverProfileSchema.safeParse(argument.trim());
+    if (!parsedName.success) {
+      ctx.ui.notify(
+        "Use /driver-profile work or /driver-profile personal",
+        "warning",
+      );
+      return;
+    }
+    const name = parsedName.data;
+    const profile = config.profiles[name];
+    if (profile === undefined) {
+      ctx.ui.notify(
+        `Configure the ${name} profile first; pi-driver config --example shows the role selections`,
+        "warning",
+      );
+      return;
+    }
+    const models = Object.values(profile).map((role) =>
+      ctx.modelRegistry.find(role.provider, role.model),
+    );
+    if (models.some((model) => model === undefined)) {
+      ctx.ui.notify(
+        "A configured role model is missing from Pi's registry; no model was changed",
+        "error",
+      );
+      return;
+    }
+    if (
+      name === DriverProfile.Personal &&
+      Object.values(profile).some(
+        (role) =>
+          knownProvider(role.provider) !== DefaultProvider.ChatGPTSubscription,
+      )
+    ) {
+      ctx.ui.notify(
+        "The personal profile must use Pi's openai-codex subscription provider",
+        "error",
+      );
+      return;
+    }
+    if (
+      name === DriverProfile.Work &&
+      models.some(
+        (model) =>
+          model === undefined ||
+          !/^https:\/\/bedrock-mantle\.[a-z0-9-]+\.api\.aws(?:\/|$)/.test(
+            model.baseUrl,
+          ),
+      )
+    ) {
+      ctx.ui.notify(
+        "The work profile must resolve to an explicit HTTPS Bedrock Mantle endpoint",
+        "error",
+      );
+      return;
+    }
+    const leadSelection = profile[AgentRole.Lead];
+    const lead = ctx.modelRegistry.find(
+      leadSelection.provider,
+      leadSelection.model,
+    );
+    if (lead === undefined) return;
+    if (
+      restoring &&
+      (ctx.model?.provider !== lead.provider || ctx.model.id !== lead.id)
+    ) {
+      ctx.ui.notify(
+        "The driver profile no longer matches the current model. Select /driver-profile again to enable delegation.",
+        "warning",
+      );
+      return;
+    }
+    const reasoning = restoring
+      ? pi.getThinkingLevel()
+      : leadSelection.reasoning;
+    if (!(await pi.setModel(lead))) {
+      ctx.ui.notify(
+        `Cannot switch to ${name}. Authenticate with ${leadSelection.provider} and retry. The current model is still active.`,
+        "error",
+      );
+      return;
+    }
+    pi.setThinkingLevel(reasoning);
+    selectedProfile = name;
+    delegation.activate();
+  }
   pi.registerCommand("driver-profile", {
     description: "Explicitly select the work or personal lead model",
-    handler: async (argument, ctx) => {
-      if (process.env["PI_DRIVER_ATTEMPT"] !== undefined) {
-        ctx.ui.notify("Set the profile on pi-driver start.", "warning");
-        return;
-      }
-      if (!ctx.isIdle() || ctx.hasPendingMessages()) {
-        ctx.ui.notify(
-          "Wait for the conversation and queued messages to settle before changing profiles",
-          "warning",
-        );
-        return;
-      }
-      const config = await loadConfig();
-      const parsedName = driverProfileSchema.safeParse(argument.trim());
-      if (!parsedName.success) {
-        ctx.ui.notify(
-          "Use /driver-profile work or /driver-profile personal",
-          "warning",
-        );
-        return;
-      }
-      const name = parsedName.data;
-      const profile = config.profiles[name];
-      if (profile === undefined) {
-        ctx.ui.notify(
-          `Configure the ${name} profile first; pi-driver config --example shows the role selections`,
-          "warning",
-        );
-        return;
-      }
-      const models = Object.values(profile).map((role) =>
-        ctx.modelRegistry.find(role.provider, role.model),
-      );
-      if (models.some((model) => model === undefined)) {
-        ctx.ui.notify(
-          "A configured role model is missing from Pi's registry; no model was changed",
-          "error",
-        );
-        return;
-      }
-      if (
-        name === DriverProfile.Personal &&
-        Object.values(profile).some(
-          (role) =>
-            knownProvider(role.provider) !==
-            DefaultProvider.ChatGPTSubscription,
-        )
-      ) {
-        ctx.ui.notify(
-          "The personal profile must use Pi's openai-codex subscription provider",
-          "error",
-        );
-        return;
-      }
-      if (
-        name === DriverProfile.Work &&
-        models.some(
-          (model) =>
-            model === undefined ||
-            !/^https:\/\/bedrock-mantle\.[a-z0-9-]+\.api\.aws(?:\/|$)/.test(
-              model.baseUrl,
-            ),
-        )
-      ) {
-        ctx.ui.notify(
-          "The work profile must resolve to an explicit HTTPS Bedrock Mantle endpoint",
-          "error",
-        );
-        return;
-      }
-      const leadSelection = profile[AgentRole.Lead];
-      const lead = ctx.modelRegistry.find(
-        leadSelection.provider,
-        leadSelection.model,
-      );
-      if (lead === undefined) return;
-      if (!(await pi.setModel(lead))) {
-        ctx.ui.notify(
-          `Cannot switch to ${name}. Authenticate with ${leadSelection.provider} and retry. The current model is still active.`,
-          "error",
-        );
-        return;
-      }
-      pi.setThinkingLevel(leadSelection.reasoning);
-      selectedProfile = name;
-      delegation.activate();
-    },
+    handler: (argument, ctx) => selectProfile(argument, ctx),
   });
 
   pi.registerCommand("driver-status", {
