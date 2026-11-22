@@ -10,9 +10,8 @@ Source selection and assembly are separate choices. A package can use a shared e
 
 | Source selection | Packages | Assembly |
 | --- | --- | --- |
-| Maturity: `research`, `alpha`, `beta`, or `production` | Go, TypeScript, Python, Protobuf | Render the selected template with resolved project policy. |
-| Maturity | Testing, code-comments | Inject shared guidance into the selected entrypoint. |
-| Maturity | Rust | Install the selected entrypoint unchanged. |
+| Maturity: `research`, `alpha`, `beta`, or `production` | Go, TypeScript, Python, Protobuf | Inject shared correctness guidance and the resolved verification policy. |
+| Maturity | Testing, code-comments, Rust | Inject shared guidance into the selected entrypoint. |
 | Shared | Project policy | Render the selected kind, authority, and adoption into one shared template. |
 | Shared | Octo | Adapt the submission-guide path, then render repository automation policy. |
 | Shared | Remaining curated skills | Preserve the entrypoint; copied packages adapt local resource paths where required, including Git and pull-request guidance. |
@@ -27,10 +26,11 @@ The stage-specific template links below show beta. The same placeholder contract
 
 | Skill and template | Placeholder | Effective inputs | Inserted content |
 | --- | --- | --- | --- |
-| [Go](../ai/skills/.maturity-profiles/beta/go/SKILL.md) | `verification` | Stage; generated gate selected or retained; rollout from `.go-quality.json` | [Installed](../ai/skills/go/references/profile-installed.md) or [guidance-only](../ai/skills/go/references/profile-uninstalled.md) verification; [strict](../ai/skills/go/references/rollout-strict.md) or [ratchet](../ai/skills/go/references/rollout-ratchet.md) enforcement when the gate is present. |
-| [TypeScript](../ai/skills/.maturity-profiles/beta/typescript/SKILL.md) | `verification` | Stage; generated gate selected or retained; rollout from `.typescript-quality.json` | [Installed](../ai/skills/typescript/references/profile-installed.md) or [guidance-only](../ai/skills/typescript/references/profile-uninstalled.md) verification; [strict](../ai/skills/typescript/references/rollout-strict.md) or [ratchet](../ai/skills/typescript/references/rollout-ratchet.md) enforcement when the gate is present. |
-| [Python](../ai/skills/.maturity-profiles/beta/python/SKILL.md) | `verification` | Stage; generated gate selected or retained | [Installed](../ai/skills/python/references/profile-installed.md) strict verification or [guidance-only](../ai/skills/python/references/profile-uninstalled.md) instructions. |
-| [Protobuf](../ai/skills/.maturity-profiles/beta/protobuf/SKILL.md) | `verification` | Stage; generated gate selected or retained | [Installed](../ai/skills/protobuf/references/profile-installed.md) verification or [guidance-only](../ai/skills/protobuf/references/profile-uninstalled.md) instructions. |
+| [Go](../ai/skills/.maturity-profiles/beta/go/SKILL.md) | `verification`, `shared-guidance` | Stage; generated gate selected or retained; rollout from `.go-quality.json` | [Installed](../ai/skills/go/references/profile-installed.md) or [guidance-only](../ai/skills/go/references/profile-uninstalled.md) verification; [strict](../ai/skills/go/references/rollout-strict.md) or [ratchet](../ai/skills/go/references/rollout-ratchet.md) enforcement when the gate is present. |
+| [TypeScript](../ai/skills/.maturity-profiles/beta/typescript/SKILL.md) | `verification`, `shared-guidance` | Stage; generated gate selected or retained; rollout from `.typescript-quality.json` | [Installed](../ai/skills/typescript/references/profile-installed.md) or [guidance-only](../ai/skills/typescript/references/profile-uninstalled.md) verification; [strict](../ai/skills/typescript/references/rollout-strict.md) or [ratchet](../ai/skills/typescript/references/rollout-ratchet.md) enforcement when the gate is present. |
+| [Python](../ai/skills/.maturity-profiles/beta/python/SKILL.md) | `verification`, `shared-guidance` | Stage; generated gate selected or retained | [Installed](../ai/skills/python/references/profile-installed.md) strict verification or [guidance-only](../ai/skills/python/references/profile-uninstalled.md) instructions. |
+| [Protobuf](../ai/skills/.maturity-profiles/beta/protobuf/SKILL.md) | `verification`, `shared-guidance` | Stage; generated gate selected or retained | [Installed](../ai/skills/protobuf/references/profile-installed.md) verification or [guidance-only](../ai/skills/protobuf/references/profile-uninstalled.md) instructions. |
+| [Rust](../ai/skills/.maturity-profiles/beta/rust/SKILL.md) | `shared-guidance` | Stage | [Common Rust guidance](../ai/skills/rust/references/common.md). |
 | [Testing](../ai/skills/.maturity-profiles/beta/testing/SKILL.md) | `shared-guidance` | Stage | [Minimum effective testing](../ai/skills/testing/references/principles.md), including test selection, diagnostics, and verification boundaries. |
 | [Code comments](../ai/skills/.maturity-profiles/beta/code-comments/SKILL.md) | `shared-guidance` | Stage | [Shared comment guidance](../ai/skills/code-comments/references/common.md), including usefulness, placement, and format. |
 | [Project policy](../ai/skills/source-code-lifecycle/SKILL.md) | `project-policy` | Kind; authority; adoption | Selected kind, authority, and adoption fragments, such as [tool](../ai/skills/source-code-lifecycle/references/kind-tool.md), [owned](../ai/skills/source-code-lifecycle/references/authority-owned.md), and [hold](../ai/skills/source-code-lifecycle/references/adoption-hold.md). |

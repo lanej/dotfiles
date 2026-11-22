@@ -1,6 +1,6 @@
 # TypeScript correctness
 
-Before selecting application tools or an API protocol, read [the project tool-choice policy](../../source-code-lifecycle/references/tool-choices.md). Apply the declared authority and adoption at the configured maturity; preserve external providers’ protocols and established stacks according to that policy.
+Before selecting application tools or an API protocol, read [the installed project policy](../../source-code-lifecycle/SKILL.md). Apply the declared authority and adoption at the configured maturity; preserve external providers’ protocols and established stacks according to that policy.
 
 Follow the verification commands and enforcement in this skill’s installed entrypoint. Preserve existing repository checks.
 

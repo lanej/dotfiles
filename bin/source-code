@@ -229,14 +229,15 @@ MATURITY_SKILLS = (
 SHARED_GUIDANCE = {
     "code-comments": "common.md",
     "testing": "principles.md",
+    **dict.fromkeys(("go", "typescript", "python", "protobuf", "rust"), "common.md"),
 }
 SKILL_TEMPLATE_BLOCKS = {
     **dict.fromkeys(SHARED_GUIDANCE, ("shared-guidance",)),
     "source-code-lifecycle": ("project-policy",),
-    "go": ("verification",),
-    "typescript": ("verification",),
-    "python": ("verification",),
-    "protobuf": ("verification",),
+    "go": ("verification", "shared-guidance"),
+    "typescript": ("verification", "shared-guidance"),
+    "python": ("verification", "shared-guidance"),
+    "protobuf": ("verification", "shared-guidance"),
     "octo-manager": ("automation",),
 }
 CONFIGURED_SKILLS = set(SKILL_TEMPLATE_BLOCKS)
@@ -1205,7 +1206,7 @@ def configure_skill_packages(
             payloads.pop(destination, None)
 
     for skill, fragment in SHARED_GUIDANCE.items():
-        if skill in resolved["skills"]:
+        if skill in resolved["skills"] and SKILL_TEMPLATE_BLOCKS[skill] == ("shared-guidance",):
             render(skill, {"shared-guidance": reference(skill, fragment)})
             omit(skill, [fragment])
 
@@ -1249,10 +1250,12 @@ def configure_skill_packages(
             if rollout not in {"strict", "ratchet"}:
                 raise ValueError(f"invalid {language} rollout for installed guidance")
             verification.append(reference(language, f"rollout-{rollout}.md"))
-        render(language, {"verification": "\n\n".join(verification)})
+        shared = SHARED_GUIDANCE[language]
+        render(language, {"verification": "\n\n".join(verification), "shared-guidance": reference(language, shared)})
         omit(
             language,
             [
+                shared,
                 "profile-installed.md",
                 "profile-uninstalled.md",
                 "rollout-strict.md",

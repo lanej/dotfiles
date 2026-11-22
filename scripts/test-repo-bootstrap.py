@@ -326,7 +326,15 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
                     assert "python3 scripts/check-source-code.py " + name not in guide, (name, guide)
                     assert not list((installed / "references").glob("profile*.md"))
                     assert not list((installed / "references").glob("rollout*.md"))
-                assert (installed / "references").is_dir()
+            for name, topic in (
+                ("go", "Use a named type"), ("typescript", "Use discriminated unions"),
+                ("python", "Never use pip"), ("protobuf", "Model structured data"), ("rust", "Clippy triage"),
+            ):
+                skill = staged_testing / ".agents/skills" / name
+                guide = rendered_skill(staged_testing, name)
+                assert topic in guide and "references/common.md" not in guide, guide
+                assert not (skill / "references/common.md").exists()
+            assert "# /// script" in rendered_skill(staged_testing, "python")
             for name, fragment, topic, target in (
                 ("code-comments", "common.md", "Comment when it materially reduces", "standard.md"),
                 ("testing", "principles.md", "Failures must explain what went wrong", "verification-lessons.md"),
@@ -357,7 +365,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
             # Previous linked installs have whole-directory links for these two skills.
             manifest = staged_testing / ".agents/repo-bootstrap.json"
             state = json.loads(manifest.read_text())
-            for name in ("code-comments", "testing"):
+            for name in ("code-comments", "testing", "rust"):
                 relative = f".agents/skills/{name}"
                 skill = staged_testing / relative
                 shutil.rmtree(skill)
@@ -367,10 +375,16 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
                 state["files"][relative] = {"kind": "link", "target": str(origin)}
             manifest.write_text(json.dumps(state))
             run([str(cli), "upgrade", "--repo", str(staged_testing)])
-            for name in ("code-comments", "testing"):
+            for name in ("code-comments", "testing", "rust"):
                 assert not (staged_testing / ".agents/skills" / name).is_symlink()
                 rendered_skill(staged_testing, name)
             run([str(cli), "validate", "--repo", str(staged_testing), "--strict"])
+        # Audit the complete selectable catalog in both storage modes.
+        all_skills = ",".join(module.SKILLS)
+        run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(staged_testing), "--skills", all_skills])
+        for name in module.SKILLS:
+            assert (staged_testing / ".agents/skills" / name / "SKILL.md").is_file(), name
+        run([str(cli), "validate", "--repo", str(staged_testing), "--strict"])
         # Missing declared markers and unregistered templates fail before project writes.
         for name in ("go", "rust"):
             template = source / f"ai/skills/.maturity-profiles/research/{name}/SKILL.md"
@@ -435,7 +449,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
             canonical.write_bytes(original)
         # Shared technical and Octo resources stay live only in linked installations.
         for relative, canonical in (
-            ("go/references/common.md", source / "ai/skills/go/references/common.md"),
+            ("go/references/troubleshooting.md", source / "ai/skills/go/references/troubleshooting.md"),
             ("octo-manager/assets/notification-defaults.json", source / "ai/skills/octo-manager/assets/notification-defaults.json"),
         ):
             original = canonical.read_bytes()
