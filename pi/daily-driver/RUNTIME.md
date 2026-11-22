@@ -63,7 +63,7 @@ The first increment covers read-only delegation and worktree integration. The ta
 
 ## Current integration gaps
 
-The latest published Beads release is [1.3.4](https://github.com/gastownhall/beads/releases/tag/v1.3.4). The [native capability probe](acceptance/beads-control.ts) demonstrates atomic claim and owner/status checks but permits an old attempt to change a task after its description changes. A read-then-write check or runtime-only lock does not supply the missing per-task fence. Evaluate a released native primitive or an explicitly reviewed alternative against the real database before enabling task-bound mutation; do not silently introduce another task authority.
+The [native capability probe](acceptance/beads-control.ts) shows that the pinned Beads 1.3.4 CLI accepts an update from the same owner after the brief changes. The HTTP service on that version rejects stale revision, owner, and status on the guarded write itself. The probe confirms that edits from both the CLI and HTTP advance the revision and that stale closure attempts leave the bead open. Managed lead planning and completion use that HTTP guard. Writable child delegation still needs an end-to-end trial of guarded child admission, a distinct worktree and writer, and recovery before accepting or integrating its result.
 
 The Pi lead enrolls the PR as a local Pi session target in Octo. Octo retains review and Ready notices in its pull inbox. The lead exposes `/octo-inbox`, explicit exact-head owner assessment, and a one-shot merge command tied to the current Ready notice for its own PR.
 
