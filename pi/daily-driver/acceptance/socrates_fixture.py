@@ -28,6 +28,7 @@ class Tool(TypedDict):
 
 
 class CompletionRequest(TypedDict):
+    model: str
     messages: list[Message]
     tools: list[Tool]
 
