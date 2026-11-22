@@ -33,12 +33,14 @@ class CompletionRequest(TypedDict):
     tools: list[Tool]
 
 
-class Choice(TypedDict):
+@dataclass(frozen=True)
+class Choice:
     label: str
     description: str
 
 
-class Decision(TypedDict):
+@dataclass(frozen=True)
+class Decision:
     id: str
     decision: str
     basis: Literal["observed", "decided"]
@@ -47,19 +49,22 @@ class Decision(TypedDict):
     uncertainty: str
 
 
-class AskArguments(TypedDict):
+@dataclass(frozen=True)
+class AskArguments:
     decisionId: str
     question: str
     options: list[Choice]
 
 
-class Requirement(TypedDict):
+@dataclass(frozen=True)
+class Requirement:
     id: str
     outcome: str
     acceptance: str
 
 
-class DraftArguments(TypedDict):
+@dataclass(frozen=True)
+class DraftArguments:
     objective: str
     scope: list[str]
     requirements: list[Requirement]
@@ -82,30 +87,40 @@ class Exchange:
     choices: tuple[Choice, ...] = ()
 
     def ask(self) -> ToolCall:
-        return ToolCall("ask_user_question", {
-            "decisionId": self.id, "question": self.question, "options": list(self.choices),
-        })
+        return ToolCall(
+            "ask_user_question",
+            AskArguments(decisionId=self.id, question=self.question, options=list(self.choices)),
+        )
 
     def open_decision(self) -> Decision:
-        return {
-            "id": self.id, "decision": self.decision, "basis": "observed",
-            "evidence": "Beads acceptance criteria", "disposition": "open",
-            "uncertainty": "The missing choice changes the acceptance check",
-        }
+        return Decision(
+            id=self.id,
+            decision=self.decision,
+            basis="observed",
+            evidence="Beads acceptance criteria",
+            disposition="open",
+            uncertainty="The missing choice changes the acceptance check",
+        )
 
     def resolved_decision(self) -> Decision:
-        return {
-            "id": self.id, "decision": self.decision, "basis": "decided",
-            "evidence": self.answer, "disposition": "resolved", "uncertainty": "None",
-        }
+        return Decision(
+            id=self.id,
+            decision=self.decision,
+            basis="decided",
+            evidence=self.answer,
+            disposition="resolved",
+            uncertainty="None",
+        )
 
 
 KEEP_CHECKOUT = "Keep the checkout"
 ARCHIVE = Exchange(
     "D1", "Choose recovery behavior after an archive failure",
     "If the archive fails, what should happen to the checkout?", KEEP_CHECKOUT,
-    ({"label": KEEP_CHECKOUT, "description": "Retry with the checkout in place"},
-     {"label": "Remove it", "description": "Recover from the saved transcript"}),
+    (
+        Choice(KEEP_CHECKOUT, "Retry with the checkout in place"),
+        Choice("Remove it", "Recover from the saved transcript"),
+    ),
 )
 RECEIPT = Exchange(
     "D2", "Choose the operator receipt", "What receipt should the operator see?",
@@ -125,15 +140,18 @@ def message_text(message: Message) -> str:
 
 
 def draft(resolved: list[Decision], *, pending: Exchange | None = None) -> ToolCall:
-    return ToolCall(DRAFT_TOOL, {
-        "objective": "Verify the native lead handoff",
-        "scope": ["Disposable Beads checkout"],
-        "requirements": [
-            {"id": "R1", "outcome": "Preserve approval evidence", "acceptance": "Verify the Beads graph"},
-        ],
-        "decisions": resolved if pending is None else [*resolved, pending.open_decision()],
-        "blockingQuestions": [] if pending is None else [pending.question],
-    })
+    return ToolCall(
+        DRAFT_TOOL,
+        DraftArguments(
+            objective="Verify the native lead handoff",
+            scope=["Disposable Beads checkout"],
+            requirements=[
+                Requirement("R1", "Preserve approval evidence", "Verify the Beads graph"),
+            ],
+            decisions=resolved if pending is None else [*resolved, pending.open_decision()],
+            blockingQuestions=[] if pending is None else [pending.question],
+        ),
+    )
 
 
 def user_turn(text: str, prompt: str, history: list[str]) -> ToolCall | None:

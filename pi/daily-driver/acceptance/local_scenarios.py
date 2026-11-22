@@ -12,8 +12,8 @@ from typing import Callable, TypedDict
 
 from local_fixture import Allocation, Fixture, Report, Scenario, TaskSnapshot
 from local_provider import Provider
+from socrates_fixture import ARCHIVE, RECEIPT
 from zellij_terminal import Terminal
-from socrates_fixture import ARCHIVE, RECEIPT, AskArguments, DraftArguments
 
 
 class RecordedAnswer(TypedDict):
@@ -25,12 +25,25 @@ class ExchangeAnswer(TypedDict, total=False):
     answer: RecordedAnswer
 
 
+class QuestionEvidence(TypedDict):
+    decisionId: str
+
+
 class PendingExchange(ExchangeAnswer):
-    prompt: AskArguments
+    prompt: QuestionEvidence
+
+
+class DecisionEvidence(TypedDict):
+    evidence: str
+
+
+class DraftEvidence(TypedDict):
+    decisions: list[DecisionEvidence]
+    blockingQuestions: list[str]
 
 
 class Specification(TypedDict, total=False):
-    draft: DraftArguments | None
+    draft: DraftEvidence | None
     exchange: PendingExchange
     acceptedRevision: str
     status: str

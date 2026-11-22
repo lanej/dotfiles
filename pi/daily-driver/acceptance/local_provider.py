@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from http.server import BaseHTTPRequestHandler
 from typing import Literal, TypedDict
 
@@ -122,7 +122,7 @@ def complete(request: CompletionRequest) -> ToolDelta | TextDelta:
     spec = specification_tool(request)
     if spec is not None:
         calls = sum(bool(message.get("tool_calls")) for message in messages)
-        return tool_delta(f"fixture-spec-{calls}", spec.name, spec.arguments)
+        return tool_delta(f"fixture-spec-{calls}", spec.name, asdict(spec.arguments))
     if last["role"] == "user":
         tool = user_tool(request, text)
         if tool is not None:
