@@ -141,7 +141,10 @@ ARCHIVE = Exchange(
         ),
         Choice("Remove it", "Recover from the saved transcript"),
     ),
-    context="Octo has confirmed the merge, and the transcript archive failed.",
+    context=(
+        "Octo has confirmed the merge, and the transcript archive failed. "
+        "See the [recovery log](https://example.com/recovery)."
+    ),
     evidence=(Evidence("Archive report", "https://github.com/fixture/repo/issues/8"),),
 )
 RECEIPT = Exchange(

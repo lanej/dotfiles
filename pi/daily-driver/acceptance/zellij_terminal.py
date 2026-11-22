@@ -62,10 +62,6 @@ class Terminal:
     def focus_pane(self, pane: int) -> None:
         self.request("focus", pane=pane)
 
-    def move_pointer(self, pane: int, column: int, row: int) -> None:
-        # Replay a pane-local, buttonless SGR event through the native socket.
-        self.write_to_pane(pane, *f"\x1b[<35;{column + 1};{row + 1}M".encode())
-
     def request(self, action: str, **arguments: object) -> str:
         writer, reader = self.client.stdin, self.client.stdout
         assert writer is not None and reader is not None

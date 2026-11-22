@@ -1,14 +1,12 @@
 import type { ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
 import {
-  hyperlink,
   matchesKey,
   parseKey,
-  stripTerminalSequences,
   truncateToWidth,
   visibleWidth,
   wrapTextWithAnsi,
-  type TuiMouseEvent,
 } from "@earendil-works/pi-tui";
+import { questionLink, questionLinks, questionText } from "./question-links.ts";
 import { NavigationKey } from "./runtime.ts";
 
 type EvidenceLink = { label: string; url: string };
@@ -62,17 +60,13 @@ export function questionHints(visibleChoices: number): string[] {
   );
 }
 
-export function questionText(value: string): string {
-  return stripTerminalSequences(value).replace(/[^\P{Cc}\n\t]/gu, " ");
-}
-
 function oneLine(value: string): string {
   return questionText(value).replace(/\s+/gu, " ");
 }
 
 function evidenceRows(items: EvidenceLink[], theme: Theme): string[] {
   return items.map(({ label, url }) =>
-    theme.fg("accent", hyperlink(oneLine(label), new URL(url).href)),
+    theme.fg("accent", questionLink(label, url)),
   );
 }
 
@@ -82,12 +76,15 @@ function details(
   theme: Theme,
 ): string {
   const paragraphs = [
-    questionText(prompt.question),
-    ...(prompt.context === undefined ? [] : [questionText(prompt.context)]),
-    [theme.bold(oneLine(choice.label)), questionText(choice.description)]
+    questionLinks(prompt.question),
+    ...(prompt.context === undefined ? [] : [questionLinks(prompt.context)]),
+    [
+      theme.bold(questionLinks(oneLine(choice.label))),
+      questionLinks(choice.description),
+    ]
       .filter(Boolean)
       .join("\n"),
-    ...(choice.details === undefined ? [] : [questionText(choice.details)]),
+    ...(choice.details === undefined ? [] : [questionLinks(choice.details)]),
   ];
   const links = evidenceRows(
     [...(prompt.evidence ?? []), ...(choice.evidence ?? [])],
@@ -106,8 +103,8 @@ function preview(
   width: number,
 ): string[] {
   const content = [
-    questionText(choice.description),
-    questionText(choice.details ?? ""),
+    questionLinks(choice.description),
+    questionLinks(choice.details ?? ""),
     ...evidenceRows(choice.evidence ?? [], theme),
   ].filter((section) => section.length > 0);
   return wrapTextWithAnsi(content.join("\n\n"), width);
@@ -129,15 +126,6 @@ function previewColumns(
       details.length > 0 ? columnDivider : " ".repeat(columnDivider.length);
     return `${choice}${theme.fg("muted", divider)}${detail}`;
   });
-}
-
-function needsMouseMotion(): boolean {
-  const term = process.env["TERM"]?.toLowerCase() ?? "";
-  return (
-    ["ZELLIJ", "TMUX", "STY"].some((key) => process.env[key] !== undefined) ||
-    term.startsWith("tmux") ||
-    term.startsWith("screen")
-  );
 }
 
 function panelRow(
@@ -173,9 +161,6 @@ export async function chooseQuestion(
       let rows = choices.slice(0, maxVisibleChoices);
       let visibleHints = questionHints(rows.length);
       let prefix = "";
-      let hovered: number | undefined;
-      let listTop = 0;
-      let choiceWidth = 0;
       let scroll = 0;
       let maxScroll = 0;
       const cancel = () => {
@@ -184,15 +169,9 @@ export async function chooseQuestion(
       signal?.addEventListener("abort", cancel, { once: true });
       if (signal?.aborted === true) queueMicrotask(cancel);
 
-      // Pi normally requests button-motion only inside multiplexers. Ask for
-      // passive motion for this overlay, then restore Pi's normal mouse mode.
-      const trackHover = tui.mode === "fullscreen" && needsMouseMotion();
-      if (trackHover) tui.terminal.write("\x1b[?1003h");
-
       return {
         dispose() {
           signal?.removeEventListener("abort", cancel);
-          if (trackHover) tui.terminal.write("\x1b[?1003l\x1b[?1002h");
         },
         invalidate() {},
         render(width) {
@@ -212,7 +191,7 @@ export async function chooseQuestion(
           }
 
           const title = wrapTextWithAnsi(
-            theme.fg("accent", questionText(prompt.question)),
+            theme.fg("accent", questionLinks(prompt.question)),
             inner,
           );
           const titleHeight = Math.min(
@@ -224,7 +203,9 @@ export async function chooseQuestion(
           const previewHeight = split
             ? Math.min(6, room)
             : Math.min(4, Math.max(0, room - choices.length));
-          choiceWidth = split ? Math.min(32, Math.floor(width * 0.46)) : width;
+          const choiceWidth = split
+            ? Math.min(32, Math.floor(width * 0.46))
+            : width;
           const capacity = Math.min(
             maxVisibleChoices,
             room - (split ? 0 : previewHeight),
@@ -244,7 +225,6 @@ export async function chooseQuestion(
           visibleHints = questionHints(rows.length);
           const hintWidth = visibleHints.at(-1)?.length ?? 1;
 
-          listTop = titleHeight + 1;
           const list = rows.map((choice, offset) => {
             const index = first + offset;
             const active = index === focused;
@@ -256,26 +236,21 @@ export async function chooseQuestion(
                   ? `${theme.fg("accent", theme.bold(hint.padEnd(hintWidth)))} `
                   : " ".repeat(hintWidth + 1)
                 : "";
-            const name = oneLine(choice.label);
+            const name = questionLinks(oneLine(choice.label));
             const expandable =
               choice.details !== undefined ||
               (choice.evidence?.length ?? 0) > 0;
             const text = expandable
               ? `${name} ${theme.fg("accent", "▸")}`
               : name;
-            const description = oneLine(choice.description);
+            const description = questionLinks(oneLine(choice.description));
             const row =
               marker +
               label +
               (split || description === "" ? text : `${text} · ${description}`);
-            return panelRow(
-              choiceWidth,
-              row,
-              theme,
-              active || index === hovered,
-            );
+            return panelRow(choiceWidth, row, theme, active);
           });
-          const choice = hovered === undefined ? undefined : choices[hovered];
+          const choice = choices[focused];
           const previewWidth = split
             ? width - choiceWidth - columnDivider.length - 2
             : inner;
@@ -303,20 +278,6 @@ export async function chooseQuestion(
             panel(""),
             ...body,
           ];
-        },
-        handleMouse(event: TuiMouseEvent) {
-          if (
-            event.type !== "move" ||
-            view === View.Details ||
-            event.x >= choiceWidth
-          )
-            return undefined;
-          const offset = event.y - listTop;
-          const next =
-            offset >= 0 && offset < rows.length ? first + offset : undefined;
-          if (hovered === next) return undefined;
-          hovered = next;
-          return { handled: true, render: true };
         },
         handleInput(input) {
           const escaped = matchesKey(input, NavigationKey.Escape);

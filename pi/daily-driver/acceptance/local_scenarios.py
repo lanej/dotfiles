@@ -148,26 +148,15 @@ def exercise_selector(case: Case) -> None:
     def view() -> str:
         return terminal.capture_pane(pane)
 
-    def hover(label: str) -> None:
-        row, line = next((index, line) for index, line in enumerate(view().splitlines()) if label in line)
-        terminal.move_pointer(pane, line.index(label), row)
-
-    assert "Retry in the same checkout" not in view()
-    hover(ARCHIVE.answer)
-    terminal.until("hover opens the first choice preview", lambda:
+    terminal.until("focused choice shows its explanation", lambda:
                    "│" in view() and "Retry in the same checkout" in view())
-    hover("Remove it")
-    terminal.until("pointer previews the other choice without moving keyboard focus", lambda:
-                   f"→ {ARCHIVE.answer}" in view() and "Recover from the saved" in view())
-    assert "answer" not in case.specification()["exchange"]
-    hover(ARCHIVE.answer)
-    terminal.until("preview returns to the first choice", lambda: "Retry in the same checkout" in view())
-    (artifacts / "socrates-hover.ansi").write_text(terminal.capture_pane(pane, ansi=True))
-
     terminal.send_to_pane(pane, "j")
-    terminal.until("j moves focus to the next choice", lambda: "→ Remove it" in view())
+    terminal.until("j moves focus and updates the explanation", lambda:
+                   "→ Remove it" in view() and "Recover from the saved" in view())
+    assert "answer" not in case.specification()["exchange"]
     terminal.send_to_pane(pane, "k")
-    terminal.until("k brings focus back to the first choice", lambda: f"→ {ARCHIVE.answer}" in view())
+    terminal.until("k restores the first choice and explanation", lambda:
+                   f"→ {ARCHIVE.answer}" in view() and "Retry in the same checkout" in view())
     terminal.send_to_pane(pane, "l")
     terminal.until("choice details open with question context", lambda:
                    "Keeping the checkout preserves" in view() and "Octo has confirmed the merge" in view())
@@ -265,6 +254,15 @@ def exercise_question_exchange(case: Case) -> None:
                    (current := spec()).get("exchange") is None and
                    (draft := current.get("draft")) is not None and not draft["blockingQuestions"] and
                    draft["decisions"][-1]["evidence"] == RECEIPT.answer)
+
+    for url in (
+        "https://example.com/recovery",
+        "https://github.com/fixture/repo/issues/7",
+        "https://github.com/fixture/repo/issues/8",
+        "https://github.com/fixture/repo/issues/9",
+    ):
+        target = rb"\x1b\]8;[^;]*;" + re.escape(url.encode()) + rb"(?:\x07|\x1b\\)"
+        assert re.search(target, terminal.output), f"Missing OSC 8 link for {url}"
 
 
 def freeze_specification(case: Case, *, interview: bool) -> None:

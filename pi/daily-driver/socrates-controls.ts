@@ -2,7 +2,7 @@ import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { hyperlink, Text } from "@earendil-works/pi-tui";
+import { Text } from "@earendil-works/pi-tui";
 import { isDeepStrictEqual } from "node:util";
 import { Type } from "typebox";
 import type { Attempt, Attempts } from "./attempts.ts";
@@ -17,11 +17,8 @@ import {
   specText,
   type SpecQuestion,
 } from "./lead-spec.ts";
-import {
-  chooseQuestion,
-  questionText,
-  QuestionSelectionKind,
-} from "./question-selector.ts";
+import { questionLink, questionLinks } from "./question-links.ts";
+import { chooseQuestion, QuestionSelectionKind } from "./question-selector.ts";
 import { socratesGuidance } from "./socrates-guidance.ts";
 import { TaskBeads } from "./task-service.ts";
 import { reviewPlan, showTask } from "./ui.ts";
@@ -406,10 +403,10 @@ async function ask(
     }
   }
   const title = [
-    questionText(prompt.question),
-    ...(prompt.context === undefined ? [] : [questionText(prompt.context)]),
+    questionLinks(prompt.question),
+    ...(prompt.context === undefined ? [] : [questionLinks(prompt.context)]),
     ...(prompt.evidence ?? []).map(({ label, url }) =>
-      hyperlink(questionText(label), url),
+      questionLink(label, url),
     ),
   ].join("\n\n");
   const text = (await ctx.ui.input(title, undefined, options))?.trim();
