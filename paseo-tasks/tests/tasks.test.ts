@@ -8,12 +8,14 @@ import type { PaseoApi } from "@getpaseo/client";
 import type {
   AgentToolContext,
   AgentToolDefinition,
+  PluginServerContext,
 } from "@getpaseo/plugin/server";
 import {
   FetchAgentsRequestMessageSchema,
   SendAgentMessageRequestSchema,
   WorkspaceCreateRequestSchema,
 } from "@getpaseo/protocol/messages";
+import contribute from "../index.server";
 import { Feedback, type GitHubPort, type Observation } from "../server/github";
 import { completedPiTurn } from "../server/pi-session";
 import { MaintenanceQueue, PRMaintenance } from "../server/pr-maintenance";
@@ -29,7 +31,6 @@ import type {
 } from "../shared/contracts";
 import { type Brief, brief, createInput } from "../shared/contracts";
 import { maintenanceFixture } from "./maintenance-fixture";
-
 const specified: Brief = {
   title: "Investigate latency",
   outcome: "Explain the latency regression",
@@ -49,7 +50,9 @@ class FakeGitHub implements GitHubPort {
     id: number;
     body: string;
     html_url: string;
-    user: { login: string };
+    user: {
+      login: string;
+    };
   }[] = [];
   uncertain = false;
   submitted = 0;
@@ -247,7 +250,7 @@ function fixture(serverId = "mac") {
     }),
     acquire: async (reserved, attempting) => {
       if (!leases.has(reserved.holder)) {
-        attempting();
+        await attempting();
         acquisitions++;
         leases.set(reserved.holder, {
           path: `/isolated/${reserved.branch}`,
@@ -312,8 +315,112 @@ async function create(
     requestId: randomUUID(),
   });
   await tool(managerTools(f.service), "task_create", input);
-  return f.store.get(input.requestId);
+  return await f.store.get(input.requestId);
 }
+await test("Paseo hooks isolate ordinary conversations and retry task startup", async (t) => {
+  const f = fixture();
+  const keys = [
+    "PASEO_HOME",
+    "PASEO_TASKS_STATE",
+    "PASEO_TASKS_BEADS_URL",
+    "PASEO_TASKS_BEADS_PROJECT_ID",
+    "PASEO_TASKS_BEADS_DIR",
+    "PASEO_TASKS_BEADS_AUTHORITY",
+    "PASEO_TASKS_BEADS_SSH_HOST",
+  ];
+  const saved = new Map(keys.map((key) => [key, process.env[key]]));
+  for (const key of keys) delete process.env[key];
+  process.env.PASEO_HOME = f.directory;
+  process.env.PASEO_TASKS_STATE = f.directory;
+  let close: (() => Promise<void>) | undefined;
+  try {
+    const value = await f.store.create(specified);
+    await f.store.bind(
+      value.taskId,
+      "retained-worker",
+      "workspace",
+      "/retained",
+    );
+    const hooks = new Map<string, (input: unknown) => Promise<unknown>>();
+    close = contribute({
+      handle: () => {},
+      addHook: hooks.set.bind(hooks),
+    } as unknown as PluginServerContext);
+    const beforeOpen = hooks.get("agent.open.before")!;
+    const beforeTurn = hooks.get("agent.turn.before")!;
+    const failure = /PASEO_TASKS_BEADS_PROJECT_ID/;
+    const ordinary = {
+      agentId: "ordinary-conversation",
+      labels: {},
+      purpose: "interactive",
+    };
+    assert.equal(await beforeOpen({ request: ordinary }), ordinary);
+    await assert.rejects(
+      () => beforeTurn({ agent: { id: "retained-worker" } }),
+      failure,
+    );
+    assert.equal(
+      await beforeTurn({ agent: { id: ordinary.agentId } }),
+      undefined,
+    );
+    assert.equal(await beforeOpen({ request: ordinary }), ordinary);
+    process.env.PASEO_TASKS_BEADS_URL = "http://127.0.0.1:1";
+    process.env.PASEO_TASKS_BEADS_PROJECT_ID = randomUUID();
+    t.mock.method(globalThis, "fetch", async () =>
+      Response.json({ code: "startup_unavailable" }, { status: 503 }),
+    );
+    await assert.rejects(
+      () => beforeTurn({ agent: { id: "retained-worker" } }),
+      /Beads HTTP 503: startup_unavailable/,
+    );
+    assert.equal(await beforeOpen({ request: ordinary }), ordinary);
+  } finally {
+    await close?.();
+    for (const [key, value] of saved)
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    f.cleanup();
+  }
+});
+await test("identical concurrent create and adoption requests converge on one task each", async () => {
+  const f = fixture();
+  try {
+    const input = createInput.parse({
+      serverId: f.store.serverId,
+      brief: specified,
+      requestId: randomUUID(),
+      start: false,
+    });
+    const created = await Promise.all([
+      f.service.create(input),
+      f.service.create(input),
+    ]);
+    assert.deepEqual(
+      created.map((value) => value.taskId),
+      [input.requestId, input.requestId],
+    );
+    const agent = f.paseo.createAgent(
+      { title: "Ordinary Pi conversation" },
+      "existing-workspace",
+      "/retained",
+    );
+    const adoption = { ...input, requestId: randomUUID(), agentId: agent.id };
+    const adopted = await Promise.all([
+      f.service.adopt(adoption),
+      f.service.adopt(adoption),
+    ]);
+    assert.deepEqual(
+      adopted.map((value) => value.worker?.agentId),
+      [agent.id, agent.id],
+    );
+    assert.deepEqual(
+      new Set(await f.store.ids()),
+      new Set([input.requestId, adoption.requestId]),
+    );
+  } finally {
+    f.cleanup();
+  }
+});
 async function coordinated(
   f: ReturnType<typeof fixture>,
   coordinator?: ConversationAddress,
@@ -333,11 +440,16 @@ async function coordinated(
     manager: f.paseo.agents.ref(owner.agentId),
   };
 }
-function complete(
+async function complete(
   f: ReturnType<typeof fixture>,
-  value: { taskId: string; worker: { agentId: string } | null },
+  value: {
+    taskId: string;
+    worker: {
+      agentId: string;
+    } | null;
+  },
 ) {
-  return tool(
+  return await tool(
     workerTools(f.service, value.taskId, value.worker!.agentId),
     "task_update",
     {
@@ -349,7 +461,6 @@ function complete(
     { agent: { id: value.worker!.agentId } } as AgentToolContext,
   );
 }
-
 await test("manager-scoped creation and adoption report final evidence with native worker provenance at turn boundaries", async () => {
   const f = fixture();
   try {
@@ -366,7 +477,7 @@ await test("manager-scoped creation and adoption report final evidence with nati
       { ...input, coordinator: { serverId: "other", agentId: "spoof" } },
       context,
     );
-    const value = f.store.get(input.requestId);
+    const value = await f.store.get(input.requestId);
     assert.deepEqual(
       value.coordinator,
       owner,
@@ -379,7 +490,7 @@ await test("manager-scoped creation and adoption report final evidence with nati
     await complete(f, value);
     await f.service.reports.flush();
     assert.equal(
-      f.store.incomingReports().length,
+      (await f.store.incomingReports()).length,
       0,
       "Final worker output precedes the coordinator report",
     );
@@ -389,7 +500,7 @@ await test("manager-scoped creation and adoption report final evidence with nati
     await f.service.reports.flush();
     assert.equal(manager.messages.length, 0);
     assert.equal(
-      f.store.outgoingReports()[0].delivery,
+      (await f.store.outgoingReports())[0].delivery,
       "received",
       "Host receipt differs from conversation delivery",
     );
@@ -400,7 +511,7 @@ await test("manager-scoped creation and adoption report final evidence with nati
     manager.pendingPermissions = [];
     f.paseo.historyVisible = false;
     await f.service.reports.flush();
-    const report = f.store.incomingReports()[0];
+    const report = (await f.store.incomingReports())[0];
     assert.equal(
       report.delivery,
       "awaiting",
@@ -424,15 +535,15 @@ await test("manager-scoped creation and adoption report final evidence with nati
     );
     f.paseo.historyVisible = true;
     await f.service.reports.flush();
-    assert.equal(f.store.incomingReports()[0].delivery, "accepted");
+    assert.equal((await f.store.incomingReports())[0].delivery, "accepted");
     await complete(f, value);
-    f.store.change(value.taskId, (current) => {
+    await f.store.change(value.taskId, (current) => {
       current.observedAt = "later";
       current.activity = "idle";
     });
     await f.service.reports.flush();
     assert.equal(
-      f.store.outgoingReports().length,
+      (await f.store.outgoingReports()).length,
       1,
       "Repeated updates and observations do not duplicate completion",
     );
@@ -467,19 +578,22 @@ await test("manager-scoped creation and adoption report final evidence with nati
       { ...input, requestId: randomUUID(), agentId: existing.id, start: false },
       context,
     );
-    assert.deepEqual(f.store.forAgent(existing.id)!.coordinator, owner);
-    assert.equal(f.store.forAgent(existing.id)!.worker!.cwd, "/existing");
+    assert.deepEqual((await f.store.forAgent(existing.id))!.coordinator, owner);
+    assert.equal(
+      (await f.store.forAgent(existing.id))!.worker!.cwd,
+      "/existing",
+    );
     await assert.rejects(
-      () =>
-        f.service.assignCoordinator(value, {
+      async () =>
+        await f.service.assignCoordinator(value, {
           serverId: "mac",
           agentId: worker.id,
         }),
       /coordinate itself/,
     );
     await assert.rejects(
-      () =>
-        f.service.assignCoordinator(value, {
+      async () =>
+        await f.service.assignCoordinator(value, {
           serverId: "mac",
           agentId: existing.id,
         }),
@@ -489,7 +603,6 @@ await test("manager-scoped creation and adoption report final evidence with nati
     f.cleanup();
   }
 });
-
 await test("cross-host reports survive disconnects, forged snapshots and lost host receipts without duplicate native delivery", async () => {
   const source = fixture("dev"),
     destination = fixture("mac");
@@ -514,34 +627,40 @@ await test("cross-host reports survive disconnects, forged snapshots and lost ho
     destination.router.call = async (host, method, input: any) => {
       assert.equal(host, "dev");
       assert.equal(method, "tasks.report_verify");
-      return source.service.reports.verification(input.id);
+      return await source.service.reports.verification(input.id);
     };
     await complete(source, value);
     await source.service.reports.flush();
-    assert.equal(source.store.outgoingReports()[0].delivery, "unknown");
+    assert.equal((await source.store.outgoingReports())[0].delivery, "unknown");
     online = true;
     await source.service.reports.flush();
-    assert.equal(source.store.outgoingReports()[0].delivery, "unknown");
-    assert.equal(destination.store.incomingReports().length, 1);
-    const snapshot = source.store.outgoingReports()[0].report;
+    assert.equal((await source.store.outgoingReports())[0].delivery, "unknown");
+    assert.equal((await destination.store.incomingReports()).length, 1);
+    const snapshot = (await source.store.outgoingReports())[0].report;
     await assert.rejects(
-      () =>
-        destination.service.reports.receive({
+      async () =>
+        await destination.service.reports.receive({
           ...snapshot,
           task: { ...snapshot.task, evidence: ["Invented result"] },
         }),
       /differs/,
     );
     await assert.rejects(
-      () => source.service.reports.receive(snapshot),
+      async () => await source.service.reports.receive(snapshot),
       /another host/,
     );
     await source.service.reports.flush();
-    assert.equal(source.store.outgoingReports()[0].delivery, "received");
-    assert.equal(destination.store.incomingReports().length, 1);
+    assert.equal(
+      (await source.store.outgoingReports())[0].delivery,
+      "received",
+    );
+    assert.equal((await destination.store.incomingReports()).length, 1);
     await destination.service.reports.flush();
     await destination.service.reports.flush();
-    assert.equal(destination.store.incomingReports()[0].delivery, "accepted");
+    assert.equal(
+      (await destination.store.incomingReports())[0].delivery,
+      "accepted",
+    );
     const manager = destination.paseo.agents.ref(owner.agentId);
     assert.equal(manager.messages.length, 1);
     assert.equal(manager.sendOptions[0].sourceAgentServerId, "dev");
@@ -554,7 +673,7 @@ await test("cross-host reports survive disconnects, forged snapshots and lost ho
         async () => true,
       );
       await restored.flush();
-      assert.equal(reopened.incomingReports()[0].delivery, "accepted");
+      assert.equal((await reopened.incomingReports())[0].delivery, "accepted");
       assert.equal(manager.messages.length, 1);
     } finally {
       reopened.close();
@@ -564,7 +683,6 @@ await test("cross-host reports survive disconnects, forged snapshots and lost ho
     destination.cleanup();
   }
 });
-
 await test("uncertain native reports reconcile late history after restart and cancellation without resending", async () => {
   const f = fixture();
   try {
@@ -573,7 +691,7 @@ await test("uncertain native reports reconcile late history after restart and ca
     f.paseo.loseSend = true;
     f.paseo.historyVisible = false;
     await f.service.reports.flush();
-    assert.equal(f.store.incomingReports()[0].delivery, "unknown");
+    assert.equal((await f.store.incomingReports())[0].delivery, "unknown");
     await f.service.assignCoordinator(value, null);
     const reopened = new Store(f.file, "mac");
     try {
@@ -584,12 +702,12 @@ await test("uncertain native reports reconcile late history after restart and ca
         async () => true,
       );
       await restored.flush();
-      assert.equal(reopened.incomingReports()[0].delivery, "unknown");
+      assert.equal((await reopened.incomingReports())[0].delivery, "unknown");
       assert.equal(manager.messages.length, 1);
       f.paseo.historyVisible = true;
       await restored.flush();
       assert.equal(
-        reopened.incomingReports()[0].delivery,
+        (await reopened.incomingReports())[0].delivery,
         "accepted",
         "Removing the coordinator cannot erase an earlier accepted native report",
       );
@@ -601,7 +719,6 @@ await test("uncertain native reports reconcile late history after restart and ca
     f.cleanup();
   }
 });
-
 await test("coordinators collect reports over one-way registered host connections and durably acknowledge receipts", async () => {
   const source = fixture("dev"),
     destination = fixture("mac");
@@ -613,7 +730,7 @@ await test("coordinators collect reports over one-way registered host connection
     destination.router.call = async (host, method, input: any) => {
       assert.equal(host, "dev");
       if (method === "tasks.report_verify")
-        return source.service.reports.verification(input.id);
+        return await source.service.reports.verification(input.id);
       assert.equal(method, "tasks.report_collect");
       const pending = await source.service.reports.collect(
         input.coordinatorHost,
@@ -631,28 +748,37 @@ await test("coordinators collect reports over one-way registered host connection
     await destination.service.reports.flush();
     await destination.service.reports.flush();
     assert.equal(
-      destination.store.incomingReports().length,
+      (await destination.store.incomingReports()).length,
       0,
       "Collection waits for the source worker's boundary",
     );
     source.paseo.finish(worker.id);
     await destination.service.reports.flush();
-    assert.equal(destination.store.incomingReports()[0].delivery, "awaiting");
+    assert.equal(
+      (await destination.store.incomingReports())[0].delivery,
+      "awaiting",
+    );
     const manager = destination.paseo.agents.ref(owner.agentId);
     await destination.service.reports.flush();
-    assert.equal(destination.store.incomingReports()[0].delivery, "accepted");
-    assert.equal(source.store.outgoingReports()[0].delivery, "received");
+    assert.equal(
+      (await destination.store.incomingReports())[0].delivery,
+      "accepted",
+    );
+    assert.equal(
+      (await source.store.outgoingReports())[0].delivery,
+      "received",
+    );
     assert.equal(manager.messages.length, 1);
     await assert.rejects(
-      () =>
-        source.service.reports.collect("another-coordinator", [
-          source.store.outgoingReports()[0].report.id,
+      async () =>
+        await source.service.reports.collect("another-coordinator", [
+          (await source.store.outgoingReports())[0].report.id,
         ]),
       /does not belong/,
     );
     const reopened = new Store(source.file, "dev");
     try {
-      assert.equal(reopened.outgoingReports()[0].delivery, "received");
+      assert.equal((await reopened.outgoingReports())[0].delivery, "received");
     } finally {
       reopened.close();
     }
@@ -661,7 +787,6 @@ await test("coordinators collect reports over one-way registered host connection
     destination.cleanup();
   }
 });
-
 await test("directory and worker observation failures preserve unrelated coordinator delivery and recovery", async () => {
   const f = fixture();
   try {
@@ -687,7 +812,7 @@ await test("directory and worker observation failures preserve unrelated coordin
       "A failed worker cannot hide a healthy worker's report on the same execution host",
     );
     assert.match(
-      f.store.get(another.value.taskId).coordinatorReport!.error!,
+      (await f.store.get(another.value.taskId)).coordinatorReport!.error!,
       /Worker observation unavailable/,
     );
     f.paseo.hosts.list = async () => {
@@ -701,14 +826,14 @@ await test("directory and worker observation failures preserve unrelated coordin
     );
     await f.service.reports.flush();
     assert.equal(
-      f.store.incomingReports()[0].delivery,
+      (await f.store.incomingReports())[0].delivery,
       "accepted",
       "Directory failure cannot starve native reconciliation",
     );
     assert.match(
-      f.store
-        .reportDiagnostics()
-        .find((value) => value.source === "report-directory")!.error,
+      (await f.store.reportDiagnostics()).find(
+        (value) => value.source === "report-directory",
+      )!.error,
       /Malformed/,
     );
     assert.equal(
@@ -720,7 +845,6 @@ await test("directory and worker observation failures preserve unrelated coordin
     f.cleanup();
   }
 });
-
 await test("independent SDK-style snapshots observe a question arriving during the final remote verification", async () => {
   const source = fixture("dev"),
     destination = fixture("mac");
@@ -747,7 +871,7 @@ await test("independent SDK-style snapshots observe a question arriving during t
         refresh,
         reload: async () => {
           await native.reload();
-          return refresh();
+          return await refresh();
         },
         get status() {
           return snapshot?.status ?? null;
@@ -770,14 +894,17 @@ await test("independent SDK-style snapshots observe a question arriving during t
       assert.equal(method, "tasks.report_verify");
       if (++verifications === 3)
         native.pendingPermissions = [{ id: "late-question" }];
-      return source.service.reports.verification(input.id);
+      return await source.service.reports.verification(input.id);
     };
     await destination.service.reports.receive(
-      source.store.outgoingReports()[0].report,
+      (await source.store.outgoingReports())[0].report,
     );
     await destination.service.reports.flush();
     assert.equal(native.messages.length, 0);
-    assert.equal(destination.store.incomingReports()[0].delivery, "queued");
+    assert.equal(
+      (await destination.store.incomingReports())[0].delivery,
+      "queued",
+    );
     native.pendingPermissions = [];
     await destination.service.reports.flush();
     assert.equal(native.messages.length, 1);
@@ -786,7 +913,6 @@ await test("independent SDK-style snapshots observe a question arriving during t
     destination.cleanup();
   }
 });
-
 await test("reopening, supersession during refresh, and coordinator changes during preparation cancel unsent reports", async () => {
   for (const race of [
     "feedback",
@@ -799,14 +925,14 @@ await test("reopening, supersession during refresh, and coordinator changes duri
       const { value, worker, manager } = await coordinated(f);
       await complete(f, value);
       if (race === "feedback")
-        f.store.addEvent(
+        await f.store.addEvent(
           value.taskId,
           "feedback",
           "Inspect one more measurement",
         );
       if (race === "worker-refresh") {
         worker.refresh = async () => {
-          f.store.change(value.taskId, (current) => {
+          await f.store.change(value.taskId, (current) => {
             current.status = "active";
           });
           return { agent: worker.current() };
@@ -818,7 +944,7 @@ await test("reopening, supersession during refresh, and coordinator changes duri
         f.router,
         async () => {
           if (race === "coordinator-change")
-            f.store.change(value.taskId, (current) => {
+            await f.store.change(value.taskId, (current) => {
               current.coordinator = null;
             });
           if (race === "permission")
@@ -829,20 +955,23 @@ await test("reopening, supersession during refresh, and coordinator changes duri
       await reports.flush();
       assert.equal(manager.messages.length, 0, race);
       if (race !== "permission") {
-        assert.equal(f.store.get(value.taskId).coordinatorReport, null);
+        assert.equal((await f.store.get(value.taskId)).coordinatorReport, null);
         assert.equal(
-          f.store.outgoingReports()[0].delivery,
+          (await f.store.outgoingReports())[0].delivery,
           race === "coordinator-change" ? "received" : "superseded",
         );
         if (race === "coordinator-change")
-          assert.equal(f.store.incomingReports()[0].delivery, "superseded");
-      } else assert.equal(f.store.incomingReports()[0].delivery, "queued");
+          assert.equal(
+            (await f.store.incomingReports())[0].delivery,
+            "superseded",
+          );
+      } else
+        assert.equal((await f.store.incomingReports())[0].delivery, "queued");
     } finally {
       f.cleanup();
     }
   }
 });
-
 await test("failed coordinators recover independently and changed worker failures retain distinct report evidence", async () => {
   const f = fixture();
   try {
@@ -854,20 +983,23 @@ await test("failed coordinators recover independently and changed worker failure
     f.service.sessionOpened(manager.id, "manager");
     f.service.sessionOpened(worker.id, "worker");
     worker.lastError = "Worker execution failed";
-    for (const entry of f.store.events(value.taskId))
-      f.feedback.acknowledge(entry, "No remaining assigned input");
+    for (const entry of await f.store.events(value.taskId))
+      await f.feedback.acknowledge(entry, "No remaining assigned input");
     manager.status = "error";
     manager.lastError = "Provider disconnected";
-    f.store.change(value.taskId, (current) => {
+    await f.store.change(value.taskId, (current) => {
       current.activity = "failed";
       current.error = "First execution failure";
     });
-    f.store.change(value.taskId, (current) => {
+    await f.store.change(value.taskId, (current) => {
       current.error = "Second execution failure";
     });
-    assert.equal(f.store.outgoingReports().length, 2);
-    assert.equal(f.store.outgoingReports()[0].delivery, "superseded");
-    await assert.rejects(() => f.service.tick(), /Unrelated manager/);
+    assert.equal((await f.store.outgoingReports()).length, 2);
+    assert.equal((await f.store.outgoingReports())[0].delivery, "superseded");
+    await assert.rejects(
+      async () => await f.service.tick(),
+      /Unrelated manager/,
+    );
     assert.equal(
       manager.reloads,
       1,
@@ -880,12 +1012,11 @@ await test("failed coordinators recover independently and changed worker failure
     );
     assert.match(manager.messages[0], /Second execution failure/);
     await f.service.reports.flush();
-    assert.equal(f.store.incomingReports()[0].delivery, "accepted");
+    assert.equal((await f.store.incomingReports())[0].delivery, "accepted");
   } finally {
     f.cleanup();
   }
 });
-
 await test("typed task creation retains drafts, isolates coding work, and starts one directly accessible independent conversation", async () => {
   const f = fixture();
   try {
@@ -909,14 +1040,14 @@ await test("typed task creation retains drafts, isolates coding work, and starts
     await tool(managerTools(f.service), "task_create", input);
     await tool(managerTools(f.service), "task_create", input);
     await assert.rejects(
-      () =>
-        f.service.create({
+      async () =>
+        await f.service.create({
           ...input,
           brief: { ...input.brief, outcome: "Another outcome" },
         }),
       /different brief/,
     );
-    const coding = f.store.get(input.requestId);
+    const coding = await f.store.get(input.requestId);
     assert.equal(f.paseo.creates, 1);
     assert.ok(coding.worker?.cwd.startsWith("/isolated/"));
     assert.equal(f.paseo.sources[0].kind, "directory");
@@ -950,7 +1081,6 @@ await test("typed task creation retains drafts, isolates coding work, and starts
     f.cleanup();
   }
 });
-
 await test("lost worktree allocation replies recover the owned lease before workspace creation without allocating twice", async () => {
   const f = fixture();
   try {
@@ -981,17 +1111,17 @@ await test("lost worktree allocation replies recover the owned lease before work
     await recovered.start(value.taskId);
     assert.equal(f.acquisitions(), 1);
     assert.equal(
-      f.store.get(value.taskId).worker!.cwd,
+      (await f.store.get(value.taskId)).worker!.cwd,
       [...f.leases.values()][0].path,
     );
     assert.equal(
-      f.store.get(value.taskId).worktreeAllocation!.task_id,
+      (await f.store.get(value.taskId)).worktreeAllocation!.task_id,
       [...f.leases.values()][0].task_id,
     );
     assert.equal(f.paseo.sources[0].kind, "directory");
     await recovered.bulk({ tasks: [value], action: "archive" });
     assert.equal(
-      f.store.get(value.taskId).worktreeAllocation!.task_id,
+      (await f.store.get(value.taskId)).worktreeAllocation!.task_id,
       [...f.leases.values()][0].task_id,
       "A retained conversation keeps task protection; archive does not finish or delete the checkout",
     );
@@ -999,7 +1129,6 @@ await test("lost worktree allocation replies recover the owned lease before work
     f.cleanup();
   }
 });
-
 await test("execution context cannot change during checkout preparation, and a concurrent pause prevents acquisition", async () => {
   const f = fixture();
   try {
@@ -1008,9 +1137,14 @@ await test("execution context cannot change during checkout preparation, and a c
     const barrier = new Promise<void>((resolve) => {
       release = resolve;
     });
+    let reached!: () => void;
+    const preparing = new Promise<void>((resolve) => {
+      reached = resolve;
+    });
     f.worktrees.prepare = async (...args) => {
+      reached();
       await barrier;
-      return prepare(...args);
+      return await prepare(...args);
     };
     const id = randomUUID();
     const creation = f.service.create(
@@ -1020,15 +1154,16 @@ await test("execution context cannot change during checkout preparation, and a c
         brief: { ...specified, kind: "coding", baseRef: "origin/main" },
       }),
     );
-    const proposed = f.service.propose(id, {
+    await preparing;
+    const proposed = await f.service.propose(id, {
       ...specified,
       kind: "coding",
       repository: "/another",
       baseRef: "origin/main",
     });
     await assert.rejects(
-      () =>
-        f.service.accept({
+      async () =>
+        await f.service.accept({
           serverId: "mac",
           taskId: id,
           proposalId: proposed.proposals[0].id,
@@ -1044,71 +1179,73 @@ await test("execution context cannot change during checkout preparation, and a c
     await creation;
     assert.equal(f.acquisitions(), 0);
     assert.equal(f.paseo.creates, 0);
-    assert.equal(f.store.get(id).repository, specified.repository);
+    assert.equal((await f.store.get(id)).repository, specified.repository);
     await f.service.bulk({
       tasks: [{ serverId: "mac", taskId: id }],
       action: "resume",
     });
-    assert.equal(f.store.get(id).worker!.cwd, [...f.leases.values()][0].path);
+    assert.equal(
+      (await f.store.get(id)).worker!.cwd,
+      [...f.leases.values()][0].path,
+    );
     assert.equal(f.acquisitions(), 1);
   } finally {
     f.cleanup();
   }
 });
-
 await test("passive GitHub observations cannot become worker input after a crash or a legacy queued receipt", async () => {
   const f = fixture();
   try {
     const value = await create(f);
-    for (const entry of f.store.events(value.taskId))
-      f.feedback.acknowledge(entry, "Done");
-    f.store.workerUpdate(value.taskId, value.worker!.agentId, {
+    for (const entry of await f.store.events(value.taskId))
+      await f.feedback.acknowledge(entry, "Done");
+    await f.store.workerUpdate(value.taskId, value.worker!.agentId, {
       status: "decision",
     });
-    f.service.link(value.taskId, "https://github.com/o/r/pull/1");
+    await f.service.link(value.taskId, "https://github.com/o/r/pull/1");
     const save = f.store.saveEvent.bind(f.store);
     f.store.saveEvent = () => {
       throw new Error("Interrupted passive receipt");
     };
     await assert.rejects(
-      () => f.feedback.poll(f.store.get(value.taskId)),
+      async () => await f.feedback.poll(await f.store.get(value.taskId)),
       /Interrupted/,
     );
     f.store.saveEvent = save;
     assert.equal(
-      f.store
-        .events(value.taskId)
-        .filter((entry) => entry.payload.type === "state").length,
+      (await f.store.events(value.taskId)).filter(
+        (entry) => entry.payload.type === "state",
+      ).length,
       0,
       "Passive insertion and handled receipt roll back together",
     );
-    const legacy = f.store.addEvent(
+    const legacy = await f.store.addEvent(
       value.taskId,
       "github",
       "Legacy passive observation",
       { payload: { type: "state" } },
     );
-    await f.service.deliver(f.store.get(value.taskId));
+    await f.service.deliver(await f.store.get(value.taskId));
     assert.equal(f.paseo.agents.ref(value.worker!.agentId).messages.length, 0);
     assert.equal(
-      f.store.events(value.taskId).find((entry) => entry.id === legacy.id)!
-        .delivery,
+      (await f.store.events(value.taskId)).find(
+        (entry) => entry.id === legacy.id,
+      )!.delivery,
       "handled",
     );
   } finally {
     f.cleanup();
   }
 });
-
 await test("PR polling repairs new failures and conflicts in the retained worker, then waits for review through pause and restart", async () => {
   const f = fixture();
   try {
     const value = await create(f);
     const url = "https://github.com/o/r/pull/1";
-    f.service.link(value.taskId, url);
-    for (const entry of f.store.events(value.taskId))
-      f.feedback.acknowledge(entry, "Initial work done");
-    f.store.workerUpdate(value.taskId, value.worker!.agentId, {
+    await f.service.link(value.taskId, url);
+    for (const entry of await f.store.events(value.taskId))
+      await f.feedback.acknowledge(entry, "Initial work done");
+    await f.store.workerUpdate(value.taskId, value.worker!.agentId, {
       status: "complete",
       evidence: ["Initial PR pushed"],
     });
@@ -1142,10 +1279,13 @@ await test("PR polling repairs new failures and conflicts in the retained worker
       };
     };
     observe();
-    await f.feedback.poll(f.store.get(value.taskId));
-    assert.equal(f.store.get(value.taskId).prWatches[0].phase, "checks");
-    assert.equal(f.store.get(value.taskId).status, "complete");
-    await f.service.deliver(f.store.get(value.taskId));
+    await f.feedback.poll(await f.store.get(value.taskId));
+    assert.equal(
+      (await f.store.get(value.taskId)).prWatches[0].phase,
+      "checks",
+    );
+    assert.equal((await f.store.get(value.taskId)).status, "complete");
+    await f.service.deliver(await f.store.get(value.taskId));
     assert.equal(
       f.paseo.agents.ref(value.worker!.agentId).messages.length,
       0,
@@ -1159,15 +1299,15 @@ await test("PR polling repairs new failures and conflicts in the retained worker
     };
     observe();
     await f.service.bulk({ tasks: [value], action: "pause" });
-    await f.feedback.poll(f.store.get(value.taskId));
-    assert.equal(f.store.get(value.taskId).status, "active");
-    const failed = f.store
-      .events(value.taskId)
-      .find((entry) => entry.payload.type === "repair")!;
+    await f.feedback.poll(await f.store.get(value.taskId));
+    assert.equal((await f.store.get(value.taskId)).status, "active");
+    const failed = (await f.store.events(value.taskId)).find(
+      (entry) => entry.payload.type === "repair",
+    )!;
     assert.ok(failed);
-    assert.throws(
-      () =>
-        f.store.workerUpdate(value.taskId, value.worker!.agentId, {
+    await assert.rejects(
+      async () =>
+        await f.store.workerUpdate(value.taskId, value.worker!.agentId, {
           status: "complete",
           evidence: ["Earlier work"],
         }),
@@ -1177,28 +1317,28 @@ await test("PR polling repairs new failures and conflicts in the retained worker
       checks: 0,
       review: 0,
     });
-    await resumed.poll(f.store.get(value.taskId));
+    await resumed.poll(await f.store.get(value.taskId));
     assert.equal(
-      f.store
-        .events(value.taskId)
-        .filter((entry) => entry.payload.type === "repair").length,
+      (await f.store.events(value.taskId)).filter(
+        (entry) => entry.payload.type === "repair",
+      ).length,
       1,
     );
-    await f.service.deliver(f.store.get(value.taskId));
+    await f.service.deliver(await f.store.get(value.taskId));
     assert.equal(f.paseo.agents.ref(value.worker!.agentId).messages.length, 0);
     await f.service.bulk({ tasks: [value], action: "resume" });
-    await f.service.deliver(f.store.get(value.taskId));
+    await f.service.deliver(await f.store.get(value.taskId));
     const handle = f.paseo.agents.ref(value.worker!.agentId);
     assert.match(handle.messages[0], /failing checks or a merge conflict/);
     assert.equal(
-      f.store.get(value.taskId).worker!.agentId,
+      (await f.store.get(value.taskId)).worker!.agentId,
       value.worker!.agentId,
     );
     assert.equal(f.paseo.creates, 1);
     await assert.rejects(
-      () =>
-        resumed.reply(
-          f.store.get(value.taskId),
+      async () =>
+        await resumed.reply(
+          await f.store.get(value.taskId),
           failed.id,
           "Repairing",
           pr.head,
@@ -1206,18 +1346,21 @@ await test("PR polling repairs new failures and conflicts in the retained worker
       /source feedback/,
     );
     f.paseo.finish(handle.id);
-    for (const entry of f.store.events(value.taskId))
-      f.feedback.acknowledge(entry, "Repair pushed");
-    f.store.workerUpdate(value.taskId, handle.id, {
+    for (const entry of await f.store.events(value.taskId))
+      await f.feedback.acknowledge(entry, "Repair pushed");
+    await f.store.workerUpdate(value.taskId, handle.id, {
       status: "decision",
       nextAction: "Await checks and review",
     });
     pr.head = "revision-b";
     pr.checks[0] = { ...pr.checks[0], id: 12, conclusion: "success" };
     observe();
-    await resumed.poll(f.store.get(value.taskId));
-    assert.equal(f.store.get(value.taskId).prWatches[0].phase, "review");
-    await f.service.deliver(f.store.get(value.taskId));
+    await resumed.poll(await f.store.get(value.taskId));
+    assert.equal(
+      (await f.store.get(value.taskId)).prWatches[0].phase,
+      "review",
+    );
+    await f.service.deliver(await f.store.get(value.taskId));
     assert.equal(
       handle.messages.length,
       1,
@@ -1233,25 +1376,28 @@ await test("PR polling repairs new failures and conflicts in the retained worker
         commit_id: pr.head,
       },
     });
-    await resumed.poll(f.store.get(value.taskId));
+    await resumed.poll(await f.store.get(value.taskId));
     assert.equal(
-      f.store.get(value.taskId).status,
+      (await f.store.get(value.taskId)).status,
       "active",
       "New review input reopens the waiting worker",
     );
-    await f.service.deliver(f.store.get(value.taskId));
+    await f.service.deliver(await f.store.get(value.taskId));
     assert.match(handle.messages[1], /Handle review comments in this checkout/);
     f.paseo.finish(handle.id);
-    for (const entry of f.store.events(value.taskId))
-      f.feedback.acknowledge(entry, "Review handled");
-    f.store.workerUpdate(value.taskId, handle.id, { status: "decision" });
+    for (const entry of await f.store.events(value.taskId))
+      await f.feedback.acknowledge(entry, "Review handled");
+    await f.store.workerUpdate(value.taskId, handle.id, { status: "decision" });
     pr.base = "base-b";
     pr.mergeable = false;
     pr.mergeableState = "dirty";
     observe();
-    await resumed.poll(f.store.get(value.taskId));
-    assert.equal(f.store.get(value.taskId).prWatches[0].phase, "repair");
-    await f.service.deliver(f.store.get(value.taskId));
+    await resumed.poll(await f.store.get(value.taskId));
+    assert.equal(
+      (await f.store.get(value.taskId)).prWatches[0].phase,
+      "repair",
+    );
+    await f.service.deliver(await f.store.get(value.taskId));
     assert.equal(handle.messages.length, 3);
     assert.equal(
       f.paseo.creates,
@@ -1262,7 +1408,6 @@ await test("PR polling repairs new failures and conflicts in the retained worker
     f.cleanup();
   }
 });
-
 await test("the host runs conflict repair before dispatch and wakes Pi only for below-threshold results", async () => {
   for (const accepted of [true, false]) {
     const f = fixture();
@@ -1282,14 +1427,14 @@ await test("the host runs conflict repair before dispatch and wakes Pi only for 
           },
         }),
       );
-      f.store.change(value.taskId, (current) => {
+      await f.store.change(value.taskId, (current) => {
         current.worker!.cwd = repository.repository;
       });
       const url = "https://github.com/o/r/pull/1";
-      f.service.link(value.taskId, url);
-      for (const entry of f.store.events(value.taskId))
-        f.feedback.acknowledge(entry, "Initial implementation pushed");
-      f.store.workerUpdate(value.taskId, value.worker!.agentId, {
+      await f.service.link(value.taskId, url);
+      for (const entry of await f.store.events(value.taskId))
+        await f.feedback.acknowledge(entry, "Initial implementation pushed");
+      await f.store.workerUpdate(value.taskId, value.worker!.agentId, {
         status: "decision",
       });
       const handle = f.paseo.agents.ref(value.worker!.agentId);
@@ -1325,9 +1470,9 @@ await test("the host runs conflict repair before dispatch and wakes Pi only for 
       );
       await queue.drain();
       await service.tick();
-      const entry = f.store
-        .events(value.taskId)
-        .find((entry) => entry.payload.type === "repair")!;
+      const entry = (await f.store.events(value.taskId)).find(
+        (entry) => entry.payload.type === "repair",
+      )!;
       assert.equal(handle.messages.length, accepted ? 0 : 1);
       assert.equal(
         maintenance.records(value.taskId)[0].state,
@@ -1337,7 +1482,11 @@ await test("the host runs conflict repair before dispatch and wakes Pi only for 
       if (!accepted) {
         assert.match(handle.messages[0], /program's attempted resolution/);
         assert.ok(
-          (entry.payload.maintenance as { candidate: unknown }).candidate,
+          (
+            entry.payload.maintenance as {
+              candidate: unknown;
+            }
+          ).candidate,
         );
         f.paseo.finish(handle.id);
       }
@@ -1363,19 +1512,18 @@ await test("the host runs conflict repair before dispatch and wakes Pi only for 
     }
   }
 });
-
 await test("polling cadence survives restart and slows once reported checks pass", async () => {
   const f = fixture();
   try {
     let now = "2026-11-06T00:00:00Z";
     const store = new Store(f.file, "mac", () => now);
     const value = await create(f);
-    f.service.link(value.taskId, "https://github.com/o/r/pull/1");
+    await f.service.link(value.taskId, "https://github.com/o/r/pull/1");
     let observations = 0;
     const original = f.github.observe.bind(f.github);
     f.github.observe = async () => {
       observations++;
-      return original();
+      return await original();
     };
     f.github.observation.pullRequest = {
       state: "open",
@@ -1398,30 +1546,35 @@ await test("polling cadence survives restart and slows once reported checks pass
       ],
       statuses: [],
     };
-    await new Feedback(store, f.github, "lanej").poll(store.get(value.taskId));
+    await new Feedback(store, f.github, "lanej").poll(
+      await store.get(value.taskId),
+    );
     assert.equal(observations, 1);
     now = "2026-11-06T00:01:59Z";
-    await new Feedback(store, f.github, "lanej").poll(store.get(value.taskId));
+    await new Feedback(store, f.github, "lanej").poll(
+      await store.get(value.taskId),
+    );
     assert.equal(observations, 1);
     now = "2026-11-06T00:02:00Z";
-    await new Feedback(store, f.github, "lanej").poll(store.get(value.taskId));
+    await new Feedback(store, f.github, "lanej").poll(
+      await store.get(value.taskId),
+    );
     assert.equal(observations, 2);
     store.close();
   } finally {
     f.cleanup();
   }
 });
-
 await test("a closed or already repaired PR supersedes queued repairs without waking the worker or discarding source feedback", async () => {
   for (const close of [true, false]) {
     const f = fixture();
     try {
       const value = await create(f);
       const url = "https://github.com/o/r/pull/1";
-      f.service.link(value.taskId, url);
-      for (const entry of f.store.events(value.taskId))
-        f.feedback.acknowledge(entry, "Initial work done");
-      f.store.workerUpdate(value.taskId, value.worker!.agentId, {
+      await f.service.link(value.taskId, url);
+      for (const entry of await f.store.events(value.taskId))
+        await f.feedback.acknowledge(entry, "Initial work done");
+      await f.store.workerUpdate(value.taskId, value.worker!.agentId, {
         status: "decision",
       });
       await f.service.tick();
@@ -1446,28 +1599,30 @@ await test("a closed or already repaired PR supersedes queued repairs without wa
         ],
         statuses: [],
       };
-      await f.feedback.poll(f.store.get(value.taskId));
-      const repair = f.store
-        .events(value.taskId)
-        .find((entry) => entry.payload.type === "repair")!;
+      await f.feedback.poll(await f.store.get(value.taskId));
+      const repair = (await f.store.events(value.taskId)).find(
+        (entry) => entry.payload.type === "repair",
+      )!;
       f.github.observation.pullRequest.mergeable = null;
-      await f.feedback.poll(f.store.get(value.taskId));
-      await f.service.deliver(f.store.get(value.taskId));
+      await f.feedback.poll(await f.store.get(value.taskId));
+      await f.service.deliver(await f.store.get(value.taskId));
       assert.equal(
         f.paseo.agents.ref(value.worker!.agentId).messages.length,
         0,
         "Unknown mergeability defers the same-revision repair",
       );
       assert.equal(
-        f.store.events(value.taskId).find((entry) => entry.id === repair.id)!
-          .delivery,
+        (await f.store.events(value.taskId)).find(
+          (entry) => entry.id === repair.id,
+        )!.delivery,
         "queued",
       );
       f.github.observation.pullRequest.mergeable = false;
-      await f.feedback.poll(f.store.get(value.taskId));
+      await f.feedback.poll(await f.store.get(value.taskId));
       assert.equal(
-        f.store.events(value.taskId).find((entry) => entry.id === repair.id)!
-          .delivery,
+        (await f.store.events(value.taskId)).find(
+          (entry) => entry.id === repair.id,
+        )!.delivery,
         "queued",
         "A confirmed conflict retains its original repair after an unknown observation",
       );
@@ -1476,18 +1631,17 @@ await test("a closed or already repaired PR supersedes queued repairs without wa
         id: 2,
         conclusion: "failure",
       };
-      await f.feedback.poll(f.store.get(value.taskId));
+      await f.feedback.poll(await f.store.get(value.taskId));
       assert.equal(
-        f.store.events(value.taskId).find((entry) => entry.id === repair.id)!
-          .delivery,
+        (await f.store.events(value.taskId)).find(
+          (entry) => entry.id === repair.id,
+        )!.delivery,
         "handled",
       );
-      const replacement = f.store
-        .events(value.taskId)
-        .find(
-          (entry) =>
-            entry.payload.type === "repair" && entry.delivery === "queued",
-        )!;
+      const replacement = (await f.store.events(value.taskId)).find(
+        (entry) =>
+          entry.payload.type === "repair" && entry.delivery === "queued",
+      )!;
       assert.equal(
         replacement.payload.previousStatus,
         "decision",
@@ -1496,19 +1650,19 @@ await test("a closed or already repaired PR supersedes queued repairs without wa
       f.github.observation.pullRequest.state = close ? "closed" : "open";
       f.github.observation.pullRequest.mergeable = true;
       f.github.observation.pullRequest.checks[0].conclusion = "success";
-      await f.feedback.poll(f.store.get(value.taskId));
-      await f.service.deliver(f.store.get(value.taskId));
+      await f.feedback.poll(await f.store.get(value.taskId));
+      await f.service.deliver(await f.store.get(value.taskId));
       assert.equal(
         f.paseo.agents.ref(value.worker!.agentId).messages.length,
         0,
       );
-      const skipped = f.store
-        .events(value.taskId)
-        .find((entry) => entry.id === replacement.id)!;
+      const skipped = (await f.store.events(value.taskId)).find(
+        (entry) => entry.id === replacement.id,
+      )!;
       assert.equal(skipped.delivery, "handled");
       assert.ok(skipped.payload.superseded);
       assert.equal(
-        f.store.get(value.taskId).status,
+        (await f.store.get(value.taskId)).status,
         "decision",
         "Superseded automatic work restores its prior waiting state",
       );
@@ -1522,8 +1676,8 @@ await test("a closed or already repaired PR supersedes queued repairs without wa
           },
         },
       ];
-      await f.feedback.poll(f.store.get(value.taskId));
-      await f.service.deliver(f.store.get(value.taskId));
+      await f.feedback.poll(await f.store.get(value.taskId));
+      await f.service.deliver(await f.store.get(value.taskId));
       assert.equal(
         f.paseo.agents.ref(value.worker!.agentId).messages.length,
         1,
@@ -1534,14 +1688,13 @@ await test("a closed or already repaired PR supersedes queued repairs without wa
     }
   }
 });
-
 await test("GitHub rate limits preserve retry time through restart and recover without erasing other failures", async () => {
   const f = fixture();
   try {
     let now = "2026-11-06T00:00:00Z";
     const store = new Store(f.file, "mac", () => now);
     const value = await create(f);
-    f.service.link(value.taskId, "https://github.com/o/r/pull/1");
+    await f.service.link(value.taskId, "https://github.com/o/r/pull/1");
     let attempts = 0;
     f.github.observe = async () => {
       if (++attempts === 1)
@@ -1559,30 +1712,38 @@ await test("GitHub rate limits preserve retry time through restart and recover w
       return f.github.observation;
     };
     const failure = await new Feedback(store, f.github, "lanej")
-      .poll(store.get(value.taskId))
+      .poll(await store.get(value.taskId))
       .catch((error) => error.message);
-    store.change(value.taskId, (task) => {
+    await store.change(value.taskId, (task) => {
       task.error = failure;
     });
     now = "2026-11-06T00:09:59Z";
-    await new Feedback(store, f.github, "lanej").poll(store.get(value.taskId));
+    await new Feedback(store, f.github, "lanej").poll(
+      await store.get(value.taskId),
+    );
     assert.equal(attempts, 1);
     now = "2026-11-06T00:10:01Z";
-    await new Feedback(store, f.github, "lanej").poll(store.get(value.taskId));
+    await new Feedback(store, f.github, "lanej").poll(
+      await store.get(value.taskId),
+    );
     assert.equal(attempts, 2);
-    assert.equal(store.get(value.taskId).error, null);
-    store.change(value.taskId, (task) => {
+    assert.equal((await store.get(value.taskId)).error, null);
+    await store.change(value.taskId, (task) => {
       task.error = "Provider execution failed";
     });
     now = "2026-11-06T00:12:01Z";
-    await new Feedback(store, f.github, "lanej").poll(store.get(value.taskId));
-    assert.equal(store.get(value.taskId).error, "Provider execution failed");
+    await new Feedback(store, f.github, "lanej").poll(
+      await store.get(value.taskId),
+    );
+    assert.equal(
+      (await store.get(value.taskId)).error,
+      "Provider execution failed",
+    );
     store.close();
   } finally {
     f.cleanup();
   }
 });
-
 await test("plugin recovery restores scoped tools once at idle without interrupting turns, questions, or unassigned conversations", async () => {
   const f = fixture();
   try {
@@ -1598,12 +1759,12 @@ await test("plugin recovery restores scoped tools once at idle without interrupt
     worker.activeTurn = { id: "retained-turn" };
     worker.status = "running";
     manager.pendingPermissions = [{ id: "native-question" }];
-    const event = f.store.addEvent(
+    const event = await f.store.addEvent(
       value.taskId,
       "feedback",
       "Retained feedback",
     );
-    f.store.change(value.taskId, (current) => {
+    await f.store.change(value.taskId, (current) => {
       current.control = "paused";
     });
     await f.service.tick();
@@ -1611,8 +1772,9 @@ await test("plugin recovery restores scoped tools once at idle without interrupt
     assert.equal(manager.reloads, 0);
     assert.equal(unrelated.reloads, 0);
     assert.equal(
-      f.store.events(value.taskId).find((entry) => entry.id === event.id)!
-        .delivery,
+      (await f.store.events(value.taskId)).find(
+        (entry) => entry.id === event.id,
+      )!.delivery,
       "queued",
     );
     f.paseo.finish(worker.id);
@@ -1621,8 +1783,8 @@ await test("plugin recovery restores scoped tools once at idle without interrupt
     assert.equal(worker.reloads, 1);
     assert.equal(manager.reloads, 1);
     assert.equal(unrelated.reloads, 0);
-    assert.equal(f.store.get(value.taskId).worker?.agentId, worker.id);
-    assert.equal(f.store.get(value.taskId).control, "paused");
+    assert.equal((await f.store.get(value.taskId)).worker?.agentId, worker.id);
+    assert.equal((await f.store.get(value.taskId)).control, "paused");
     await f.service.tick();
     assert.equal(worker.reloads, 1);
     assert.equal(manager.reloads, 1);
@@ -1646,15 +1808,15 @@ await test("plugin recovery restores scoped tools once at idle without interrupt
     );
     assert.equal(unrelated.reloads, 0);
     assert.equal(
-      f.store.events(value.taskId).find((entry) => entry.id === event.id)!
-        .delivery,
+      (await f.store.events(value.taskId)).find(
+        (entry) => entry.id === event.id,
+      )!.delivery,
       "queued",
     );
   } finally {
     f.cleanup();
   }
 });
-
 await test("failed tool recovery remains retryable and cannot dispatch retained feedback", async () => {
   const f = fixture();
   try {
@@ -1667,18 +1829,17 @@ await test("failed tool recovery remains retryable and cannot dispatch retained 
     };
     await f.service.tick();
     assert.equal(worker.messages.length, 0);
-    assert.match(f.store.get(value.taskId).error!, /Provider failed/);
-    assert.equal(f.store.events(value.taskId)[0].delivery, "queued");
+    assert.match((await f.store.get(value.taskId)).error!, /Provider failed/);
+    assert.equal((await f.store.events(value.taskId))[0].delivery, "queued");
     worker.reload = original;
     await f.service.tick();
     assert.equal(worker.reloads, 1);
     assert.equal(worker.messages.length, 1);
-    assert.equal(f.store.events(value.taskId)[0].delivery, "accepted");
+    assert.equal((await f.store.events(value.taskId))[0].delivery, "accepted");
   } finally {
     f.cleanup();
   }
 });
-
 await test("a turn or question clearing during refresh cannot dispatch before tool recovery", async () => {
   for (const permission of [false, true]) {
     const f = fixture();
@@ -1718,7 +1879,6 @@ await test("a turn or question clearing during refresh cannot dispatch before to
     }
   }
 });
-
 await test("adoption preserves only the selected existing conversation and checkout; scoped worker tools reject foreign identities and brief mutation", async () => {
   const f = fixture();
   try {
@@ -1744,21 +1904,22 @@ await test("adoption preserves only the selected existing conversation and check
       ...input,
       agentId: selected.id,
     });
-    const adopted = f.store.get(input.requestId);
+    const adopted = await f.store.get(input.requestId);
     assert.equal(adopted.worker!.cwd, "/existing/wip");
-    assert.equal(f.store.forAgent(other.id), undefined);
+    assert.equal(await f.store.forAgent(other.id), undefined);
     const scoped = workerTools(f.service, adopted.taskId, selected.id);
     await assert.rejects(
       async () =>
-        tool(scoped, "task_update", { progress: "Foreign edit" }, {
+        await tool(scoped, "task_update", { progress: "Foreign edit" }, {
           agent: { id: other.id },
         } as AgentToolContext),
       /denied/,
     );
-    await assert.rejects(async () =>
-      tool(scoped, "task_update", { outcome: "Change scope" }, {
-        agent: { id: selected.id },
-      } as AgentToolContext),
+    await assert.rejects(
+      async () =>
+        await tool(scoped, "task_update", { outcome: "Change scope" }, {
+          agent: { id: selected.id },
+        } as AgentToolContext),
     );
     await tool(
       scoped,
@@ -1770,16 +1931,22 @@ await test("adoption preserves only the selected existing conversation and check
       },
       { agent: { id: selected.id } } as AgentToolContext,
     );
-    assert.equal(f.store.get(adopted.taskId).outcome, specified.outcome);
+    assert.equal(
+      (await f.store.get(adopted.taskId)).outcome,
+      specified.outcome,
+    );
     await tool(
       scoped,
       "task_propose",
       { ...specified, outcome: "Investigate a second component" },
       { agent: { id: selected.id } } as AgentToolContext,
     );
-    const proposed = f.store.get(adopted.taskId);
+    const proposed = await f.store.get(adopted.taskId);
     assert.equal(proposed.outcome, specified.outcome);
-    assert.throws(() => f.store.change(adopted.taskId, () => {}, 1), /changed/);
+    await assert.rejects(
+      async () => await f.store.change(adopted.taskId, () => {}, 1),
+      /changed/,
+    );
     await f.service.accept({
       serverId: "mac",
       taskId: adopted.taskId,
@@ -1787,7 +1954,7 @@ await test("adoption preserves only the selected existing conversation and check
       revision: proposed.revision,
     });
     assert.equal(
-      f.store.get(adopted.taskId).outcome,
+      (await f.store.get(adopted.taskId)).outcome,
       "Investigate a second component",
     );
     selected.timeline.refetch = async () => ({
@@ -1819,8 +1986,8 @@ await test("adoption preserves only the selected existing conversation and check
       ],
     });
     await assert.rejects(
-      () =>
-        tool(
+      async () =>
+        await tool(
           scoped,
           "task_apply_instruction",
           { messageId: "automated-feedback", brief: specified },
@@ -1829,8 +1996,8 @@ await test("adoption preserves only the selected existing conversation and check
       /automated feedback/,
     );
     await assert.rejects(
-      () =>
-        tool(
+      async () =>
+        await tool(
           scoped,
           "task_apply_instruction",
           { messageId: "automated-report", brief: specified },
@@ -1848,14 +2015,13 @@ await test("adoption preserves only the selected existing conversation and check
       { agent: { id: selected.id } } as AgentToolContext,
     );
     assert.equal(
-      f.store.get(adopted.taskId).outcome,
+      (await f.store.get(adopted.taskId)).outcome,
       "Explain the cache behavior",
     );
   } finally {
     f.cleanup();
   }
 });
-
 await test("conversation discovery and import reconciliation read every official directory page", async () => {
   const f = fixture();
   try {
@@ -1875,14 +2041,13 @@ await test("conversation discovery and import reconciliation read every official
       pageInfo: { nextCursor: "same", prevCursor: null, hasMore: true },
     });
     await assert.rejects(
-      () => f.service.conversations(),
+      async () => await f.service.conversations(),
       /pagination did not advance/,
     );
   } finally {
     f.cleanup();
   }
 });
-
 await test("coding adoption starts the selected existing checkout without demanding a new-worktree base", async () => {
   const f = fixture();
   try {
@@ -1911,7 +2076,6 @@ await test("coding adoption starts the selected existing checkout without demand
     f.cleanup();
   }
 });
-
 await test("bulk pause and archive wait for a turn boundary, queued feedback survives, and idle does not mean completed", async () => {
   const f = fixture();
   try {
@@ -1920,11 +2084,11 @@ await test("bulk pause and archive wait for a turn boundary, queued feedback sur
     const address = { serverId: "mac", taskId: value.taskId };
     const paused = await f.service.bulk({ tasks: [address], action: "pause" });
     assert.equal(paused[0].result, "pending");
-    f.store.addEvent(value.taskId, "feedback", "Use the new measurement");
+    await f.store.addEvent(value.taskId, "feedback", "Use the new measurement");
     f.paseo.finish(value.worker!.agentId);
     await f.service.turnEnded(value.worker!.agentId, { kind: "completed" });
-    assert.equal(f.store.get(value.taskId).control, "paused");
-    assert.equal(f.store.get(value.taskId).status, "active");
+    assert.equal((await f.store.get(value.taskId)).control, "paused");
+    assert.equal((await f.store.get(value.taskId)).status, "active");
     await f.service.tick();
     assert.equal(f.paseo.agents.ref(value.worker!.agentId).messages.length, 1);
     await f.service.bulk({
@@ -1943,7 +2107,7 @@ await test("bulk pause and archive wait for a turn boundary, queued feedback sur
     assert.equal(archived[0].result, "pending");
     f.paseo.finish(value.worker!.agentId);
     await f.service.turnEnded(value.worker!.agentId, { kind: "completed" });
-    assert.equal(f.store.get(value.taskId).control, "archived");
+    assert.equal((await f.store.get(value.taskId)).control, "archived");
     const draft = await create(f, { outcome: "", successCriteria: [] });
     assert.equal(
       (
@@ -1954,12 +2118,11 @@ await test("bulk pause and archive wait for a turn boundary, queued feedback sur
       )[0].result,
       "applied",
     );
-    assert.equal(f.store.get(draft.taskId).control, "archived");
+    assert.equal((await f.store.get(draft.taskId)).control, "archived");
   } finally {
     f.cleanup();
   }
 });
-
 await test("host disconnect retains last observation, verifies destination identity, and never routes an action to the local worker", async () => {
   const f = fixture();
   try {
@@ -1995,7 +2158,7 @@ await test("host disconnect retains last observation, verifies destination ident
       action: "pause",
     });
     assert.equal(result[0].result, "unknown");
-    assert.equal(f.store.get(value.taskId).control, "running");
+    assert.equal((await f.store.get(value.taskId)).control, "running");
     f.router.call = async () => [{ serverId: "wrong-host", tasks: [] }];
     assert.match((await f.service.list())[1].error!, /identity/);
     assert.throws(() => new Store(f.file, "wrong-host"), /another host/);
@@ -2003,34 +2166,32 @@ await test("host disconnect retains last observation, verifies destination ident
     f.cleanup();
   }
 });
-
 await test("uncertain Paseo delivery is durable and reconciles from the source conversation without duplicate prompts", async () => {
   const f = fixture();
   try {
     const value = await create(f);
     f.paseo.loseSend = true;
     await f.service.tick();
-    assert.equal(f.store.events(value.taskId)[0].delivery, "unknown");
+    assert.equal((await f.store.events(value.taskId))[0].delivery, "unknown");
     f.paseo.finish(value.worker!.agentId);
     f.paseo.historyVisible = false;
     await f.service.tick();
     assert.equal(f.paseo.agents.ref(value.worker!.agentId).messages.length, 1);
     f.paseo.historyVisible = true;
     await f.service.tick();
-    assert.equal(f.store.events(value.taskId)[0].delivery, "accepted");
+    assert.equal((await f.store.events(value.taskId))[0].delivery, "accepted");
     assert.equal(f.paseo.agents.ref(value.worker!.agentId).messages.length, 1);
-    f.store.saveEvent({
-      ...f.store.events(value.taskId)[0],
+    await f.store.saveEvent({
+      ...(await f.store.events(value.taskId))[0],
       delivery: "sending",
     });
     const persisted = new Store(f.file, "mac");
-    assert.equal(persisted.events(value.taskId)[0].delivery, "unknown");
+    assert.equal((await persisted.events(value.taskId))[0].delivery, "unknown");
     persisted.close();
   } finally {
     f.cleanup();
   }
 });
-
 await test("pause during refresh leaves feedback queued; pause during an already reserved send waits for its turn boundary", async () => {
   const f = fixture();
   try {
@@ -2054,7 +2215,7 @@ await test("pause during refresh leaves feedback queued; pause during an already
     release();
     await delivery;
     assert.equal(handle.messages.length, 0);
-    assert.equal(f.store.events(value.taskId)[0].delivery, "queued");
+    assert.equal((await f.store.events(value.taskId))[0].delivery, "queued");
     await f.service.bulk({
       tasks: [{ serverId: "mac", taskId: value.taskId }],
       action: "resume",
@@ -2073,7 +2234,7 @@ await test("pause during refresh leaves feedback queued; pause during an already
       await waiting;
       return originalSend(body);
     };
-    const reserved = f.service.deliver(f.store.get(value.taskId));
+    const reserved = f.service.deliver(await f.store.get(value.taskId));
     await reached;
     assert.equal(
       (
@@ -2089,12 +2250,54 @@ await test("pause during refresh leaves feedback queued; pause during an already
     assert.equal(handle.messages.length, 1);
     f.paseo.finish(handle.id);
     await f.service.turnEnded(handle.id, { kind: "completed" });
-    assert.equal(f.store.get(value.taskId).control, "paused");
+    assert.equal((await f.store.get(value.taskId)).control, "paused");
   } finally {
     f.cleanup();
   }
 });
-
+await test("pause wins while ownership is being checked and native activity prevents a reserved send", async () => {
+  const f = fixture();
+  try {
+    const value = await create(f);
+    const handle = f.paseo.agents.ref(value.worker!.agentId);
+    const original = f.store.assertOwner.bind(f.store);
+    let release!: () => void;
+    let reached!: () => void;
+    const waiting = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const checking = new Promise<void>((resolve) => {
+      reached = resolve;
+    });
+    f.store.assertOwner = async (id) => {
+      reached();
+      await waiting;
+      await original(id);
+    };
+    const delivery = f.service.deliver(value);
+    await checking;
+    await f.service.bulk({ tasks: [value], action: "pause" });
+    release();
+    await delivery;
+    assert.equal(handle.messages.length, 0);
+    assert.equal((await f.store.events(value.taskId))[0].delivery, "queued");
+    f.store.assertOwner = original;
+    await f.service.bulk({ tasks: [value], action: "resume" });
+    const save = f.store.saveEvent.bind(f.store);
+    f.store.saveEvent = async (event) => {
+      await save(event);
+      if (event.delivery === "sending") {
+        handle.status = "running";
+        handle.activeTurn = { id: "concurrent-turn" };
+      }
+    };
+    await f.service.deliver(await f.store.get(value.taskId));
+    assert.equal(handle.messages.length, 0);
+    assert.equal((await f.store.events(value.taskId))[0].delivery, "queued");
+  } finally {
+    f.cleanup();
+  }
+});
 await test("worker creation reconciles the same workspace and conversation after a lost creation response and restart", async () => {
   const f = fixture();
   try {
@@ -2120,7 +2323,7 @@ await test("worker creation reconciles the same workspace and conversation after
     );
     await resumed.tick();
     assert.equal(
-      f.store.get(value.taskId).worker!.workspaceId,
+      (await f.store.get(value.taskId)).worker!.workspaceId,
       taskWorkspaceId(value.taskId),
     );
     assert.equal(f.paseo.sources.length, 1);
@@ -2130,7 +2333,6 @@ await test("worker creation reconciles the same workspace and conversation after
     f.cleanup();
   }
 });
-
 await test("resume reopens the same closed or failed worker and respects native archive state", async () => {
   const f = fixture();
   try {
@@ -2158,12 +2360,11 @@ await test("resume reopens the same closed or failed worker and respects native 
     handle.archivedAt = "now";
     f.paseo.finish(handle.id);
     await f.service.tick();
-    assert.equal(f.store.get(value.taskId).control, "archived");
+    assert.equal((await f.store.get(value.taskId)).control, "archived");
   } finally {
     f.cleanup();
   }
 });
-
 await test("restart continues a completed Pi turn once, while cancellation and GitHub outages preserve their separate outcomes", async () => {
   const f = fixture();
   try {
@@ -2186,7 +2387,7 @@ await test("restart continues a completed Pi turn once, while cancellation and G
     );
     handle.timeline.refetch = timeline;
     await assert.rejects(
-      () => completedPiTurn(handle),
+      async () => await completedPiTurn(handle),
       /ENOENT/,
       "Imported history with no Paseo message timestamp still requires its native file",
     );
@@ -2196,7 +2397,7 @@ await test("restart continues a completed Pi turn once, while cancellation and G
       lastUserMessageAt: "now",
     });
     await assert.rejects(
-      () => completedPiTurn(handle),
+      async () => await completedPiTurn(handle),
       /ENOENT/,
       "Missing previously started history remains visible",
     );
@@ -2256,30 +2457,32 @@ await test("restart continues a completed Pi turn once, while cancellation and G
       2,
       "an aborted turn is not automatically continued",
     );
-    f.service.link(value.taskId, "https://github.com/o/r/issues/1");
+    await f.service.link(value.taskId, "https://github.com/o/r/issues/1");
     f.github.observe = async () => {
       throw new Error("GitHub unavailable");
     };
-    f.store.addEvent(
+    await f.store.addEvent(
       value.taskId,
       "feedback",
       "Human instruction remains deliverable",
     );
     await resumed.tick();
     assert.equal(handle.messages.length, 3);
-    assert.match(f.store.get(value.taskId).error!, /GitHub unavailable/);
+    assert.match(
+      (await f.store.get(value.taskId)).error!,
+      /GitHub unavailable/,
+    );
   } finally {
     f.cleanup();
   }
 });
-
 await test("concurrent GitHub reply tools reserve one durable source-thread submission", async () => {
   const f = fixture();
   try {
     const value = await create(f);
     const url = "https://github.com/o/r/pull/1";
-    f.service.link(value.taskId, url);
-    const entry = f.store.addEvent(value.taskId, "github", "Please fix", {
+    await f.service.link(value.taskId, url);
+    const entry = await f.store.addEvent(value.taskId, "github", "Please fix", {
       id: "c".repeat(64),
       source: `${url}#discussion_r12`,
       payload: { url, type: "inline", commentId: 12 },
@@ -2294,13 +2497,13 @@ await test("concurrent GitHub reply tools reserve one durable source-thread subm
     };
     const calls = [
       f.feedback.reply(
-        f.store.get(value.taskId),
+        await f.store.get(value.taskId),
         entry.id,
         "Fixed",
         "revision-a",
       ),
       f.feedback.reply(
-        f.store.get(value.taskId),
+        await f.store.get(value.taskId),
         entry.id,
         "Fixed",
         "revision-a",
@@ -2314,27 +2517,28 @@ await test("concurrent GitHub reply tools reserve one durable source-thread subm
       1,
     );
     assert.equal(
-      f.store.read<{ state: string }>("replies", entry.id)!.state,
+      (await f.store.read<{
+        state: string;
+      }>("replies", entry.id))!.state,
       "confirmed",
     );
   } finally {
     f.cleanup();
   }
 });
-
 await test("worker acknowledgment before the send receipt keeps feedback handled", async () => {
   const f = fixture();
   try {
     const value = await create(f);
     const handle = f.paseo.agents.ref(value.worker!.agentId);
-    const entry = f.store.events(value.taskId)[0];
+    const entry = (await f.store.events(value.taskId))[0];
     handle.send = async () => {
-      f.feedback.acknowledge(entry, "Handled the instruction");
+      await f.feedback.acknowledge(entry, "Handled the instruction");
     };
     await f.service.deliver(value);
-    assert.equal(f.store.events(value.taskId)[0].delivery, "handled");
-    f.store.saveEvent({ ...entry, delivery: "unknown" });
-    assert.equal(f.store.events(value.taskId)[0].delivery, "handled");
+    assert.equal((await f.store.events(value.taskId))[0].delivery, "handled");
+    await f.store.saveEvent({ ...entry, delivery: "unknown" });
+    assert.equal((await f.store.events(value.taskId))[0].delivery, "handled");
   } finally {
     f.cleanup();
   }
@@ -2345,31 +2549,32 @@ await test("completed work reopens only for new assigned feedback or explicit re
     const value = await create(f);
     await f.service.deliver(value);
     f.paseo.finish(value.worker!.agentId);
-    const complete = () =>
-      f.store.workerUpdate(value.taskId, value.worker!.agentId, {
+    const complete = async () =>
+      await f.store.workerUpdate(value.taskId, value.worker!.agentId, {
         status: "complete",
         evidence: ["Original success criteria verified"],
       });
-    complete();
+    await complete();
     await f.service.turnEnded(
       value.worker!.agentId,
       { kind: "completed" },
       "initial-completion",
     );
     assert.equal(
-      f.store.events(value.taskId).filter((entry) => entry.kind === "continue")
-        .length,
+      (await f.store.events(value.taskId)).filter(
+        (entry) => entry.kind === "continue",
+      ).length,
       0,
     );
-    f.service.link(value.taskId, "https://github.com/o/r/pull/1");
-    await f.feedback.poll(f.store.get(value.taskId));
+    await f.service.link(value.taskId, "https://github.com/o/r/pull/1");
+    await f.feedback.poll(await f.store.get(value.taskId));
     assert.equal(
-      f.store.get(value.taskId).status,
+      (await f.store.get(value.taskId)).status,
       "complete",
       "Checks and revision observations do not reopen work",
     );
-    for (const entry of f.store.events(value.taskId))
-      f.feedback.acknowledge(entry, "Observed");
+    for (const entry of await f.store.events(value.taskId))
+      await f.feedback.acknowledge(entry, "Observed");
     f.github.observation.events = [
       {
         type: "inline",
@@ -2382,146 +2587,148 @@ await test("completed work reopens only for new assigned feedback or explicit re
         },
       },
     ];
-    await f.feedback.poll(f.store.get(value.taskId));
-    assert.equal(f.store.get(value.taskId).status, "active");
-    assert.deepEqual(f.store.get(value.taskId).worker, value.worker);
+    await f.feedback.poll(await f.store.get(value.taskId));
+    assert.equal((await f.store.get(value.taskId)).status, "active");
+    assert.deepEqual((await f.store.get(value.taskId)).worker, value.worker);
     assert.deepEqual(
-      brief.strip().parse(f.store.get(value.taskId)),
+      brief.strip().parse(await f.store.get(value.taskId)),
       brief.strip().parse(value),
     );
-    await f.service.deliver(f.store.get(value.taskId));
+    await f.service.deliver(await f.store.get(value.taskId));
     assert.equal(f.paseo.agents.ref(value.worker!.agentId).messages.length, 2);
     f.paseo.finish(value.worker!.agentId);
-    for (const entry of f.store.events(value.taskId))
-      f.feedback.acknowledge(entry, "Handled within original scope");
-    complete();
-    await f.feedback.poll(f.store.get(value.taskId));
+    for (const entry of await f.store.events(value.taskId))
+      await f.feedback.acknowledge(entry, "Handled within original scope");
+    await complete();
+    await f.feedback.poll(await f.store.get(value.taskId));
     assert.equal(
-      f.store.get(value.taskId).status,
+      (await f.store.get(value.taskId)).status,
       "complete",
       "Reobserved feedback does not resurrect completion",
     );
-
     await f.service.bulk({ tasks: [value], action: "pause" });
-    const input = f.store.addEvent(
+    const input = await f.store.addEvent(
       value.taskId,
       "feedback",
       "New manager instruction",
       { id: "new-manager-input" },
     );
-    assert.equal(f.store.get(value.taskId).status, "active");
-    assert.equal(f.store.get(value.taskId).control, "paused");
-    await f.service.deliver(f.store.get(value.taskId));
+    assert.equal((await f.store.get(value.taskId)).status, "active");
+    assert.equal((await f.store.get(value.taskId)).control, "paused");
+    await f.service.deliver(await f.store.get(value.taskId));
     assert.equal(f.paseo.agents.ref(value.worker!.agentId).messages.length, 2);
-    assert.throws(complete, /pending assigned feedback/);
-    f.feedback.acknowledge(input, "Handled during the paused turn");
-    complete();
-    f.store.addEvent(value.taskId, "feedback", input.body, { id: input.id });
+    await assert.rejects(complete, /pending assigned feedback/);
+    await f.feedback.acknowledge(input, "Handled during the paused turn");
+    await complete();
+    await f.store.addEvent(value.taskId, "feedback", input.body, {
+      id: input.id,
+    });
     assert.equal(
-      f.store.get(value.taskId).status,
+      (await f.store.get(value.taskId)).status,
       "complete",
       "Replayed durable manager input does not reopen work",
     );
-    assert.throws(
-      () =>
-        f.store.transaction(() => {
-          f.store.addEvent(value.taskId, "feedback", "Rolled back", {
+    await assert.rejects(
+      async () =>
+        await f.store.transaction(async () => {
+          await f.store.addEvent(value.taskId, "feedback", "Rolled back", {
             id: "rolled-back-input",
           });
           throw new Error("Insertion interrupted");
         }),
       /interrupted/,
     );
-    assert.equal(f.store.get(value.taskId).status, "complete");
+    assert.equal((await f.store.get(value.taskId)).status, "complete");
     assert.ok(
-      !f.store
-        .events(value.taskId)
-        .some((entry) => entry.id === "rolled-back-input"),
+      !(await f.store.events(value.taskId)).some(
+        (entry) => entry.id === "rolled-back-input",
+      ),
     );
-    f.store.addEvent(value.taskId, "feedback", "Legacy retained input", {
+    await f.store.addEvent(value.taskId, "feedback", "Legacy retained input", {
       id: "legacy-backlog",
     });
-    f.store.change(value.taskId, (task) => {
+    await f.store.change(value.taskId, (task) => {
       task.status = "complete";
     });
     const resumed = await f.service.bulk({ tasks: [value], action: "resume" });
     assert.equal(resumed[0].result, "applied");
     assert.equal(
-      f.store.get(value.taskId).status,
+      (await f.store.get(value.taskId)).status,
       "active",
       "Explicit resume recovers retained completed-task backlog",
     );
-    await f.service.deliver(f.store.get(value.taskId));
+    await f.service.deliver(await f.store.get(value.taskId));
     assert.equal(f.paseo.agents.ref(value.worker!.agentId).messages.length, 3);
     f.paseo.finish(value.worker!.agentId);
-    for (const entry of f.store.events(value.taskId))
-      f.feedback.acknowledge(entry, "Handled");
-    complete();
+    for (const entry of await f.store.events(value.taskId))
+      await f.feedback.acknowledge(entry, "Handled");
+    await complete();
     await f.service.bulk({ tasks: [value], action: "archive" });
-    f.store.addEvent(value.taskId, "feedback", "Archived input");
-    assert.equal(f.store.get(value.taskId).status, "complete");
-    assert.equal(f.store.get(value.taskId).control, "archived");
-    await f.service.deliver(f.store.get(value.taskId));
+    await f.store.addEvent(value.taskId, "feedback", "Archived input");
+    assert.equal((await f.store.get(value.taskId)).status, "complete");
+    assert.equal((await f.store.get(value.taskId)).control, "archived");
+    await f.service.deliver(await f.store.get(value.taskId));
     assert.equal(f.paseo.agents.ref(value.worker!.agentId).messages.length, 3);
   } finally {
     f.cleanup();
   }
 });
-
 await test("feedback arriving before the final completion update remains dispatchable until the worker handles it", async () => {
   const f = fixture();
   try {
     const value = await create(f);
     await f.service.deliver(value);
-    const input = f.store.addEvent(
+    const input = await f.store.addEvent(
       value.taskId,
       "feedback",
       "Inspect this input before declaring completion",
     );
-    assert.throws(
-      () =>
-        f.store.workerUpdate(value.taskId, value.worker!.agentId, {
+    await assert.rejects(
+      async () =>
+        await f.store.workerUpdate(value.taskId, value.worker!.agentId, {
           status: "complete",
           evidence: ["Earlier work verified"],
         }),
       /pending assigned feedback/,
     );
-    assert.equal(f.store.get(value.taskId).status, "active");
+    assert.equal((await f.store.get(value.taskId)).status, "active");
     f.paseo.finish(value.worker!.agentId);
-    await f.service.deliver(f.store.get(value.taskId));
+    await f.service.deliver(await f.store.get(value.taskId));
     assert.equal(f.paseo.agents.ref(value.worker!.agentId).messages.length, 2);
     assert.equal(
-      f.store.events(value.taskId).find((entry) => entry.id === input.id)!
-        .delivery,
+      (await f.store.events(value.taskId)).find(
+        (entry) => entry.id === input.id,
+      )!.delivery,
       "accepted",
     );
-    assert.throws(
-      () =>
-        f.store.workerUpdate(value.taskId, value.worker!.agentId, {
+    await assert.rejects(
+      async () =>
+        await f.store.workerUpdate(value.taskId, value.worker!.agentId, {
           status: "complete",
           evidence: ["Earlier work verified"],
         }),
       /pending assigned feedback/,
     );
-    f.feedback.acknowledge(input, "Input handled");
+    await f.feedback.acknowledge(input, "Input handled");
     assert.equal(
-      f.store.workerUpdate(value.taskId, value.worker!.agentId, {
-        status: "complete",
-        evidence: ["Work and new input verified"],
-      }).status,
+      (
+        await f.store.workerUpdate(value.taskId, value.worker!.agentId, {
+          status: "complete",
+          evidence: ["Work and new input verified"],
+        })
+      ).status,
       "complete",
     );
   } finally {
     f.cleanup();
   }
 });
-
 await test("GitHub feedback survives restart, source replies reconcile uncertain submissions, and stale revisions prevent posting", async () => {
   const f = fixture();
   try {
     const value = await create(f);
     const url = "https://github.com/o/r/pull/1";
-    f.service.link(value.taskId, url);
+    await f.service.link(value.taskId, url);
     f.github.observation.events = [
       {
         type: "inline",
@@ -2535,17 +2742,17 @@ await test("GitHub feedback survives restart, source replies reconcile uncertain
         },
       },
     ];
-    await f.feedback.poll(f.store.get(value.taskId));
-    const pending = f.store
-      .events(value.taskId)
-      .find((item) => item.payload.type === "inline")!;
+    await f.feedback.poll(await f.store.get(value.taskId));
+    const pending = (await f.store.events(value.taskId)).find(
+      (item) => item.payload.type === "inline",
+    )!;
     assert.equal(pending.payload.authority, "review-input");
     assert.equal(pending.source, `${url}#discussion_r12`);
     f.github.uncertain = true;
     await assert.rejects(
-      () =>
+      async () =>
         f.feedback.reply(
-          f.store.get(value.taskId),
+          await f.store.get(value.taskId),
           pending.id,
           "Measured and fixed",
           "revision-a",
@@ -2555,7 +2762,7 @@ await test("GitHub feedback survives restart, source replies reconcile uncertain
     const persisted = new Store(f.file, "mac");
     const resumed = new Feedback(persisted, f.github, "lanej");
     const receipt = await resumed.reply(
-      persisted.get(value.taskId),
+      await persisted.get(value.taskId),
       pending.id,
       "Measured and fixed",
       "revision-a",
@@ -2563,9 +2770,9 @@ await test("GitHub feedback survives restart, source replies reconcile uncertain
     assert.match(receipt, /discussion_r42/);
     assert.equal(f.github.submitted, 1);
     await assert.rejects(
-      () =>
-        resumed.reply(
-          persisted.get(value.taskId),
+      async () =>
+        await resumed.reply(
+          await persisted.get(value.taskId),
           pending.id,
           "Another reply",
           "revision-a",
@@ -2573,9 +2780,9 @@ await test("GitHub feedback survives restart, source replies reconcile uncertain
       /differs/,
     );
     await assert.rejects(
-      () =>
-        resumed.reply(
-          persisted.get(value.taskId),
+      async () =>
+        await resumed.reply(
+          await persisted.get(value.taskId),
           pending.id,
           "Measured and fixed",
           "revision-b",
@@ -2593,18 +2800,17 @@ await test("GitHub feedback survives restart, source replies reconcile uncertain
     f.cleanup();
   }
 });
-
-await test("durable database refuses corrupt records instead of reporting an empty or successful board", () => {
+await test("durable database refuses corrupt records instead of reporting an empty or successful board", async () => {
   const f = fixture();
   try {
-    const value = f.store.create(specified);
+    const value = await f.store.create(specified);
     f.store.db
       .prepare("UPDATE tasks SET record=? WHERE id=?")
       .run(
         JSON.stringify({ taskId: value.taskId, priority: "corrupt" }),
         value.taskId,
       );
-    assert.throws(() => f.store.list());
+    await assert.rejects(async () => await f.store.list());
   } finally {
     f.cleanup();
   }

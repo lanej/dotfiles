@@ -5,7 +5,7 @@ description: Use when creating, extending, or reviewing a command-line interface
 
 # CLI construction
 
-Read [the project tool-choice policy](../source-code-lifecycle/references/tool-choices.md) before selecting the CLI stack. Use the matching installed language guidance (`typescript`/`javascript`, `go`, `python`, or `rust`); select missing guidance through source-code setup rather than inventing a second tool catalog. Preserve the project’s stage, authority, adoption, established stack, and compatibility contracts.
+Read [the project tool-choice policy](../source-code-lifecycle/SKILL.md) before selecting the CLI stack. Use the matching installed language guidance (`typescript`/`javascript`, `go`, `python`, or `rust`); select missing guidance through source-code setup rather than inventing a second tool catalog. Preserve the project’s stage, authority, adoption, established stack, and compatibility contracts.
 
 CLIs built under this policy must expose `TOOL skill` as a compact Markdown entrypoint and `TOOL skill --topic NAME` for task-specific guidance. Keep essential constraints and a usable topic index in the entrypoint. Discovery must be read-only and work without project configuration, credentials, network access, or application startup. Use the selected language’s command framework for these commands and normal help.
 

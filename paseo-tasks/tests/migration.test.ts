@@ -7,7 +7,6 @@ import { test } from "node:test";
 import { digest } from "../server/github";
 import { inventory, releaseAndImport, stage } from "../server/migration";
 import { Store } from "../server/store";
-
 await test("Firstmate transfer refuses live ownership and drift, preserves checkout/session, and resumes from a failed import with pending feedback and reply intent", async () => {
   const directory = await mkdtemp(join(tmpdir(), "task-migration-"));
   const home = join(directory, "firstmate");
@@ -43,7 +42,10 @@ await test("Firstmate transfer refuses live ownership and drift, preserves check
       join(data, "github-session.json"),
       JSON.stringify({ ...session, generation: "old-generation" }),
     );
-    await assert.rejects(() => inventory(home), /ownership differs/);
+    await assert.rejects(
+      async () => await inventory(home),
+      /ownership differs/,
+    );
     await writeFile(join(data, "github-session.json"), JSON.stringify(session));
     const live = (await inventory(home))[0];
     const taskId = randomUUID();
@@ -58,19 +60,19 @@ await test("Firstmate transfer refuses live ownership and drift, preserves check
     };
     await stage(store, live, brief, taskId);
     assert.equal(
-      store.get(taskId).status,
+      (await store.get(taskId)).status,
       "active",
       "Retained coding work requires no new checkout base",
     );
     await assert.rejects(
-      () =>
-        releaseAndImport(store, taskId, async () => {
+      async () =>
+        await releaseAndImport(store, taskId, async () => {
           throw new Error("Must not import");
         }),
       /still alive/,
     );
     assert.equal(await readFile(metadataPath, "utf8"), originalMeta);
-    assert.equal(store.get(taskId).migration!.ownership, "firstmate");
+    assert.equal((await store.get(taskId)).migration!.ownership, "firstmate");
     await writeFile(
       join(data, "github-session.json"),
       JSON.stringify({ ...session, pid: 2147483647 }),
@@ -78,7 +80,7 @@ await test("Firstmate transfer refuses live ownership and drift, preserves check
     const stopped = (await inventory(home))[0];
     const stagedId = randomUUID();
     await assert.rejects(
-      () => stage(store, stopped, brief, stagedId),
+      async () => await stage(store, stopped, brief, stagedId),
       /staged owner/,
     );
     store.db.prepare("DELETE FROM events WHERE task=?").run(taskId);
@@ -86,8 +88,8 @@ await test("Firstmate transfer refuses live ownership and drift, preserves check
     await stage(store, stopped, brief, stagedId);
     await writeFile(metadataPath, `${originalMeta}changed=yes\n`);
     await assert.rejects(
-      () =>
-        releaseAndImport(store, stagedId, async () => {
+      async () =>
+        await releaseAndImport(store, stagedId, async () => {
           throw new Error("Must not import");
         }),
       /metadata changed/,
@@ -127,14 +129,14 @@ await test("Firstmate transfer refuses live ownership and drift, preserves check
       }),
     );
     await assert.rejects(
-      () =>
-        releaseAndImport(store, stagedId, async () => {
+      async () =>
+        await releaseAndImport(store, stagedId, async () => {
           throw new Error("Paseo import interrupted");
         }),
       /interrupted/,
     );
-    assert.equal(store.get(stagedId).control, "paused");
-    assert.equal(store.get(stagedId).migration!.ownership, "released");
+    assert.equal((await store.get(stagedId)).control, "paused");
+    assert.equal((await store.get(stagedId)).migration!.ownership, "released");
     assert.equal(
       await readFile(
         join(state, "paseo-handoff", "legacy-task.generation1.meta"),
@@ -144,9 +146,14 @@ await test("Firstmate transfer refuses live ownership and drift, preserves check
     );
     let imports = 0;
     const ensureSession = async () => {
-      if (!store.get(stagedId).worker) {
+      if (!(await store.get(stagedId)).worker) {
         imports++;
-        store.bind(stagedId, "imported-worker", "original-workspace", checkout);
+        await store.bind(
+          stagedId,
+          "imported-worker",
+          "original-workspace",
+          checkout,
+        );
         throw new Error("Import accepted but response lost");
       }
       return {
@@ -157,10 +164,10 @@ await test("Firstmate transfer refuses live ownership and drift, preserves check
       };
     };
     await assert.rejects(
-      () => releaseAndImport(store, stagedId, ensureSession),
+      async () => await releaseAndImport(store, stagedId, ensureSession),
       /response lost/,
     );
-    assert.equal(store.get(stagedId).control, "paused");
+    assert.equal((await store.get(stagedId)).control, "paused");
     const resumed = await releaseAndImport(store, stagedId, ensureSession);
     assert.equal(imports, 1);
     assert.equal(resumed.control, "running");
@@ -168,15 +175,19 @@ await test("Firstmate transfer refuses live ownership and drift, preserves check
     assert.equal(resumed.worker!.cwd, checkout);
     assert.equal(resumed.migration!.ownership, "tasks");
     assert.ok(
-      store.events(stagedId).some((event) => event.id === githubEvent.id),
+      (await store.events(stagedId)).some(
+        (event) => event.id === githubEvent.id,
+      ),
     );
     assert.ok(
-      store
-        .events(stagedId)
-        .some((event) => event.body === "Queued user correction"),
+      (await store.events(stagedId)).some(
+        (event) => event.body === "Queued user correction",
+      ),
     );
     assert.equal(
-      store.read<{ state: string }>("replies", githubEvent.id)!.state,
+      (await store.read<{
+        state: string;
+      }>("replies", githubEvent.id))!.state,
       "unknown",
     );
     assert.equal(await readFile(sessionFile, "utf8"), history);

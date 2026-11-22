@@ -1,8 +1,8 @@
-# Pi daily-driver foundation
+# Pi daily driver
 
-This package extends Pi 1.4.0 with the shared dotfiles theme, a compact task interface, idle compaction, explicit work/personal model selection, and a read-only Beads task browser. It is not a complete daily-driver replacement: task-bound coding, Octo delivery, task acceptance, and automatic archival remain gated. Explicit read-only delegation and archive browsing are available separately. Existing standalone Pi and Paseo workflows remain separate.
+Run an existing Beads task in an ordinary interactive Pi worker, guide it in Zellij, and inspect the result from another terminal. Beads owns the task. The native worktree manager allocates its checkout. This workflow runs with Paseo offline and supports both the work and personal model profiles.
 
-The [runtime integration plan](RUNTIME.md) evaluates existing Pi delegation packages and defines the remaining managed-worktree, task-authority, Octo and archive adapters. The first increment integrates read-only delegation through a package and browsing existing archives.
+The driver also provides the dotfiles theme, task browser, idle compaction, opt-in read-only delegation, and archive browsing. The [runtime plan](RUNTIME.md) covers coding delegation, Pi-owned Octo delivery, and automatic archival.
 
 ## Enable
 
@@ -12,6 +12,8 @@ make pi-driver-config
 ```
 
 The configuration target registers this local Pi package, selects the generated `dotfiles` theme, and enables quiet startup. Providers, models, credentials, and unrelated packages are preserved. It performs no download, authentication, task claim, or service startup. It respects `PI_CODING_AGENT_DIR`. Start or reload Pi to discover `/tasks`, `/driver-profile`, and `/driver-status`. The repository's normal bin configuration exposes `pi-driver`; it can also be invoked directly from `~/.files/bin/pi-driver`.
+
+Run `make pi-driver-aot` after installing the package's locked npm dependencies and the Bun version in [`.bun-version`](.bun-version). The same `pi-driver` launcher then uses the compiled CLI for every command. Rebuild after updating the checkout. Set `PI_DRIVER_USE_SOURCE=1` to run the source CLI for a comparison or rollback. A checkout without a build runs from source. The managed worker still starts native Pi and loads its extension from the installed package.
 
 The theme comes from the shared semantic adapter, with Nord selected by the current design-system preset. The terminal retains its canvas and opacity settings. Task states use filled, contrasting status pills with text labels; custom Beads states retain their labels with a neutral tone. Task selection and details omit keyboard instructions and policy boilerplate. The footer keeps project/branch, model/profile, reasoning, nonzero context usage and cost, plus status supplied by other extensions. Startup hints, resource listings, zero-usage counters, and the permanent compaction-policy line are hidden. Actionable errors remain visible.
 
@@ -27,15 +29,28 @@ Managed children keep idle compaction blocked during execution or uncertainty. I
 
 ## Task inspection and profiles
 
-Configure an absolute `beads.workspace`, expected `database`, and Dolt `branch`. The reader requires server-mode metadata and checks the actual branch through native `bd --readonly --sandbox` operations. It never initializes a database or falls back to another workspace. Ambient `BEADS_` variables and `BD_` overrides are excluded. Task trees use native parent-child edges; blockers remain separate. Results are capped at 1000 tasks and visibly marked when potentially truncated. `/tasks ID` or `pi-driver tasks ID` reads task details; observed descriptions are not accepted execution scope. Cached ownership decisions are not used.
+Set `beadsService.url` to the configured [Beads service](../../docs/beads.md) and `beadsService.projectId` to the actual `project_id` from its `GET /v0/beads/context`. Replace the example UUID. If the service requires a bearer token, set `beadsService.tokenFile` to its absolute path. Each read and write carries the project identity. Existing configurations with only `beads.workspace`, `database` and `branch` retain native read-only browsing.
 
-`/driver-profile work` and `/driver-profile personal` explicitly select the configured lead model after validating that all four role models exist in Pi's registry. The work profile requires explicit HTTPS Bedrock Mantle model endpoints; personal uses Pi's `openai-codex` subscription provider. Authenticate through Pi's own flow. Model identifiers in `config --example` are selections to validate against your available catalog, not a claim of account access. No credentials are copied and there is no cross-profile fallback. Reviewer and Explorer selections drive opt-in read-only delegation. The Worker selection is reserved for task-bound coding.
+`/tasks` browses the native containment tree. `pi-driver tasks ID --json` reads the current bead directly from the service and includes the most recent execution attempt recorded on this host. It works after the Pi session exits. A local attempt records the admitted brief, checkout, native session and verification evidence. Reading another host's task requires only its service connection.
 
-## Dispatch gate
+`/driver-profile work` and `/driver-profile personal` select the configured lead model in Pi. Set each profile's worker provider, model and reasoning level before starting a task. Work uses its configured HTTPS Bedrock Mantle endpoint. Personal uses Pi’s `openai-codex` provider. Authenticate with the selected provider through Pi.
 
-The [task contract](https://github.com/lanej/dotfiles/issues/353) requires a stale accepted scope/control revision to prevent authoritative transitions. In an isolated Beads 1.3.4 / Dolt 2.7.4 server fixture, two callers raced for one task: one won, a stale owner failed with exit 13, and repeating the winning actor's claim succeeded. After another actor edited the description, the previous owner could still change task status using `--if-assignee` and `--if-status`. The same guards allowed closing a changed task in the initial probe. These primitives do not fence accepted brief revisions.
+## Run a bead locally
 
-`pi-driver doctor` reports this blocker and exits nonzero. `start` and `resume` reject before calling Beads, allocating a worktree, or launching Pi. There is no configuration switch that bypasses the gate. The [upstream development source](https://github.com/gastownhall/beads/blob/main/cmd/bd/assign.go) contains revision-guard work, but its presence does not establish a compatible released deployment or authorize migration of the existing trial database. Re-evaluate the native contract before implementing managed dispatch and its dependent lifecycle.
+From the repository in a running Zellij session, use the full ID of a ready, unassigned bead. Supply the agreed verification command as separate arguments after `--`. For example, if the bead's acceptance criteria are covered by `make test`:
+
+```sh
+pi-driver start "$BEAD_ID" --profile work -- make test
+pi-driver tasks "$BEAD_ID" --json
+```
+
+The first command claims the current brief in Beads, allocates a dedicated worktree and opens the interactive Pi worker through Zellij’s native socket. It leaves focus in the caller pane. Choose a different tab with `--tab-id`. Repeating the same command focuses the registered worker so you can type guidance into its existing session. If launch or ownership is uncertain, inspect its recorded attempt before recovering the checkout.
+
+Pi can call `task_submit_result`. An operator can also type `/task-submit SUMMARY` in the same pane. The driver runs the agreed command in that checkout, checks that its Git state held throughout verification, and conditionally closes the bead with the result. Beads checks the accepted revision, owner and status together. Evidence includes the command, exit code, Git state and the last 8 KiB of verification output.
+
+Supply a verifier only when it covers the full accepted criteria. Omit it when a human must decide. A failing check keeps the bead open and can be retried in the same session. Changed task scope or checkout contents require review. For a service that permits direct database or text writes outside the revisioned Beads interfaces, set `beadsService.reviewOnly` to `true`. The driver still runs the agreed command and retains the result for review.
+
+`pi-driver doctor` checks the configured task source. New local runs also require Pi, the native `worktree` manager, Zellij and a configured worker profile. Fleet dispatch, replacement after an uncertain launch, and automatic archival are separate workflows.
 
 ## Checks
 
@@ -49,7 +64,11 @@ The tools command explicitly installs the pinned quality dependencies. `make tes
 
 The package retains the canonical compiler and typed lint rules under `.typescript-quality/`. Declaration checking stays enabled. Bundler resolution matches Pi's native TypeScript loader and the CLI's tsx loader. The Biome profile retains the previous recommended lint rules alongside the canonical correctness rules; only its stylistic `useLiteralKeys` rule is disabled because strict `noPropertyAccessFromIndexSignature` requires bracket access. Runtime modes, events, session/message kinds, navigation keys, profiles, roles, reasoning levels, task states and relationships use enums. External data is validated before enum-specific decisions; custom provider IDs, task states and relationship types remain representable.
 
-The native Beads probe creates and removes its own database and processes, verifies real task parsing and claim behavior, and exits **2** with `dispatchReady: false` for the evaluated scope-fencing gap. It does not start, stop, migrate, or inspect the trial database's tasks. These checks do not establish authenticated model inference, a real GitHub round trip, or the blocked archive lifecycle.
+The native Beads probe uses a disposable service to race claims, edit the accepted fields using native Beads tools and verify that a stale closing PATCH is refused. The [interactive acceptance fixture](acceptance/local-run.md) runs real Pi, Zellij, the worktree manager and Beads with a loopback model. It checks same-pane steering and refocus, tool-driven completion, failed verification, edited scope and independent inspection after Pi exits.
+
+The capture shows the native worker and verified Beads result in an isolated Zellij session with the installed `dotfiles` theme, `tmux` layout, and `lane-status` bar. The trial used a deterministic loopback provider.
+
+![Pi worker in Zellij submitting a verified result for its bead](../../docs/assets/pi-driver/local-run-submitted.png)
 
 The separately invoked `uv run --script pi/daily-driver/acceptance/terminal.py --output docs/assets/pi-driver` exercises tree navigation, task details, Escape recovery, and draft entry through actual Pi PTYs with a controlled Beads boundary. It checks the native theme colors, filled status pills and absence of startup/helper text. The retained renders preserve terminal-cell colors and crop unused terminal rows; they do not establish live provider behavior.
 

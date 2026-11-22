@@ -35,4 +35,4 @@ value["theme"] = "dotfiles"
 value["quietStartup"] = True
 agent.mkdir(parents=True, exist_ok=True)
 settings.write_text(json.dumps(value, indent=2) + "\n")
-print("Registered the Pi driver. Task-bound dispatch remains disabled.")
+print("Registered the Pi driver.")

@@ -1,10 +1,10 @@
 ---
 name: code-comments
-description: "Use when deciding whether to add a source comment, writing or revising comments, or reviewing comment quality. Apply the conventional code comment specification. Excludes PR discussion comments and general prose editing. Select only the configured maturity guidance."
+description: "Use when deciding whether to add a source comment, writing or revising comments, or reviewing comment quality. Apply the conventional code comment specification. Excludes PR discussion comments and general prose editing."
 ---
 
-# Select the current code-comments guidance
+# code-comments source package
 
-Read the project's `.source-code.json` to identify its configured stage. Load exactly `../.maturity-profiles/<stage>/code-comments/SKILL.md`, relative to this canonical skill directory. Do not load other maturity files. Without a configured stage, preserve existing repository requirements and use the shared technical guidance without assuming a maturity.
+This canonical package is an input to `source-code setup` and `source-code upgrade`. Those commands install the configured project entrypoint at `.agents/skills/code-comments/SKILL.md`. Use that installed entrypoint for project work.
 
-New source-code installations link directly to the selected entrypoint. This selector preserves existing linked installations until setup or upgrade switches their discovery link. Read [shared guidance](references/common.md) when needed; the selected entrypoint controls maturity-specific expectations.
+This package is project-only and excluded from global skill synchronization.

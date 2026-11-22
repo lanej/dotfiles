@@ -282,7 +282,7 @@ version = "0.164.0"
 description = "Opt-in Octo service with Codex session, PR tracking and receipt hooks on macOS and Linux."
 installer = "octo-manager"
 requires = ["git", "gh", "go"]
-revision = "6ede2fb6c61b763c9f83158cd21ea33ef60260a9"
+revision = "ee1cb55aa53b057e4e2734c4af2c8f83806a14d4"
 
 [tools.beads]
 description = "Opt-in shared Beads HTTP endpoint with a private Dolt SQL server; Octo owns dispatch."

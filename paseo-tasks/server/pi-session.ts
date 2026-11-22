@@ -1,11 +1,17 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import {
+  buildContextEntries,
+  CURRENT_SESSION_VERSION,
+  parseSessionEntries,
+  type SessionEntry,
+} from "@earendil-works/pi-coding-agent";
 import type { PaseoAgentHandle } from "@getpaseo/client";
 import { z } from "zod";
 
 const header = z.object({
   type: z.literal("session"),
-  version: z.literal(3),
+  version: z.literal(CURRENT_SESSION_VERSION),
   id: z.uuid(),
   cwd: z.string().min(1),
 });
@@ -14,17 +20,20 @@ export async function sessionEntries(
   id: string | null,
   cwd: string,
 ) {
-  const entries = (await readFile(file, "utf8"))
-    .trim()
-    .split("\n")
-    .map((line) => JSON.parse(line));
+  const content = await readFile(file, "utf8");
+  // WHY: Pi tolerates malformed JSONL; ownership and completion checks must fail closed.
+  const entries = parseSessionEntries(content);
+  if (
+    entries.length !== content.split("\n").filter((line) => line.trim()).length
+  )
+    throw new SyntaxError("Pi session contains malformed JSONL records");
   const identity = header.parse(entries[0]);
   if ((id && identity.id !== id) || resolve(identity.cwd) !== resolve(cwd)) {
     throw new Error(
       "Pi session header does not match the recorded session and checkout",
     );
   }
-  return { identity, entries: entries.slice(1) };
+  return { identity, entries: entries.slice(1) as SessionEntry[] };
 }
 export async function completedPiTurn(
   handle: PaseoAgentHandle,
@@ -60,14 +69,15 @@ export async function completedPiTurn(
     if (typeof current.id !== "string" || visited.has(current.id))
       throw new Error("Pi session ancestry is unreadable");
     visited.add(current.id);
-    if (current.type === "message") {
-      // WHY: Idle alone cannot distinguish a completed turn from cancellation or a pending tool call.
-      return current.message?.role === "assistant" &&
-        current.message.stopReason === "stop"
-        ? `pi:${identity.id}:${current.id}`
-        : null;
-    }
     current = current.parentId ? byId.get(current.parentId) : undefined;
   }
-  return null;
+  const latest = buildContextEntries(entries).findLast(
+    (entry) => entry.type === "message",
+  );
+  // WHY: Idle alone cannot distinguish a completed turn from cancellation or a pending tool call.
+  return latest?.type === "message" &&
+    latest.message.role === "assistant" &&
+    latest.message.stopReason === "stop"
+    ? `pi:${identity.id}:${latest.id}`
+    : null;
 }
