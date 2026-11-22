@@ -1,10 +1,10 @@
 ---
 name: source-code-lifecycle
-description: "Use when working in a project installed by source-code setup or changing its lifecycle stage. Apply the configured maturity, authority, and adoption policy."
+description: Use when applying installed project policy for project kind, tool choices, authority, or adoption.
 ---
 
-# source-code-lifecycle source package
+# Installed project policy
 
-This canonical package is an input to `source-code setup` and `source-code upgrade`. Those commands install the configured project entrypoint at `.agents/skills/source-code-lifecycle/SKILL.md`. Use that installed entrypoint for project work.
+<!-- source-code:project-policy -->
 
-This package is project-only and excluded from global skill synchronization.
+Preserve authored repository requirements. Use the installed testing, comment, and language skills for the work they cover. Read [related engineering guidance](references/common.md) when selecting tools or working on a CLI, data pipeline, or UI.

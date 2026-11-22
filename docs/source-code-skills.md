@@ -10,8 +10,9 @@ Source selection and assembly are separate choices. A package can use a shared e
 
 | Source selection | Packages | Assembly |
 | --- | --- | --- |
-| Maturity: `research`, `alpha`, `beta`, or `production` | Go, TypeScript, Python, Protobuf, lifecycle | Render the selected template with resolved project policy. |
+| Maturity: `research`, `alpha`, `beta`, or `production` | Go, TypeScript, Python, Protobuf | Render the selected template with resolved project policy. |
 | Maturity | Testing, code-comments, Rust | Install the selected entrypoint unchanged. |
+| Shared | Project policy | Render the selected kind, authority, and adoption into one shared template. |
 | Shared | Octo | Adapt the submission-guide path, then render repository automation policy. |
 | Shared | Remaining curated skills | Preserve the entrypoint; copied packages adapt local resource paths where required, including Git and pull-request guidance. |
 
@@ -21,7 +22,7 @@ Maturity templates live under `ai/skills/.maturity-profiles/<stage>/<skill>/`. T
 
 ## Rendered-skill inventory
 
-The stage-template links below show beta. The same placeholder contract applies to all four stages.
+The stage-specific template links below show beta. The same placeholder contract applies to all four stages. The project policy uses a shared template.
 
 | Skill and template | Placeholder | Effective inputs | Inserted content |
 | --- | --- | --- | --- |
@@ -29,7 +30,7 @@ The stage-template links below show beta. The same placeholder contract applies 
 | [TypeScript](../ai/skills/.maturity-profiles/beta/typescript/SKILL.md) | `verification` | Stage; generated gate selected or retained; rollout from `.typescript-quality.json` | [Installed](../ai/skills/typescript/references/profile-installed.md) or [guidance-only](../ai/skills/typescript/references/profile-uninstalled.md) verification; [strict](../ai/skills/typescript/references/rollout-strict.md) or [ratchet](../ai/skills/typescript/references/rollout-ratchet.md) enforcement when the gate is present. |
 | [Python](../ai/skills/.maturity-profiles/beta/python/SKILL.md) | `verification` | Stage; generated gate selected or retained | [Installed](../ai/skills/python/references/profile-installed.md) strict verification or [guidance-only](../ai/skills/python/references/profile-uninstalled.md) instructions. |
 | [Protobuf](../ai/skills/.maturity-profiles/beta/protobuf/SKILL.md) | `verification` | Stage; generated gate selected or retained | [Installed](../ai/skills/protobuf/references/profile-installed.md) verification or [guidance-only](../ai/skills/protobuf/references/profile-uninstalled.md) instructions. |
-| [Lifecycle](../ai/skills/.maturity-profiles/beta/source-code-lifecycle/SKILL.md) | `project-policy` | Stage; kind; authority; adoption | Selected kind, authority, and adoption fragments, such as [tool](../ai/skills/source-code-lifecycle/references/kind-tool.md), [owned](../ai/skills/source-code-lifecycle/references/authority-owned.md), and [hold](../ai/skills/source-code-lifecycle/references/adoption-hold.md). |
+| [Project policy](../ai/skills/source-code-lifecycle/SKILL.md) | `project-policy` | Kind; authority; adoption | Selected kind, authority, and adoption fragments, such as [tool](../ai/skills/source-code-lifecycle/references/kind-tool.md), [owned](../ai/skills/source-code-lifecycle/references/authority-owned.md), and [hold](../ai/skills/source-code-lifecycle/references/adoption-hold.md). |
 | [Octo](../ai/skills/octo-manager/SKILL.md) | `automation` | Stage; `octo-manager.toml` merging and notification settings; [notification defaults](../ai/skills/octo-manager/assets/notification-defaults.json) | [Enabled](../ai/skills/octo-manager/references/auto-merge-enabled.md) or [disabled](../ai/skills/octo-manager/references/auto-merge-disabled.md) merging, configured notification follow-up, and [evidence/reconciliation rules](../ai/skills/octo-manager/references/automation.md). |
 
 Language selection alone does not enable a generated gate. A guidance-only entrypoint directs the agent to existing repository checks. When a gate is present, its entrypoint states `python3 scripts/check-source-code.py LANGUAGE`; the [stage command plan](../ai/skills/source-code-lifecycle/references/stages.json) determines the underlying runner mode. Stage and Go/TypeScript rollout are independent choices.

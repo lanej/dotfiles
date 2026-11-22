@@ -303,6 +303,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         staged_testing.mkdir()
         git(staged_testing, "init", "--quiet")
         (staged_testing / "source-code.toml").write_text('schema_version = 1\nauthority = "owned"\nadoption = "new"\nmode = "shadow"\nskill_storage = "' + storage + '"\nskills = ' + json.dumps([*maturity_skills, "octo-manager"]) + '\ndetect_languages = false\npr_template = "none"\n')
+        shared_policy = None
         for stage in ("research", "alpha", "beta", "production", "research"):
             command = [str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(staged_testing), "--stage", stage]
             if stage == "alpha":
@@ -321,13 +322,17 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
                 assert installed.is_symlink() == (storage == "linked" and not configured)
                 if storage == "linked" and not configured:
                     assert installed.resolve() == selected
-                if configured and name != "source-code-lifecycle":
+                if configured:
                     assert "python3 scripts/check-source-code.py " + name not in guide, (name, guide)
                     assert not list((installed / "references").glob("profile*.md"))
                     assert not list((installed / "references").glob("rollout*.md"))
-                elif name == "source-code-lifecycle":
-                    assert "Authority: owned" in guide and "Tool adoption: new" in guide, guide
                 assert (installed / "references").is_dir()
+            policy = rendered_skill(staged_testing, "source-code-lifecycle")
+            assert "Authority: owned" in policy and "Tool adoption: new" in policy, policy
+            if shared_policy is None:
+                shared_policy = policy
+            assert policy == shared_policy, "stage change altered the installed project policy"
+            assert not (staged_testing / ".agents/skills/source-code-lifecycle/references/lifecycle.md").exists()
             octo_refs = staged_testing / ".agents/skills/octo-manager/references"
             expected_merge = "enabled" if stage in {"research", "alpha"} else "disabled"
             guide = rendered_skill(staged_testing, "octo-manager")
@@ -992,10 +997,12 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     saved_router = router.read_bytes()
     owned_install(project, "--stage", "research")
     assert authored.read_text() == authored_text and router.read_bytes() == saved_router
-    assert "Lifecycle stage: **research**" in generated_guide.read_text()
+    assert json.loads((project / ".source-code.json").read_text())["stage"] == "research"
+    saved_guide = generated_guide.read_bytes()
     owned_install(project, "--stage", "beta")
     assert authored.read_text() == authored_text and router.read_bytes() == saved_router
-    assert "Lifecycle stage: **beta**" in generated_guide.read_text()
+    assert json.loads((project / ".source-code.json").read_text())["stage"] == "beta"
+    assert generated_guide.read_bytes() == saved_guide
     run([str(cli), "validate", "--repo", str(project), "--strict"])
     # The default Git package must resolve its references without an optional writer skill.
     run(["python3", str(VALIDATOR), str(project / ".agents/skills/git")])
