@@ -151,7 +151,7 @@ const roles = (provider: string, prefix: string) => ({
   },
   [AgentRole.Explorer]: {
     provider,
-    model: `${prefix}gpt-6.1-terra`,
+    model: `${prefix}gpt-6.1-sol`,
     reasoning: ReasoningLevel.Low,
   },
 });
