@@ -1,5 +1,6 @@
 import {
   type ExtensionAPI,
+  type Theme,
   getLanguageFromPath,
   highlightCode,
 } from "@earendil-works/pi-coding-agent";
@@ -10,9 +11,12 @@ const MAX_HIGHLIGHT_BYTES = 50_000;
 const commandArgs = z.object({ command: z.string() });
 const shellCallArgs = commandArgs.extend({ timeout: z.number().optional() });
 
-function simpleCommand(input: string): string[] {
+type ShellWord = { raw: string; start: number };
+
+function simpleCommand(input: string): ShellWord[] {
   const command = input.trim();
-  const words: string[] = [];
+  const leading = input.length - input.trimStart().length;
+  const words: ShellWord[] = [];
   let end = 0;
   for (const token of command.matchAll(
     /'[^'\r\n]*'|"[^"\r\n]*"|[^\s'"|&;<>`$\\()]+/gu,
@@ -21,12 +25,31 @@ function simpleCommand(input: string): string[] {
     if (words.length > 0 && !/^[ \t]+$/u.test(gap)) return [];
     if (words.length === 0 && token.index !== 0) return [];
     const raw = token[0];
-    words.push(
-      raw.startsWith("'") || raw.startsWith('"') ? raw.slice(1, -1) : raw,
-    );
+    words.push({ raw, start: leading + token.index });
     end = token.index + raw.length;
   }
   return end === command.length ? words : [];
+}
+
+function highlightShellCommand(command: string, theme: Theme): string {
+  const bash = (text: string) => highlightCode(text, "bash").join("\n");
+  const [executable, ...args] = simpleCommand(command);
+  if (executable === undefined || !/^[\w./-]+$/u.test(executable.raw))
+    return bash(command);
+
+  let rendered =
+    command.slice(0, executable.start) +
+    theme.fg("syntaxFunction", theme.bold(executable.raw));
+  let end = executable.start + executable.raw.length;
+  for (const { raw, start } of args) {
+    if (raw === "--") break;
+    const flag = /^--?[A-Za-z][\w-]*(?==|$)/u.exec(raw)?.[0];
+    if (flag === undefined) continue;
+    rendered +=
+      bash(command.slice(end, start)) + theme.fg("syntaxKeyword", flag);
+    end = start + flag.length;
+  }
+  return rendered + bash(command.slice(end));
 }
 
 type Highlighter = (text: string, language: string) => string[];
@@ -44,7 +67,11 @@ export function highlightSearchOutput(
     return output;
   const parsed = commandArgs.safeParse(args);
   const words =
-    tool === "bash" && parsed.success ? simpleCommand(parsed.data.command) : [];
+    tool === "bash" && parsed.success
+      ? simpleCommand(parsed.data.command).map(({ raw }) =>
+          raw.startsWith("'") || raw.startsWith('"') ? raw.slice(1, -1) : raw,
+        )
+      : [];
   const [command, option, script, file] = words;
 
   // The native shell renderer owns the truncation footer and exit-status text.
@@ -151,7 +178,7 @@ export function registerSearchRendering(pi: ExtensionAPI): void {
               )
                 return component;
               const prompt = theme.fg("toolTitle", theme.bold("$"));
-              const syntax = highlightCode(command, "bash").join("\n");
+              const syntax = highlightShellCommand(command, theme);
               const suffix =
                 timeout !== undefined && timeout !== 0
                   ? theme.fg("muted", ` (timeout ${timeout.toString()}s)`)

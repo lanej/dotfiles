@@ -460,9 +460,12 @@ def main():
                     terminal.action("write-chars", "--pane-id", f"terminal_{launcher_pane}", f"HL_FIXTURE_{name}\r")
                     def highlighted_output():
                         ansi = terminal.action("dump-screen", "--full", "--ansi", "--pane-id", f"terminal_{launcher_pane}")
-                        if name == "SED" and not any(
-                            "sed -n" in line and "1,3p" in line and
-                            re.search(r"\x1b\[[0-9;]*m", line[line.index("sed -n"):line.index("1,3p")])
+                        executable, argument = ("sed", "1,3p") if name == "SED" else ("rg", "--with-filename")
+                        style = r"\x1b\[[0-9;]*m"
+                        if not any(
+                            executable in line and " -n " in re.sub(style, "", line) and argument in line and
+                            re.search(style, line[line.index(executable):line.index("-n")]) and
+                            re.search(style, line[line.index("-n"):line.index(argument)])
                             for line in ansi.splitlines()
                         ):
                             return None
