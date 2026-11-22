@@ -233,7 +233,7 @@ export class LspClient {
       throw new Error("Server does not support document synchronization");
     const version = (previous?.version ?? 0) + 1;
     this.documents.set(uri, { text, version });
-    this.diagnostics.clear();
+    this.diagnostics.delete(uri);
     if (previous === undefined) {
       await this.connection.sendNotification(
         DidOpenTextDocumentNotification.type,
@@ -308,7 +308,7 @@ export class LspClient {
         )
           throw error;
         this.documents.delete(uri);
-        this.diagnostics.clear();
+        this.diagnostics.delete(uri);
         await this.connection.sendNotification(
           DidCloseTextDocumentNotification.type,
           { textDocument: { uri } },

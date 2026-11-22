@@ -42,6 +42,22 @@ await test("LSP synchronizes edits, rejects stale diagnostics, cancels requests 
     const fixed = await client.getDiagnostics(path);
     assert.equal(fixed?.version, 2);
     assert.deepEqual(fixed.items, []);
+    const unrelated = join(root, "unrelated.ts");
+    await writeFile(unrelated, "unrelated");
+    await client.sync(unrelated);
+    const retained = await client.getDiagnostics(path, 20);
+    assert.deepEqual(
+      retained?.items,
+      [],
+      "opening another file must preserve diagnostics for an unchanged document",
+    );
+    await rm(unrelated);
+    await client.refresh();
+    assert.deepEqual(
+      (await client.getDiagnostics(path, 20))?.items,
+      [],
+      "closing a deleted file must preserve unrelated diagnostics",
+    );
     await writeFile(path, "SILENT");
     await client.sync(path);
     assert.equal(
