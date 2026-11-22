@@ -11,3 +11,5 @@ Set `PI_DRIVER_ACCEPTANCE_OUTPUT` to a task-owned directory to retain each run i
 `npm run generate:zellij` regenerates the TypeScript bindings from the runtime installer’s Zellij revision. `npm run check:zellij` checks for drift. Set `ZELLIJ_PROTO_CHECKOUT` to a local Zellij Git checkout containing that revision to run either command without fetching schemas.
 
 The lead case drafts an optional child graph, opens the terminal diff viewer, and waits for the operator’s approval before creating child beads. Local verification of the lead retains the parent’s in-progress state. Set `PI_DRIVER_ACCEPTANCE_CASE=lead-plan` to run this case independently.
+
+Set `PI_DRIVER_ACCEPTANCE_CASE=socrates` to exercise specification freeze, approval, verification and reopening the original lead. The case then uses a controlled Octo CLI receipt to exercise the native inbox, close the Beads task, prune the checkout, and verify the archived transcript. Octo’s own acceptance suite covers its real CLI and coordinator with a controlled GitHub provider.

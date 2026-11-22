@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
+import { taskWaves } from "./smart-plan-graph.ts";
 
 export enum LeadMode {
   Planning = "planning",
@@ -19,32 +20,46 @@ export const draftSchema = z
           description: z.string().trim().min(1).max(2000),
           acceptance: z.string().trim().min(1).max(2000),
           blockedBy: z.array(taskKey).max(12).default([]),
+          requirements: z
+            .array(z.string().regex(/^R[1-9]\d*$/u))
+            .max(20)
+            .default([]),
+          owns: z
+            .array(
+              z
+                .string()
+                .trim()
+                .min(1)
+                .max(1024)
+                .refine(
+                  (path) =>
+                    path
+                      .split("/")
+                      .every(
+                        (part) =>
+                          part !== "" &&
+                          part !== ".." &&
+                          part !== "." &&
+                          part !== ".git",
+                      ) && !/[\\*?\p{Cc}]/u.test(path),
+                  "Use normalized worktree-relative paths",
+                ),
+            )
+            .max(20)
+            .default([]),
         }),
       )
       .max(12),
   })
   .superRefine((draft, ctx) => {
-    const known = new Set<string>();
-    for (const [index, task] of draft.tasks.entries()) {
-      if (known.has(task.key)) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["tasks", index, "key"],
-          message: "Task keys must be unique",
-        });
-      }
-      if (
-        new Set(task.blockedBy).size !== task.blockedBy.length ||
-        task.blockedBy.some((key) => !known.has(key) || key === task.key)
-      ) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["tasks", index, "blockedBy"],
-          message:
-            "Name each blocker once and list it before the dependent task",
-        });
-      }
-      known.add(task.key);
+    try {
+      taskWaves(draft.tasks);
+    } catch (error) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["tasks"],
+        message: error instanceof Error ? error.message : String(error),
+      });
     }
     if (
       1 +
@@ -69,11 +84,13 @@ export const leadPlanSchema = z.discriminatedUnion("mode", [
     mode: z.literal(LeadMode.Applying),
     draft: draftSchema,
     digest: z.string(),
+    specificationVersion: z.number().int().positive().optional(),
   }),
   z.strictObject({
     mode: z.literal(LeadMode.Implementing),
     draft: draftSchema,
     digest: z.string(),
+    specificationVersion: z.number().int().positive().optional(),
     children: z.record(taskKey, z.string().min(1)),
   }),
 ]);
@@ -82,19 +99,38 @@ export function planDigest(draft: LeadDraft): string {
   return createHash("sha256").update(JSON.stringify(draft)).digest("hex");
 }
 
+// Wave grouping adapts Smart Plan's src/render.ts at 3e51e33acd63a7743391e21598042438746aafa0.
+export function orderedTasks(draft: LeadDraft): LeadDraft["tasks"] {
+  const waves = taskWaves(draft.tasks);
+  return [...draft.tasks].sort(
+    (left, right) => (waves.get(left.key) ?? 0) - (waves.get(right.key) ?? 0),
+  );
+}
+
 export function describePlan(draft: LeadDraft): string {
+  const waves = taskWaves(draft.tasks);
+  let displayedWave = 0;
   return [
     draft.summary,
-    ...draft.tasks.map((task) =>
-      [
+    ...orderedTasks(draft).flatMap((task) => {
+      const wave = waves.get(task.key) ?? 0;
+      const heading =
+        wave === displayedWave ? [] : ["", `Wave ${String(wave)}`];
+      displayedWave = wave;
+      return [
+        ...heading,
         "",
-        `${task.key} · ${task.title}`,
+        `├─ ${task.key} · ${task.title}`,
         task.description,
         `Acceptance · ${task.acceptance}`,
+        ...(task.requirements.length > 0
+          ? [`Requirements · ${task.requirements.join(", ")}`]
+          : []),
+        ...(task.owns.length > 0 ? [`Owns · ${task.owns.join(", ")}`] : []),
         ...(task.blockedBy.length > 0
           ? [`Blocked by · ${task.blockedBy.join(", ")}`]
           : []),
-      ].join("\n"),
-    ),
+      ];
+    }),
   ].join("\n");
 }

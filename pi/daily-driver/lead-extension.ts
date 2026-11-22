@@ -7,6 +7,7 @@ import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { Type } from "typebox";
 import { z } from "zod";
 import type { Attempts, Attempt } from "./attempts.ts";
+import { readDeliveryInbox } from "./delivery.ts";
 import { delegateTool } from "./delegation.ts";
 import {
   describePlan,
@@ -14,6 +15,9 @@ import {
   LeadMode,
   planDigest,
 } from "./lead-plan.ts";
+import { SpecStatus } from "./lead-spec.ts";
+import { registerSocrates, specTool } from "./socrates-controls.ts";
+import { reviewPlan, showTask } from "./ui.ts";
 import { BeadChanged, owner, TaskBeads } from "./task-service.ts";
 
 const planTool = "draft_implementation_plan";
@@ -66,9 +70,17 @@ export function registerLeadControls(
   approvalPending: (active: boolean) => void,
 ) {
   const mode = () => db.get(id).leadPlan?.mode;
-  const permits = (tool: string) =>
-    inspectTools.has(tool) ||
-    (mode() === LeadMode.Implementing && implementationTools.has(tool));
+  registerSocrates(pi, db, id, requireBinding, approvalPending);
+  const permits = (tool: string) => {
+    const spec = db.get(id).specification;
+    if (tool === specTool) return spec?.status === SpecStatus.Interrogating;
+    if (tool === planTool && spec?.status === SpecStatus.Interrogating)
+      return false;
+    return (
+      inspectTools.has(tool) ||
+      (mode() === LeadMode.Implementing && implementationTools.has(tool))
+    );
+  };
   const applyTools = (ctx: ExtensionContext) => {
     pi.setActiveTools(
       pi
@@ -147,6 +159,8 @@ export function registerLeadControls(
           description: Type.String(),
           acceptance: Type.String(),
           blockedBy: Type.Optional(Type.Array(Type.String())),
+          requirements: Type.Optional(Type.Array(Type.String())),
+          owns: Type.Optional(Type.Array(Type.String())),
         }),
       ),
     }),
@@ -156,6 +170,44 @@ export function registerLeadControls(
       db.change(id, (row) => {
         if (row.leadPlan?.mode !== LeadMode.Planning)
           throw new Error("This session is not drafting a plan");
+        const specification = row.specification;
+        if (specification !== undefined) {
+          if (
+            specification.status !== SpecStatus.Frozen ||
+            specification.draft === null ||
+            specification.acceptedRevision !== row.revision
+          )
+            throw new Error(
+              "Freeze the specification against the current Beads revision first",
+            );
+          const known = new Set(
+            specification.draft.requirements.map(
+              (requirement) => requirement.id,
+            ),
+          );
+          if (
+            draft.tasks.some(
+              (task) =>
+                task.requirements.length === 0 ||
+                task.requirements.some(
+                  (requirement) => !known.has(requirement),
+                ),
+            )
+          )
+            throw new Error(
+              "Every child task must link to a frozen requirement",
+            );
+          const covered = new Set(
+            draft.tasks.flatMap((task) => task.requirements),
+          );
+          if (
+            draft.tasks.length > 0 &&
+            [...known].some((requirement) => !covered.has(requirement))
+          )
+            throw new Error(
+              "Every frozen requirement must be covered by the task breakdown",
+            );
+        }
         row.leadPlan = { mode: LeadMode.Planning, draft };
       });
       return {
@@ -167,6 +219,23 @@ export function registerLeadControls(
         ],
         details: {},
       };
+    },
+  });
+  pi.registerCommand("octo-inbox", {
+    description: "Inspect durable Octo review notices for this lead",
+    async handler(_argument, ctx) {
+      if (!ctx.isIdle()) throw new Error("Wait for the lead turn to settle");
+      const record = await requireBinding(ctx);
+      if (record.delivery === undefined) {
+        ctx.ui.notify("This lead has no Octo publication yet", "info");
+        return;
+      }
+      approvalPending(true);
+      try {
+        await showTask(ctx, await readDeliveryInbox(db, record));
+      } finally {
+        approvalPending(false);
+      }
     },
   });
   pi.registerCommand("plan", {
@@ -196,6 +265,16 @@ export function registerLeadControls(
       )
         throw new Error("This lead no longer owns the task");
       db.change(id, (row) => {
+        if (row.specification !== undefined) {
+          row.specHistory = [...(row.specHistory ?? []), row.specification];
+          row.specification = {
+            ...row.specification,
+            status: SpecStatus.Interrogating,
+            version: row.specification.version + 1,
+            acceptedRevision: current.revision,
+            approvalAt: undefined,
+          };
+        }
         row.bead = current;
         row.revision = current.revision;
         row.leadPlan = { mode: LeadMode.Planning, draft: null };
@@ -219,13 +298,25 @@ export function registerLeadControls(
         return;
       }
       const draft = plan.draft;
+      const specification = record.specification;
+      if (
+        specification !== undefined &&
+        (specification.status !== SpecStatus.Frozen ||
+          specification.acceptedRevision !== revision)
+      )
+        throw new Error(
+          "The Socrates specification is not frozen against the current Beads revision",
+        );
       const digest = planDigest(draft);
+      const specificationVersion = specification?.version;
       approvalPending(true);
       try {
         if (
-          !(await ctx.ui.confirm(
+          !(await reviewPlan(
+            ctx,
             `Approve the plan for ${record.bead.id}`,
             describePlan(draft),
+            "start implementation",
           ))
         )
           return;
@@ -235,10 +326,16 @@ export function registerLeadControls(
             row.leadPlan?.mode !== LeadMode.Planning ||
             row.leadPlan.draft === null ||
             planDigest(row.leadPlan.draft) !== digest ||
-            row.revision !== revision
+            row.revision !== revision ||
+            JSON.stringify(row.specification) !== JSON.stringify(specification)
           )
             throw new Error("The displayed plan or task revision changed");
-          row.leadPlan = { mode: LeadMode.Applying, draft, digest };
+          row.leadPlan = {
+            mode: LeadMode.Applying,
+            draft,
+            digest,
+            specificationVersion,
+          };
         });
         let result: Awaited<ReturnType<TaskBeads["applyPlan"]>>;
         try {
@@ -271,6 +368,7 @@ export function registerLeadControls(
             mode: LeadMode.Implementing,
             draft,
             digest,
+            specificationVersion,
             children: result.children,
           };
         });

@@ -1,5 +1,6 @@
+import { readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type {
   ExtensionAPI,
   ExtensionContext,
@@ -7,6 +8,7 @@ import type {
 import { getSelectListTheme } from "@earendil-works/pi-coding-agent";
 import { Input, matchesKey, SelectList, Text } from "@earendil-works/pi-tui";
 import { z } from "zod";
+import { Attempts, stateDirectory } from "./attempts.ts";
 import { loadConfig } from "./config.ts";
 import { processFailure } from "./process.ts";
 import { NavigationKey } from "./runtime.ts";
@@ -103,7 +105,7 @@ async function pick(
 
 export function registerArchives(pi: ExtensionAPI): void {
   pi.registerCommand("archives", {
-    description: "Browse retained Session Snap transcripts",
+    description: "Browse archived Pi and Session Snap transcripts",
     async handler(argument, ctx) {
       if (!ctx.hasUI) throw new Error("Archive browsing requires the Pi TUI");
       const config = await loadConfig();
@@ -115,20 +117,57 @@ export function registerArchives(pi: ExtensionAPI): void {
       let query = argument;
       try {
         for (;;) {
-          const db = new DatabaseSync(path, { readOnly: true });
-          let rows: z.infer<typeof entry>[];
-          try {
-            rows = z
-              .array(entry)
-              .parse(
-                db
-                  .prepare(
-                    "SELECT id, substr(name, 1, 256) AS name, substr(cwd, 1, 1024) AS cwd, substr(first_message, 1, 1024) AS first_message FROM sessions ORDER BY archived_at DESC, id LIMIT 1000",
-                  )
-                  .all(),
+          const managed = new Map<string, string>();
+          const rows: z.infer<typeof entry>[] = [];
+          const database = join(stateDirectory(), "attempts.sqlite");
+          if (
+            (await stat(database).catch((error: unknown) => {
+              if (processFailure(error).code === "ENOENT") return undefined;
+              throw error;
+            })) !== undefined
+          ) {
+            const driver = new Attempts(stateDirectory(), true);
+            try {
+              for (const attempt of driver.archives()) {
+                if (attempt.archiveManifest === undefined) continue;
+                const id = `managed:${attempt.id}`;
+                managed.set(
+                  id,
+                  join(dirname(attempt.archiveManifest), `${attempt.id}.jsonl`),
+                );
+                rows.push({
+                  id,
+                  name: attempt.bead.title,
+                  cwd: attempt.checkout?.path ?? null,
+                  first_message: attempt.bead.description,
+                });
+              }
+            } finally {
+              driver.close();
+            }
+          }
+          if (
+            (await stat(path).catch((error: unknown) => {
+              if (processFailure(error).code === "ENOENT") return undefined;
+              throw error;
+            })) !== undefined
+          ) {
+            const db = new DatabaseSync(path, { readOnly: true });
+            try {
+              rows.push(
+                ...z
+                  .array(entry)
+                  .parse(
+                    db
+                      .prepare(
+                        "SELECT id, substr(name, 1, 256) AS name, substr(cwd, 1, 1024) AS cwd, substr(first_message, 1, 1024) AS first_message FROM sessions ORDER BY archived_at DESC, id LIMIT 1000",
+                      )
+                      .all(),
+                  ),
               );
-          } finally {
-            db.close();
+            } finally {
+              db.close();
+            }
           }
           if (rows.length === 0) {
             ctx.ui.notify("No archived sessions", "info");
@@ -138,24 +177,31 @@ export function registerArchives(pi: ExtensionAPI): void {
           if (selected === undefined) return;
           query = selected.query;
           try {
-            const archive = new DatabaseSync(path, { readOnly: true });
-            let raw: Uint8Array;
-            try {
-              raw = z
-                .object({ jsonl_gzip: z.instanceof(Uint8Array) })
-                .parse(
-                  archive
-                    .prepare(
-                      "SELECT jsonl_gzip FROM session_data WHERE session_id = ? AND length(jsonl_gzip) <= 4194304",
-                    )
-                    .get(selected.id),
-                ).jsonl_gzip;
-            } finally {
-              archive.close();
+            const file = managed.get(selected.id);
+            let transcript: string;
+            if (file !== undefined) {
+              if ((await stat(file)).size > 4 * 1024 * 1024)
+                throw new Error("Archive exceeds preview size");
+              transcript = await readFile(file, "utf8");
+            } else {
+              const archive = new DatabaseSync(path, { readOnly: true });
+              try {
+                const raw = z
+                  .object({ jsonl_gzip: z.instanceof(Uint8Array) })
+                  .parse(
+                    archive
+                      .prepare(
+                        "SELECT jsonl_gzip FROM session_data WHERE session_id = ? AND length(jsonl_gzip) <= 4194304",
+                      )
+                      .get(selected.id),
+                  ).jsonl_gzip;
+                transcript = gunzipSync(raw, {
+                  maxOutputLength: 4 * 1024 * 1024,
+                }).toString("utf8");
+              } finally {
+                archive.close();
+              }
             }
-            const transcript = gunzipSync(raw, {
-              maxOutputLength: 4 * 1024 * 1024,
-            }).toString("utf8");
             const lines: string[] = [];
             for (const line of transcript.split("\n")) {
               if (line.length === 0) continue;

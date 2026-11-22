@@ -8,6 +8,7 @@ import { z } from "zod";
 import { Attempts, Phase, stateDirectory, type Attempt } from "./attempts.ts";
 import dailyDriver from "./extension.ts";
 import { registerLeadControls } from "./lead-extension.ts";
+import { SpecStatus, specText } from "./lead-spec.ts";
 import { LeadMode } from "./lead-plan.ts";
 import { DriverProfile } from "./config.ts";
 import { processStart } from "./process.ts";
@@ -125,7 +126,8 @@ export default function managedWorker(pi: ExtensionAPI): void {
         row.pid = process.pid;
         row.transcript = ctx.sessionManager.getSessionFile() ?? null;
         if (first) {
-          row.phase = Phase.Running;
+          row.phase = row.resumePhase ?? Phase.Running;
+          delete row.resumePhase;
           row.message = "Pi is running in the managed worktree";
         }
       });
@@ -134,7 +136,11 @@ export default function managedWorker(pi: ExtensionAPI): void {
         pi.setSessionName(`${record.bead.id} · ${record.bead.title}`);
         applyLeadTools?.(ctx);
       }
-      if (first && event.reason === "startup")
+      if (
+        first &&
+        record.resumePhase === undefined &&
+        event.reason === "startup"
+      )
         pi.sendUserMessage(
           record.leadPlan === undefined
             ? `Work on the accepted bead ${record.bead.id}: ${record.bead.title}`
@@ -167,6 +173,13 @@ export default function managedWorker(pi: ExtensionAPI): void {
           acceptance_criteria: bead.acceptance_criteria,
           verifier: current.check,
         }) +
+        (current.specification === undefined
+          ? ""
+          : "\nSocrates plan workflow. Establish evidence and decisions, leave unanswered blocking questions open, and separate readiness from execution authority.\n" +
+            specText(current.specification)) +
+        (current.specification?.status === SpecStatus.Interrogating
+          ? "\nDraft the Socrates specification first. Wait for operator freeze before drafting tasks."
+          : "") +
         (current.leadPlan?.mode === LeadMode.Planning
           ? "\nPlanning mode. Use read-only tools and save a proposed plan with draft_implementation_plan. Wait for operator approval before implementing."
           : "\nUse task_submit_result to submit the outcome. The driver runs the operator's agreed check and records the result."),

@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
 import type { DriverConfig } from "./config.ts";
-import type { LeadDraft } from "./lead-plan.ts";
+import { orderedTasks, type LeadDraft } from "./lead-plan.ts";
 
 export const beadSchema = z.looseObject({
   id: z.string().min(1),
@@ -242,7 +242,7 @@ export class TaskBeads extends BeadsHttp {
         },
       },
     ];
-    for (const task of draft.tasks) {
+    for (const task of orderedTasks(draft)) {
       items.push(
         {
           kind: "create",

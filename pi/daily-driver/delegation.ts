@@ -108,6 +108,21 @@ function existing(): Attempt[] {
   }
 }
 
+export function settledDelegates(
+  parent: string,
+): { id: string; path: string }[] {
+  const attempts = existing().filter((attempt) => attempt.parent === parent);
+  if (attempts.some(unresolved))
+    throw new Error(
+      "Resolve the lead's outstanding delegation before archiving",
+    );
+  return attempts.flatMap((attempt) =>
+    attempt.sessionFile === undefined
+      ? []
+      : [{ id: attempt.id, path: attempt.sessionFile }],
+  );
+}
+
 const commit = z.string().regex(/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/);
 const createEnvelope = z.object({
   schema_version: z.literal(1),

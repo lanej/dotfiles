@@ -203,3 +203,68 @@ export async function showTask(
     };
   });
 }
+
+// Wave details use the existing themed terminal surface. The action stays
+// reachable at narrow widths after scrolling through the exact approval text.
+export async function reviewPlan(
+  ctx: ExtensionContext,
+  heading: string,
+  details: string,
+  action: string,
+): Promise<boolean> {
+  return ctx.ui.custom<boolean>((tui, theme, _keys, done) => {
+    const text = new Text(details.replace(/[^\P{Cc}\n\t]/gu, " "), 0, 0);
+    let offset = 0;
+    let maximum = 0;
+    return {
+      invalidate() {
+        text.invalidate();
+      },
+      render(width) {
+        const lines = text.render(width);
+        const height = Math.max(3, tui.terminal.rows - 7);
+        maximum = Math.max(0, lines.length - height);
+        offset = Math.min(offset, maximum);
+        return [
+          truncateToWidth(theme.fg("accent", heading), width),
+          ...lines.slice(offset, offset + height),
+          truncateToWidth(
+            theme.fg(
+              "dim",
+              offset < maximum
+                ? "↓ More · Esc cancel"
+                : `Enter ${action} · Esc cancel`,
+            ),
+            width,
+          ),
+        ];
+      },
+      handleInput(input) {
+        if (
+          matchesKey(input, NavigationKey.Escape) ||
+          matchesKey(input, NavigationKey.Cancel)
+        )
+          done(false);
+        else if (matchesKey(input, NavigationKey.Enter)) {
+          if (offset === maximum) done(true);
+          else
+            offset = Math.min(
+              maximum,
+              offset + Math.max(1, tui.terminal.rows - 8),
+            );
+        } else if (
+          matchesKey(input, NavigationKey.Down) ||
+          matchesKey(input, NavigationKey.VimDown)
+        ) {
+          offset = Math.min(maximum, offset + 1);
+        } else if (
+          matchesKey(input, NavigationKey.Up) ||
+          matchesKey(input, NavigationKey.VimUp)
+        ) {
+          offset = Math.max(0, offset - 1);
+        }
+        tui.requestRender();
+      },
+    };
+  });
+}

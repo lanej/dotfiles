@@ -1,6 +1,6 @@
 # Pi daily-driver runtime plan
 
-This is the implementation sequence beyond the [foundation](README.md). The driver supports opt-in read-only delegation in native managed worktrees and browsing existing archives. Local Beads admission and interactive Zellij launch use the revision-guarded Beads HTTP service. Lead plan approval, Pi-owned Octo delivery, and automatic archival build on that launch path. The target is one usable local coding workflow before expanding fleet and remote interfaces.
+This is the implementation sequence beyond the [foundation](README.md). The driver supports opt-in read-only delegation in native managed worktrees and browsing existing archives. Local Beads admission and interactive Zellij launch use the revision-guarded Beads HTTP service. Lead plan approval, Pi-owned Octo delivery, and operator-triggered archival use that launch path. The target is one usable local coding workflow before expanding fleet and remote interfaces.
 
 The current [task contract](https://github.com/lanej/dotfiles/issues/353) keeps task identity, accepted briefs, hierarchy and dependencies in Beads. The Pi integration owns execution attempts and native sessions; Octo owns GitHub operations and their receipts. A task can exist without a GitHub issue or PR. This follows the live [parent design](https://github.com/lanej/dotfiles/issues/349) and [Octo boundary](https://github.com/lanej/dotfiles/issues/356).
 
@@ -23,7 +23,7 @@ An isolated Pi 1.4.0 session loaded `@tintinweb/pi-subagents@0.26.2` alongside t
 
 The driver loads the pinned plugin’s child runner without registering its standalone launch tools, workflows, schedules or mention handlers. The preparation script supplies an exact tool list and private session directory to that runner. Each child executes in the path returned by the native worktree manager. The lead awaits the tool result, so Pi’s pending tool turn and the private attempt record both protect against compaction. The standalone plugin’s event bus is not needed for this path.
 
-The archive picker reads Session Snap’s SQLite format through a read-only connection and previews retained JSONL locally. The borrowed format and picker design are credited in [LICENSE.session-snap](LICENSE.session-snap). Automatic archive creation still depends on completion and cleanup receipts.
+The archive picker previews finalized lead transcripts and reads Session Snap’s SQLite format through a read-only connection. The borrowed format and picker design are credited in [LICENSE.session-snap](LICENSE.session-snap). Finalization is invoked by the operator after an Octo-confirmed merge.
 
 ## Lead and delegated roles
 
@@ -65,7 +65,7 @@ The first increment covers read-only delegation and worktree integration. The ta
 
 The latest published Beads release is [1.3.4](https://github.com/gastownhall/beads/releases/tag/v1.3.4). The [native capability probe](acceptance/beads-control.ts) demonstrates atomic claim and owner/status checks but permits an old attempt to change a task after its description changes. A read-then-write check or runtime-only lock does not supply the missing per-task fence. Evaluate a released native primitive or an explicitly reviewed alternative against the real database before enabling task-bound mutation; do not silently introduce another task authority.
 
-Octo already uses Pi for bounded internal workers, but that is separate from registering a user's Pi session as a PR owner. Its inspected [tracking validator](https://github.com/lanej/octo-manager/blob/5bd5d49de497cd1808dee9dbce0fb5c6856d862e/src/tracking/service.ts) accepts Codex targets, and its [publication tracking path](https://github.com/lanej/octo-manager/blob/5bd5d49de497cd1808dee9dbce0fb5c6856d862e/src/publication/cli.ts) rejects non-Codex tracking. Publication without tracking is available; Pi feedback ownership and delivery still require an Octo implementation. Do not label a Pi session as Codex to bypass that gap.
+The Pi lead enrolls the PR as a local Pi session target in Octo. Octo retains review and Ready notices in its pull inbox. The lead exposes `/octo-inbox`, explicit exact-head owner assessment, and a one-shot merge command tied to the current Ready notice for its own PR.
 
 Register one responsible delivery binding containing the Beads task/revisions, lead attempt, native Pi session, repository/PR and source head. Persist incoming event identity and delivery intent before acknowledging Octo. Reconcile duplicate, edited, stale and uncertain inputs before delivering through the sole native session writer. GitHub feedback does not authorize broader work or merge. An offline lead leaves input pending; it does not authorize a replacement worker. Tasks without GitHub obligations continue with Octo stopped.
 
@@ -80,7 +80,7 @@ For a task with a PR delivery obligation, confirm that PR's merge through Octo a
 
 The manager's normal minimum commit age is 24 hours. Immediate cleanup after merge needs the narrowly scoped `--accept-recent` policy; keep the other safety checks. Test squash/rebase integration through the manager's `--integrated` behavior, including a base that advances afterward. A merge receipt does not justify `--force`, discarding local work or bypassing manager protection.
 
-Pi 1.4.0's public [session interface](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/sessions.md) provides persistent JSONL, resume and export, without an archive operation. For automatic archival, retain a private manifest and runtime lifecycle record with verified transcript preservation, and define presentation in the harness session browser. Do not delete native history to emulate archiving. Preserve evidence before pruning even though the final archived state is recorded afterward. This distinguishes recoverability from the user's visible completion order: merged PR, removed worktree, archived session.
+Pi 1.4.0's public [session interface](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/sessions.md) provides persistent JSONL, resume and export, without an archive operation. Finalization retains a private recovery manifest and copies native transcripts before pruning. The harness records the archived state after confirming removal and exposes the retained lead transcript in its session browser. This distinguishes recoverability from the user's visible completion order: merged PR, removed worktree, archived session.
 
 ## Acceptance path
 

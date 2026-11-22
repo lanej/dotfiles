@@ -31,13 +31,25 @@ class Provider(BaseHTTPRequestHandler):
         content = "ACK_" + (token.group(0) if token else "ACCEPTED_CONTEXT")
         tool = request["messages"][-1]["role"] == "user" and "SUBMIT_WITH_TOOL_accepted" in str(message)
         planning = request["messages"][-1]["role"] == "user" and str(message).startswith("Draft a plan for ")
-        if planning:
+        spec = request["messages"][-1]["role"] == "user" and str(message).startswith("Begin Socrates discovery")
+        planning = planning or (request["messages"][-1]["role"] == "user" and str(message).startswith("The operator froze"))
+        if spec:
+            delta = {"role": "assistant", "tool_calls": [{"index": 0, "id": "fixture-spec",
+                     "type": "function", "function": {"name": "draft_socrates_specification",
+                     "arguments": json.dumps({
+                         "objective": "Verify the native lead handoff",
+                         "scope": ["Disposable Beads checkout"],
+                         "requirements": [{"id": "R1", "outcome": "Preserve approval evidence", "acceptance": "Verify the Beads graph"}],
+                         "decisions": [{"decision": "Use the fixture verifier", "basis": "observed", "evidence": "Beads acceptance criteria"}],
+                         "blockingQuestions": [],
+                     })}}]}
+        elif planning:
             names = {item["function"]["name"] for item in request["tools"]}
             assert "draft_implementation_plan" in names and not names.intersection({"write", "edit", "bash"}), names
             tasks = [
-                {"key": "inspect", "title": "Inspect requirements", "description": "Read fixture", "acceptance": "Find marker"},
+                {"key": "inspect", "title": "Inspect requirements", "description": "Read fixture", "acceptance": "Find marker", "requirements": ["R1"], "owns": ["README.md"]},
                 {"key": "verify", "title": "Verify result", "description": "Run fixture check",
-                 "acceptance": "Fixture passes", "blockedBy": ["inspect"]},
+                 "acceptance": "Fixture passes", "blockedBy": ["inspect"], "requirements": ["R1"]},
             ]
             delta = {"role": "assistant", "tool_calls": [{"index": 0, "id": "fixture-draft-plan",
                      "type": "function", "function": {"name": "draft_implementation_plan",
@@ -54,7 +66,7 @@ class Provider(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Connection", "close")
         self.end_headers()
-        for delta, finish in ((delta, None), ({}, "tool_calls" if tool or planning else "stop")):
+        for delta, finish in ((delta, None), ({}, "tool_calls" if tool or planning or spec else "stop")):
             self.wfile.write(("data: " + json.dumps({
                 "id": "fixture-completion", "object": "chat.completion.chunk", "created": 1,
                 "model": "gpt-6.1-sol", "choices": [{"index": 0, "delta": delta, "finish_reason": finish}],
@@ -197,7 +209,7 @@ def main():
         launcher_pane = shell[0]["id"]
         tab_id = next(p["tab_id"] for p in json.loads(
             terminal.action("list-panes", "--all", "--json")) if p["id"] == launcher_pane)
-        scenarios = ("accepted", "failed-check", "changed-brief", "lead-plan")
+        scenarios = ("accepted", "failed-check", "changed-brief", "lead-plan", "socrates")
         selected = fixture.get("scenario")
         assert selected is None or selected in scenarios, selected
         for scenario in scenarios if selected is None else (selected,):
@@ -211,7 +223,7 @@ def main():
             verifier = ["/bin/sh", "-c", "printf 'native-check-evidence\\n'; exit " +
                         ("7" if scenario == "failed-check" else "0")]
             placement = ["--tab-id", str(tab_id)] if scenario == "accepted" else []
-            worker_flag = [] if scenario == "lead-plan" else ["--worker"]
+            worker_flag = [] if scenario in ("lead-plan", "socrates") else ["--worker"]
             start_command = shlex.join([driver, "start", bead, "--profile", "personal", *worker_flag,
                                         *placement, "--", *verifier])
             command = f"cd {shlex.quote(str(repository))} && {start_command}; printf '%s' $? > {shlex.quote(str(exit_file))}"
@@ -229,13 +241,24 @@ def main():
             allocations.append(before["attempt"]["checkout"])
             pane = before["attempt"]["pane"]
             assert pane != launcher_pane, before
-            if scenario != "lead-plan":
+            if scenario not in ("lead-plan", "socrates"):
                 terminal.until("interactive Pi startup", lambda: "ctrl+c" in pane_text(pane).lower())
-            if scenario == "lead-plan":
+            if scenario in ("lead-plan", "socrates"):
                 terminal.until("read-only lead drafts plan", lambda:
                                fresh(bead)["attempt"].get("leadPlan", {}).get("draft") is not None)
                 assert "pi.plan" not in fresh(bead)["task"]["metadata"], fresh(bead)
                 terminal.action("focus-pane-id", f"terminal_{pane}")
+                if scenario == "socrates":
+                    terminal.action("write-chars", "--pane-id", f"terminal_{pane}", "/socrates\r")
+                    terminal.until("Socrates draft saved", lambda:
+                                   fresh(bead)["attempt"].get("specification", {}).get("draft") is not None)
+                    assert "pi.plan" not in fresh(bead)["task"]["metadata"]
+                    terminal.action("write-chars", "--pane-id", f"terminal_{pane}", "/spec-freeze\r")
+                    terminal.until("specification review opens", lambda: "Freeze specification for " + bead in pane_text(pane))
+                    terminal.action("write-chars", "--pane-id", f"terminal_{pane}", "\r")
+                    terminal.until("frozen specification has a plan", lambda:
+                                   fresh(bead)["attempt"]["specification"]["status"] == "frozen" and
+                                   fresh(bead)["attempt"]["leadPlan"]["draft"] is not None)
                 terminal.action("write-chars", "--pane-id", f"terminal_{pane}", "/diff\r")
                 terminal.until("review extension renders", lambda: "Git diff" in pane_text(pane))
                 terminal.action("write", "--pane-id", f"terminal_{pane}", "27")
@@ -243,6 +266,12 @@ def main():
                                terminal.action("dump-screen", "--pane-id", f"terminal_{pane}"))
                 terminal.action("write-chars", "--pane-id", f"terminal_{pane}", "/plan-approve\r")
                 terminal.until("operator approval prompt", lambda: "Approve the plan for " + bead in pane_text(pane))
+                for _ in range(8):
+                    if "Enter start implementation" in terminal.action("dump-screen", "--pane-id", f"terminal_{pane}"):
+                        break
+                    terminal.action("write-chars", "--pane-id", f"terminal_{pane}", "\r")
+                else:
+                    raise AssertionError(pane_text(pane))
                 terminal.action("write-chars", "--pane-id", f"terminal_{pane}", "\r")
                 terminal.until("approved task breakdown persisted", lambda:
                                fresh(bead)["attempt"]["leadPlan"]["mode"] == "implementing")
@@ -273,6 +302,97 @@ def main():
                 assert verified["attempt"]["verification"]["exitCode"] == 0, verified
                 terminal.action("write", "--pane-id", f"terminal_{pane}", "4")
                 terminal.until("lead Pi exit", lambda: all(p["id"] != pane or p["exited"] for p in terminal.terminals()))
+                if scenario == "socrates":
+                    original = fresh(bead)["attempt"]
+                    resume_exit = work / "socrates-resume.exit"
+                    resume_command = shlex.join([driver, "resume", bead])
+                    terminal.action("focus-pane-id", f"terminal_{launcher_pane}")
+                    terminal.action("write-chars", "--pane-id", f"terminal_{launcher_pane}",
+                                    f"{resume_command}; printf '%s' $? > {shlex.quote(str(resume_exit))}\r")
+                    terminal.until("resume returns", resume_exit.exists)
+                    assert resume_exit.read_text() == "0", pane_text(launcher_pane)
+                    reopened = fresh(bead)["attempt"]
+                    for key in ("id", "checkout", "transcript", "phase", "specification", "leadPlan"):
+                        assert reopened[key] == original[key], reopened
+                    assert reopened["pid"] != original["pid"] and reopened["live"], reopened
+                    pane = reopened["pane"]
+
+                    # Exercise transport at the Octo CLI boundary. Octo's real CLI runs its own
+                    # coordinator/receipt acceptance against a controlled GitHub provider.
+                    checkout = reopened["checkout"]
+                    head = reopened["verification"]["gitHead"]
+                    receipt_id = "00000000-0000-4000-8000-000000000171"
+                    url = "https://github.com/fixture/repo/pull/1"
+                    reference = work / "origin.git"
+                    execute(["git", "init", "--bare", str(reference)])
+                    execute(["git", "remote", "add", "origin", str(reference)])
+                    execute(["git", "push", "origin", "main"])
+                    description = work / "description.md"
+                    description.write_text("Deliver the fixture.\n")
+                    binding = {
+                        "id": "fixture-submission", "state": "published",
+                        "tracking": "active", "url": url,
+                    }
+                    octo = guard / "octo-manager"
+                    octo.write_text(
+                        "#!/usr/bin/env python3\nimport json, sys\n"
+                        "args=sys.argv[1:]\n"
+                        "answers=" + repr({
+                            ("submit-pr",): binding,
+                            ("submission",): binding,
+                            ("agent", "register"): {
+                                "agent": {"id": "fixture-agent", "harness": "pi",
+                                          "endpoint": "local", "sessionId": reopened["id"]},
+                            },
+                            ("pr", "show"): {
+                                "pr": {"id": "fixture-pr", "url": url, "ownerAgentId": "fixture-agent",
+                                       "observation": {"headSha": head, "lifecycle": "merged",
+                                                       "targetBase": {"ref": "main"}}},
+                            },
+                            ("agent", "inbox"): {
+                                "messages": [{"id": receipt_id, "recipientAgentId": "fixture-agent",
+                                              "workflowPrId": "fixture-pr", "actionId": "",
+                                              "applicable": True, "body": "Fixture ready", "readyHead": head}],
+                                "nextSequence": 1, "hasMore": False,
+                            },
+                            ("acknowledge-message",): {"message": receipt_id, "applicable": True},
+                            ("merge",): {"state": "merged", "pr": url, "entry": "fixture-entry", "chain": "fixture-chain"},
+                            ("chain", "show"): {"entries": [{
+                                "id": "fixture-entry", "chainId": "fixture-chain", "prId": "fixture-pr",
+                                "state": "merged", "mergeCommit": head, "ready": {"head": head},
+                                "receiptId": f"pi-inbox:{receipt_id}:{head}",
+                            }]},
+                        }) + "\n"
+                        "if args[0] in ('submit-pr', 'merge'):\n"
+                        " assert args[args.index('--expected-head')+1] == " + repr(head) + "\n"
+                        "print(json.dumps(answers.get(tuple(args[:2])) or answers[(args[0],)]))\n"
+                    )
+                    octo.chmod(0o755)
+                    execute([driver, "publish", bead, "--title", "feat: deliver fixture",
+                             "--body-file", str(description), "--base", "main"])
+                    terminal.action("focus-pane-id", f"terminal_{pane}")
+                    terminal.action("write-chars", "--pane-id", f"terminal_{pane}", "/octo-inbox\r")
+                    terminal.until("Octo notice reaches native Pi inbox", lambda: "Fixture ready" in pane_text(pane))
+                    terminal.action("write", "--pane-id", f"terminal_{pane}", "27")
+                    terminal.until("Octo inbox closes", lambda: "Fixture ready" not in
+                                   terminal.action("dump-screen", "--pane-id", f"terminal_{pane}"))
+                    terminal.action("write", "--pane-id", f"terminal_{pane}", "4")
+                    terminal.until("resumed Pi exits", lambda: all(p["id"] != pane or p["exited"] for p in terminal.terminals()))
+                    execute([driver, "merge", bead, "--head", head, "--notice", receipt_id])
+                    pending = execute([driver, "archive", bead], check=False)
+                    assert pending.returncode != 0 and "Settle child beads" in pending.stderr, pending
+                    assert Path(checkout["path"]).exists() and fresh(bead)["task"]["status"] == "in_progress"
+                    for child in (plan["children"]["inspect"], plan["children"]["verify"]):
+                        execute([fixture["bd"], "--sandbox", "close", child])
+                    archived = json.loads(execute([driver, "archive", bead]).stdout)
+                    assert archived["phase"] == "archived", archived
+                    assert not Path(checkout["path"]).exists(), archived
+                    assert fresh(bead)["task"]["status"] == "closed"
+                    manifest = Path(archived["archiveManifest"])
+                    assert manifest.is_file() and manifest.with_name(reopened["id"] + ".jsonl").is_file()
+                    assert json.loads(execute([driver, "archive", bead]).stdout) == archived
+                    shutil.copytree(manifest.parent, artifacts / "archive")
+                    allocations.remove(checkout)
                 report["cases"].append({"scenario": scenario, "bead": bead, "evidence": fresh(bead)})
                 continue
             if scenario == "accepted":
@@ -366,7 +486,7 @@ def main():
         inventory = execute([manager, "status", "--json"], check=False)
         known = {checkout["task_id"] for checkout in allocations}
         for task in json.loads(inventory.stdout)["result"]["tasks"]:
-            if (task["id"] not in known and Path(task["path"]).resolve().is_relative_to(
+            if (task["id"] not in known and Path(task["path"]).exists() and Path(task["path"]).resolve().is_relative_to(
                     repository.resolve() / ".worktrees")):
                 allocations.append({"task_id": task["id"], "path": task["path"]})
         for checkout in allocations:

@@ -2,7 +2,7 @@ import { getAgentDir, ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { WorktreeManager } from "@lanej/task-runtime/worktrees";
 import { randomUUID } from "node:crypto";
 import { constants } from "node:fs";
-import { access, realpath } from "node:fs/promises";
+import { access, realpath, stat } from "node:fs/promises";
 import { delimiter, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
@@ -18,7 +18,7 @@ import {
   loadConfig,
 } from "./config.ts";
 import { LeadMode } from "./lead-plan.ts";
-import { processStart } from "./process.ts";
+import { processStart, run } from "./process.ts";
 import { ClaimRefused, TaskBeads } from "./task-service.ts";
 import { Zellij } from "./zellij.ts";
 
@@ -79,7 +79,7 @@ async function focus(
   if (
     !record.live ||
     record.checkout === null ||
-    !matchesAttempt(pane?.terminal_command, record.id) ||
+    !matchesAttempt(pane?.terminal_command, record.id, record.transcript) ||
     pane?.pane_cwd == null ||
     (await realpath(pane.pane_cwd)) !==
       (await realpath(record.checkout.path)) ||
@@ -128,10 +128,199 @@ async function assertLeadProfile(
 function matchesAttempt(
   command: string | null | undefined,
   attempt: string,
+  transcript: string | null,
 ): boolean {
   const argv = command?.split(/\s+/u) ?? [];
   const marker = argv.indexOf("--session-id");
-  return marker >= 0 && argv[marker + 1] === attempt;
+  return (
+    (marker >= 0 && argv[marker + 1] === attempt) ||
+    (transcript !== null &&
+      command?.includes(`--session ${transcript} --`) === true)
+  );
+}
+
+async function launchPi(
+  db: Attempts,
+  zellij: Zellij,
+  tab: number,
+  binary: string,
+  record: Attempt,
+): Promise<Attempt> {
+  const { id: attempt, checkout, model } = record;
+  const id = record.bead.id;
+  const lead = record.leadPlan !== undefined;
+  if (checkout === null) throw new Error("Missing managed checkout");
+  const environment = [
+    `PI_DRIVER_STATE_DIR=${db.directory}`,
+    `PI_DRIVER_ATTEMPT=${attempt}`,
+  ];
+  for (const key of ["PI_CODING_AGENT_DIR", "PI_DRIVER_CONFIG", "PATH"]) {
+    const value = process.env[key];
+    if (value !== undefined) environment.push(`${key}=${value}`);
+  }
+  const args = [
+    ...environment,
+    binary,
+    ...(record.resumePhase === undefined || record.transcript === null
+      ? ["--session-id", attempt]
+      : ["--session", record.transcript]),
+    ...(lead
+      ? [
+          "--no-extensions",
+          "--no-mcp",
+          "--extension",
+          fileURLToPath(import.meta.resolve("pi-git-diff")),
+        ]
+      : []),
+    "--extension",
+    extension,
+    "--provider",
+    model.provider,
+    "--model",
+    model.model,
+    "--thinking",
+    model.reasoning,
+  ];
+  let pane: number;
+  try {
+    pane = await zellij.launch(tab, id, checkout.path, args);
+  } catch (error) {
+    // The socket can disconnect after accepting a launch. Recover the existing
+    // pane by attempt identity and never send another launch for this attempt.
+    const candidates = await zellij.panes().catch(() => []);
+    const matching = candidates.filter(
+      (candidate) =>
+        candidate.tab_id === tab &&
+        !candidate.is_plugin &&
+        !candidate.exited &&
+        matchesAttempt(candidate.terminal_command, attempt, record.transcript),
+    );
+    const [recovered] = matching;
+    if (matching.length !== 1 || recovered === undefined) throw error;
+    pane = recovered.id;
+  }
+  const deadline = Date.now() + 15000;
+  do {
+    const observed = db.get(attempt);
+    if (observed.phase === Phase.Reconcile) throw new Error(observed.message);
+    if (observed.pid !== null) {
+      if (observed.pane !== pane)
+        throw new Error("Pi registered a different Zellij pane");
+      return observed;
+    }
+    await delay(100);
+  } while (Date.now() < deadline);
+  throw new Error(
+    "Native Pi registration is pending. Inspect the attempt before retrying",
+  );
+}
+
+export function processIsGone(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return false;
+  } catch (error) {
+    if (z.object({ code: z.literal("ESRCH") }).safeParse(error).success)
+      return true;
+    throw error;
+  }
+}
+
+export async function resumeLead(
+  bead: string,
+  targetTab?: number,
+): Promise<Attempt> {
+  const config = await loadConfig();
+  if (config.beadsService === undefined)
+    throw new Error("Configure the Beads service before resuming");
+  const db = new Attempts(stateDirectory());
+  try {
+    const record = db.latest(config.beadsService.projectId, bead);
+    if (
+      record === null ||
+      record.leadPlan === undefined ||
+      record.checkout === null ||
+      record.revision === null ||
+      record.transcript === null ||
+      record.pid === null ||
+      (record.phase !== Phase.Running &&
+        record.phase !== Phase.Verified &&
+        record.phase !== Phase.CheckFailed)
+    )
+      throw new Error("No settled, resumable lead attempt is recorded");
+    const session = z
+      .string()
+      .min(1, "Resume from a live Zellij session")
+      .parse(process.env["ZELLIJ_SESSION_NAME"]);
+    const zellij = new Zellij(session);
+    const service = new TaskBeads(record.source);
+    if (!processIsGone(record.pid)) {
+      return await focus(
+        record,
+        zellij,
+        service,
+        record.reservation.primary,
+        record.profile,
+        record.check,
+      );
+    }
+    const checkout = record.checkout;
+    if (
+      (
+        await run("git", ["rev-parse", "--show-toplevel"], {
+          cwd: checkout.path,
+        })
+      ).trim() !== (await realpath(checkout.path)) ||
+      (
+        await run("git", ["branch", "--show-current"], { cwd: checkout.path })
+      ).trim() !== checkout.branch ||
+      !(await stat(record.transcript)).isFile()
+    )
+      throw new Error(
+        "The managed checkout or Pi transcript no longer matches the attempt",
+      );
+    await new WorktreeManager().requireAllocation(checkout);
+    if (record.leadPlan.mode === LeadMode.Applying)
+      throw new Error("The plan batch needs reconciliation before resuming");
+    await service.requireCurrent(record.bead, record.revision, record.id);
+    await assertLeadProfile(config, record.profile);
+    const [binary, tab] = await Promise.all([
+      piExecutable(),
+      zellij.launchTab(targetTab),
+    ]);
+    const previousPid = record.pid;
+    const phase = record.phase;
+    const pending = db.change(record.id, (row) => {
+      if (
+        row.pid !== previousPid ||
+        row.phase !== phase ||
+        row.revision !== record.revision ||
+        !processIsGone(previousPid)
+      )
+        throw new Error("The lead changed before resume admission");
+      row.resumePhase = phase;
+      row.phase = Phase.Launching;
+      row.session = session;
+      row.zellijSocket = zellij.identity;
+      row.live = false;
+      row.pid = null;
+      row.pane = null;
+      row.message = "Waiting for the existing Pi transcript to reopen";
+    });
+    try {
+      return await launchPi(db, zellij, tab, binary, pending);
+    } catch (error) {
+      db.change(record.id, (row) => {
+        if (row.pid !== null) return;
+        row.phase = Phase.Reconcile;
+        row.message =
+          "Resume outcome uncertain. Inspect the Pi pane and transcript before retrying";
+      });
+      throw error;
+    }
+  } finally {
+    db.close();
+  }
 }
 
 export async function startTask(
@@ -244,69 +433,7 @@ export async function startTask(
         row.message = "Waiting for native Pi to register";
       });
       await service.requireCurrent(bead, revision, attempt);
-      const environment = [
-        `PI_DRIVER_STATE_DIR=${db.directory}`,
-        `PI_DRIVER_ATTEMPT=${attempt}`,
-      ];
-      for (const key of ["PI_CODING_AGENT_DIR", "PI_DRIVER_CONFIG", "PATH"]) {
-        const value = process.env[key];
-        if (value !== undefined) environment.push(`${key}=${value}`);
-      }
-      const args = [
-        ...environment,
-        binary,
-        "--session-id",
-        attempt,
-        ...(lead
-          ? [
-              "--no-extensions",
-              "--no-mcp",
-              "--extension",
-              fileURLToPath(import.meta.resolve("pi-git-diff")),
-            ]
-          : []),
-        "--extension",
-        extension,
-        "--provider",
-        model.provider,
-        "--model",
-        model.model,
-        "--thinking",
-        model.reasoning,
-      ];
-      let pane: number;
-      try {
-        pane = await zellij.launch(tab, id, checkout.path, args);
-      } catch (error) {
-        // The socket can disconnect after accepting a launch. Recover the existing
-        // pane by attempt identity and never send another launch for this attempt.
-        const candidates = await zellij.panes().catch(() => []);
-        const matching = candidates.filter(
-          (candidate) =>
-            candidate.tab_id === tab &&
-            !candidate.is_plugin &&
-            !candidate.exited &&
-            matchesAttempt(candidate.terminal_command, attempt),
-        );
-        const [recovered] = matching;
-        if (matching.length !== 1 || recovered === undefined) throw error;
-        pane = recovered.id;
-      }
-      const deadline = Date.now() + 15000;
-      do {
-        const observed = db.get(attempt);
-        if (observed.phase === Phase.Reconcile)
-          throw new Error(observed.message);
-        if (observed.pid !== null) {
-          if (observed.pane !== pane)
-            throw new Error("Pi registered a different Zellij pane");
-          return observed;
-        }
-        await delay(100);
-      } while (Date.now() < deadline);
-      throw new Error(
-        "Native Pi registration is pending. Inspect the attempt before retrying",
-      );
+      return await launchPi(db, zellij, tab, binary, db.get(attempt));
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : String(cause);
       // A read immediately after a transport failure can outrun the original claim.
