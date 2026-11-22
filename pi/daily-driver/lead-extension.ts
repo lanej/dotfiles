@@ -19,7 +19,7 @@ import {
   planDigest,
 } from "./lead-plan.ts";
 import { SpecStatus } from "./lead-spec.ts";
-import { registerSocrates, specTool } from "./socrates-controls.ts";
+import { askTool, registerSocrates, specTool } from "./socrates-controls.ts";
 import { reviewPlan, showTask } from "./ui.ts";
 import { BeadChanged, owner, TaskBeads } from "./task-service.ts";
 
@@ -76,7 +76,12 @@ export function registerLeadControls(
   registerSocrates(pi, db, id, requireBinding, approvalPending);
   const permits = (tool: string) => {
     const spec = db.get(id).specification;
-    if (tool === specTool) return spec?.status === SpecStatus.Interrogating;
+    if (tool === specTool || tool === askTool) {
+      return (
+        mode() === LeadMode.Planning &&
+        spec?.status === SpecStatus.Interrogating
+      );
+    }
     if (tool === planTool && spec?.status === SpecStatus.Interrogating)
       return false;
     return (
@@ -307,6 +312,7 @@ export function registerLeadControls(
             version: row.specification.version + 1,
             acceptedRevision: current.revision,
             approvalAt: undefined,
+            exchange: undefined,
           };
         }
         row.bead = current;
@@ -322,6 +328,12 @@ export function registerLeadControls(
           "The refreshed brief requires plan approval and verification";
       });
       applyTools(ctx);
+      if (record.specification !== undefined) {
+        pi.sendUserMessage(
+          "Reassess Socrates discovery against the refreshed Beads brief. Revisit only decisions the revised brief affects.",
+        );
+        return;
+      }
       ctx.ui.notify(
         "Current Beads brief loaded. Draft and approve a new plan before editing.",
         "info",

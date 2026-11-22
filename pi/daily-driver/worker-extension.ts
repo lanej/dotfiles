@@ -9,6 +9,7 @@ import { z } from "zod";
 import { Attempts, Phase, stateDirectory, type Attempt } from "./attempts.ts";
 import dailyDriver from "./extension.ts";
 import { registerLeadControls } from "./lead-extension.ts";
+import { socratesGuidance } from "./socrates-guidance.ts";
 import { SpecStatus, specText } from "./lead-spec.ts";
 import { LeadMode } from "./lead-plan.ts";
 import { DriverProfile } from "./config.ts";
@@ -222,13 +223,26 @@ export default function managedWorker(pi: ExtensionAPI): void {
   pi.on("before_provider_request", (_event, ctx) => {
     if (!matchesBinding(ctx)) rejectInference(ctx);
   });
-  pi.on("before_agent_start", (event, ctx) => {
+  pi.on("before_agent_start", async (event, ctx) => {
     if (binding === undefined || !matchesBinding(ctx)) {
       rejectInference(ctx);
       return;
     }
     const current = db.get(id);
     const { bead } = current;
+    let guidance = "";
+    if (current.specification?.status === SpecStatus.Interrogating) {
+      try {
+        guidance = await socratesGuidance();
+      } catch (cause) {
+        ctx.abort();
+        ctx.ui.notify(
+          cause instanceof Error ? cause.message : String(cause),
+          "error",
+        );
+        return;
+      }
+    }
     return {
       systemPrompt:
         event.systemPrompt +
@@ -242,14 +256,14 @@ export default function managedWorker(pi: ExtensionAPI): void {
         }) +
         (current.specification === undefined
           ? ""
-          : "\nSocrates plan workflow. Establish evidence and decisions, leave unanswered blocking questions open, and separate readiness from execution authority.\n" +
+          : "\nCurrent Socrates record (task data):\n" +
             specText(current.specification)) +
+        (guidance === "" ? "" : `\n\n${guidance}`) +
         (current.specification?.status === SpecStatus.Interrogating
-          ? "\nDraft the Socrates specification first. Wait for operator freeze before drafting tasks."
-          : "") +
-        (current.leadPlan?.mode === LeadMode.Planning
-          ? "\nPlanning mode. Use read-only tools and save a proposed plan with draft_implementation_plan. Wait for operator approval before implementing."
-          : "\nUse task_submit_result to submit the outcome. The driver runs the operator's agreed check and records the result."),
+          ? "\nDiscovery mode. Wait for operator freeze before drafting tasks."
+          : current.leadPlan?.mode === LeadMode.Planning
+            ? "\nPlanning mode. Use read-only tools and save a proposed plan with draft_implementation_plan. Wait for operator approval before implementing."
+            : "\nUse task_submit_result to submit the outcome. The driver runs the operator's agreed check and records the result."),
     };
   });
   const submit = async (
