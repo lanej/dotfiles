@@ -316,17 +316,26 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
                 configured = name in module.SKILL_TEMPLATE_BLOCKS
                 if configured:
                     guide = rendered_skill(staged_testing, name)
-                    assert f"# {name}: {stage}" in guide, (name, stage, guide)
+                    assert f"# {name}: {stage}" in guide.lower(), (name, stage, guide)
                 else:
                     assert (installed / "SKILL.md").read_bytes() == (selected / "SKILL.md").read_bytes()
                 assert installed.is_symlink() == (storage == "linked" and not configured)
                 if storage == "linked" and not configured:
                     assert installed.resolve() == selected
-                if configured:
+                if name in {"go", "typescript", "python", "protobuf"}:
                     assert "python3 scripts/check-source-code.py " + name not in guide, (name, guide)
                     assert not list((installed / "references").glob("profile*.md"))
                     assert not list((installed / "references").glob("rollout*.md"))
                 assert (installed / "references").is_dir()
+            for name, fragment, topic, target in (
+                ("code-comments", "common.md", "Comment when it materially reduces", "standard.md"),
+                ("testing", "principles.md", "Failures must explain what went wrong", "verification-lessons.md"),
+            ):
+                skill = staged_testing / ".agents/skills" / name
+                guide = rendered_skill(staged_testing, name)
+                assert topic in guide and f"(references/{target})" in guide, guide
+                assert (skill / "references" / target).is_file()
+                assert not (skill / "references" / fragment).exists()
             policy = rendered_skill(staged_testing, "source-code-lifecycle")
             assert "Authority: owned" in policy and "Tool adoption: new" in policy, policy
             if shared_policy is None:
@@ -343,6 +352,24 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
             assert not list(octo_refs.glob("auto-merge*.md"))
             assert not (octo_refs / "notification-instructions.md").exists()
             assert not (octo_refs / "automation.md").exists()
+            run([str(cli), "validate", "--repo", str(staged_testing), "--strict"])
+        if storage == "linked":
+            # Previous linked installs have whole-directory links for these two skills.
+            manifest = staged_testing / ".agents/repo-bootstrap.json"
+            state = json.loads(manifest.read_text())
+            for name in ("code-comments", "testing"):
+                relative = f".agents/skills/{name}"
+                skill = staged_testing / relative
+                shutil.rmtree(skill)
+                origin = source / "ai/skills/.maturity-profiles/research" / name
+                skill.symlink_to(origin, target_is_directory=True)
+                state["files"] = {path: entry for path, entry in state["files"].items() if not path.startswith(relative + "/")}
+                state["files"][relative] = {"kind": "link", "target": str(origin)}
+            manifest.write_text(json.dumps(state))
+            run([str(cli), "upgrade", "--repo", str(staged_testing)])
+            for name in ("code-comments", "testing"):
+                assert not (staged_testing / ".agents/skills" / name).is_symlink()
+                rendered_skill(staged_testing, name)
             run([str(cli), "validate", "--repo", str(staged_testing), "--strict"])
         # Missing declared markers and unregistered templates fail before project writes.
         for name in ("go", "rust"):

@@ -226,7 +226,12 @@ MATURITY_SKILLS = (
     "python",
     "protobuf",
 )
+SHARED_GUIDANCE = {
+    "code-comments": "common.md",
+    "testing": "principles.md",
+}
 SKILL_TEMPLATE_BLOCKS = {
+    **dict.fromkeys(SHARED_GUIDANCE, ("shared-guidance",)),
     "source-code-lifecycle": ("project-policy",),
     "go": ("verification",),
     "typescript": ("verification",),
@@ -1199,6 +1204,11 @@ def configure_skill_packages(
             files.pop(destination, None)
             payloads.pop(destination, None)
 
+    for skill, fragment in SHARED_GUIDANCE.items():
+        if skill in resolved["skills"]:
+            render(skill, {"shared-guidance": reference(skill, fragment)})
+            omit(skill, [fragment])
+
     if "source-code-lifecycle" in resolved["skills"]:
         skill = "source-code-lifecycle"
         refs = source / skill / "references"
@@ -1895,7 +1905,11 @@ def storage_migration(root: Path, state: Manifest, storage: str, desired: Mappin
     changing_storage = storage != state.get("skill_storage", "copied")
     names = recorded_skill_names(state)
     if not changing_storage:
-        names &= RENAMED_SKILLS.keys()
+        names &= RENAMED_SKILLS.keys() | {
+            name
+            for name in SHARED_GUIDANCE
+            if f".agents/skills/{name}" in state["files"] and f".agents/skills/{name}/SKILL.md" in desired
+        }
     removals: set[str] = set()
     for name in names:
         relative = f".agents/skills/{name}"

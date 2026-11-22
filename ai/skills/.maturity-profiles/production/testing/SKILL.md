@@ -11,6 +11,6 @@ Cover consequential supported behavior comprehensively: important happy paths, e
 
 Comprehensive protection does not mean testing every implementation detail or every combination. Consolidate redundant coverage, remove obsolete fixtures deliberately, and keep checks diagnostic and maintainable. A small clear suite can provide more useful protection than a large brittle one. State what automation establishes, what was observed manually, and what remains unverified; a maturity label does not establish reliability.
 
-Read [minimum effective testing](references/principles.md) for test selection, diagnostic assertions, and verification boundaries. This entrypoint is selected by source-code setup for the installed stage. Preserve authored project requirements.
+<!-- source-code:shared-guidance -->
 
 For installed generated language profiles, run `python3 scripts/check-source-code.py LANGUAGE` for the configured gate. Use existing repository commands and the applicable language guidance otherwise. Run affected checks after relevant changes and distinguish local evidence from hosted and external outcomes.

@@ -7,4 +7,6 @@ description: "Use when deciding whether to add a source comment, writing or revi
 
 Maintain supported public contracts, inputs and outputs, consequential interactions, failure outcomes, compatibility expectations, and useful examples where they help callers.
 
-Read [shared guidance](references/common.md) for comment usefulness, placement, and format. Apply this entrypoint’s contract depth; the shared standard does not promote the project to another stage. Apply the installed library comment perspective only to library public API work within authored project or task scope. Preserve explicit documentation requirements.
+Apply the library caller perspective to public library APIs within the authored project or task scope.
+
+<!-- source-code:shared-guidance -->
