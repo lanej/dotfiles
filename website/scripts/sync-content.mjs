@@ -46,6 +46,7 @@ const pages = [
   { file: 'docs/go-style.md', slug: 'reference/go-style', title: 'Go style guide' },
   { file: 'docs/typescript-style.md', slug: 'reference/typescript-style', title: 'TypeScript style guide' },
   { file: 'docs/repository-bootstrap.md', slug: 'reference/repository-bootstrap', title: 'Repository bootstrap' },
+  { file: 'docs/source-code-skills.md', slug: 'reference/source-code-skills', title: 'Project skill rendering' },
 ];
 const headingId = (text) => text.toLowerCase().replaceAll(' ', '-');
 const radar = await generateRadar();

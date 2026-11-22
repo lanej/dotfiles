@@ -31,6 +31,6 @@ For a review finding, identify the affected behavior, the PHA requirement, and t
 
 - Read [design lessons](references/design-lessons.md) when deciding whether to extend a local idiom, move a computation, or rely on a measured threshold.
 - Read [Unix design principles](references/unix-philosophy.md) when weighing choices about composition, representation, or interface behavior within PHA.
-- Read [tool choices](../source-code-lifecycle/references/tool-choices.md) when selecting libraries, API protocols, or migration scope.
+- Read [tool choices](../source-code-lifecycle/SKILL.md) when selecting libraries, API protocols, or migration scope.
 - Read [data and interface planning](../data-change-planning/SKILL.md) when preparing or reviewing a plan that changes data structures or interfaces. Carry the relevant expectations into delegated planning briefs.
 - Use [Builder](../builder/SKILL.md) for the construction workflow when implementation is requested.
