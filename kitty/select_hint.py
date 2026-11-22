@@ -128,7 +128,7 @@ def pane_text(rows, rect):
         join_next = (bool(last_word) and len(raw) - len(content) <= 4
                      and ("/" in last_word or last_word.endswith(("-", "_", ".")))
                      and not IMAGE_END.search(last_word)
-                     and not POSITION.fullmatch(last_word)
+                     and not POSITION.fullmatch(last_word.removesuffix(":"))
                      and last_word[-1] not in ")]}\"'`,;")
     return "".join(chars), positions
 

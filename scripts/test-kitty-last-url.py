@@ -118,6 +118,11 @@ def check_image_hints(root):
         ("src/main.rs", 42, 7), ("src/a b.rs", 42, 7), ("src/main.rs", 42, None)
     }:
         raise AssertionError(f"Diagnostic or quoted positions were lost: {diagnostic_files}")
+    diagnostic_wrap = Screen(None, 8, 60, 8)
+    parse_bytes(diagnostic_wrap, ("src/main.rs:42:7:".rjust(58) + "\r\n  error: failed\r\n").encode())
+    _, diagnostic_wrap_files = picker.picker_input(picker.capture(diagnostic_wrap), (0, 0, 60, 8), "diagnostic-wrap")
+    if list(diagnostic_wrap_files.values()) != [{"path": "src/main.rs", "line": 42, "column": 7}]:
+        raise AssertionError(f"A wrapped diagnostic joined the error message to the filename: {diagnostic_wrap_files}")
     wrapped = Screen(None, 8, 60, 8)
     parse_bytes(wrapped, ("src/very-long-module-".rjust(58) + "\r\n  name.rs:42:7\r\n" +
                           "screenshots/overview.p".rjust(58) + "\r\n  ng\r\n").encode())
