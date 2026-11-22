@@ -1,0 +1,20 @@
+# Longest matching extension wins, ignoring case. Unmatched files use MIME detection.
+[[routes]]
+extensions = ["rs", "go", "py", "lua", "js", "jsx", "ts", "tsx", "json", "jsonl", "toml", "yaml", "yml", "xml", "html", "css", "scss", "md", "mdx", "txt", "log", "sh", "bash", "zsh", "kdl", "sql", "c", "h", "cpp", "hpp", "java", "kt", "swift", "rb", "ex", "exs", "vim", "conf", "ini", "csv", "tsv"]
+handler = "neovim"
+
+[[routes]]
+extensions = ["png", "jpg", "jpeg", "webp", "gif", "bmp", "tif", "tiff", "avif", "ico", "svg", "heic", "jxl"]
+handler = "image"
+
+[[routes]]
+extensions = ["pdf"]
+handler = "system"
+
+# Custom programs receive separate arguments, never shell commands. Placeholders
+# are {path}, {line}, and {column}; missing positions default to 1.
+# [[routes]]
+# extensions = ["drawio"]
+# handler = "command"
+# command = ["drawio", "{path}"]
+# launch = "background" # or "pane" for an interactive right split

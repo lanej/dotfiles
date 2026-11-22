@@ -79,6 +79,34 @@ def check_image_hints(root):
     if rendered.hyperlink_at(2, 2) != "https://example.org/photo.png":
         raise AssertionError("Web link labels must retain their exact OSC 8 destination")
 
+    references = {
+        "src/main.rs:42:7": {"path": "src/main.rs", "line": 42, "column": 7},
+        "file:///tmp/source%20file.lua#L8C3": {"path": "/tmp/source file.lua", "host": "", "line": 8, "column": 3},
+        "file://localhost/tmp/a.py#L9-L12": {"path": "/tmp/a.py", "host": "localhost", "line": 9},
+        "README": {"path": "README"},
+        ".zshrc": {"path": ".zshrc"},
+        "~/notes.md": {"path": "~/notes.md"},
+        "https://example.org/code.rs:42": None,
+        "file:///tmp/a%0Ab.rs": None,
+    }
+    for reference, expected in references.items():
+        if picker.file_target(reference) != expected:
+            raise AssertionError(f"Wrong file reference: {reference}: {picker.file_target(reference)}")
+    source_files = Screen(None, 8, 80, 8)
+    parse_bytes(source_files, b'src/main.rs:42:7\r\n"docs/design notes.md"\r\nREADME\r\n')
+    _, files = picker.picker_input(picker.capture(source_files), (0, 0, 80, 8), "files")
+    if {entry["path"] for entry in files.values()} != {"src/main.rs", "docs/design notes.md", "README"}:
+        raise AssertionError(f"Missing source file hints: {files}")
+    _, old_files = picker.picker_input(picker.capture(source_files), (0, 0, 80, 8), "old", files=False)
+    if old_files:
+        raise AssertionError("An older image-only receiver was offered source files")
+    wrapped = Screen(None, 8, 60, 8)
+    parse_bytes(wrapped, ("src/very-long-module-".rjust(58) + "\r\n  name.rs:42:7\r\n" +
+                          "screenshots/overview.p".rjust(58) + "\r\n  ng\r\n").encode())
+    _, wrapped_files = picker.picker_input(picker.capture(wrapped), (0, 0, 60, 8), "wrapped")
+    if {entry["path"] for entry in wrapped_files.values()} != {"src/very-long-module-name.rs", "screenshots/overview.png"}:
+        raise AssertionError(f"Wrapped references were split: {wrapped_files}")
+
     source.child = SimpleNamespace(foreground_processes=[{"cmdline": ["zellij"]}])
     source.user_vars = {}
     source.as_text = lambda **kwargs: "Preview ./fixture.png"
@@ -127,6 +155,13 @@ def check_image_hints(root):
             callback(17)
             if removed != [17] or calls[-1][3]["input_data"] != "Preview ./fixture.png":
                 raise AssertionError("Unmanaged sessions lost the original five-second fallback")
+
+    parse_bytes(source.screen, b"\x1b[2J\x1b[Hhttps://example.org/release")
+    sent.clear()
+    calls.clear()
+    picker.handle_result(["select_hint.py"], None, 7, boss)
+    if sent or not calls or calls[-1][1].type != "hyperlink":
+        raise AssertionError("A web-only screen should open native hints without waiting for a receiver")
 
 
 def main():
