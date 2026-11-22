@@ -27,7 +27,7 @@ Existing local task databases without a matching service project pin are refused
 
 ## Generated API contract
 
-`paseo-tasks/api/beads-1.3.4.yaml` is the upstream MIT-licensed [Beads v1.3.4 OpenAPI contract](https://github.com/gastownhall/beads/blob/v1.3.4/internal/httpapi/spec/openapi.v0.yaml). `npm --prefix paseo-tasks run generate:beads` regenerates the TypeScript contract. Generation checks detect drift; do not edit generated types by hand. The upstream REST contract is consumed as published rather than replaced with a custom application API.
+`tools/task-runtime/api/beads-1.3.4.yaml` is the upstream MIT-licensed [Beads v1.3.4 OpenAPI contract](https://github.com/gastownhall/beads/blob/v1.3.4/internal/httpapi/spec/openapi.v0.yaml). `npm --prefix tools/task-runtime run generate:beads` regenerates the TypeScript contract. Generation checks detect drift; do not edit generated types by hand. The upstream REST contract is consumed as published rather than replaced with a custom application API.
 
 Native acceptance creates disposable Dolt and Beads HTTP processes, exercises task creation, independent CLI edits, worker ownership, closed-task refusal and retained feedback, and removes only its own processes and workspace. It never writes to the configured shared service or migrates live tasks. Existing package tests protect delivery, recovery and host routing. Actual Pi/Paseo deployment and remote transport still require host-specific acceptance.
 

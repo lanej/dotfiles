@@ -37,6 +37,7 @@ await withBeadsHttp(bd, dolt, async (fixture, source) => {
           ),
       ),
     ),
+    PI_DRIVER_USE_SOURCE: process.env["PI_DRIVER_USE_SOURCE"],
     HOME: fixture.directory,
     DOLT_ROOT_PATH: join(fixture.directory, "dolt-home"),
     DOLT_CLI_NO_UPDATE_CHECK: "1",

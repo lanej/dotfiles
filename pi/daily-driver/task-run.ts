@@ -3,7 +3,7 @@ import { WorktreeManager } from "@lanej/task-runtime/worktrees";
 import { randomUUID } from "node:crypto";
 import { constants } from "node:fs";
 import { access, realpath, stat } from "node:fs/promises";
-import { delimiter, join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
@@ -22,16 +22,19 @@ import { processFailure, processStart, run } from "./process.ts";
 import { ClaimRefused, TaskBeads } from "./task-service.ts";
 import { Zellij } from "./zellij.ts";
 
-const extension = fileURLToPath(
-  new URL("./worker-extension.ts", import.meta.url),
-);
+// A compiled CLI lives in .aot, while Pi loads its extension from the installed package.
+const modulePath = fileURLToPath(import.meta.url);
+const packageRoot = modulePath.startsWith("/$bunfs/")
+  ? dirname(dirname(process.execPath))
+  : dirname(modulePath);
+const extension = join(packageRoot, "worker-extension.ts");
 async function piExecutable(): Promise<string> {
   const dirs = (process.env["PATH"] ?? "")
     .split(delimiter)
     .filter((dir) => dir.length > 0);
   const candidates = [
     ...dirs.map((dir) => join(dir, "pi")),
-    fileURLToPath(new URL("./node_modules/.bin/pi", import.meta.url)),
+    join(packageRoot, "node_modules", ".bin", "pi"),
   ];
   for (const candidate of candidates) {
     try {
@@ -405,6 +408,7 @@ export async function startTask(
   const attempt = randomUUID();
   const manager = new WorktreeManager();
   const service = new TaskBeads(source);
+  await access(extension, constants.R_OK);
   const [binary, reservation, bead, tab] = await Promise.all([
     piExecutable(),
     manager.prepare(process.cwd(), attempt, `pi/bead-${attempt}`, "HEAD", "pi"),

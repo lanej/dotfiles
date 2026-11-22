@@ -5,7 +5,7 @@ description: Use when designing, changing, or reviewing a user interface in a pr
 
 # Project UI acceptance
 
-This optional source-code capability defines project UI acceptance. Read [source-code lifecycle](../source-code-lifecycle/SKILL.md) for stage, authority, and adoption, and [testing](../testing/SKILL.md) for proportionate protection. Preserve the project's design system, explicit gates, established stack, and shared/upstream agreement. Installing a browser or Viewrule does not select this policy; installing this profile does not authorize unrelated redesign or changing project gates.
+This optional source-code capability defines project UI acceptance. Read [installed project policy](../source-code-lifecycle/SKILL.md) for authority and adoption, and [testing](../testing/SKILL.md) for proportionate protection. Preserve the project's design system, explicit gates, established stack, and shared/upstream agreement. Installing a browser or Viewrule does not select this policy; installing this profile does not authorize unrelated redesign or changing project gates.
 
 Before designing, identify the user's primary decision and the information needed to make it. Inspect applicable project rules and approved references. Reuse existing configuration for a scoped small edit; do not force every UI into a dashboard or invent universal density, spacing, color, or typography thresholds.
 

@@ -1,10 +1,11 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash, randomUUID } from "node:crypto";
-import { chmodSync, mkdirSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { type Beads, beadId, taskContent } from "./beads";
 import {
+  brief,
   type Brief,
   event,
   type IncomingReport,
@@ -17,7 +18,29 @@ import {
   task,
   type Update,
 } from "../shared/contracts";
+export const briefFingerprint = (value: Task): string =>
+  createHash("sha256")
+    .update(JSON.stringify(brief.strip().parse(value)))
+    .digest("hex");
+
+function workerTaskId(db: DatabaseSync, agentId: string): string | undefined {
+  return db
+    .prepare(
+      "SELECT id FROM tasks WHERE json_extract(record,'$.worker.agentId')=?",
+    )
+    .get(agentId)?.id as string | undefined;
+}
+
 export class Store {
+  static hasWorker(file: string, agentId: string): boolean {
+    if (!existsSync(file)) return false;
+    const db = new DatabaseSync(file, { readOnly: true });
+    try {
+      return workerTaskId(db, agentId) !== undefined;
+    } finally {
+      db.close();
+    }
+  }
   readonly db: DatabaseSync;
   private readonly context = new AsyncLocalStorage<boolean>();
   private tail: Promise<unknown> = Promise.resolve();
@@ -162,14 +185,31 @@ export class Store {
       return values.sort((a, b) => b.priority - a.priority);
     });
   }
-  async get(id: string): Promise<Task> {
+  async ids(): Promise<string[]> {
+    return await this.transaction(() =>
+      this.db
+        .prepare("SELECT id FROM tasks")
+        .all()
+        .map((row) => row.id as string),
+    );
+  }
+  async find(id: string): Promise<Task | undefined> {
     return await this.transaction(async () => {
       const row = this.db
         .prepare("SELECT record FROM tasks WHERE id=?")
         .get(id);
-      if (!row) throw new Error(`Unknown task ${id}`);
-      return await this.project(task.parse(JSON.parse(row.record as string)));
+      return row
+        ? await this.project(task.parse(JSON.parse(row.record as string)))
+        : undefined;
     });
+  }
+  async get(id: string): Promise<Task> {
+    const value = await this.find(id);
+    if (!value) throw new Error(`Unknown task ${id}`);
+    return value;
+  }
+  hasWorker(agentId: string): boolean {
+    return workerTaskId(this.db, agentId) !== undefined;
   }
   private async enrolled(id: string): Promise<boolean> {
     return await this.transaction(async () => {
@@ -220,9 +260,8 @@ export class Store {
   }
   async forAgent(agentId: string): Promise<Task | undefined> {
     return await this.transaction(async () => {
-      return (await this.list()).find(
-        (value) => value.worker?.agentId === agentId,
-      );
+      const id = workerTaskId(this.db, agentId);
+      return id === undefined ? undefined : await this.get(id);
     });
   }
   async create(
@@ -492,13 +531,23 @@ export class Store {
     id: string,
     agentId: string,
     patch: Update,
+    evaluatedBrief?: string,
   ): Promise<Task> {
     return await this.transaction(async () => {
       await this.assertOwner(id);
+      const enrolled = await this.enrolled(id);
       return await this.change(id, async (value) => {
         if (value.worker?.agentId !== agentId)
           throw new Error("Worker is not assigned to this task");
         if (value.control === "archived") throw new Error("Task is archived");
+        if (patch.status === "complete" && enrolled) {
+          if (evaluatedBrief !== briefFingerprint(value))
+            throw new Error(
+              "Completion requires the current brief fingerprint from task_context; review the latest brief and verify its success criteria",
+            );
+          if (!patch.evidence?.length)
+            throw new Error("Submit evidence for the brief you evaluated");
+        }
         if (
           patch.status === "complete" &&
           !(patch.evidence?.length || value.evidence.length)

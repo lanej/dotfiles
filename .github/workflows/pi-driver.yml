@@ -62,6 +62,13 @@ jobs:
       - run: npm --prefix pi/daily-driver run test:delegation-native
       - run: npm --prefix pi/daily-driver run test:delegation-native -- --lost-allocation
       - run: npm --prefix pi/daily-driver run test:delegation-native -- --cancel
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: pi/daily-driver/.bun-version
+      - name: Verify the compiled driver entry point
+        run: |
+          npm --prefix pi/daily-driver run build:aot
+          npm --prefix pi/daily-driver test
       - name: Verify admission and completion against the pinned Beads service
         if: runner.os == 'Linux'
         run: |

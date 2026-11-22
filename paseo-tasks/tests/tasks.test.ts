@@ -8,12 +8,14 @@ import type { PaseoApi } from "@getpaseo/client";
 import type {
   AgentToolContext,
   AgentToolDefinition,
+  PluginServerContext,
 } from "@getpaseo/plugin/server";
 import {
   FetchAgentsRequestMessageSchema,
   SendAgentMessageRequestSchema,
   WorkspaceCreateRequestSchema,
 } from "@getpaseo/protocol/messages";
+import contribute from "../index.server";
 import { Feedback, type GitHubPort, type Observation } from "../server/github";
 import { completedPiTurn } from "../server/pi-session";
 import { MaintenanceQueue, PRMaintenance } from "../server/pr-maintenance";
@@ -315,6 +317,110 @@ async function create(
   await tool(managerTools(f.service), "task_create", input);
   return await f.store.get(input.requestId);
 }
+await test("Paseo hooks isolate ordinary conversations and retry task startup", async (t) => {
+  const f = fixture();
+  const keys = [
+    "PASEO_HOME",
+    "PASEO_TASKS_STATE",
+    "PASEO_TASKS_BEADS_URL",
+    "PASEO_TASKS_BEADS_PROJECT_ID",
+    "PASEO_TASKS_BEADS_DIR",
+    "PASEO_TASKS_BEADS_AUTHORITY",
+    "PASEO_TASKS_BEADS_SSH_HOST",
+  ];
+  const saved = new Map(keys.map((key) => [key, process.env[key]]));
+  for (const key of keys) delete process.env[key];
+  process.env.PASEO_HOME = f.directory;
+  process.env.PASEO_TASKS_STATE = f.directory;
+  let close: (() => Promise<void>) | undefined;
+  try {
+    const value = await f.store.create(specified);
+    await f.store.bind(
+      value.taskId,
+      "retained-worker",
+      "workspace",
+      "/retained",
+    );
+    const hooks = new Map<string, (input: unknown) => Promise<unknown>>();
+    close = contribute({
+      handle: () => {},
+      addHook: hooks.set.bind(hooks),
+    } as unknown as PluginServerContext);
+    const beforeOpen = hooks.get("agent.open.before")!;
+    const beforeTurn = hooks.get("agent.turn.before")!;
+    const failure = /PASEO_TASKS_BEADS_PROJECT_ID/;
+    const ordinary = {
+      agentId: "ordinary-conversation",
+      labels: {},
+      purpose: "interactive",
+    };
+    assert.equal(await beforeOpen({ request: ordinary }), ordinary);
+    await assert.rejects(
+      () => beforeTurn({ agent: { id: "retained-worker" } }),
+      failure,
+    );
+    assert.equal(
+      await beforeTurn({ agent: { id: ordinary.agentId } }),
+      undefined,
+    );
+    assert.equal(await beforeOpen({ request: ordinary }), ordinary);
+    process.env.PASEO_TASKS_BEADS_URL = "http://127.0.0.1:1";
+    process.env.PASEO_TASKS_BEADS_PROJECT_ID = randomUUID();
+    t.mock.method(globalThis, "fetch", async () =>
+      Response.json({ code: "startup_unavailable" }, { status: 503 }),
+    );
+    await assert.rejects(
+      () => beforeTurn({ agent: { id: "retained-worker" } }),
+      /Beads HTTP 503: startup_unavailable/,
+    );
+    assert.equal(await beforeOpen({ request: ordinary }), ordinary);
+  } finally {
+    await close?.();
+    for (const [key, value] of saved)
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    f.cleanup();
+  }
+});
+await test("identical concurrent create and adoption requests converge on one task each", async () => {
+  const f = fixture();
+  try {
+    const input = createInput.parse({
+      serverId: f.store.serverId,
+      brief: specified,
+      requestId: randomUUID(),
+      start: false,
+    });
+    const created = await Promise.all([
+      f.service.create(input),
+      f.service.create(input),
+    ]);
+    assert.deepEqual(
+      created.map((value) => value.taskId),
+      [input.requestId, input.requestId],
+    );
+    const agent = f.paseo.createAgent(
+      { title: "Ordinary Pi conversation" },
+      "existing-workspace",
+      "/retained",
+    );
+    const adoption = { ...input, requestId: randomUUID(), agentId: agent.id };
+    const adopted = await Promise.all([
+      f.service.adopt(adoption),
+      f.service.adopt(adoption),
+    ]);
+    assert.deepEqual(
+      adopted.map((value) => value.worker?.agentId),
+      [agent.id, agent.id],
+    );
+    assert.deepEqual(
+      new Set(await f.store.ids()),
+      new Set([input.requestId, adoption.requestId]),
+    );
+  } finally {
+    f.cleanup();
+  }
+});
 async function coordinated(
   f: ReturnType<typeof fixture>,
   coordinator?: ConversationAddress,

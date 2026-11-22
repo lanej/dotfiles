@@ -294,6 +294,10 @@ export default function dailyDriver(
   pi.registerCommand("driver-profile", {
     description: "Explicitly select the work or personal lead model",
     handler: async (argument, ctx) => {
+      if (process.env["PI_DRIVER_ATTEMPT"] !== undefined) {
+        ctx.ui.notify("Set the profile on pi-driver start.", "warning");
+        return;
+      }
       if (!ctx.isIdle() || ctx.hasPendingMessages()) {
         ctx.ui.notify(
           "Wait for the conversation and queued messages to settle before changing profiles",
@@ -365,11 +369,16 @@ export default function dailyDriver(
         leadSelection.model,
       );
       if (lead === undefined) return;
-      if (await pi.setModel(lead)) {
-        pi.setThinkingLevel(leadSelection.reasoning);
-        selectedProfile = name;
-        delegation.activate();
+      if (!(await pi.setModel(lead))) {
+        ctx.ui.notify(
+          `Cannot switch to ${name}. Authenticate with ${leadSelection.provider} and retry. The current model is still active.`,
+          "error",
+        );
+        return;
       }
+      pi.setThinkingLevel(leadSelection.reasoning);
+      selectedProfile = name;
+      delegation.activate();
     },
   });
 

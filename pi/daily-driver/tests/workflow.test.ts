@@ -173,11 +173,22 @@ await test("CLI reads the explicitly configured source and dispatch never alloca
       BEADS_DOLT_SERVER_PORT: "1",
     };
     const driver = (...args: string[]) =>
-      execute(
-        process.execPath,
-        ["--import", "tsx", join(root, "cli.ts"), ...args],
-        { cwd: root, env, timeout: 10_000 },
-      );
+      execute(join(root, "../../bin/pi-driver"), args, {
+        cwd: workspace,
+        env,
+        timeout: 10_000,
+      });
+    const compiledConfig = await driver("config", "--example");
+    const sourceConfig = await execute(
+      join(root, "../../bin/pi-driver"),
+      ["config", "--example"],
+      {
+        cwd: workspace,
+        env: { ...env, PI_DRIVER_USE_SOURCE: "1" },
+        timeout: 10_000,
+      },
+    );
+    assert.equal(compiledConfig.stdout, sourceConfig.stdout);
     const listing = z
       .object({ workspace: z.string(), tasks: z.array(taskSchema) })
       .parse(JSON.parse((await driver("tasks", "--json")).stdout));

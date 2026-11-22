@@ -14,6 +14,7 @@ import {
 } from "../shared/contracts";
 import { candidate, inventory, stage } from "./migration";
 import type { TaskService } from "./service";
+import { briefFingerprint } from "./store";
 const result = (value: unknown) => ({
   text: JSON.stringify(value),
   structuredContent: { result: value },
@@ -228,7 +229,10 @@ export function workerTools(
       description:
         "Read your assigned durable task. Direct instructions in this conversation belong to this record. Report paused or archived control state before taking action.",
       input: z.object({}),
-      execute: async (_input, ctx) => result(await own(ctx)),
+      execute: async (_input, ctx) => {
+        const value = await own(ctx);
+        return result({ ...value, briefFingerprint: briefFingerprint(value) });
+      },
     }),
     defineAgentTool({
       name: "task_pr_maintenance",
@@ -243,11 +247,23 @@ export function workerTools(
     defineAgentTool({
       name: "task_update",
       description:
-        "Update your approach, progress, evidence, blocker, next action and task status. Only complete after success criteria have evidence and assigned input is handled; record the final result and next action so the service reports back to your coordinator after this turn. Decisions, questions, blockers and failures also report back. After pushing a PR revision, use decision while the service watches CI and reviews; failures, conflicts and comments return to this same worker. Use question or blocked for external impediments. Outcome changes require a proposal accepted by the human.",
-      input: update,
-      execute: async (input, ctx) => {
+        "Update your approach, progress, evidence, blocker, next action and task status. For completion, submit evidence for the brief you evaluated and its briefFingerprint from task_context, and handle assigned input; record the final result and next action so the service reports back to your coordinator after this turn. Decisions, questions, blockers and failures also report back. After pushing a PR revision, use decision while the service watches CI and reviews; failures, conflicts and comments return to this same worker. Use question or blocked for external impediments. Outcome changes require a proposal accepted by the human.",
+      input: update.extend({
+        briefFingerprint: z
+          .string()
+          .regex(/^[0-9a-f]{64}$/)
+          .optional(),
+      }),
+      execute: async ({ briefFingerprint: evaluatedBrief, ...patch }, ctx) => {
         await own(ctx);
-        return result(await service.store.workerUpdate(taskId, agentId, input));
+        return result(
+          await service.store.workerUpdate(
+            taskId,
+            agentId,
+            patch,
+            evaluatedBrief,
+          ),
+        );
       },
     }),
     defineAgentTool({

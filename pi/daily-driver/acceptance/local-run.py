@@ -20,10 +20,13 @@ class Provider(BaseHTTPRequestHandler):
     """The real Pi SDK consumes this deterministic, loopback-only completion stream."""
 
     requests = []
+    alternate_requests = []
 
     def do_POST(self):
         request = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         self.requests.append(request)
+        if self.path.startswith("/alternate/"):
+            self.alternate_requests.append(request)
         message = request["messages"][-1]["content"]
         if isinstance(message, list):
             message = "".join(item.get("text", "") for item in message if isinstance(item, dict))
@@ -115,7 +118,14 @@ def main():
         "models": [{"id": "gpt-6.1-sol", "name": "Local native acceptance fixture",
                     "reasoning": False, "input": ["text"], "contextWindow": 32768, "maxTokens": 2048,
                     "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}}],
+    }, "alternate-fixture": {
+        "baseUrl": f"http://127.0.0.1:{provider.server_port}/alternate/v1",
+        "api": "openai-completions", "apiKey": "alternate-fixture",
+        "models": [{"id": "different-model", "name": "Unapproved acceptance fixture",
+                    "reasoning": False, "input": ["text"], "contextWindow": 32768, "maxTokens": 2048,
+                    "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}}],
     }}}))
+    (agent / "settings.json").write_text(json.dumps({"packages": [str(root / "pi/daily-driver")]}))
     config_dir = home / ".config/zellij"
     config_dir.mkdir(parents=True)
     (config_dir / "config.kdl").write_text(
@@ -135,6 +145,7 @@ def main():
         **{key: value for key, value in os.environ.items() if key in (
             "PATH", "LANG", "LC_ALL", "LC_CTYPE", "TZ", "DOLT_ROOT_PATH",
             "DOLT_CLI_NO_UPDATE_CHECK", "BD_DISABLE_METRICS", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_NOSYSTEM",
+            "PI_DRIVER_USE_SOURCE",
         )},
         "HOME": str(home),
         "SHELL": "/bin/sh",
@@ -252,7 +263,8 @@ def main():
             pane = before["attempt"]["pane"]
             assert pane != launcher_pane, before
             if scenario not in ("lead-plan", "socrates"):
-                terminal.until("interactive Pi startup", lambda: "ctrl+c" in pane_text(pane).lower())
+                terminal.until("the admitted provider responded", lambda:
+                               "ACK_ACCEPTED_CONTEXT" in pane_text(pane))
             if scenario in ("lead-plan", "socrates"):
                 terminal.until("read-only lead drafts plan", lambda:
                                fresh(bead)["attempt"].get("leadPlan", {}).get("draft") is not None)
@@ -488,6 +500,14 @@ def main():
                 assert any(p["id"] == pane and p["is_focused"] for p in terminal.terminals()), terminal.terminals()
                 inventory = json.loads(execute([manager, "status", "--json"]).stdout)
                 assert len(inventory["result"]["tasks"]) == 1, inventory
+                terminal.action("write-chars", "--pane-id", f"terminal_{pane}",
+                                "/driver-profile personal\r")
+                terminal.until("managed Pi refuses the lead profile command", lambda:
+                               "Set the profile on pi-driver start." in pane_text(pane))
+                terminal.action("write-chars", "--pane-id", f"terminal_{pane}",
+                                "/model alternate-fixture/different-model\r")
+                terminal.until("managed Pi refuses the alternate route", lambda:
+                               "Managed Pi requires its admitted model" in pane_text(pane))
             guidance = f"GUIDANCE_{scenario.replace('-', '_')} for accepted bead {bead}"
             terminal.action("write-chars", "--pane-id", f"terminal_{pane}", guidance + "\r")
             terminal.until("Pi responds to guidance in its original pane", lambda:
@@ -543,6 +563,8 @@ def main():
                 assert "registered Pi process or pane has exited or changed" in pane_text(launcher_pane)
                 assert fresh(bead)["attempt"] == after_exit["attempt"]
             report["cases"].append({"scenario": scenario, "bead": bead, "evidence": after_exit})
+        assert not Provider.alternate_requests, "Managed Pi sent data to an alternate provider"
+        assert all(request["model"] == "gpt-6.1-sol" for request in Provider.requests)
         assert not sentinel.exists(), sentinel.read_text() if sentinel.exists() else ""
         assert not zellij_sentinel.exists(), (
             zellij_sentinel.read_text() if zellij_sentinel.exists() else ""

@@ -19,5 +19,12 @@
   },
   "peerDependencies": {
     "zod": "^4.4.3"
+  },
+  "scripts": {
+    "generate:beads": "openapi-typescript api/beads-1.3.4.yaml -o generated/beads.ts",
+    "check:beads-api": "openapi-typescript api/beads-1.3.4.yaml -o generated/beads.ts --check"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.13.0"
   }
 }

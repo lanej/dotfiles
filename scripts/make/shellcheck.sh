@@ -29,6 +29,7 @@ shellcheck -x \
 	"$dotfiles/scripts/build-git-worktree-hooks.sh" \
 	"$dotfiles/bin/ac-awake-service" \
 	"$dotfiles/bin/paseo-pi" \
+	"$dotfiles/bin/pi-driver" \
 	"$dotfiles/bin/fix-ssh" \
 	"$dotfiles/bin/zellij-image-hints" \
 	"$dotfiles/scripts/build-zellij-helpers.sh" \

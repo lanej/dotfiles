@@ -56,7 +56,21 @@ export default function managedWorker(pi: ExtensionAPI): void {
   const db = new Attempts(stateDirectory());
   let lifetime = new AbortController();
   const submissions = new Set<Promise<string>>();
-  let binding: Attempt | undefined;
+  let binding:
+    | { record: Attempt; model: NonNullable<ExtensionContext["model"]> }
+    | undefined;
+  const matchesBinding = (ctx: ExtensionContext): boolean =>
+    binding !== undefined &&
+    ctx.sessionManager.getSessionId() === id &&
+    ctx.model?.id === binding.model.id &&
+    ctx.model.provider === binding.model.provider &&
+    ctx.model.api === binding.model.api &&
+    ctx.model.baseUrl === binding.model.baseUrl;
+  const blocked = "Managed Pi requires its admitted model";
+  const rejectInference = (ctx: ExtensionContext): void => {
+    ctx.abort();
+    ctx.ui.notify(blocked, "error");
+  };
   const lead = db.get(id);
   let approvalPending = false;
   let applyLeadTools: ((ctx: ExtensionContext) => void) | undefined;
@@ -76,7 +90,7 @@ export default function managedWorker(pi: ExtensionAPI): void {
       db,
       id,
       async (ctx) => {
-        if (binding === undefined)
+        if (!matchesBinding(ctx))
           throw new Error("This Pi session has no verified task binding");
         const record = db.get(id);
         await matchWorker(ctx, record);
@@ -90,16 +104,21 @@ export default function managedWorker(pi: ExtensionAPI): void {
   pi.on("session_start", async (event, ctx) => {
     binding = undefined;
     lifetime = new AbortController();
-    if (ctx.sessionManager.getSessionId() !== id) return;
+    if (ctx.sessionManager.getSessionId() !== id) {
+      rejectInference(ctx);
+      ctx.shutdown();
+      return;
+    }
     try {
       const record = db.get(id);
       const pane = await matchWorker(ctx, record);
+      const model = ctx.model;
       if (record.revision === null)
         throw new Error("Missing admitted Beads revision");
       if (
         record.profile === DriverProfile.Work &&
         !/^https:\/\/bedrock-mantle\.[a-z0-9-]+\.api\.aws(?:\/|$)/u.test(
-          ctx.model?.baseUrl ?? "",
+          model?.baseUrl ?? "",
         )
       ) {
         throw new Error(
@@ -111,8 +130,9 @@ export default function managedWorker(pi: ExtensionAPI): void {
         record.model.model,
       );
       if (
-        ctx.model?.id !== record.model.model ||
-        ctx.model.provider !== record.model.provider ||
+        model?.id !== record.model.model ||
+        model.provider !== record.model.provider ||
+        model.api === "pi-virtual" ||
         (record.leadPlan !== undefined &&
           (registeredModel === undefined ||
             !ctx.modelRegistry.hasConfiguredAuth(registeredModel)))
@@ -128,7 +148,7 @@ export default function managedWorker(pi: ExtensionAPI): void {
           record.revision,
           id,
         );
-      binding = db.change(id, (row) => {
+      const admitted = db.change(id, (row) => {
         if (first && row.phase !== Phase.Launching)
           throw new Error(
             `This launch is ${row.phase} and needs reconciliation`,
@@ -144,6 +164,7 @@ export default function managedWorker(pi: ExtensionAPI): void {
           row.message = "Pi is running in the managed worktree";
         }
       });
+      binding = { record: admitted, model };
       ctx.ui.setStatus(FooterStatus.Bead, record.bead.id);
       if (record.leadPlan !== undefined) {
         pi.setSessionName(`${record.bead.id} · ${record.bead.title}`);
@@ -168,11 +189,44 @@ export default function managedWorker(pi: ExtensionAPI): void {
         }
       });
       ctx.ui.notify(message, "error");
+      ctx.shutdown();
     }
   });
+  pi.on("model_select", async (_event, ctx) => {
+    if (matchesBinding(ctx)) return;
+    rejectInference(ctx);
+    try {
+      // Restore the admitted route before Pi's other model-aware commands run.
+      if (binding !== undefined && (await pi.setModel(binding.model))) {
+        pi.setThinkingLevel(binding.record.model.reasoning);
+        return;
+      }
+    } catch (cause) {
+      ctx.ui.notify(
+        cause instanceof Error ? cause.message : String(cause),
+        "error",
+      );
+    }
+    ctx.shutdown();
+  });
+  pi.on("session_before_compact", (_event, ctx) => {
+    if (matchesBinding(ctx)) return;
+    ctx.ui.notify(blocked, "error");
+    return { cancel: true };
+  });
+  pi.on("session_before_tree", (event, ctx) => {
+    if (!event.preparation.userWantsSummary || matchesBinding(ctx)) return;
+    ctx.ui.notify(blocked, "error");
+    return { cancel: true };
+  });
+  pi.on("before_provider_request", (_event, ctx) => {
+    if (!matchesBinding(ctx)) rejectInference(ctx);
+  });
   pi.on("before_agent_start", (event, ctx) => {
-    if (binding === undefined || ctx.sessionManager.getSessionId() !== id)
+    if (binding === undefined || !matchesBinding(ctx)) {
+      rejectInference(ctx);
       return;
+    }
     const current = db.get(id);
     const { bead } = current;
     return {

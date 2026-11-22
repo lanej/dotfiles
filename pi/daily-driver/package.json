@@ -24,7 +24,8 @@
     "audit": "node scripts/check-typescript.mjs audit",
     "test:delegation-native": "node --import tsx acceptance/delegation.ts",
     "generate:zellij": "node scripts/generate-zellij.mjs",
-    "check:zellij": "node scripts/generate-zellij.mjs --check"
+    "check:zellij": "node scripts/generate-zellij.mjs --check",
+    "build:aot": "node scripts/build-aot.mjs"
   },
   "dependencies": {
     "@bufbuild/protobuf": "2.16.0",

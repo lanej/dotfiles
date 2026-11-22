@@ -45,7 +45,13 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: paseo-tasks/package-lock.json
+          cache-dependency-path: |
+            paseo-tasks/package-lock.json
+            tools/task-runtime/package-lock.json
+      - run: npm ci --ignore-scripts
+        working-directory: tools/task-runtime
+      - run: npm run check:beads-api
+        working-directory: tools/task-runtime
       - run: npm ci --ignore-scripts
         working-directory: paseo-tasks
       - name: Install pinned Mergiraf for the structural merge fixture

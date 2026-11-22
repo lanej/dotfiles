@@ -56,11 +56,14 @@ export default function contribute(server: PluginServerContext) {
     flag: "wx",
     mode: 0o600,
   });
-  const connection = new Connection(home);
+  const file = join(state, "tasks.sqlite");
+  let connection: Connection | undefined;
+  const taskConnection = () => (connection ??= new Connection(home));
+  let initialization: Promise<TaskService> | undefined;
   let service: TaskService | undefined;
   let stopped = false;
   let pending: Promise<void> | null = null;
-  const ready = connection.open().then(async ({ serverId, paseo }) => {
+  const initialize = async () => {
     if (
       process.env.PASEO_TASKS_BEADS_DIR ||
       process.env.PASEO_TASKS_BEADS_AUTHORITY ||
@@ -82,17 +85,14 @@ export default function contribute(server: PluginServerContext) {
       tokenFile ? readFileSync(tokenFile, "utf8").trim() : undefined,
     );
     await records.verifyAuthority();
-    const store = new Store(
-      join(state, "tasks.sqlite"),
-      serverId,
-      undefined,
-      records,
-    );
+    const router = taskConnection();
+    const { serverId, paseo } = await router.open();
+    const store = new Store(file, serverId, undefined, records);
     const github = new GitHub();
     service = new TaskService(
       store,
       paseo,
-      connection,
+      router,
       new Feedback(store, github, "lanej"),
       process.env.PASEO_TASK_LABEL ?? hostname(),
       undefined,
@@ -100,14 +100,20 @@ export default function contribute(server: PluginServerContext) {
       new MaintenanceQueue(new PRMaintenance(store, github, state)),
     );
     return service;
-  });
-  // NOTE: A load failure remains visible in RPCs and logs without losing the durable records.
-  ready.catch((error) =>
-    console.error("Task service initialization failed:", error.message),
-  );
+  };
+  function ready(): Promise<TaskService> {
+    initialization ??= initialize().catch((error: unknown) => {
+      initialization = undefined;
+      throw error;
+    });
+    return initialization;
+  }
+  function hasWorker(agentId: string): boolean {
+    return service?.store.hasWorker(agentId) ?? Store.hasWorker(file, agentId);
+  }
   const timer = setInterval(() => {
     if (stopped || pending) return;
-    pending = ready
+    pending = ready()
       .then(async (value) => await value.tick())
       .catch((error) =>
         console.error("Task service recovery failed:", error.message),
@@ -118,19 +124,25 @@ export default function contribute(server: PluginServerContext) {
   }, 10000);
   server.handle(
     listRpc,
-    async ({ aggregate }) => await (await ready).list(aggregate),
+    async ({ aggregate }) => await (await ready()).list(aggregate),
   );
-  server.handle(createRpc, async (input) => await (await ready).create(input));
-  server.handle(bulkRpc, async (input) => await (await ready).bulk(input));
+  server.handle(
+    createRpc,
+    async (input) => await (await ready()).create(input),
+  );
+  server.handle(bulkRpc, async (input) => await (await ready()).bulk(input));
   server.handle(
     discoverRpc,
-    async (input) => await (await ready).discover(input.serverId),
+    async (input) => await (await ready()).discover(input.serverId),
   );
-  server.handle(adoptRpc, async (input) => await (await ready).adopt(input));
-  server.handle(acceptRpc, async (input) => await (await ready).accept(input));
+  server.handle(adoptRpc, async (input) => await (await ready()).adopt(input));
+  server.handle(
+    acceptRpc,
+    async (input) => await (await ready()).accept(input),
+  );
   server.handle(
     managerRpc,
-    async (input) => await (await ready).newManager(input.cwd),
+    async (input) => await (await ready()).newManager(input.cwd),
   );
   server.handle(
     defineRpc({
@@ -139,7 +151,7 @@ export default function contribute(server: PluginServerContext) {
       output: task,
     }),
     async (input) => {
-      const value = await ready;
+      const value = await ready();
       value.assertHost(input.serverId);
       return await value.assignCoordinator(input, input.coordinator);
     },
@@ -151,7 +163,7 @@ export default function contribute(server: PluginServerContext) {
       output: z.object({ valid: z.literal(true) }),
     }),
     async (input) => {
-      const value = await ready;
+      const value = await ready();
       value.assertHost(input.serverId);
       await value.reports.validate(input);
       return { valid: true as const };
@@ -164,7 +176,7 @@ export default function contribute(server: PluginServerContext) {
       output: reportVerification,
     }),
     async (input) => {
-      const value = await ready;
+      const value = await ready();
       value.assertHost(input.serverId);
       return await value.reports.verification(input.id);
     },
@@ -175,7 +187,7 @@ export default function contribute(server: PluginServerContext) {
       input: coordinatorReport,
       output: z.object({ delivery: z.enum(["received", "superseded"]) }),
     }),
-    async (input) => await (await ready).reports.receive(input),
+    async (input) => await (await ready()).reports.receive(input),
   );
   server.handle(
     defineRpc({
@@ -188,7 +200,7 @@ export default function contribute(server: PluginServerContext) {
       output: z.array(coordinatorReport),
     }),
     async (input) => {
-      const value = await ready;
+      const value = await ready();
       value.assertHost(input.serverId);
       return await value.reports.collect(input.coordinatorHost, input.receipts);
     },
@@ -200,7 +212,7 @@ export default function contribute(server: PluginServerContext) {
       output: z.array(incomingReport),
     }),
     async (input) => {
-      const value = await ready;
+      const value = await ready();
       value.assertHost(input.serverId);
       return (await value.store.incomingReports()).filter(
         (entry) => entry.report.coordinator.agentId === input.agentId,
@@ -223,15 +235,16 @@ export default function contribute(server: PluginServerContext) {
     }),
     async (input) =>
       await stage(
-        (await ready).store,
+        (await ready()).store,
         input.source,
         input.brief,
         input.requestId,
       ),
   );
   server.handle(migrateRpc, async (input) => {
-    const value = await ready;
+    const value = await ready();
     value.assertHost(input.serverId);
+    const raw = taskConnection().raw;
     return await releaseAndImport(
       value.store,
       input.taskId,
@@ -251,7 +264,7 @@ export default function contribute(server: PluginServerContext) {
           agentId = matches[0]?.id;
         }
         if (!agentId) {
-          const imported = await connection.raw.importAgent({
+          const imported = await raw.importAgent({
             providerId: "pi",
             providerHandleId: source.sessionFile!,
             cwd: source.worktree,
@@ -266,11 +279,11 @@ export default function contribute(server: PluginServerContext) {
             "Imported worker is active; wait for its turn boundary before reconciliation",
           );
         await handle.reload();
-        await connection.raw.setAgentModel(
+        await raw.setAgentModel(
           handle.id,
           "bedrock-sonnet-router/us.anthropic.claude-sonnet-5-5",
         );
-        await connection.raw.setAgentThinkingOption(handle.id, "medium");
+        await raw.setAgentThinkingOption(handle.id, "medium");
         await handle.refresh();
         return {
           agentId: handle.id,
@@ -288,7 +301,7 @@ export default function contribute(server: PluginServerContext) {
       output: event,
     }),
     async (input) => {
-      const value = await ready;
+      const value = await ready();
       value.assertHost(input.serverId);
       return await value.store.addEvent(input.taskId, "feedback", input.text);
     },
@@ -300,7 +313,7 @@ export default function contribute(server: PluginServerContext) {
       output: task,
     }),
     async (input) => {
-      const value = await ready;
+      const value = await ready();
       value.assertHost(input.serverId);
       return await value.propose(input.taskId, input.brief);
     },
@@ -312,7 +325,7 @@ export default function contribute(server: PluginServerContext) {
       output: task,
     }),
     async (input) => {
-      const value = await ready;
+      const value = await ready();
       value.assertHost(input.serverId);
       return await value.link(input.taskId, input.url);
     },
@@ -324,16 +337,21 @@ export default function contribute(server: PluginServerContext) {
       output: z.array(z.unknown()),
     }),
     async (input) => {
-      const value = await ready;
+      const value = await ready();
       value.assertHost(input.serverId);
       await value.store.get(input.taskId);
       return value.maintenance?.records(input.taskId) ?? [];
     },
   );
   server.addHook("agent.open.before", async ({ request }) => {
-    const value = await ready;
-    let assigned = await value.store.forAgent(request.agentId);
     const id = request.labels["tasks.id"];
+    const manager = request.labels["tasks.role"] === "manager";
+    const worker = hasWorker(request.agentId);
+    if (!id && !manager && !worker) return request;
+    const value = await ready();
+    let assigned = worker
+      ? await value.store.forAgent(request.agentId)
+      : undefined;
     if (!assigned && id) {
       const reserved = await value.store.get(id);
       if (
@@ -356,7 +374,7 @@ export default function contribute(server: PluginServerContext) {
       );
       request.env.PASEO_TASK_ROLE = "worker";
       value.sessionOpened(request.agentId, "worker");
-    } else if (request.labels["tasks.role"] === "manager") {
+    } else if (manager) {
       request.tools.push(...managerTools(value));
       request.env.PASEO_TASK_ROLE = "manager";
       value.sessionOpened(request.agentId, "manager");
@@ -364,21 +382,25 @@ export default function contribute(server: PluginServerContext) {
     return request;
   });
   server.addHook("agent.turn.before", async ({ agent }) => {
-    const value = await ready;
+    if (!hasWorker(agent.id)) return;
+    const value = await ready();
     const assigned = await value.store.forAgent(agent.id);
     if (assigned)
-      await value.store.change(assigned.taskId, async (current) => {
-        current.activity = "running";
-        current.observedAt = value.store.now();
+      await value.store.transaction(async () => {
+        await value.store.assertOwner(assigned.taskId);
+        await value.store.change(assigned.taskId, (current) => {
+          current.activity = "running";
+          current.observedAt = value.store.now();
+        });
       });
   });
-  server.addHook(
-    "agent.turn.after",
-    async ({ agent, outcome, turnId }) =>
-      await (await ready).turnEnded(agent.id, outcome, turnId),
-  );
+  server.addHook("agent.turn.after", async ({ agent, outcome, turnId }) => {
+    if (hasWorker(agent.id))
+      await (await ready()).turnEnded(agent.id, outcome, turnId);
+  });
   server.addHook("agent.permission.before", async ({ agent }) => {
-    const value = await ready;
+    if (!hasWorker(agent.id)) return;
+    const value = await ready();
     const assigned = await value.store.forAgent(agent.id);
     if (assigned)
       await value.store.change(assigned.taskId, (current) => {
@@ -386,7 +408,8 @@ export default function contribute(server: PluginServerContext) {
       });
   });
   server.addHook("agent.archive.after", async ({ agent }) => {
-    const value = await ready;
+    if (!hasWorker(agent.id)) return;
+    const value = await ready();
     const assigned = await value.store.forAgent(agent.id);
     if (assigned)
       await value.store.change(assigned.taskId, (current) => {
@@ -398,9 +421,9 @@ export default function contribute(server: PluginServerContext) {
     stopped = true;
     clearInterval(timer);
     await pending;
-    await ready.catch(() => {});
+    await initialization?.catch(() => {});
     await service?.maintenance?.close?.();
-    await connection.close();
+    await connection?.close();
     if (service) {
       await service.paseo.dispose();
       service.store.close();

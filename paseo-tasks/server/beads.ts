@@ -36,6 +36,7 @@ const attachment = content.extend({
 const issue = z.object({
   id: z.string(),
   title: z.string(),
+  revision: z.string().regex(/^-?[0-9]+$/),
   description: z.string().default(""),
   acceptance_criteria: z.string().default(""),
   status: z.string(),
@@ -98,7 +99,9 @@ export class Beads extends BeadsHttp {
     return observed;
   }
   async read(value: Task): Promise<TaskContent> {
-    const observed = await this.readIssue(value);
+    return this.contentOf(await this.readIssue(value));
+  }
+  private contentOf(observed: Issue): TaskContent {
     const saved = attachment.parse(unpack(observed.metadata));
     const status =
       nativeStatus[saved.status] === observed.status
@@ -184,7 +187,7 @@ export class Beads extends BeadsHttp {
   async claim(value: Task, worker: string) {
     const observed = await this.readIssue(value);
     if (
-      (await this.read(value)).status !== "active" ||
+      this.contentOf(observed).status !== "active" ||
       !["open", "in_progress"].includes(observed.status)
     )
       throw new Error(
@@ -200,6 +203,7 @@ export class Beads extends BeadsHttp {
           actor: owner,
           force_close_policy: false,
           force_assignee_transfer: false,
+          expected_version: observed.revision,
           expected_status: observed.status,
           expected_assignee: observed.assignee,
           patch: { assignee: owner, status: "in_progress" },
@@ -221,7 +225,7 @@ export class Beads extends BeadsHttp {
       throw new Error(
         "Beads task ownership changed or is claimed by another actor",
       );
-    if (JSON.stringify(await this.read(before)) !== JSON.stringify(previous))
+    if (JSON.stringify(this.contentOf(observed)) !== JSON.stringify(previous))
       throw new Error("Beads task changed; refresh before applying the update");
     const changed = Object.keys(next).filter(
       (key) =>
@@ -255,6 +259,7 @@ export class Beads extends BeadsHttp {
           actor: actor(before),
           force_close_policy: false,
           force_assignee_transfer: false,
+          expected_version: observed.revision,
           expected_status: observed.status,
           expected_assignee: observed.assignee,
           patch,
