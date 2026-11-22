@@ -207,6 +207,8 @@ async function launchPi(
   const environment = [
     `PI_DRIVER_STATE_DIR=${db.directory}`,
     `PI_DRIVER_ATTEMPT=${attempt}`,
+    // Pi does not detect hyperlink support from the managed Zellij pane alone.
+    ...(lead ? ["PI_HYPERLINKS=1"] : []),
   ];
   for (const key of ["PI_CODING_AGENT_DIR", "PI_DRIVER_CONFIG", "PATH"]) {
     const value = process.env[key];

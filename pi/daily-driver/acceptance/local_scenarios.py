@@ -141,6 +141,62 @@ def wait_for_lead(case: Case) -> None:
     terminal.focus_pane(pane)
 
 
+def exercise_selector(case: Case) -> None:
+    terminal, pane = case.terminal, case.pane
+    artifacts = case.harness.artifacts
+
+    def view() -> str:
+        return terminal.capture_pane(pane)
+
+    terminal.until("focused choice shows its explanation", lambda:
+                   "│" in view() and "Retry in the same checkout" in view())
+    terminal.send_to_pane(pane, "j")
+    terminal.until("j moves focus and updates the explanation", lambda:
+                   "→ Remove it" in view() and "Recover from the saved" in view())
+    assert "answer" not in case.specification()["exchange"]
+    terminal.send_to_pane(pane, "k")
+    terminal.until("k restores the first choice and explanation", lambda:
+                   f"→ {ARCHIVE.answer}" in view() and "Retry in the same checkout" in view())
+    terminal.send_to_pane(pane, "l")
+    terminal.until("choice details open with question context", lambda:
+                   "Keeping the checkout preserves" in view() and "Octo has confirmed the merge" in view()
+                   and "Run archive --retry" in view() and "retention check" in view())
+    assert "**the exact worktree**" not in view() and "`archive --retry`" not in view()
+    assert "https://example.com/retention" not in view()
+    assert "h back" not in view() and "j/k scroll" not in view()
+    (artifacts / "socrates-details.ansi").write_text(terminal.capture_pane(pane, ansi=True))
+    terminal.send_to_pane(pane, "\r")
+    assert "answer" not in case.specification()["exchange"]
+    for _ in range(35):
+        if "The retry fixture exited with status 7." in view():
+            break
+        terminal.send_to_pane(pane, "j")
+    terminal.until("details scroll to evidence links", lambda:
+                   "Recovery procedure" in view() and "Archive report" in view()
+                   and "Fixture source · README.md:1" in view()
+                   and "The retry fixture exited with status 7." in view())
+    terminal.send_to_pane(pane, "h")
+    terminal.until("h restores the original focused choice", lambda: f"→ {ARCHIVE.answer}" in view())
+
+    terminal.send_to_pane(pane, ";")
+    terminal.until("hints appear beside all three choices", lambda:
+                   "a Keep the checkout ▸" in view() and "s Remove it" in view() and "d Type an answer" in view())
+    assert all(line not in view() for line in ("j/k move", "Type hint to jump", "l details"))
+    (artifacts / "socrates-hints.txt").write_text(view())
+    (artifacts / "socrates-hints.ansi").write_text(terminal.capture_pane(pane, ansi=True))
+    terminal.write_to_pane(pane, 27)
+    terminal.until("Escape exits hint mode without dismissing the question", lambda:
+                   f"→ {ARCHIVE.answer}" in view() and "d Type an answer" not in view())
+    terminal.send_to_pane(pane, ";")
+    terminal.until("hint mode reopens", lambda: "d Type an answer" in view())
+    terminal.send_to_pane(pane, "d")
+    terminal.until("completed hint jumps to free text", lambda: "→ Type an answer" in view())
+    assert "answer" not in case.specification()["exchange"]
+    terminal.send_to_pane(pane, "\r")
+    terminal.until("Enter opens the free-text editor", lambda:
+                   "submit" in view() and "Octo has confirmed the merge" in view())
+
+
 def exercise_question_exchange(case: Case) -> None:
     terminal, pane = case.terminal, case.pane
     artifacts = case.harness.artifacts
@@ -159,6 +215,7 @@ def exercise_question_exchange(case: Case) -> None:
     (artifacts / "socrates-question.txt").write_text(terminal.capture_pane(pane))
     (artifacts / "socrates-question.ansi").write_text(
         terminal.capture_pane(pane, ansi=True))
+    exercise_selector(case)
     terminal.write_to_pane(pane, 27)
     terminal.until("question stays open after Escape", lambda:
                    "Question remains open" in case.capture(pane))
@@ -168,6 +225,13 @@ def exercise_question_exchange(case: Case) -> None:
                    "Resolve the blocking questions" in terminal.capture_pane(pane))
     terminal.send_to_pane(pane, "/socrates\r")
     terminal.until("same original choice reopened", lambda: ARCHIVE.answer in terminal.capture_pane(pane))
+    terminal.send_to_pane(pane, "j")
+    terminal.until("next choice retains focus until a hint jumps", lambda: "→ Remove it" in terminal.capture_pane(pane))
+    terminal.send_to_pane(pane, ";")
+    terminal.until("first choice has a visible hint", lambda: "a Keep the checkout" in terminal.capture_pane(pane))
+    terminal.send_to_pane(pane, "a")
+    terminal.until("preset jump restores focus without submitting", lambda: f"→ {ARCHIVE.answer}" in terminal.capture_pane(pane))
+    assert "answer" not in spec()["exchange"]
     terminal.send_to_pane(pane, "\r")
     terminal.until("selected answer persisted without applying it", lambda:
                    (exchange := spec().get("exchange")) is not None and exchange.get("answer") ==
@@ -176,6 +240,8 @@ def exercise_question_exchange(case: Case) -> None:
     terminal.send_to_pane(pane, "/socrates\r")
     terminal.until("free-text question follows recovered answer", lambda:
                    RECEIPT.question in terminal.capture_pane(pane) and
+                   "operator needs to know" in terminal.capture_pane(pane) and
+                   "Receipt instructions" in terminal.capture_pane(pane) and
                    (exchange := spec().get("exchange")) is not None and exchange["prompt"]["decisionId"] == RECEIPT.id)
     case.harness.update_bead(case.bead, "--acceptance", "Verify the revised Socrates receipt")
     terminal.send_to_pane(pane, "An answer against the old brief.\r")
@@ -193,6 +259,18 @@ def exercise_question_exchange(case: Case) -> None:
                    (current := spec()).get("exchange") is None and
                    (draft := current.get("draft")) is not None and not draft["blockingQuestions"] and
                    draft["decisions"][-1]["evidence"] == RECEIPT.answer)
+
+    checkout = Path(case.before["attempt"]["checkout"]["path"]).resolve()
+    for url in (
+        (checkout / "README.md").as_uri() + "#L1",
+        "https://example.com/recovery",
+        "https://example.com/retention",
+        "https://github.com/fixture/repo/issues/7",
+        "https://github.com/fixture/repo/issues/8",
+        "https://github.com/fixture/repo/issues/9",
+    ):
+        target = rb"\x1b\]8;[^;]*;" + re.escape(url.encode()) + rb"(?:\x07|\x1b\\)"
+        assert re.search(target, terminal.output), f"Missing OSC 8 link for {url}"
 
 
 def freeze_specification(case: Case, *, interview: bool) -> None:

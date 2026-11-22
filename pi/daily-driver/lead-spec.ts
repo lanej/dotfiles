@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { questionEvidence } from "./question-evidence.ts";
 
 export enum SpecStatus {
   Interrogating = "interrogating",
@@ -87,7 +88,18 @@ export const specQuestion = z
   .strictObject({
     decisionId,
     question: text,
-    options: z.array(z.strictObject({ label: text, description: text })).max(4),
+    context: text.optional(),
+    evidence: questionEvidence,
+    options: z
+      .array(
+        z.strictObject({
+          label: text,
+          description: text,
+          details: text.optional(),
+          evidence: questionEvidence,
+        }),
+      )
+      .max(4),
   })
   .superRefine(({ options }, ctx) => {
     const labels = options.map(({ label }) => label);
