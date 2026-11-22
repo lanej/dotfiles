@@ -236,6 +236,10 @@ export default function dailyDriver(pi: ExtensionAPI): void {
   pi.registerCommand("driver-profile", {
     description: "Explicitly select the work or personal lead model",
     handler: async (argument, ctx) => {
+      if (process.env["PI_DRIVER_ATTEMPT"] !== undefined) {
+        ctx.ui.notify("Set the profile on pi-driver start.", "warning");
+        return;
+      }
       if (!ctx.isIdle() || ctx.hasPendingMessages()) {
         ctx.ui.notify(
           "Wait for the conversation and queued messages to settle before changing profiles",

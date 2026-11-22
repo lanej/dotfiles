@@ -92,6 +92,7 @@ def main():
                     "reasoning": False, "input": ["text"], "contextWindow": 32768, "maxTokens": 2048,
                     "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}}],
     }}}))
+    (agent / "settings.json").write_text(json.dumps({"packages": [str(root / "pi/daily-driver")]}))
     config_dir = home / ".config/zellij"
     config_dir.mkdir(parents=True)
     (config_dir / "config.kdl").write_text(
@@ -221,7 +222,8 @@ def main():
             allocations.append(before["attempt"]["checkout"])
             pane = before["attempt"]["pane"]
             assert pane != launcher_pane, before
-            terminal.until("interactive Pi startup", lambda: "ctrl+c" in pane_text(pane).lower())
+            terminal.until("the admitted provider responded", lambda:
+                           "ACK_ACCEPTED_CONTEXT" in pane_text(pane))
             if scenario == "accepted":
                 report["registered_process"] = execute(["ps", "-p", str(before["attempt"]["pid"]),
                                                         "-o", "command="]).stdout.strip()
@@ -239,8 +241,10 @@ def main():
                 assert any(p["id"] == pane and p["is_focused"] for p in terminal.terminals()), terminal.terminals()
                 inventory = json.loads(execute([manager, "status", "--json"]).stdout)
                 assert len(inventory["result"]["tasks"]) == 1, inventory
-                terminal.until("the admitted provider responded", lambda:
-                               "ACK_ACCEPTED_CONTEXT" in pane_text(pane))
+                terminal.action("write-chars", "--pane-id", f"terminal_{pane}",
+                                "/driver-profile personal\r")
+                terminal.until("managed Pi refuses the lead profile command", lambda:
+                               "Set the profile on pi-driver start." in pane_text(pane))
                 terminal.action("write-chars", "--pane-id", f"terminal_{pane}",
                                 "/model alternate-fixture/different-model\r")
                 terminal.until("managed Pi refuses the alternate route", lambda:
