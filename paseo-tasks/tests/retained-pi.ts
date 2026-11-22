@@ -15,7 +15,7 @@ import turnOwner from "../pi/turn-owner";
 export async function checkRetainedPi(
   root: string,
   env: Record<string, string>,
-  restoreOwner: () => Promise<void>,
+  setWorkerOwnership: (owned: boolean) => Promise<void>,
 ) {
   const requests: string[] = [];
   const provider = createServer((request, response) => {
@@ -77,6 +77,7 @@ export async function checkRetainedPi(
     const model = modelRuntime.getModel("fixture", "fixture");
     assert(model);
     const settingsManager = SettingsManager.inMemory();
+    let transferAfterInput = false;
     const resourceLoader = new DefaultResourceLoader({
       cwd: root,
       agentDir: root,
@@ -86,7 +87,17 @@ export async function checkRetainedPi(
       noSkills: true,
       noThemes: true,
       noPromptTemplates: true,
-      extensionFactories: [turnOwner],
+      extensionFactories: [
+        turnOwner,
+        (pi) => {
+          pi.on("input", async () => {
+            if (transferAfterInput) {
+              transferAfterInput = false;
+              await setWorkerOwnership(false);
+            }
+          });
+        },
+      ],
     });
     await resourceLoader.reload();
     assert.deepEqual(resourceLoader.getExtensions().errors, []);
@@ -111,15 +122,42 @@ export async function checkRetainedPi(
       0,
       "Transferred work must never reach the provider",
     );
-    await restoreOwner();
-    await session.prompt("Input after ownership was restored");
+    await setWorkerOwnership(true);
+    await session.prompt("Previously authorized context");
+    assert.equal(requests.length, 1);
+    transferAfterInput = true;
+    await session.prompt("Input admitted before transfer at run start");
+    await session.sendCustomMessage(
+      {
+        customType: "fixture",
+        content: "Custom input during transfer at run start",
+        display: true,
+        details: { note: "Private details during transfer at run start" },
+      },
+      { triggerTurn: true },
+    );
     assert.equal(
       requests.length,
       1,
+      "A run-start denial must prevent the model request",
+    );
+    assert.doesNotMatch(
+      JSON.stringify(session.sessionManager.getBranch()),
+      /transfer at run start/,
+    );
+    await setWorkerOwnership(true);
+    await session.prompt("Input after ownership was restored");
+    assert.equal(
+      requests.length,
+      2,
       "The same Pi conversation can run again after reconciliation",
     );
-    assert.match(requests[0], /Input after ownership was restored/);
-    assert.doesNotMatch(requests[0], /after the task transfer/);
+    assert.match(requests[1], /Previously authorized context/);
+    assert.match(requests[1], /Input after ownership was restored/);
+    assert.doesNotMatch(
+      requests[1],
+      /after the task transfer|transfer at run start/,
+    );
   } finally {
     session?.dispose();
     provider.closeAllConnections();

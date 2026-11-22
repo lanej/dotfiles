@@ -270,8 +270,14 @@ await test("native Beads HTTP preserves task identity, guards, history and inter
       await checkRetainedPi(
         root,
         { ...request.env, PASEO_AGENT_ID: request.agentId },
-        async () => {
-          await bd("update", id, "--assignee", "paseo:mac/worker-a", "--force");
+        async (owned) => {
+          await bd(
+            "update",
+            id,
+            "--assignee",
+            owned ? "paseo:mac/worker-a" : "other",
+            "--force",
+          );
         },
       );
       await assert.rejects(

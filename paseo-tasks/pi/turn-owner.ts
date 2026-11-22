@@ -1,4 +1,5 @@
 import type {
+  BeforeAgentStartEvent,
   ExtensionAPI,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
@@ -12,6 +13,7 @@ export default function turnOwner(pi: ExtensionAPI) {
     taskId: process.env.PASEO_TASK_ID,
     agentId: process.env.PASEO_AGENT_ID,
   };
+  let rejectedTrigger: BeforeAgentStartEvent["messageType"] | undefined;
   async function authorize() {
     const binding = authorizeTurnRpc.input.parse(worker);
     if (!home)
@@ -51,7 +53,30 @@ export default function turnOwner(pi: ExtensionAPI) {
     if (await denied(ctx)) return { action: "handled" };
     return { action: "continue" };
   });
-  pi.on("before_agent_start", async (_event, ctx) => {
-    if (await denied(ctx)) ctx.abort();
+  pi.on("before_agent_start", async (event, ctx) => {
+    rejectedTrigger = (await denied(ctx)) ? event.messageType : undefined;
+    if (rejectedTrigger) ctx.abort();
+  });
+  pi.on("message_end", ({ message }) => {
+    if (message.role !== rejectedTrigger) return;
+    // Pi finalizes the starting message even after a startup abort. Replace it before Pi saves it for later runs.
+    rejectedTrigger = undefined;
+    const marker = {
+      content: "Paseo blocked this task input.",
+      timestamp: message.timestamp,
+    };
+    if (message.role === "user")
+      return { message: { role: "user", ...marker } };
+    return {
+      message: {
+        role: "custom",
+        customType: "paseo-task-input-blocked",
+        display: true,
+        ...marker,
+      },
+    };
+  });
+  pi.on("agent_end", () => {
+    rejectedTrigger = undefined;
   });
 }
