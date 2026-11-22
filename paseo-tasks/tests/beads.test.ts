@@ -1,14 +1,18 @@
 import assert from "node:assert/strict";
 import { spawn, type ChildProcess, execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdtemp, mkdir, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { createConnection, createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { promisify } from "node:util";
 import { test } from "node:test";
+import type { PaseoApi } from "@getpaseo/client";
+import type { PluginServerContext } from "@getpaseo/plugin/server";
+import contribute from "../index.server";
 import { Beads, beadId } from "../server/beads";
+import { Connection } from "../server/connection";
 import { briefFingerprint, Store } from "../server/store";
 import type { Brief } from "../shared/contracts";
 
@@ -157,7 +161,7 @@ await test("native Beads HTTP preserves task identity, guards, history and inter
     );
     const records = new Beads(url, context.project_id);
     await records.verifyAuthority();
-    const file = join(root, "runtime.sqlite");
+    const file = join(root, "tasks.sqlite");
     store = new Store(file, "mac", undefined, records);
     const value = await store.create(specification);
     const id = beadId(value.taskId);
@@ -198,7 +202,54 @@ await test("native Beads HTTP preserves task identity, guards, history and inter
       () => store!.assertOwner(value.taskId),
       /ownership changed/,
     );
-    await bd("update", id, "--assignee", `paseo:mac/worker-a`, "--force");
+    await writeFile(
+      join(root, "config.json"),
+      JSON.stringify({ daemon: { listen: "127.0.0.1:1" } }),
+    );
+    const settings = {
+      PASEO_HOME: root,
+      PASEO_TASKS_STATE: root,
+      PASEO_TASKS_BEADS_URL: url,
+      PASEO_TASKS_BEADS_PROJECT_ID: context.project_id,
+      PASEO_TASKS_BEADS_TOKEN_FILE: undefined,
+      PASEO_TASKS_BEADS_DIR: undefined,
+      PASEO_TASKS_BEADS_AUTHORITY: undefined,
+      PASEO_TASKS_BEADS_SSH_HOST: undefined,
+    };
+    const saved = new Map(
+      Object.keys(settings).map((key) => [key, process.env[key]]),
+    );
+    for (const [key, setting] of Object.entries(settings))
+      if (setting === undefined) delete process.env[key];
+      else process.env[key] = setting;
+    const open = t.mock.method(Connection.prototype, "open", async () => ({
+      serverId: "mac",
+      paseo: { dispose: () => Promise.resolve() } as unknown as PaseoApi,
+    }));
+    let closePlugin: (() => Promise<void>) | undefined;
+    try {
+      const hooks = new Map<string, (input: unknown) => Promise<unknown>>();
+      closePlugin = contribute({
+        handle: () => {},
+        addHook: hooks.set.bind(hooks),
+      } as unknown as PluginServerContext);
+      const beforeTurn = hooks.get("agent.turn.before")!;
+      const directPrompt = { agent: { id: "worker-a" } };
+      await assert.rejects(
+        () => beforeTurn(directPrompt),
+        /Beads ownership changed/,
+      );
+      assert.notEqual((await store.get(value.taskId)).activity, "running");
+      await bd("update", id, "--assignee", `paseo:mac/worker-a`, "--force");
+      await beforeTurn(directPrompt);
+      assert.equal((await store.get(value.taskId)).activity, "running");
+    } finally {
+      open.mock.restore();
+      await closePlugin?.();
+      for (const [key, setting] of saved)
+        if (setting === undefined) delete process.env[key];
+        else process.env[key] = setting;
+    }
     store.db.exec(
       `CREATE TRIGGER interrupt_projection BEFORE UPDATE ON tasks WHEN json_extract(NEW.record,'$.progress')='Remote committed before interruption' BEGIN SELECT RAISE(ABORT,'projection interrupted'); END`,
     );

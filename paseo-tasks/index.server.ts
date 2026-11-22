@@ -386,9 +386,12 @@ export default function contribute(server: PluginServerContext) {
     const value = await ready();
     const assigned = await value.store.forAgent(agent.id);
     if (assigned)
-      await value.store.change(assigned.taskId, async (current) => {
-        current.activity = "running";
-        current.observedAt = value.store.now();
+      await value.store.transaction(async () => {
+        await value.store.assertOwner(assigned.taskId);
+        await value.store.change(assigned.taskId, (current) => {
+          current.activity = "running";
+          current.observedAt = value.store.now();
+        });
       });
   });
   server.addHook("agent.turn.after", async ({ agent, outcome, turnId }) => {
