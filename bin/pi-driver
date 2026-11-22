@@ -1,0 +1,11 @@
+#!/usr/bin/env python3
+"""Run the repository-owned Pi driver with its isolated Node dependencies."""
+import os
+from pathlib import Path
+import sys
+
+package = Path(__file__).resolve().parents[1] / "pi/daily-driver"
+loader = package / "node_modules/tsx/dist/loader.mjs"
+if not loader.is_file():
+    sys.exit("Pi driver dependencies are missing. Run npm --prefix ~/.files/pi/daily-driver ci --ignore-scripts.")
+os.execvp("node", ["node", "--import", str(loader), str(package / "cli.ts"), *sys.argv[1:]])
