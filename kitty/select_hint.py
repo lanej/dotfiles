@@ -15,8 +15,9 @@ EXT = r"\.(?:png|jpe?g|webp|gif|bmp|tiff?|avif|ico|svg|heic|jxl)"
 IMAGE_END = re.compile(EXT + "$", re.I)
 TOKEN = r"""[^\s<>"'`()\[\]{},;│┃]+"""
 PATH = re.compile(
-    rf"""(?P<quote>["'`])(?P<quoted>[^\n"'`]+)(?P=quote)"""
-    rf"""|\((?P<parenthesized>[^()\n]+)\)"""
+    r'"(?P<double_quoted>[^"\n]+)"'
+    r"|'(?P<single_quoted>[^'\n]+)'"
+    r"|`(?P<backtick_quoted>[^`\n]+)`"
     rf"""|(?P<bare>{TOKEN})""")
 POSITION = re.compile(r"^(.*?):([1-9][0-9]*)(?::([1-9][0-9]*))?$")
 FRAGMENT = re.compile(r"(?:L)?([1-9][0-9]*)(?:C([1-9][0-9]*))?(?:-(?:L)?[1-9][0-9]*)?$")

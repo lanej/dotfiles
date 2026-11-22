@@ -100,6 +100,16 @@ def check_image_hints(root):
     _, old_files = picker.picker_input(picker.capture(source_files), (0, 0, 80, 8), "old", files=False)
     if old_files:
         raise AssertionError("An older image-only receiver was offered source files")
+    prose = Screen(None, 8, 80, 8)
+    parse_bytes(prose, b'(see src/main.rs:42)\r\n(src/main.rs:42 and src/other.rs:7)\r\n')
+    _, prose_files = picker.picker_input(picker.capture(prose), (0, 0, 80, 8), "prose")
+    if {(entry["path"], entry.get("line")) for entry in prose_files.values()} != {("src/main.rs", 42), ("src/other.rs", 7)}:
+        raise AssertionError(f"Parenthesized prose swallowed file references: {prose_files}")
+    quoted = Screen(None, 8, 80, 8)
+    parse_bytes(quoted, ('"docs/it\'s here.md"\r\n\'docs/a "quoted" file.rs\'\r\n').encode())
+    _, quoted_files = picker.picker_input(picker.capture(quoted), (0, 0, 80, 8), "quoted")
+    if {entry["path"] for entry in quoted_files.values()} != {"docs/it's here.md", 'docs/a "quoted" file.rs'}:
+        raise AssertionError(f"Opposite quotes split a quoted filename: {quoted_files}")
     wrapped = Screen(None, 8, 60, 8)
     parse_bytes(wrapped, ("src/very-long-module-".rjust(58) + "\r\n  name.rs:42:7\r\n" +
                           "screenshots/overview.p".rjust(58) + "\r\n  ng\r\n").encode())
