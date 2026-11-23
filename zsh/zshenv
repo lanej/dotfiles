@@ -1,9 +1,23 @@
+# A provisioned remote broker supplies the stable approval endpoint to callers.
+if [ -z "${INTENT_APPROVAL_SOCKET:-}" ] && [ -r "$HOME/.intent-approval/environment" ]; then
+    # shellcheck disable=SC1091
+    . "$HOME/.intent-approval/environment"
+fi
+
 # /etc/zshenv: user specific .zshenv file for zsh(1).
 
 #
 # Sourced on all invocations of the shell.
 #
 # Global Order: zshenv, zprofile, zshrc, zlogin
+
+# Installed user tools must also be available to noninteractive SSH commands.
+if [ -d "$HOME/.local/bin" ]; then
+    case ":$PATH:" in
+        *":$HOME/.local/bin:"*) ;;
+        *) export PATH="$HOME/.local/bin:$PATH" ;;
+    esac
+fi
 
 # Select the forwarded agent even for noninteractive remote commands.
 if [ -n "${SSH_CONNECTION:-}" ] && [ -r "$HOME/.local/bin/fix-ssh" ]; then
