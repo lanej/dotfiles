@@ -24,7 +24,7 @@ if not theme.is_file():
 theme_link = agent / "themes/dotfiles.json"
 if theme_link.exists() and not theme_link.is_symlink():
     raise SystemExit("Preserving the local dotfiles.json theme; move it before configuring the managed theme.")
-subprocess.run(["node", str(package / "scripts/prepare-delegation.mjs")], check=True)
+subprocess.run(["bun", str(package / "scripts/prepare-delegation.mjs")], check=True)
 theme_link.parent.mkdir(parents=True, exist_ok=True)
 if theme_link.is_symlink():
     theme_link.unlink()
