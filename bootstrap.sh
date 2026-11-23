@@ -1290,6 +1290,9 @@ install_dependencies() {
 			approval-cli)
 				python3 "$dotfiles_root/scripts/install-approval-cli.py" "$tool" || return 1
 				;;
+			studio)
+				python3 "$dotfiles_root/scripts/install-studio.py" || return 1
+				;;
 			octo-manager)
 				python3 "$dotfiles_root/scripts/install-octo-manager.py" || return 1
 				;;

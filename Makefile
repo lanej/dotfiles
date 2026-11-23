@@ -633,6 +633,11 @@ codex-octo-hook:
 test-codex-octo-hook: FORCE
 	@python3 "$(DOTFILES)/scripts/test-codex-octo-hook.py"
 
+# Studio's project owns its versioned bundle and Pi resource configuration.
+.PHONY: studio-install
+studio-install:
+	@HOME="$(HOME)" python3 "$(DOTFILES)/scripts/install-studio.py"
+
 .PHONY: test-octo-manager-install
 test-octo-manager-install:
 	@python3 "$(DOTFILES)/scripts/test-octo-manager-install.py"

@@ -172,6 +172,7 @@ def main():
         shutil.copyfile(root / "scripts/install-pi", checkout / "scripts/install-pi")
         shutil.copyfile(root / "scripts/dotfiles-config.py", checkout / "scripts/dotfiles-config.py")
         (checkout / "scripts/install-approval-cli.py").write_text("from pathlib import Path\nimport os, sys\nPath(os.environ['HOME'], sys.argv[1] + '-installed').touch()\n")
+        (checkout / "scripts/install-studio.py").write_text("from pathlib import Path\nimport os\nhome = Path(os.environ['HOME'])\n(home / 'studio-installed').touch()\nwith (home / 'events').open('a') as log: log.write('studio install\\n')\n")
         shutil.copyfile(root / "scripts/install-treehouse", checkout / "scripts/install-treehouse")
         (checkout / "scripts/install-worktree-policy").write_text('#!/bin/sh\n[ "$1" = 0.1.1 ] || exit 1\ntouch "$HOME/native-policy-installed"\n')
         manager_version = tomllib.loads((root / "bootstrap/tools.toml").read_text())["tools"]["worktree-manager"]["version"]
@@ -589,6 +590,7 @@ else:
         assert (home / ".local/bin/uv").is_file()
         assert (home / ".local/bin/python3").is_file()
         assert not (home / "patched-git-installed").exists()
+        assert not (home / "studio-installed").exists()
         assert not (home / ".nvm").exists()
         assert not (home / ".cargo").exists()
         assert not (home / ".local/bin/codex").exists()
@@ -777,7 +779,7 @@ else:
         # A local property removes the editor from the same composed bundles.
         # Keep an older system editor present: installation must leave it alone
         # and skip both the source install and Neovim's post-install setup.
-        machine_config.write_text(machine_config.read_text() + "neovim = false\n")
+        machine_config.write_text(machine_config.read_text() + "neovim = false\nstudio = false\n")
         (home / ".local/bin/nvim").unlink()
         (home / "pi-version").write_text("1.5.0")
         previous_events = len((home / "events").read_text().splitlines())
@@ -786,6 +788,7 @@ else:
         assert reduced.returncode == 0, reduced.stdout + reduced.stderr
         new_events = (home / "events").read_text().splitlines()[previous_events:]
         assert "neovim build" not in new_events and "neovim setup" not in new_events
+        assert "studio install" not in new_events
         assert "pi" not in new_events
         assert "mergiraf" not in new_events
         assert (home / "pi-version").read_text() == "1.5.0"
@@ -794,6 +797,7 @@ else:
         assert (home / "patched-git-installed").is_file()
         assert (home / "native-policy-installed").is_file()
         assert (home / "intent-installed").is_file()
+        assert (home / "studio-installed").is_file()
         assert (home / "keylease-installed").is_file()
         assert (home / "worktree-manager-installed").is_file()
         print("PASS: minimal bootstrap provides the native baseline and runtime; explicit installation adds selected tools and private Bedrock credentials.")

@@ -100,7 +100,7 @@ else:
         with tempfile.TemporaryDirectory() as temporary:
             home, source, catalog, log, download, downloads = self.fixture(temporary)
             with patch.object(installer.platform, "system", return_value="Windows"):
-                with self.assertRaisesRegex(ValueError, "Unsupported Octo platform"):
+                with self.assertRaisesRegex(ValueError, "Unsupported Bun platform"):
                     installer.install(catalog, home)
             (source / ".bun-version").write_text("modified\n")
             with patch.dict(os.environ, {"XDG_CACHE_HOME":str(home / ".cache")}), patch.object(installer.platform, "system", return_value="Darwin"), patch.object(installer.platform, "machine", return_value="arm64"), patch.object(installer, "download", side_effect=download):
@@ -108,6 +108,10 @@ else:
                     installer.install(catalog, home)
             self.assertFalse(downloads)
             self.assertFalse(log.exists())
+            failed = subprocess.run([sys.executable, str(ROOT / "scripts/install-octo-manager.py"), "reinstall", "--home", str(home)], text=True, capture_output=True)
+            self.assertNotEqual(failed.returncode, 0)
+            self.assertIn("Octo is not installed; run make octo-manager-install", failed.stderr)
+            self.assertNotIn("Traceback", failed.stderr)
 
     def test_linux_artifact_selection_and_hook_delegation(self):
         cases=[("arm64","glibc","bun-linux-aarch64"),("x86_64","glibc","bun-linux-x64-baseline"),("arm64","musl","bun-linux-aarch64-musl"),("x86_64","musl","bun-linux-x64-musl-baseline")]
@@ -141,6 +145,7 @@ install_dependencies
                 installer.runtime(home, source)
             (catalog / "scripts").mkdir()
             shutil.copyfile(ROOT / "scripts/install-octo-manager.py", catalog / "scripts/install-octo-manager.py")
+            shutil.copyfile(ROOT / "scripts/bun_runtime.py", catalog / "scripts/bun_runtime.py")
             executables = Path(temporary) / "bin"
             executables.mkdir()
             real_git = shutil.which("git")
