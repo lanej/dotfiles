@@ -2,7 +2,7 @@
 
 Start here, then read the [standing instructions](INSTRUCTIONS.md) and [curated lessons](LESSONS.md). Use the following records to resume work.
 
-1. In a configured Pi session, `/tasks` shows the native bead ID. In a Paseo coordinator’s `task_reports` inbox, use the report’s host and task UUID to locate the task. For a task created through Paseo, its bead ID is `tasks-<task-UUID>` in that host’s configured Beads project. Read the accepted brief, assignee, status, evidence and next action. On a configured Pi host, `pi-driver tasks <bead-id> --json` also shows the latest execution attempt recorded there.
+1. In a configured Pi session, `/tasks` shows the native bead ID. In a Paseo coordinator’s `task_reports` inbox, use the report’s host and task UUID to locate the task. For a task created through Paseo, its bead ID is `tasks-<task-UUID>` in that host’s configured Beads project. Read the accepted brief, assignee, status, evidence and next action. On a configured Pi host, `studio tasks <bead-id> --json` also shows the latest execution attempt recorded there.
 2. Confirm the bound conversation on the execution host before resuming the worker. For Paseo-managed Pi work, read the coordinator’s `task_reports` inbox for outstanding questions, blockers and decisions. Recheck the current task if a report describes an earlier assignment. Use native agent tools for Codex workers and Paseo task tools for Paseo-managed Pi workers.
 3. For a linked PR, inspect `octo-manager --full pr show <PR-URL>` for the registered owner, current head, checks and review feedback. Confirm the owning session can receive events. If a required record or host is unavailable, report what is missing and arrange a supported handoff before dispatch.
 
