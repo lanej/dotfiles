@@ -19,19 +19,17 @@ import {
   safePath,
 } from "../code-intelligence/service.ts";
 
+const fixtureServer = fileURLToPath(
+  new URL("fixtures/lsp-server.ts", import.meta.url),
+);
+
 await test("LSP synchronizes edits, rejects stale diagnostics, cancels requests and shuts down", async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), "pi-lsp-client-")));
   const client = new LspClient(root, {
     name: "fixture",
     languageId: "typescript",
     command: process.execPath,
-    args: [
-      "--import",
-      fileURLToPath(
-        new URL("../node_modules/tsx/dist/loader.mjs", import.meta.url),
-      ),
-      fileURLToPath(new URL("fixtures/lsp-server.ts", import.meta.url)),
-    ],
+    args: [fixtureServer],
   });
   const path = join(root, "test.ts");
   try {
@@ -109,17 +107,7 @@ await test("LSP synchronizes edits, rejects stale diagnostics, cancels requests 
 await test("LSP reports failed startup and unsupported position encoding", async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), "pi-lsp-failure-")));
   await writeFile(join(root, "test.ts"), "test");
-  for (const args of [
-    [],
-    [
-      "--import",
-      fileURLToPath(
-        new URL("../node_modules/tsx/dist/loader.mjs", import.meta.url),
-      ),
-      fileURLToPath(new URL("fixtures/lsp-server.ts", import.meta.url)),
-      "encoding",
-    ],
-  ]) {
+  for (const args of [[], [fixtureServer, "encoding"]]) {
     const client = new LspClient(root, {
       name: "fixture",
       languageId: "typescript",
@@ -130,7 +118,7 @@ await test("LSP reports failed startup and unsupported position encoding", async
     try {
       await assert.rejects(
         client.sync(join(root, "test.ts")),
-        /ENOENT|closed|disposed|UTF-16/u,
+        args.length === 0 ? /ENOENT/u : /UTF-16/u,
       );
       assert.equal(client.state, ServerState.Failed);
     } finally {
@@ -149,13 +137,7 @@ await test("semantic rename rejects unsafe edits and stale previews before any w
     name: "fixture",
     languageId: "typescript",
     command: process.execPath,
-    args: [
-      "--import",
-      fileURLToPath(
-        new URL("../node_modules/tsx/dist/loader.mjs", import.meta.url),
-      ),
-      fileURLToPath(new URL("fixtures/lsp-server.ts", import.meta.url)),
-    ],
+    args: [fixtureServer],
   });
   const intelligence = new CodeIntelligence(() => client);
   const path = join(root, "test.ts");
@@ -216,14 +198,7 @@ await test("servers without change synchronization keep rejecting unsent edits",
     name: "fixture",
     languageId: "typescript",
     command: process.execPath,
-    args: [
-      "--import",
-      fileURLToPath(
-        new URL("../node_modules/tsx/dist/loader.mjs", import.meta.url),
-      ),
-      fileURLToPath(new URL("fixtures/lsp-server.ts", import.meta.url)),
-      "no-sync",
-    ],
+    args: [fixtureServer, "no-sync"],
   });
   const path = join(root, "test.ts");
   try {
