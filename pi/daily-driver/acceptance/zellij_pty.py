@@ -284,4 +284,3 @@ class Terminal:
                 time.sleep(0.05)
         os.kill(self.pid, signal.SIGKILL)
         os.waitpid(self.pid, 0)
-
