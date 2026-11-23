@@ -157,20 +157,28 @@ class Boundary:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--nui', type=Path, default=Path(os.environ.get('NVIM_TEST_NUI', str(Path.home() / '.local/share/nvim/lazy/nui.nvim'))))
+    parser.add_argument('--presentation', action='store_true', help='check real Markview rendering instead of the save/recovery journey')
+    parser.add_argument('--markview', type=Path, default=Path(os.environ.get('NVIM_TEST_MARKVIEW', str(Path.home() / '.local/share/nvim/lazy/markview.nvim'))))
     args = parser.parse_args()
     pin = json.loads((ROOT / 'nvim/lazy-lock.json').read_text())['nui.nvim']['commit']
     observed = subprocess.check_output(['git', '-C', str(args.nui), 'rev-parse', 'HEAD'], text=True).strip()
     if observed != pin:
         raise SystemExit(f'Use the locked nui.nvim revision {pin}; selected {observed}')
+    if args.presentation:
+        markview_pin = json.loads((ROOT / 'nvim/lazy-lock.json').read_text())['markview.nvim']['commit']
+        markview_observed = subprocess.check_output(['git', '-C', str(args.markview), 'rev-parse', 'HEAD'], text=True).strip()
+        if markview_observed != markview_pin:
+            raise SystemExit(f'Use the locked Markview revision {markview_pin}; selected {markview_observed}')
     state = Boundary()
     with tempfile.TemporaryDirectory(prefix="nvim-beads-") as directory:
         with ThreadingHTTPServer(("127.0.0.1", 0), state.handler()) as server:
             thread = threading.Thread(target=server.serve_forever, daemon=True)
             thread.start()
-            env = {**os.environ, "NVIM_TEST_NUI": str(args.nui.resolve()), "BEADS_TEST_SETTINGS": json.dumps(dict(url=f"http://127.0.0.1:{server.server_port}", project_id=PROJECT, state_dir=directory))}
+            env = {**os.environ, "NVIM_TEST_NUI": str(args.nui.resolve()), "NVIM_TEST_MARKVIEW": str(args.markview.resolve()), "NVIM_LOG_FILE": str(Path(directory) / "nvim.log"), "BEADS_TEST_SETTINGS": json.dumps(dict(url=f"http://127.0.0.1:{server.server_port}", project_id=PROJECT, state_dir=directory))}
             try:
-                subprocess.run(["nvim", "--headless", "-u", "NONE", "-i", "NONE", "-n", "-l", "nvim/tests/beads.lua"], cwd=ROOT, env=env, check=True, timeout=45)
-                subprocess.run(["nvim", "--headless", "-u", "NONE", "-i", "NONE", "-n", "-l", "nvim/tests/beads-restart.lua"], cwd=ROOT, env=env, check=True, timeout=30)
+                scenarios = ['beads-markdown.lua'] if args.presentation else ['beads.lua', 'beads-restart.lua']
+                for scenario in scenarios:
+                    subprocess.run(["nvim", "--headless", "-u", "NONE", "-i", "NONE", "-n", "-l", "nvim/tests/" + scenario], cwd=ROOT, env=env, check=True, timeout=45)
             finally:
                 server.shutdown()
                 thread.join(timeout=5)

@@ -1,20 +1,21 @@
-  󰠮  TASKS                                   │# Make task authoring feel native
-  󰉋  personal                                │  Unsaved  ·  in progress  ·  personal / trial-theme
+  󰠮  TASKS                                   │󰌕 󰼏  Make task authoring feel native
+  󰉋  personal                                │    Unsaved  ·  in progress  ·  personal / trial-theme
   7 tasks  ·  1 blocked                      │
-                                             │## Problem
-   󰐊  Native task authoring                 │Tasks should feel at home in the editor.
+                                             │󰌖 󰎨  Problem
+   󰐊  Native task authoring                 │  Tasks should feel at home in the editor.
   ├─     Editable task documents            │
-▎ ├─   󰐊  Theme and status indica…   Review │## Outcome
-  └─     Tree and keyboard navigation       │Clear hierarchy, readable state, and safe saves.
+▎ ├─   󰐊  Theme and status indica…   Review │󰌖 󰎨  Outcome
+  └─     Tree and keyboard navigation       │  Clear hierarchy, readable state, and safe saves.
     󰥔  Recover an uncertain save             │
-     Studio integration                    │## Scope
-                                             │Use the shared theme and keyboard navigation.
+     Studio integration                    │󰌖 󰎨  Scope
+                                             │  Use the shared theme and keyboard navigation.
                                              │
-                                             │## Acceptance criteria
                                              │
-                                             │- [x] Reuse the task buffer
-                                             │- [x] Preserve ownership on save
-                                             │- [ ] Review narrow layouts
+                                             │󰌖 󰎨  Acceptance criteria
+                                             │
+                                             │   󰗠 Reuse the task buffer
+                                             │   󰗠 Preserve ownership on save
+                                             │   󰄰 Review narrow layouts
                                              │~
                                              │~
                                              │~
@@ -25,6 +26,5 @@
                                              │~
                                              │~
                                              │~
-                                             │~
-  <CR> open   a child   ? help                beads://personal/trial-theme.md [+]                     1,1            All
+  <CR> open   a child   ? help                beads://personal/trial-theme.md [+]                     1,1-4          All
 

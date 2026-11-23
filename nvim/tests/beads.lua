@@ -94,6 +94,15 @@ assert(
 )
 assert(vim.api.nvim_get_hl(0, { name = "BeadsProgress", link = false }).bold)
 assert(vim.wo[tree_win].cursorline and vim.wo[tree_win].winfixwidth)
+assert(
+	vim.api.nvim_get_hl(0, { name = "BeadsNormal", link = false }).bg
+		== vim.api.nvim_get_hl(0, { name = "Normal", link = false }).bg,
+	"Sidebar introduced a different background"
+)
+assert(
+	not vim.api.nvim_get_hl(0, { name = "BeadsHeader", link = false }).bg
+		and not vim.api.nvim_get_hl(0, { name = "BeadsFooter", link = false }).bg
+)
 local spans =
 	vim.api.nvim_buf_get_extmarks(tree_buf, vim.api.nvim_get_namespaces()["beads-sidebar"], 0, -1, { details = true })
 local semantic
@@ -139,6 +148,7 @@ local lines = {
 	"```",
 	"",
 	marker,
+	"## Acceptance criteria",
 	"- [ ] Native task fields",
 }
 vim.api.nvim_buf_set_lines(child, 0, -1, false, lines)
@@ -303,7 +313,30 @@ assert(vim.deep_equal(vim.api.nvim_buf_get_lines(child, 0, -1, false), dirty))
 vim.cmd("BeadsNew trial-root")
 local restart = vim.api.nvim_get_current_buf()
 title(restart, "Restart actual")
+local restart_lines = vim.api.nvim_buf_get_lines(restart, 0, -1, false)
+local restart_marker
+for _, line in ipairs(restart_lines) do
+	if line:find("<!-- beads:acceptance:", 1, true) == 1 then
+		restart_marker = line
+	end
+end
+local legacy_fields = {
+	title = "Restart actual",
+	description = "Retained draft",
+	acceptance_criteria = "## Acceptance criteria\nPreserve this authored heading",
+}
+vim.api.nvim_buf_set_lines(restart, 0, -1, false, require("beads.document").render(legacy_fields, restart_marker))
 control({ mode = "lost" })
 save(restart)
 assert(vim.b[restart].beads_pending)
+-- Model a receipt written by the previous document format, including an authored
+-- acceptance heading that must never be mistaken for the new structural heading.
+for _, path in ipairs(vim.fn.glob(settings.state_dir .. "/*.json", false, true)) do
+	local receipt = vim.json.decode(table.concat(vim.fn.readfile(path), "\n"))
+	if receipt.fields.title == "Restart actual" then
+		receipt.marker = receipt.marker:gsub(":v2:", ":", 1)
+		receipt.lines = require("beads.document").render(receipt.fields, receipt.marker)
+		vim.fn.writefile({ vim.json.encode(receipt) }, path)
+	end
+end
 print("Beads editor acceptance passed")

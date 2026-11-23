@@ -156,23 +156,13 @@ local function bind(doc)
 		virt_lines_above = false,
 		right_gravity = false,
 	})
+
+	-- Only the persistence boundary is managed here; Markview owns Markdown rendering.
 	for index, line in ipairs(vim.api.nvim_buf_get_lines(doc.buf, 0, -1, false)) do
 		if line == doc.marker then
-			vim.api.nvim_buf_set_extmark(doc.buf, context_namespace, index - 1, 0, {
-				end_col = #line,
-				conceal = "",
-				virt_text = { { "## Acceptance criteria", "BeadsTitle" } },
-				virt_text_pos = "overlay",
-			})
+			vim.api.nvim_buf_set_extmark(doc.buf, context_namespace, index - 1, 0, { end_col = #line, conceal = "" })
 		end
 	end
-	vim.api.nvim_buf_set_extmark(
-		doc.buf,
-		context_namespace,
-		0,
-		0,
-		{ end_col = #vim.api.nvim_buf_get_lines(doc.buf, 0, 1, false)[1], hl_group = "BeadsTitle" }
-	)
 	if not doc.base then
 		return
 	end
@@ -192,7 +182,7 @@ local function make_doc(p, fields, options)
 		project = p,
 		base = options.base,
 		parent = options.parent,
-		marker = options.marker or "<!-- beads:acceptance:" .. document.token() .. " -->",
+		marker = options.marker or "<!-- beads:acceptance:v2:" .. document.token() .. " -->",
 		pending = options.pending,
 		receipt_path = options.receipt_path,
 		pending_fields = options.pending and options.pending.fields,
@@ -203,12 +193,12 @@ local function make_doc(p, fields, options)
 	vim.bo[buf].bufhidden = "hide"
 	vim.bo[buf].swapfile = false
 	vim.bo[buf].modeline = false
-	vim.bo[buf].filetype = "markdown"
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, options.lines or document.render(fields, doc.marker))
 	vim.bo[buf].modified = not options.base
 	vim.b[buf].beads_project = p.name
 	vim.b[buf].beads_parent = doc.parent
 	bind(doc)
+	vim.bo[buf].filetype = "markdown"
 	vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
 		buffer = buf,
 		callback = function()

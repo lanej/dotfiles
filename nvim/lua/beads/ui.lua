@@ -19,8 +19,8 @@ end
 local function highlights()
 	local colors = require("dotfiles-theme").colors()
 	local groups = {
-		BeadsNormal = { fg = colors.text, bg = colors["surface.raised"] },
-		BeadsHeader = { fg = colors["text.strong"], bg = colors["surface.raised"], bold = true },
+		BeadsNormal = { link = "Normal" },
+		BeadsHeader = { fg = colors["text.strong"], bold = true },
 		BeadsRoot = { fg = colors.accent, bold = true },
 		BeadsSummary = { fg = colors["text.muted"] },
 		BeadsGuide = { fg = colors["text.muted"] },
@@ -37,8 +37,7 @@ local function highlights()
 		BeadsSelected = { fg = colors["selection.fg"], bg = colors["selection.bg"], bold = true },
 		BeadsFocus = { fg = colors.focus, bold = true },
 		BeadsKey = { fg = colors.keyhint, bold = true },
-		BeadsFooter = { fg = colors["text.muted"], bg = colors["surface.raised"] },
-		BeadsTitle = { fg = colors.heading, bold = true },
+		BeadsFooter = { fg = colors["text.muted"] },
 		BeadsMetadata = { fg = colors["text.muted"] },
 	}
 	for name, style in pairs(groups) do

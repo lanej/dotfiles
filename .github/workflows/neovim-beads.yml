@@ -8,6 +8,7 @@ on:
       - 'nvim/tests/beads*.lua'
       - 'nvim/lazy-lock.json'
       - 'nvim/lua/dotfiles-theme.lua'
+      - 'nvim/lua/markview-config.lua'
       - 'nvim/colors/dotfiles.lua'
       - 'design-system/generated/neovim.lua'
       - 'scripts/test-nvim-beads*'
@@ -66,6 +67,20 @@ jobs:
       - run: make test-nvim-beads
         env:
           NVIM_TEST_NUI: ${{ github.workspace }}/.beads-nui
+      - name: Read the Markview pin
+        id: markview
+        run: python3 -c 'import json, os; pin = json.load(open("nvim/lazy-lock.json"))["markview.nvim"]["commit"]; print("revision=" + pin, file=open(os.environ["GITHUB_OUTPUT"], "a"))'
+      - name: Check out the Markdown renderer
+        uses: actions/checkout@v5
+        with:
+          repository: OXY2DEV/markview.nvim
+          ref: ${{ steps.markview.outputs.revision }}
+          path: .beads-markview
+          persist-credentials: false
+      - run: make test-nvim-beads-presentation
+        env:
+          NVIM_TEST_NUI: ${{ github.workspace }}/.beads-nui
+          NVIM_TEST_MARKVIEW: ${{ github.workspace }}/.beads-markview
       - name: Check out the public Studio native fixture
         uses: actions/checkout@v5
         with:

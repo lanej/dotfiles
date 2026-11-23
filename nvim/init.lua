@@ -1701,21 +1701,7 @@ require("lazy").setup({
 			"nvim-treesitter/nvim-treesitter",
 			"nvim-tree/nvim-web-devicons",
 		},
-		opts = {
-			preview = {
-				filetypes = { "markdown" },
-				ignore_buftypes = {},
-			},
-			markdown = {
-				headings = {
-					shift_width = 0,
-				},
-				list_items = {
-					shift_width = 1,
-					indent_size = 1,
-				},
-			},
-		},
+		opts = require("markview-config"),
 	},
 	{
 		"stevearc/conform.nvim",

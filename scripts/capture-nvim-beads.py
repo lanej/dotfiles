@@ -9,6 +9,8 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import os
+import subprocess
 from pathlib import Path
 import tempfile
 import threading
@@ -93,7 +95,10 @@ def main():
     parser.add_argument("--nui", type=Path, default=Path.home() / ".local/share/nvim/lazy/nui.nvim")
     parser.add_argument("--fonts", type=Path, default=Path.home() / "Library/Fonts")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "docs/screenshots/neovim-beads")
+    parser.add_argument("--markview", type=Path, default=Path(os.environ.get("NVIM_TEST_MARKVIEW", str(Path.home() / ".local/share/nvim/lazy/markview.nvim"))))
     args = parser.parse_args()
+    pin = json.loads((ROOT / "nvim/lazy-lock.json").read_text())["markview.nvim"]["commit"]
+    assert subprocess.check_output(["git", "-C", str(args.markview), "rev-parse", "HEAD"], text=True).strip() == pin, "Use the lockfile's Markview revision"
     spec = importlib.util.spec_from_file_location("beads_fixture", ROOT / "scripts/test-nvim-beads.py")
     fixture = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(fixture)
@@ -139,6 +144,9 @@ def main():
                     nvim.exec_lua('vim.opt.rtp:append(...)', str(args.nui.resolve()))
                     nvim.command("set hidden termguicolors laststatus=2")
                     nvim.command("syntax enable")
+                    nvim.exec_lua('vim.opt.rtp:append(...)', str(args.markview.resolve()))
+                    nvim.exec_lua('require("markview").setup(require("markview-config"))')
+                    nvim.command("runtime plugin/markview.lua")
                     nvim.exec_lua('require("dotfiles-theme").setup()')
                     nvim.exec_lua('local settings=...; settings.attention=function(task) return task.metadata and task.metadata.attention end; require("beads").setup({projects={personal=settings}})',
                                   dict(url=f"http://127.0.0.1:{server.server_port}", project_id=fixture.PROJECT, state_dir=temporary))
@@ -150,6 +158,8 @@ def main():
                     assert nvim.exec_lua('return vim.wait(5000,function() return vim.b.beads_id=="trial-theme" end,10)')
                     nvim.exec_lua('vim.api.nvim_buf_set_lines(0,0,1,false,{"# Make task authoring feel native"})')
                     nvim.command("doautocmd TextChanged")
+                    assert nvim.exec_lua('return vim.wait(5000,function() return require("markview.state").buf_attached(vim.api.nvim_get_current_buf()) end,10)')
+                    nvim.command("Markview render")
                     nvim.api.set_current_win(tree_window)
                     nvim.exec_lua('for i,line in ipairs(vim.api.nvim_buf_get_lines(0,0,-1,false)) do if line:find("Theme") then vim.api.nvim_win_set_cursor(0,{i,0}) end end')
                     nvim.command("doautocmd CursorMoved")
