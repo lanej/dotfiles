@@ -1,5 +1,5 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { wrapTextWithAnsi } from "@earendil-works/pi-tui";
+import { visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import { z } from "zod";
 import type { Diagnostics } from "./client.ts";
 
@@ -86,7 +86,7 @@ export function diagnosticRows(
   );
   const visible = expanded ? items : items.slice(0, 2);
   return [
-    ...wrap(theme.fg("muted", heading)),
+    ...wrap(theme.fg("muted", theme.bold(heading))),
     ...visible.flatMap((item) => {
       const code =
         item.code === undefined
@@ -98,8 +98,22 @@ export function diagnosticRows(
           `${item.severity === "error" ? "E" : "W"} ${String(item.line)}:${String(item.column)}`,
         ),
       );
-      return wrap(
-        `${location}  ${clean(item.message)}${theme.fg("muted", clean(code))}`,
+      const metadata = location + theme.fg("muted", clean(code));
+      const text = clean(item.message);
+      const gutter = visibleWidth(metadata) + 2;
+      // Keep enough room for the message before placing it beside its metadata.
+      if (width - gutter < 40) {
+        const indent = width > 2 ? "  " : "";
+        return [
+          ...wrap(metadata),
+          ...wrapTextWithAnsi(text, Math.max(1, width - indent.length)).map(
+            (row) => indent + row,
+          ),
+        ];
+      }
+      return wrapTextWithAnsi(text, width - gutter).map(
+        (row, index) =>
+          (index === 0 ? `${metadata}  ` : " ".repeat(gutter)) + row,
       );
     }),
     ...(items.length > visible.length
