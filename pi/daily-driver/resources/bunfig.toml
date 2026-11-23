@@ -1,2 +1,0 @@
-# Trusted launch settings; checkout Bun preloads must not run before Pi trust checks.
-preload = []

@@ -14,7 +14,6 @@ bin/*
 !bin/directory-picker
 !bin/firstmate
 !bin/paseo-pi
-!bin/pi-driver
 !bin/ep-direnv
 !bin/epenv
 !bin/epenv_test.py

@@ -128,11 +128,10 @@
     "id": "pi",
     "owner": "Native Pi theme and task interface",
     "mechanism": "bundled generated JSON theme linked by the opt-in daily-driver configuration",
-    "reload": "From pi/daily-driver, run bun run configure, then reload Pi. Refresh the bundled theme snapshot after regenerating shared theme changes.",
+    "reload": "From ~/src/studio, run bun run configure, then reload Pi. Refresh Studio's bundled theme snapshot after regenerating shared theme changes.",
     "coverage": "Pi 1.4.0 loads the generated theme; task selection, details and the compact footer are checked at narrow and wide terminal sizes. The terminal retains ownership of its canvas background and opacity.",
     "sources": [
-      "design-system/adapters/pi.json",
-      "pi/daily-driver/ui.ts"
+      "design-system/adapters/pi.json"
     ]
   },
   {

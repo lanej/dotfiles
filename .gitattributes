@@ -2,8 +2,6 @@
 claude/evals/socrates-dialogue/results/**/record.json linguist-generated=true
 
 # Collapse generated contracts, adapters, and Bun lockfiles in PR diffs.
-pi/daily-driver/bun.lock linguist-generated=true
-pi/daily-driver/.typescript-quality/bun.lock linguist-generated=true
 design-system/generated/** linguist-generated=true
 config/schema.json linguist-generated=true
 config/targets.mk linguist-generated=true

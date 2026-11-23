@@ -1,6 +1,0 @@
-#!/bin/sh
-set -eu
-package=$(CDPATH='' cd -P -- "${0%/*}/.." && pwd)
-runtime=$package/runtime/bun
-if [ ! -x "$runtime" ]; then runtime=bun; fi
-exec "$runtime" --no-env-file "--config=$package/resources/bunfig.toml" "$package/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js" "$@"

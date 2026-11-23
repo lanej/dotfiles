@@ -32,3 +32,7 @@ command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "keylease"]
 path = "{dotfiles}"
 command = ["bash", "{dotfiles}/scripts/worktree-manager-update.sh"]
 pull_sources = true
+
+[projects.studio]
+path = "~/src/studio"
+command = ["bun", "scripts/lifecycle.mjs"]

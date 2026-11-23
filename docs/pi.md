@@ -1,14 +1,14 @@
 # Pi
 
-[Pi](https://github.com/earendil-works/pi) is an optional coding-agent runtime. The dotfiles integration shares skills and role instructions. The [daily driver](../pi/daily-driver/README.md) adds the shared theme, task browser, idle compaction, work/personal profiles and a terminal workflow for an existing Beads task. Start it from Zellij, steer the Pi worker in its managed checkout and inspect the outcome from a separate terminal with Paseo offline.
+[Pi](https://github.com/earendil-works/pi) is an optional coding-agent runtime. The dotfiles integration shares skills and role instructions. The [Studio daily driver](https://github.com/lanej/studio#readme) adds the shared theme, task browser, idle compaction, work/personal profiles and a terminal workflow for an existing Beads task. Start it from Zellij, steer the Pi worker in its managed checkout and inspect the outcome from a separate terminal with Paseo offline.
 
-The [runtime integration plan](../pi/daily-driver/RUNTIME.md) evaluates existing Pi packages for subagent delegation and session management, with adapters for the native worktree manager, Beads authority, Octo feedback delivery, and the merge/removal/archive sequence. It separates the next read-only delegation increment from task-bound coding and the complete delivery lifecycle.
+The [runtime integration plan](https://github.com/lanej/studio/blob/main/RUNTIME.md) evaluates existing Pi packages for subagent delegation and session management, with adapters for the native worktree manager, Beads authority, Octo feedback delivery, and the merge/removal/archive sequence. It separates the next read-only delegation increment from task-bound coding and the complete delivery lifecycle.
 
 ## Install
 
 Select `pi = true` under `[tools]` in the machine TOML and run `make install` to install the configured standalone Pi release and share its resources. The installer places the launcher at `~/.local/bin/pi`. If an older npm launcher appears first in your shell, open a new shell or put `~/.local/bin` first on PATH.
 
-Follow the [daily-driver setup](../pi/daily-driver/README.md#enable) to enable the Bun-based extension.
+Follow the [daily-driver setup](https://github.com/lanej/studio#install) to enable the Bun-based extension.
 
 If the installer reports an unmanaged launcher at `~/.local/bin/pi`, move that launcher aside before retrying.
 
@@ -34,4 +34,4 @@ Local Pi prompts are preserved, including collisions with the `dotfiles-` names.
 
 `make test-pi-resources` exercises the real configuration target in an isolated home. CI also uses Pi 1.4.0 to discover the installed resources without making a model request. Resource discovery does not establish that a model follows every shared instruction or that Claude-specific skills work unchanged.
 
-The daily-driver package is being prepared for a standalone checkout. Its managed workflow uses the Bun version in `pi/daily-driver/.bun-version`, independently of the standalone Pi launcher above. See its [installation and extraction instructions](../pi/daily-driver/README.md). The standalone project owns installation and its `project-update` adapter; the selected destination is `lanej/studio` at `~/src/studio`. Repository creation and project-update registration remain cutover steps.
+Studio owns the daily-driver source, installation, and checks in [lanej/studio](https://github.com/lanej/studio). Clone it to `~/src/studio` and follow its [installation instructions](https://github.com/lanej/studio#install), including the project-pinned Bun version. Dotfiles registers that checkout with `project-update`: use `project-update pull studio`, `project-update build studio`, and `project-update restart studio`, or `project-update update studio` for the sequence. Restart reports that Pi needs a manual reload or relaunch; it preserves running sessions. Studio installation remains separate from the standalone Pi launcher and shared-resource configuration above.
