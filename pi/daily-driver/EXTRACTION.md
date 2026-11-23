@@ -1,6 +1,6 @@
 # Extraction provenance
 
-Prepared from [lanej/dotfiles at d33526d125a69ea5be9faf12eb8507014d20e170](https://github.com/lanej/dotfiles/tree/d33526d125a69ea5be9faf12eb8507014d20e170). This package is the standalone snapshot boundary; no remote repository has been selected.
+Prepared from [lanej/dotfiles at d33526d125a69ea5be9faf12eb8507014d20e170](https://github.com/lanej/dotfiles/tree/d33526d125a69ea5be9faf12eb8507014d20e170). This package is the standalone snapshot boundary. The selected destination is `lanej/studio`, with source checkout `~/src/studio`.
 
 `vendor/task-runtime` is derived from `tools/task-runtime` at that revision, with Bun commands, strict-lint adaptations, and configured worktree-executable support. Paseo retains its original client. Update the client, schema and generated declarations together, then run `bun run check:beads-api` in the vendor package and the driver acceptance checks. Its Beads schema provenance is in `vendor/task-runtime/api/README.md`.
 
@@ -8,7 +8,7 @@ Prepared from [lanej/dotfiles at d33526d125a69ea5be9faf12eb8507014d20e170](https
 
 `acceptance/install-worktree-manager` retains the checksum-verifying dotfiles installer for the CI fixture version. `acceptance/zellij_pty.py` retains the generic PTY helper from dotfiles; it does not run the workstation navigation detectors. External native tools remain independently installed.
 
-Cutover remains gated on standalone macOS and Linux acceptance. Only then remove the dotfiles driver sources and checks and register the chosen checkout in `config/project-updates.toml`.
+Cutover remains gated on standalone macOS and Linux acceptance. Only then remove the dotfiles driver sources and checks and register `~/src/studio` as `studio` in `config/project-updates.toml`.
 
 There is no pre-extraction driver database to migrate. Existing Beads data and unrelated Pi sessions remain outside this extraction. The driver retains its normal persistent attempt and recovery records for future use.
 

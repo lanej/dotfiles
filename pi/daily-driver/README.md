@@ -31,17 +31,17 @@ Installation builds a versioned bundle under `~/.local/share/pi-driver/releases`
 
 For development, `bun run configure` registers this source package without installing it. `bun run build:aot` builds the compiled CLI; `scripts/pi-driver` uses it when available. Set `PI_DRIVER_USE_SOURCE=1` to select source execution. `scripts/pi` starts the pinned native Pi host explicitly through Bun. Managed hosts and delegated children use Bun; Node/npm are not required by this package. Host and source-mode launchers select the bundled Bun configuration and disable dotenv autoload before entry, so checkout preloads cannot run ahead of Pi trust checks. Explicitly inherited environment variables remain available. Python is needed for installation/configuration helpers. The integration tools below are optional; installation does not provision them.
 
-The project-owned updater adapter is `scripts/lifecycle.mjs`. Once the separate checkout is registered with the workstation's project updater, use `project-update pull pi-driver`, `project-update build pi-driver`, and `project-update restart pi-driver`, or `project-update update pi-driver` for the sequence. Restart returns 3 with a manual reload/relaunch reminder; it does not terminate sessions. Status reports installed source identity separately from the unknown running revision. Build stages the selected checkout without pulling. Previous bundles remain available.
+The project-owned updater adapter is `scripts/lifecycle.mjs`. Once the separate checkout is registered with the workstation's project updater, use `project-update pull studio`, `project-update build studio`, and `project-update restart studio`, or `project-update update studio` for the sequence. Restart returns 3 with a manual reload/relaunch reminder; it does not terminate sessions. Status reports installed source identity separately from the unknown running revision. Build stages the selected checkout without pulling. Previous bundles remain available.
 
-Register the chosen checkout using the existing updater registry format (replace the path with the selected destination):
+Register the Studio checkout using the existing updater registry format after extraction:
 
 ```toml
-[projects.pi-driver]
-path = "~/src/CHOSEN-CHECKOUT"
+[projects.studio]
+path = "~/src/studio"
 command = ["bun", "scripts/lifecycle.mjs"]
 ```
 
-Export standalone source with `python3 scripts/export.py /path/to/empty-destination`. Repository creation and updater registration await the destination choice. See [provenance and cutover](EXTRACTION.md).
+Export standalone source with `python3 scripts/export.py /path/to/empty-destination`. The selected destination is `lanej/studio`, with checkout `~/src/studio`. Repository creation and updater registration remain cutover steps. See [provenance and cutover](EXTRACTION.md).
 
 The theme comes from a bundled snapshot of the shared semantic adapter, with Nord selected by the current design-system preset. The terminal retains its canvas and opacity settings. The task tree opens as a right-side overlay with colored status glyphs. Enter opens task details with the state written out. Right focuses a task’s live managed Pi pane in the same Zellij session when the action is shown. Task selection and details omit keyboard instructions and policy boilerplate. The footer shows the current directory using [shortpath](https://github.com/lanej/dotfiles/blob/master/tools/shortpath/README.md) when it is on PATH. Colored glyphs mark the lead mode and reasoning level alongside the bead ID and model. The same row fits Git changes, the Octo-tracked PR, context usage, and estimated session cost as space allows. GPT model IDs show a provider glyph, version, and variant glyph for Sol, Luna, Terra, and Astra. Secondary fields collapse as the pane narrows, and other extensions retain their status lines. Startup hints, resource listings, zero-usage counters, and the permanent compaction-policy line are hidden. Bash tool cards highlight shell syntax in command lines. Code from Pi’s grep tool and supported `rg` and `sed` shell tool calls uses the active syntax theme. Pi’s output folding and truncation remain available. Actionable errors remain visible.
 
