@@ -132,7 +132,8 @@ def main():
             terminal.until("recursive attach pane closes", lambda:
                            [pane["id"] for pane in terminal.terminals()] == [outer["id"]])
 
-            terminal.action("focus-pane-id", str(outer["id"]))
+            if not terminal.terminals()[0]["is_focused"]:
+                terminal.action("focus-pane-id", str(outer["id"]))
             recursive_exit = temporary / "recursive-shell-exit"
             terminal.send((shlex.join(recursive_command(recursive_exit)) + "\r").encode())
             require_rejection(recursive_exit)
