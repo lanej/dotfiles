@@ -6,6 +6,7 @@
 """Install Codex approval defaults and explicitly selected integration policies."""
 import argparse
 import copy
+import json
 import os
 from pathlib import Path
 import sys
@@ -41,6 +42,75 @@ DISABLED_PLUGINS = (
     "plugin-management@openai-curated-remote",
     "openai-developers@openai-curated-remote",
 )
+OCTO_START = "# BEGIN dotfiles Octo Manager rules\n"
+OCTO_END = "# END dotfiles Octo Manager rules\n"
+
+
+def octo_rules(root):
+    path = root / "rules/octo-manager.rules"
+    if path.is_symlink():
+        path = path.resolve(strict=True)
+    original = path.read_text() if path.exists() else ""
+    commands = [
+        [["actions", "tracked", "tracking", "submission", "submissions",
+          "inbox", "message", "chains", "references", "dependencies",
+          "get", "events", "read", "ack", "acknowledge-message", "record-activity"]],
+        ["pr", ["list", "show", "participants", "instructions", "validate"]],
+        ["agent", ["list", "status", "inbox"]],
+        ["action", ["list", "show"]],
+        ["publication", ["list", "show"]],
+        ["job", ["show", "events"]],
+        ["activity", ["list", "record"]],
+        ["chain", ["list", "show"]],
+        ["dependency", "list"],
+        ["reference", "list"],
+        ["messages", ["list", "inspect", "show", "ack"]],
+        ["assessment", "show"],
+        ["issue", ["list", "show"]],
+        ["history", ["submissions", "submission", "policy"]],
+        ["repair", "list"],
+        ["conflict", ["list", "show"]],
+    ]
+    launchers = ["octo-manager", str(Path.home() / ".local/bin/octo-manager")]
+    block = OCTO_START + (
+        "# Inspection, delivery receipts, acknowledgments, and caller activity reports only.\n"
+        "# Publication, merge authority, repairs, and service controls are not allowed here.\n"
+    )
+    for command in commands:
+        pattern = json.dumps([launchers, *command])
+        block += f'prefix_rule(pattern={pattern}, decision="allow")\n'
+    block += OCTO_END
+    if OCTO_START in original or OCTO_END in original:
+        if (original.count(OCTO_START) != 1 or original.count(OCTO_END) != 1
+                or original.index(OCTO_START) > original.index(OCTO_END)):
+            raise ValueError(f"malformed managed Octo rules block: {path}")
+        start = original.index(OCTO_START)
+        end = original.index(OCTO_END) + len(OCTO_END)
+        updated = original[:start] + block + original[end:]
+    else:
+        separator = "\n" if original and not original.endswith("\n") else ""
+        updated = original + separator + block
+    return path, original, updated
+
+
+def write_if_changed(path, original, updated):
+    if updated == original:
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    mode = path.stat().st_mode & 0o777 if path.exists() else 0o600
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(
+                mode="w", dir=path.parent, prefix=".permissions-", delete=False) as output:
+            temporary = Path(output.name)
+            output.write(updated)
+        temporary.chmod(mode)
+        if (path.read_text() if path.exists() else "") != original:
+            raise ValueError(f"Codex configuration changed during installation: {path}")
+        temporary.replace(path)
+    finally:
+        if temporary and temporary.exists():
+            temporary.unlink()
 
 
 def main():
@@ -55,6 +125,7 @@ def main():
         path = path.resolve(strict=True)
     original = path.read_text() if path.exists() else ""
     config = tomllib.loads(original)
+    rules = octo_rules(root)
     expected = copy.deepcopy(config)
     expected.update(DEFAULTS)
     app_access = {GITHUB_APP: github_enabled}
@@ -67,6 +138,7 @@ def main():
     for plugin, enabled in plugin_access.items():
         expected.setdefault("plugins", {}).setdefault(plugin, {})["enabled"] = enabled
     if config == expected:
+        write_if_changed(*rules)
         return
 
     document = tomlkit.parse(original)
@@ -81,21 +153,8 @@ def main():
     if tomllib.loads(updated) != expected:
         raise ValueError("could not preserve unrelated Codex configuration")
 
-    path.parent.mkdir(parents=True, exist_ok=True)
-    mode = path.stat().st_mode & 0o777 if path.exists() else 0o600
-    temporary = None
-    try:
-        with tempfile.NamedTemporaryFile(
-                mode="w", dir=path.parent, prefix=".permissions-", delete=False) as output:
-            temporary = Path(output.name)
-            output.write(updated)
-        temporary.chmod(mode)
-        if (path.read_text() if path.exists() else "") != original:
-            raise ValueError("Codex configuration changed during installation")
-        temporary.replace(path)
-    finally:
-        if temporary and temporary.exists():
-            temporary.unlink()
+    write_if_changed(path, original, updated)
+    write_if_changed(*rules)
 
 
 if __name__ == "__main__":
