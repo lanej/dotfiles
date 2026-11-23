@@ -2,7 +2,7 @@
 
 Reusable TypeScript terminal components on `@earendil-works/pi-tui`. This package has no dependency on the Pi coding agent, the daily driver, Socrates, Beads or a managed worktree. Its first component is the Vim-first selector used by the daily driver's Socrates adapter.
 
-Install from a repository checkout with a local `file:` dependency on `tools/pi-components`. The package exports TypeScript source; callers need a TypeScript loader or bundler, as the Pi runtime and daily driver already provide. The package is private and is not published to npm. Consumers using npm should set `install-links=true` to install the local package's declared files and resolve its Pi TUI peer from the consumer.
+Install from a repository checkout with a local `file:` dependency on `tools/pi-components`. The package exports TypeScript source; callers need a TypeScript loader or bundler, as the Pi runtime and daily driver already provide. The package is private and is not published to npm. Use Bun 1.4.5 (pinned in `.bun-version`) for package installation, scripts and tests. The driver's existing installer consumes this local package through its own lockfile.
 
 ## Selector
 
@@ -31,8 +31,8 @@ Use `j`/`k` to move, `;` to enter visible letter hints, `l` to inspect details, 
 ## Checks
 
 ```sh
-npm --prefix tools/pi-components ci --ignore-scripts
-npm --prefix tools/pi-components run quality:tools
+bun install --cwd tools/pi-components --frozen-lockfile --ignore-scripts
+bun run --cwd tools/pi-components quality:tools
 make test-pi-components
 ```
 

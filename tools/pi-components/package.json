@@ -14,14 +14,18 @@
   },
   "devDependencies": {
     "@earendil-works/pi-tui": "1.4.0",
-    "@types/node": "^24.0.0",
-    "tsx": "^4.20.0"
+    "@types/bun": "^1.4.5",
+    "@types/node": "^26.6.6"
   },
   "scripts": {
-    "test": "node --import tsx --test tests/*.test.ts",
-    "check": "node scripts/check-typescript.mjs all",
-    "quality:tools": "node scripts/check-typescript.mjs tools",
-    "format": "node scripts/check-typescript.mjs fmt",
-    "typecheck": "node scripts/check-typescript.mjs typecheck"
-  }
+    "test": "bun test",
+    "check": "bun scripts/check-typescript.mjs all",
+    "quality:tools": "bun scripts/check-typescript.mjs tools",
+    "format": "bun scripts/check-typescript.mjs fmt",
+    "typecheck": "bun scripts/check-typescript.mjs typecheck"
+  },
+  "engines": {
+    "bun": "1.4.5"
+  },
+  "packageManager": "bun@1.4.5"
 }

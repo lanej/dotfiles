@@ -617,7 +617,7 @@ test-pi-resources:
 
 .PHONY: pi-driver-config pi-driver-aot test-pi-driver test-pi-components
 test-pi-components:
-	@npm --prefix "$(DOTFILES)/tools/pi-components" run check
+	@bun run --cwd "$(DOTFILES)/tools/pi-components" check
 
 pi-driver-config:
 	@python3 "$(DOTFILES)/scripts/configure-pi-driver.py" "$(DOTFILES)/pi/daily-driver" "$(HOME)/.pi/agent"

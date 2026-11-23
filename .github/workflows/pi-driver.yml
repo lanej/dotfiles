@@ -52,8 +52,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: npm --prefix tools/pi-components ci --ignore-scripts
-      - run: npm --prefix tools/pi-components/.typescript-quality ci --ignore-scripts
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: tools/pi-components/.bun-version
+      - run: bun install --cwd tools/pi-components --frozen-lockfile --ignore-scripts
+      - run: bun install --cwd tools/pi-components/.typescript-quality --frozen-lockfile --ignore-scripts
       - run: make test-pi-components
       - run: npm --prefix pi/daily-driver ci --ignore-scripts
       - run: npm --prefix pi/daily-driver/.typescript-quality ci --ignore-scripts

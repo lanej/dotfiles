@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "bun:test";
 import {
   stripTerminalSequences,
   visibleWidth,
@@ -32,7 +32,7 @@ const theme: SelectorTheme = {
   markdown,
 };
 
-await test("a non-Socrates caller gets focus movement, hint jumps and explicit completion", () => {
+test("a non-Socrates caller gets focus movement, hint jumps and explicit completion", () => {
   const selections: (number | undefined)[] = [];
   let renders = 0;
   const selector = createSelector({
@@ -69,7 +69,7 @@ await test("a non-Socrates caller gets focus movement, hint jumps and explicit c
   assert.ok(renders > 0);
 });
 
-await test("detail recovery, resize and cancellation preserve the focused choice", () => {
+test("detail recovery, resize and cancellation preserve the focused choice", () => {
   const selections: (number | undefined)[] = [];
   let height = 14;
   const selector = createSelector({
@@ -119,7 +119,7 @@ await test("detail recovery, resize and cancellation preserve the focused choice
   assert.deepEqual(selections, [undefined]);
 });
 
-await test("empty choices fail before opening an unusable component", () => {
+test("empty choices fail before opening an unusable component", () => {
   assert.throws(
     () =>
       createSelector({
