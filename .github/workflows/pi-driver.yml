@@ -5,7 +5,6 @@ on:
     paths:
       - 'pi/daily-driver/**'
       - 'bin/pi-driver'
-      - 'scripts/configure-pi-driver.py'
       - 'scripts/install-worktree-manager'
       - 'bootstrap/tools.toml'
       - 'tools/beads/**'
@@ -16,7 +15,6 @@ on:
     paths:
       - 'pi/daily-driver/**'
       - 'bin/pi-driver'
-      - 'scripts/configure-pi-driver.py'
       - 'scripts/install-worktree-manager'
       - 'bootstrap/tools.toml'
       - 'tools/beads/**'

@@ -615,12 +615,10 @@ pi-resources: codex-skills
 test-pi-resources:
 	@python3 "$(DOTFILES)/scripts/test-pi-resources.py"
 
-.PHONY: pi-driver-config pi-driver-aot test-pi-driver test-pi-components
+.PHONY: pi-driver-aot test-pi-driver test-pi-components
 test-pi-components:
 	@bun run --cwd "$(DOTFILES)/tools/pi-components" check
 
-pi-driver-config:
-	@python3 "$(DOTFILES)/scripts/configure-pi-driver.py" "$(DOTFILES)/pi/daily-driver" "$(HOME)/.pi/agent"
 pi-driver-aot:
 	@bun run --cwd "$(DOTFILES)/pi/daily-driver" build:aot
 test-pi-driver:
