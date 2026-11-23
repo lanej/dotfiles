@@ -62,6 +62,10 @@ source-code-python-check:
 test-python-quality:
 	@python3 "$(DOTFILES)/scripts/test-python-quality.py"
 
+.PHONY: test-source-code-hydration
+test-source-code-hydration:
+	@python3 "$(DOTFILES)/scripts/test-source-code-hydration.py"
+
 .PHONY: test-repo-bootstrap
 test-repo-bootstrap:
 	@python3 "$(DOTFILES)/scripts/test-repo-bootstrap.py"
