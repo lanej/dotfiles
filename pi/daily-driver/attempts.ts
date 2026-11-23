@@ -81,9 +81,10 @@ export class Attempts {
     readOnly = false,
   ) {
     if (!readOnly) mkdirSync(directory, { recursive: true, mode: 0o700 });
-    this.db = new Database(join(directory, "attempts.sqlite"), {
-      readonly: readOnly,
-    });
+    this.db = new Database(
+      join(directory, "attempts.sqlite"),
+      readOnly ? { readonly: true } : { readwrite: true, create: true },
+    );
     this.db.run("PRAGMA busy_timeout=5000");
     if (!readOnly)
       this.db
