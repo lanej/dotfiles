@@ -8,6 +8,7 @@
 
 local use_ghlite = require("dotfiles-config").enabled("features.nvim_ghlite")
 require("file-opener").setup()
+require("beads").setup(vim.g.beads or {})
 
 vim.opt.autoread = true
 vim.opt.autoindent = true
@@ -1700,21 +1701,7 @@ require("lazy").setup({
 			"nvim-treesitter/nvim-treesitter",
 			"nvim-tree/nvim-web-devicons",
 		},
-		opts = {
-			preview = {
-				filetypes = { "markdown" },
-				ignore_buftypes = {},
-			},
-			markdown = {
-				headings = {
-					shift_width = 0,
-				},
-				list_items = {
-					shift_width = 1,
-					indent_size = 1,
-				},
-			},
-		},
+		opts = require("markview-config"),
 	},
 	{
 		"stevearc/conform.nvim",

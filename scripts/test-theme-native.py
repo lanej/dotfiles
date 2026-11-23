@@ -90,6 +90,30 @@ def compact(rows):
     return result
 
 
+def stop_child_group(pid):
+    def send(sig):
+        try:
+            os.killpg(pid, sig)
+        except ProcessLookupError:
+            pass
+        except PermissionError:
+            # Darwin rejects signals to a group whose leader has already exited.
+            # Ignore that race only when this owned child can actually be reaped.
+            if os.waitpid(pid, os.WNOHANG)[0]:
+                return True
+            raise
+        return False
+
+    if os.waitpid(pid, os.WNOHANG)[0] or send(signal.SIGTERM):
+        return
+    for _ in range(30):
+        if os.waitpid(pid, os.WNOHANG)[0]:
+            return
+        time.sleep(0.03)
+    if not send(signal.SIGKILL):
+        os.waitpid(pid, 0)
+
+
 def terminal(command, env, ready, *, columns=76, lines=24, capture_lines=10):
     pid, fd = pty.fork()
     if pid == 0:
@@ -116,17 +140,7 @@ def terminal(command, env, ready, *, columns=76, lines=24, capture_lines=10):
         raise AssertionError(f"Native preview did not become ready: {command[0]}\n" + "\n".join(screen.display))
     finally:
         os.close(fd)
-        try:
-            os.killpg(pid, signal.SIGTERM)
-        except ProcessLookupError:
-            pass
-        for _ in range(30):
-            if os.waitpid(pid, os.WNOHANG)[0]:
-                break
-            time.sleep(0.03)
-        else:
-            os.killpg(pid, signal.SIGKILL)
-            os.waitpid(pid, 0)
+        stop_child_group(pid)
 
 
 def svg(name, rows):

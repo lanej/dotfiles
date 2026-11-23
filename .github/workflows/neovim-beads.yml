@@ -1,0 +1,110 @@
+name: Neovim Beads
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: &beads-paths
+      - 'nvim/lua/beads/**'
+      - 'nvim/tests/beads*.lua'
+      - 'nvim/lazy-lock.json'
+      - 'nvim/lua/dotfiles-theme.lua'
+      - 'nvim/lua/markview-config.lua'
+      - 'nvim/colors/dotfiles.lua'
+      - 'design-system/generated/neovim.lua'
+      - 'scripts/test-nvim-beads*'
+      - 'tools/task-runtime/**'
+      - 'tools/beads/**'
+      - 'config/beads/**'
+      - 'bootstrap/tools.toml'
+      - '.github/workflows/neovim-beads.yml'
+  push:
+    branches: [master]
+    paths: *beads-paths
+
+permissions:
+  contents: read
+
+jobs:
+  editor:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install Neovim
+        shell: bash
+        run: |
+          case "$(uname -s)-$(uname -m)" in
+            Linux-x86_64) nvim_platform=linux-x86_64 ;;
+            Darwin-arm64) nvim_platform=macos-arm64 ;;
+            Darwin-x86_64) nvim_platform=macos-x86_64 ;;
+            *) exit 1 ;;
+          esac
+          mkdir -p "$RUNNER_TEMP/beads-nvim"
+          curl --fail --location --retry 3 "https://github.com/neovim/neovim/releases/download/v0.12.5/nvim-$nvim_platform.tar.gz" | tar -xz -C "$RUNNER_TEMP/beads-nvim"
+          echo "$RUNNER_TEMP/beads-nvim/nvim-$nvim_platform/bin" >> "$GITHUB_PATH"
+      - run: npm --prefix tools/task-runtime ci --ignore-scripts
+      - run: make check-beads-lua
+      - name: Read the Nui tree pin
+        id: nui
+        run: python3 -c 'import json, os; pin = json.load(open("nvim/lazy-lock.json"))["nui.nvim"]["commit"]; print("revision=" + pin, file=open(os.environ["GITHUB_OUTPUT"], "a"))'
+      - name: Check out the tree component
+        uses: actions/checkout@v5
+        with:
+          repository: MunifTanjim/nui.nvim
+          ref: ${{ steps.nui.outputs.revision }}
+          path: .beads-nui
+          persist-credentials: false
+      - run: make test-nvim-beads
+        env:
+          NVIM_TEST_NUI: ${{ github.workspace }}/.beads-nui
+      - name: Read the Markview pin
+        id: markview
+        run: python3 -c 'import json, os; pin = json.load(open("nvim/lazy-lock.json"))["markview.nvim"]["commit"]; print("revision=" + pin, file=open(os.environ["GITHUB_OUTPUT"], "a"))'
+      - name: Check out the Markdown renderer
+        uses: actions/checkout@v5
+        with:
+          repository: OXY2DEV/markview.nvim
+          ref: ${{ steps.markview.outputs.revision }}
+          path: .beads-markview
+          persist-credentials: false
+      - run: make test-nvim-beads-presentation
+        env:
+          NVIM_TEST_NUI: ${{ github.workspace }}/.beads-nui
+          NVIM_TEST_MARKVIEW: ${{ github.workspace }}/.beads-markview
+      - name: Check out the public Studio native fixture
+        uses: actions/checkout@v5
+        with:
+          repository: lanej/studio
+          ref: 327fae2ecb1db5af1a123972a1d9b893a6d24e28
+          path: .beads-native-studio
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .beads-native-studio/.bun-version
+      - run: bun install --frozen-lockfile --ignore-scripts
+        working-directory: .beads-native-studio
+      - name: Stage pinned native test binaries without starting the service
+        shell: bash
+        run: |
+          python3 tools/beads/beads-service.py install --home "$RUNNER_TEMP/beads-home" --no-start
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          binaries = json.loads((Path(os.environ['RUNNER_TEMP']) / 'beads-home/.local/share/beads-service/runtime.json').read_text())
+          with open(os.environ['GITHUB_ENV'], 'a') as output:
+              for key in ('bd', 'dolt'):
+                  output.write(f'BEADS_TEST_{key.upper()}={binaries[key]}\n')
+          PY
+      - run: make test-nvim-beads-native
+        env:
+          STUDIO_TEST_SOURCE: ${{ github.workspace }}/.beads-native-studio
