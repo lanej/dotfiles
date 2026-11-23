@@ -68,7 +68,7 @@ function sessionSocket(
     readonly: true,
   });
   try {
-    database.exec("PRAGMA busy_timeout=100");
+    database.run("PRAGMA busy_timeout=100");
     const { id } = z
       .object({ id: z.string().regex(/^(?!\.{1,2}$)[^/\0]+$/u) })
       .parse(

@@ -44,7 +44,7 @@ await test("a lost pane launch is sent once and a replaced server is never focus
     .digest("hex")
     .slice(0, 12);
   const index = new Database(join(cache, `session_index-${suffix}.sqlite`));
-  index.exec(
+  index.run(
     "CREATE TABLE sessions (id TEXT, name TEXT); INSERT INTO sessions VALUES ('one', 'test');",
   );
   index.close();
