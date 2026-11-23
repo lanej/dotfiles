@@ -9,6 +9,7 @@ on:
       - 'design-system/generated/pi.json'
       - 'bin/pi-driver'
       - 'scripts/configure-pi-driver.py'
+      - 'scripts/install-pi'
       - 'scripts/install-worktree-manager'
       - 'bootstrap/tools.toml'
       - 'tools/task-runtime/**'
@@ -26,6 +27,7 @@ on:
       - 'design-system/generated/pi.json'
       - 'bin/pi-driver'
       - 'scripts/configure-pi-driver.py'
+      - 'scripts/install-pi'
       - 'scripts/install-worktree-manager'
       - 'bootstrap/tools.toml'
       - 'tools/task-runtime/**'
@@ -44,49 +46,52 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: '24'
-          cache: npm
-          cache-dependency-path: pi/daily-driver/package-lock.json
+          bun-version-file: pi/daily-driver/.bun-version
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: tools/pi-components/.bun-version
+      - name: Install standalone Pi
+        run: |
+          version=$(python3 -c 'import tomllib; print(tomllib.load(open("bootstrap/tools.toml", "rb"))["tools"]["pi"]["version"])')
+          sh scripts/install-pi "$version"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Block Node and npm subprocesses
+        run: |
+          mkdir -p "$RUNNER_TEMP/bun-only"
+          for command in node npm npx; do
+            printf '%s\n' '#!/bin/sh' 'echo "Pi driver must use Bun" >&2' 'exit 127' > "$RUNNER_TEMP/bun-only/$command"
+            chmod +x "$RUNNER_TEMP/bun-only/$command"
+          done
+          echo "$RUNNER_TEMP/bun-only" >> "$GITHUB_PATH"
+      - run: bun install --cwd pi/daily-driver --frozen-lockfile --ignore-scripts
+      - run: bun install --cwd pi/daily-driver/.typescript-quality --frozen-lockfile --ignore-scripts
       - run: bun install --cwd tools/pi-components --frozen-lockfile --ignore-scripts
       - run: bun install --cwd tools/pi-components/.typescript-quality --frozen-lockfile --ignore-scripts
       - run: make test-pi-components
-      - run: npm --prefix pi/daily-driver ci --ignore-scripts
-      - run: npm --prefix pi/daily-driver/.typescript-quality ci --ignore-scripts
       - name: Verify generated Zellij bindings against the runtime pin
         if: runner.os == 'Linux'
-        run: npm --prefix pi/daily-driver run check:zellij
+        run: bun run --cwd pi/daily-driver check:zellij
       - run: make test-pi-driver
-        env:
-          NODE_OPTIONS: --max-old-space-size=4096
       - name: Install pinned worktree manager
         run: |
           version=$(python3 -c 'import tomllib; print(tomllib.load(open("bootstrap/tools.toml","rb"))["tools"]["worktree-manager"]["version"])')
           HOME="$RUNNER_TEMP/manager" sh scripts/install-worktree-manager "$version"
           echo "$RUNNER_TEMP/manager/.local/bin" >> "$GITHUB_PATH"
-      - run: npm --prefix pi/daily-driver run test:delegation-native
-      - run: npm --prefix pi/daily-driver run test:delegation-native -- --lost-allocation
-      - run: npm --prefix pi/daily-driver run test:delegation-native -- --cancel
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: pi/daily-driver/.bun-version
+      - run: bun run --cwd pi/daily-driver test:delegation-native
+      - run: bun run --cwd pi/daily-driver test:delegation-native --lost-allocation
+      - run: bun run --cwd pi/daily-driver test:delegation-native --cancel
       - name: Verify the compiled driver entry point
         run: |
-          npm --prefix pi/daily-driver run build:aot
-          npm --prefix pi/daily-driver test
+          bun run --cwd pi/daily-driver build:aot
+          bun run --cwd pi/daily-driver test
       - name: Verify admission and completion against the pinned Beads service
         if: runner.os == 'Linux'
         run: |
           python3 tools/beads/beads-service.py install --no-start
           manifest="$HOME/.local/share/beads-service/runtime.json"
-          npm --prefix pi/daily-driver run test:beads-native -- \
+          bun run --cwd pi/daily-driver test:beads-native \
             --bd "$(jq -er .bd "$manifest")" --dolt "$(jq -er .dolt "$manifest")"
 
   lsp-native:
@@ -100,15 +105,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: npm
-          cache-dependency-path: pi/daily-driver/package-lock.json
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: npm --prefix pi/daily-driver ci --ignore-scripts
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: pi/daily-driver/.bun-version
+      - run: bun install --cwd pi/daily-driver --frozen-lockfile --ignore-scripts
       - name: Install the repository-pinned server for native acceptance
         run: |
           version=$(python3 -c 'import tomllib; print(tomllib.load(open("bootstrap/tools.toml","rb"))["tools"]["typescript-language-server"]["version"])')
           npm --prefix "$RUNNER_TEMP/pi-lsp" install --ignore-scripts "typescript-language-server@$version"
           echo "$RUNNER_TEMP/pi-lsp/node_modules/.bin" >> "$GITHUB_PATH"
-      - run: npm --prefix pi/daily-driver run test:lsp-native
+      - run: bun run --cwd pi/daily-driver test:lsp-native

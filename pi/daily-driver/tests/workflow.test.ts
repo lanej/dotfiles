@@ -14,6 +14,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { z } from "zod";
+import { Attempts } from "../attempts.ts";
 import { taskDetails, taskLabel, taskSchema, taskTree } from "../beads.ts";
 
 import { githubLink, renderReferences } from "../github-links.ts";
@@ -22,6 +23,17 @@ import { highlightSearchOutput } from "../search-renderer.ts";
 
 const execute = promisify(execFile);
 const root = fileURLToPath(new URL("../", import.meta.url));
+
+await test("a fresh worker journal has no previous attempt for a bead", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "pi-driver-journal-"));
+  const journal = new Attempts(directory);
+  try {
+    assert.equal(journal.latest("project", "bead"), null);
+  } finally {
+    journal.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 await test("task containment stays separate from blockers, including missing parents and cycles", () => {
   const rows = taskTree([
@@ -151,7 +163,7 @@ await test("CLI reads the explicitly configured source and dispatch never alloca
     const boundary = join(temporary, "native-bd");
     await writeFile(
       boundary,
-      `#!/usr/bin/env node\nimport fs from 'node:fs';\nconst args=process.argv.slice(2); fs.appendFileSync(${JSON.stringify(capture)},JSON.stringify(args)+'\\n');\nif (!args.includes('--readonly') || !args.includes('--sandbox')) process.exit(31);\nif(process.env.BEADS_DIR || process.env.BEADS_DOLT_SERVER_PORT) process.exit(32);\nif(args.includes('sql')) console.log(JSON.stringify([{branch:'main'}]));\nelse if(args.includes('list')) console.log(JSON.stringify([{id:'fixture-1',title:'Task tree',status:'open'}]));\nelse if(args.includes('show')) console.log(JSON.stringify([{id:'fixture-1',title:'Task tree',status:'open',description:'Keep state'}]));\nelse process.exit(33);\n`,
+      `#!/usr/bin/env bun\nimport fs from 'node:fs';\nconst args=process.argv.slice(2); fs.appendFileSync(${JSON.stringify(capture)},JSON.stringify(args)+'\\n');\nif (!args.includes('--readonly') || !args.includes('--sandbox')) process.exit(31);\nif(process.env.BEADS_DIR || process.env.BEADS_DOLT_SERVER_PORT) process.exit(32);\nif(args.includes('sql')) console.log(JSON.stringify([{branch:'main'}]));\nelse if(args.includes('list')) console.log(JSON.stringify([{id:'fixture-1',title:'Task tree',status:'open'}]));\nelse if(args.includes('show')) console.log(JSON.stringify([{id:'fixture-1',title:'Task tree',status:'open',description:'Keep state'}]));\nelse process.exit(33);\n`,
       { mode: 0o755 },
     );
     const config = join(temporary, "config.json");
@@ -226,12 +238,20 @@ await test("opt-in registration preserves local settings and is idempotent", asy
         packages: ["keep-package"],
       }),
     );
-    const install = () =>
+    const install = (path = process.env["PATH"]) =>
       execute(
         "python3",
         [join(root, "../../scripts/configure-pi-driver.py"), root, agent],
-        { env: { ...process.env, PI_CODING_AGENT_DIR: agent } },
+        { env: { ...process.env, PATH: path, PI_CODING_AGENT_DIR: agent } },
       );
+    const legacy = join(temporary, "pi");
+    await writeFile(legacy, "#!/bin/sh\nexit 99\n", { mode: 0o755 });
+    const before = await readFile(join(agent, "settings.json"), "utf8");
+    await assert.rejects(
+      install(`${temporary}:${process.env["PATH"] ?? ""}`),
+      /Put standalone Pi ahead of script-based Pi launchers/,
+    );
+    assert.equal(await readFile(join(agent, "settings.json"), "utf8"), before);
     await install();
     await install();
     const settings = z

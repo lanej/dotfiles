@@ -14,5 +14,8 @@
   "exclude": [
     "node_modules"
   ],
-  "extends": "./.typescript-quality/tsconfig.strict.json"
+  "extends": "./.typescript-quality/tsconfig.strict.json",
+  "files": [
+    "node_modules/bun-types/sqlite.d.ts"
+  ]
 }

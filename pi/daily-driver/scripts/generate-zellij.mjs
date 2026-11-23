@@ -32,11 +32,11 @@ try {
   await Promise.all(sources.map(async (file) => {
     await writeFile(join(input, file), await readSource(upstream + file));
   }));
-  execFileSync(join(packageRoot, "node_modules", ".bin", "buf"), [
+  execFileSync(process.execPath, [join(packageRoot, "node_modules", ".bin", "buf"),
     "generate", input, "--template", JSON.stringify({
       version: "v2",
       plugins: [{
-        local: join(packageRoot, "node_modules", ".bin", "protoc-gen-es"),
+        local: [process.execPath, join(packageRoot, "node_modules", ".bin", "protoc-gen-es")],
         out: build,
         opt: ["target=ts", "import_extension=js"],
       }],
@@ -53,7 +53,7 @@ try {
     if (current.length !== generated.size) throw new Error("Unexpected Zellij generated files");
     for (const [file, content] of generated)
       if (!(await readFile(join(output, file))).equals(content))
-        throw new Error(`Zellij bindings are stale: ${file}. Run npm run generate:zellij`);
+        throw new Error(`Zellij bindings are stale: ${file}. Run bun run generate:zellij`);
   } else {
     await mkdir(output, { recursive: true });
     for (const [file, content] of generated) await writeFile(join(output, file), content);
