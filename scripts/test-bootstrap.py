@@ -145,6 +145,182 @@ install_luacheck_package
         assert f"luarocks install --tree {home}/.local luacheck" in events
         print("PASS DNF Luacheck installs through LuaRocks and propagates package failures")
 
+        bsdtar_fixtures = '''
+command() {
+    case "$*" in
+        "-v bsdtar") test -x "$HOME/.local/bin/bsdtar" ;;
+        "-v brew") return 1 ;;
+        "-v dnf") return 0 ;;
+        *) builtin command "$@" ;;
+    esac
+}
+source() {
+    if [ "$1" = /etc/os-release ]; then
+        ID=${TEST_OS_ID:-rocky}
+    else
+        builtin source "$@"
+    fi
+}
+uname() { printf '%s\\n' "${TEST_ARCH:-x86_64}"; }
+rpm() {
+    printf 'rpm %s\\n' "$*" >> "$HOME/events"
+    case "$1" in
+        -q) printf '%s\\n' "${TEST_LIBARCHIVE:-3.3.3 3.el8_5 x86_64}" ;;
+        --checksig)
+            printf '%s: %s\\n' "$2" "${TEST_SIGNATURE:-digests signatures OK}"
+            ;;
+        -qp) printf '%s\\n' "${TEST_RPM_IDENTITY:-bsdtar-3.3.3-3.el8_5.x86_64}" ;;
+        *) return 1 ;;
+    esac
+}
+curl() {
+    printf 'curl %s\\n' "$*" >> "$HOME/events"
+    [ "${TEST_DOWNLOAD_FAIL:-0}" != 1 ] || return 1
+    while [ "$#" -gt 0 ]; do
+        if [ "$1" = -o ]; then
+            printf 'fixture rpm\\n' > "$2"
+            return
+        fi
+        shift
+    done
+    return 1
+}
+sudo() {
+    printf 'sudo %s\\n' "$*" >> "$HOME/events"
+    if [ "$*" = "dnf install -y bsdtar" ]; then
+        [ "${TEST_DNF_MATCH:-0}" = 1 ] || return 1
+    else
+        [ "$1 $2 $3 $4" = "dnf install -y --setopt=localpkg_gpgcheck=1" ] || return 1
+        [ -f "$5" ] || return 1
+        [ "${TEST_INSTALL_FAIL:-0}" != 1 ] || return 1
+    fi
+    mkdir -p "$HOME/.local/bin"
+    printf '#!/bin/sh\\nprintf "bsdtar fixture\\\\n"\\n' > "$HOME/.local/bin/bsdtar"
+    chmod +x "$HOME/.local/bin/bsdtar"
+}
+install_from_package_manager bsdtar
+'''
+        package_home = home / "bsdtar"
+        package_home.mkdir()
+        package_env = {"HOME": str(package_home), "TMPDIR": str(package_home)}
+        result = run(bsdtar_fixtures, extra=package_env)
+        installed_tool = package_home / ".local/bin/bsdtar"
+        assert subprocess.check_output([installed_tool], text=True) == "bsdtar fixture\n"
+        events = (package_home / "events").read_text()
+        assert "https://dl.rockylinux.org/vault/rocky/8.5/BaseOS/x86_64/os/Packages/b/bsdtar-3.3.3-3.el8_5.x86_64.rpm" in events
+        assert "--setopt=localpkg_gpgcheck=1" in events
+        assert not list(package_home.glob("dotfiles-bsdtar.*")), "Downloaded RPM scratch was retained"
+        previous = events
+        run(bsdtar_fixtures, extra=package_env)
+        assert (package_home / "events").read_text() == previous, "Rerun reinstalled bsdtar"
+        installed_tool.unlink()
+        for failure in (
+            {"TEST_SIGNATURE": "digests OK"},
+            {"TEST_SIGNATURE": "digests SIGNATURES NOT OK"},
+            {"TEST_SIGNATURE": "digests SIGNATURES NOT OK (NOKEY)"},
+            {"TEST_RPM_IDENTITY": "bsdtar-3.3.3-3.el8_5.aarch64"},
+            {"TEST_DOWNLOAD_FAIL": "1"},
+            {"TEST_INSTALL_FAIL": "1"},
+            {"TEST_OS_ID": "fedora"},
+            {"TEST_LIBARCHIVE": "3.3.3 5.el8 x86_64"},
+        ):
+            run(bsdtar_fixtures, extra={**package_env, **failure}, success=False)
+            assert not installed_tool.exists(), f"Unsafe or failed archive installed a tool: {failure}"
+            assert not list(package_home.glob("dotfiles-bsdtar.*")), failure
+        result = run(bsdtar_fixtures, extra={
+            **package_env,
+            "TEST_ARCH": "aarch64",
+            "TEST_LIBARCHIVE": "3.4.0 2.el9_3 aarch64",
+            "TEST_RPM_IDENTITY": "bsdtar-3.4.0-2.el9_3.aarch64",
+        })
+        assert installed_tool.is_file()
+        events = (package_home / "events").read_text()
+        assert "https://dl.rockylinux.org/vault/rocky/9.3/BaseOS/aarch64/os/Packages/b/bsdtar-3.4.0-2.el9_3.aarch64.rpm" in events
+        installed_tool.unlink()
+        (package_home / "events").unlink()
+        run(bsdtar_fixtures, extra={**package_env, "TEST_DNF_MATCH": "1"})
+        assert installed_tool.is_file()
+        assert "curl " not in (package_home / "events").read_text()
+        print("PASS pinned Rocky libarchive gets a matching signed bsdtar; untrusted archives and failures are rejected")
+
+
+def test_go_path_precedence(root):
+    with tempfile.TemporaryDirectory(prefix="dotfiles-bootstrap-go-path-") as temporary:
+        for custom_gobin in (False, True):
+            home = Path(temporary) / ("custom-gobin" if custom_gobin else "default-gopath")
+            local_bin = home / ".local/bin"
+            go_bin = home / ("custom-bin" if custom_gobin else "go-primary/bin")
+            local_bin.mkdir(parents=True)
+            go_bin.mkdir(parents=True)
+            old_shfmt = go_bin / "shfmt"
+            old_shfmt.write_text("#!/bin/sh\nprintf 'v3.10.0\\n'\n")
+            old_shfmt.chmod(0o755)
+            go_tool = go_bin / "go-only"
+            go_tool.write_text("#!/bin/sh\nprintf 'Go tool available\\n'\n")
+            go_tool.chmod(0o755)
+            env = {
+                **os.environ,
+                "HOME": str(home),
+                "PATH": "/usr/bin:/bin",
+                "GOPATH": os.pathsep.join((str(home / "go-primary"), str(home / "go-secondary"))),
+            }
+            env.pop("GOBIN", None)
+            env.pop("NVM_BIN", None)
+            if custom_gobin:
+                env["GOBIN"] = str(go_bin)
+                nvm_bin = home / ".nvm/versions/node/v24.0.0/bin"
+                nvm_bin.mkdir(parents=True)
+                for node_bin, version in ((local_bin, "v22.23.3"), (nvm_bin, "v24.0.0")):
+                    node = node_bin / "node"
+                    node.write_text(f"#!/bin/sh\nprintf '{version}\\n'\n")
+                    node.chmod(0o755)
+                (home / ".nvm/nvm.sh").write_text(
+                    'export NVM_BIN="$HOME/.nvm/versions/node/v24.0.0/bin"\n'
+                )
+            result = subprocess.run(
+                ["/bin/bash", "-c", '''
+set -e
+source "$1"
+go() {
+    case "$*" in
+        version) printf 'go version go1.26.2 linux/amd64\\n' ;;
+        "env GOBIN") printf '%s\\n' "${GOBIN:-}" ;;
+        "env GOPATH") printf '%s\\n' "$GOPATH" ;;
+        "install mvdan.cc/sh/v3/cmd/shfmt@v3.14.1")
+            printf '#!/bin/sh\\nprintf "v3.14.1\\\\n"\\n' > "$GOBIN/shfmt"
+            chmod +x "$GOBIN/shfmt"
+            ;;
+        *) printf 'Unexpected Go command: %s\\n' "$*" >&2; return 1 ;;
+    esac
+}
+install_config_runtime() { :; }
+load_dotfiles_config() {
+    DOTFILES_TOOLS=go,shfmt
+    DOTFILES_INSTALL_PLAN=$'go\\tgo\\tgo\\t1.26.2\\nshfmt\\tpackage\\tshfmt\\t3.14.1'
+}
+package_semver() { return 1; }
+run_configured_hooks() { :; }
+make() { :; }
+post_install_setup() { :; }
+bootstrap_dotfiles install
+printf 'Selected shfmt: %s\\n' "$(command -v shfmt)"
+shfmt --version
+go-only
+if [ -n "${NVM_BIN:-}" ]; then node --version; fi
+''', "bootstrap-go-path-test", str(root / "bootstrap.sh")],
+                env=env, capture_output=True, text=True, timeout=10,
+            )
+            assert result.returncode == 0, (
+                f"Go PATH setup failed (custom GOBIN={custom_gobin}):\n"
+                + result.stdout + result.stderr
+            )
+            expected = [f"Selected shfmt: {local_bin / 'shfmt'}", "v3.14.1", "Go tool available"]
+            if custom_gobin:
+                expected.append("v24.0.0")
+            assert result.stdout.splitlines()[-len(expected):] == expected, result.stdout
+            assert old_shfmt.read_text() == "#!/bin/sh\nprintf 'v3.10.0\\n'\n"
+        print("PASS selected NVM and installed tools precede older Go binaries; default GOPATH and custom GOBIN remain available")
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
@@ -152,6 +328,7 @@ def main():
     parser.add_argument("--compatibility-only", action="store_true")
     options = parser.parse_args()
     test_compatibility(root)
+    test_go_path_precedence(root)
     if options.compatibility_only:
         return
     with tempfile.TemporaryDirectory(prefix="dotfiles-bootstrap-") as temporary:
