@@ -12,6 +12,7 @@ on:
       - 'scripts/install-worktree-manager'
       - 'bootstrap/tools.toml'
       - 'tools/task-runtime/**'
+      - 'tools/pi-components/**'
       - 'tools/beads/**'
       - 'config/beads/**'
       - 'scripts/install-zellij'
@@ -28,6 +29,7 @@ on:
       - 'scripts/install-worktree-manager'
       - 'bootstrap/tools.toml'
       - 'tools/task-runtime/**'
+      - 'tools/pi-components/**'
       - 'tools/beads/**'
       - 'config/beads/**'
       - 'scripts/install-zellij'
@@ -50,6 +52,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: tools/pi-components/.bun-version
+      - run: bun install --cwd tools/pi-components --frozen-lockfile --ignore-scripts
+      - run: bun install --cwd tools/pi-components/.typescript-quality --frozen-lockfile --ignore-scripts
+      - run: make test-pi-components
       - run: npm --prefix pi/daily-driver ci --ignore-scripts
       - run: npm --prefix pi/daily-driver/.typescript-quality ci --ignore-scripts
       - name: Verify generated Zellij bindings against the runtime pin

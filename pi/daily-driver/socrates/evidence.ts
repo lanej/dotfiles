@@ -1,6 +1,6 @@
 import { Type } from "typebox";
 import { z } from "zod";
-import { worktreeRelativePath } from "./worktree-path.ts";
+import { worktreeRelativePath } from "../worktree-path.ts";
 
 const label = z.string().trim().min(1).max(2000);
 const evidence = z.union([
