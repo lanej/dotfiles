@@ -55,9 +55,9 @@ Successful Pi edits and writes show readable error/warning diagnostics directly 
 
 Run `bun run --cwd pi/daily-driver test:lsp-native` with `typescript-language-server` on PATH to exercise native Pi edits, cross-file navigation, diagnostics, stale previews, blocked writes, rename, and compiler validation in a disposable project. This check uses a controlled assistant tool-call boundary without making a provider request. The ordinary package tests exercise protocol failures, cancellation, Unicode positions, and unsafe rename proposals with a controlled server.
 
-![Syntax-highlighted edit diff followed by automatic TypeScript diagnostics in the chat](../../docs/assets/pi-driver/diagnostics-100.png)
+![Split and unified edit diffs with diagnostic inlays and undercurled source ranges](../../docs/assets/pi-driver/diagnostic-inlays.png)
 
-Captured from a live Pi PTY in a browser terminal, using a real TypeScript language server and a scripted local provider. The [60-column capture](../../docs/assets/pi-driver/diagnostics-60.png) exercises wrapping.
+Pi’s diff renderer at 100 and 60 columns, captured in a browser terminal with sample TypeScript diagnostics.
 
 ## Idle compaction
 
