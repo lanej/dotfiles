@@ -18,8 +18,8 @@ import {
   LeadMode,
   planDigest,
 } from "./lead-plan.ts";
-import { SpecStatus } from "./lead-spec.ts";
-import { askTool, registerSocrates, specTool } from "./socrates-controls.ts";
+import { SpecStatus } from "./socrates/spec.ts";
+import { askTool, registerSocrates, specTool } from "./socrates/controls.ts";
 import { reviewPlan, showTask } from "./ui.ts";
 import { BeadChanged, owner, TaskBeads } from "./task-service.ts";
 

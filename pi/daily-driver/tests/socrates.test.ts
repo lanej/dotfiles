@@ -6,7 +6,7 @@ import {
   preserveDecisions,
   specDraft,
   specRecord,
-} from "../lead-spec.ts";
+} from "../socrates/spec.ts";
 
 const legacy = {
   objective: "Preserve the transcript",
