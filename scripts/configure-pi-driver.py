@@ -10,7 +10,13 @@ package = Path(sys.argv[1]).resolve()
 agent = Path(os.environ.get("PI_CODING_AGENT_DIR", sys.argv[2]))
 if not (package / "node_modules/commander/package.json").is_file():
     raise SystemExit("Install the Pi driver dependencies explicitly with bun install --frozen-lockfile --ignore-scripts first.")
-pi = shutil.which("pi")
+# Bun prepends the package's dependency launchers to script PATH.
+# Interactive Pi is selected by the caller's shell, outside that directory.
+dependency_bin = (package / "node_modules/.bin").resolve()
+interactive_path = os.pathsep.join(
+    entry for entry in os.get_exec_path() if Path(entry).resolve() != dependency_bin
+)
+pi = shutil.which("pi", path=interactive_path)
 if pi is None:
     raise SystemExit("Install standalone Pi and put it on PATH before enabling the daily driver.")
 with Path(pi).open("rb") as executable:

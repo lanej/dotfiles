@@ -11,7 +11,20 @@ share="$prefix/share/pi-standalone"
 bin="$prefix/bin"
 release="$share/$version/pi"
 mkdir -p "$share" "$bin"
+if [ -L "$bin/pi" ]; then
+    case $(readlink "$bin/pi") in
+        "$share"/*/pi/pi|*/@earendil-works/pi-coding-agent/*) ;;
+        *) echo "Refusing to replace an unmanaged Pi symlink: $bin/pi" >&2; exit 1 ;;
+    esac
+elif [ -e "$bin/pi" ]; then
+    echo "Refusing to replace an unmanaged Pi launcher: $bin/pi" >&2
+    exit 1
+fi
 if [ ! -x "$release/pi" ]; then
+    if [ -e "$share/$version" ] || [ -L "$share/$version" ]; then
+        echo "Incomplete Pi release directory: $share/$version" >&2
+        exit 1
+    fi
     stage=$(mktemp -d "$share/.install.XXXXXX")
     trap 'rm -rf "$stage"' EXIT
     trap 'exit 1' HUP INT TERM
@@ -31,8 +44,4 @@ if [ ! -x "$release/pi" ]; then
     mv "$stage/extracted" "$share/$version"
 fi
 test "$("$release/pi" --version)" = "$version"
-if [ -d "$bin/pi" ] && [ ! -L "$bin/pi" ]; then
-    echo "Pi launcher path is a directory: $bin/pi" >&2
-    exit 1
-fi
 ln -sfn "$release/pi" "$bin/pi"

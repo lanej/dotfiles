@@ -10,6 +10,8 @@ Select `pi = true` under `[tools]` in the machine TOML and run `make install` to
 
 Follow the [daily-driver setup](../pi/daily-driver/README.md#enable) to enable the Bun-based extension.
 
+If the installer reports an unmanaged launcher at `~/.local/bin/pi`, move that launcher aside before retrying.
+
 If Pi is already installed, run `make pi` to share resources. `make pi-config` removes retired Firstmate integration registrations while preserving unrelated Pi settings and saved work. These configuration targets do not download Pi. Authenticate and select a provider/model using Pi's own setup. The shared-resource synchronizer does not copy credentials or configure providers.
 
 This integration uses Pi's default `~/.pi/agent` directory. If you set `PI_CODING_AGENT_DIR`, its resources must be configured separately.
