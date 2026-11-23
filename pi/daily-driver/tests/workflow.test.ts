@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import {
   chmod,
+  copyFile,
+  realpath,
   stat,
   mkdir,
   mkdtemp,
@@ -393,6 +395,99 @@ await test("configuration upgrades the exact legacy dotfiles package and theme p
       await readlink(join(agent, "themes/dotfiles.json")),
       join(root, "resources/theme.json"),
     );
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
+});
+
+await test("launchers ignore checkout Bun preloads and dotenv before the host entrypoint", async () => {
+  const temporary = await realpath(
+    await mkdtemp(join(tmpdir(), "pi-driver-bootstrap-")),
+  );
+  try {
+    const checkout = join(temporary, "untrusted checkout");
+    const home = join(temporary, "home");
+    const bundle = join(temporary, "bundle");
+    const marker = join(temporary, "preload-executed");
+    const hostDirectory = join(
+      bundle,
+      "node_modules/@earendil-works/pi-coding-agent/dist/bundle",
+    );
+    for (const path of [
+      checkout,
+      home,
+      hostDirectory,
+      join(bundle, "scripts"),
+      join(bundle, "resources"),
+      join(bundle, "runtime"),
+      join(temporary, "bin"),
+    ])
+      await mkdir(path, { recursive: true });
+    const preload = join(checkout, "preload.ts");
+    await writeFile(
+      preload,
+      `import { appendFileSync } from "node:fs"; appendFileSync(${JSON.stringify(marker)}, "executed\\n"); process.env["PI_DRIVER_BOOTSTRAP_PRELOAD"] = "executed";`,
+    );
+    await writeFile(
+      join(checkout, "bunfig.toml"),
+      `preload = [${JSON.stringify(preload)}]\n`,
+    );
+    await writeFile(
+      join(home, ".bunfig.toml"),
+      `preload = [${JSON.stringify(preload)}]\n`,
+    );
+    await writeFile(
+      join(checkout, ".env"),
+      "PI_DRIVER_BOOTSTRAP_UNTRUSTED=dotenv\n",
+    );
+    await writeFile(join(bundle, "resources/bunfig.toml"), "preload = []\n");
+    const entry = `console.log(JSON.stringify({ cwd: process.cwd(), args: process.argv.slice(2), inherited: process.env["PI_DRIVER_BOOTSTRAP_INHERITED"], dotenv: process.env["PI_DRIVER_BOOTSTRAP_UNTRUSTED"] ?? null, preload: process.env["PI_DRIVER_BOOTSTRAP_PRELOAD"] ?? null }));`;
+    await writeFile(join(hostDirectory, "cli.js"), entry);
+    await writeFile(join(bundle, "cli.ts"), entry);
+    await symlink(process.execPath, join(bundle, "runtime/bun"));
+    await symlink(process.execPath, join(temporary, "bin/bun"));
+    const args = ["argument with spaces", "--no-extensions", "--resume"];
+    for (const mode of ["embedded", "path"]) {
+      if (mode === "path") await rm(join(bundle, "runtime/bun"));
+      for (const name of ["pi", "pi-driver"]) {
+        const launcher = join(bundle, "scripts", name);
+        await copyFile(join(root, "scripts", name), launcher);
+        await chmod(launcher, 0o755);
+        const result = await execute(launcher, args, {
+          cwd: checkout,
+          env: {
+            ...process.env,
+            HOME: home,
+            XDG_CONFIG_HOME: join(home, ".config"),
+            PATH: `${join(temporary, "bin")}:${process.env["PATH"] ?? ""}`,
+            PI_DRIVER_USE_SOURCE: "1",
+            PI_DRIVER_BOOTSTRAP_INHERITED: "preserve",
+          },
+          timeout: 10_000,
+        });
+        assert.ok(
+          result.stdout.length > 0,
+          `${mode}/${name}: ${result.stderr}`,
+        );
+        const observed = z
+          .object({
+            cwd: z.string(),
+            args: z.array(z.string()),
+            inherited: z.string(),
+            dotenv: z.string().nullable(),
+            preload: z.string().nullable(),
+          })
+          .parse(JSON.parse(result.stdout));
+        assert.deepEqual(observed, {
+          cwd: checkout,
+          args,
+          inherited: "preserve",
+          dotenv: null,
+          preload: null,
+        });
+        await assert.rejects(readFile(marker), /ENOENT/);
+      }
+    }
   } finally {
     await rm(temporary, { recursive: true, force: true });
   }

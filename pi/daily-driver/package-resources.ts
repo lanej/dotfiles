@@ -20,6 +20,7 @@ export async function inspectPackageResources() {
       join(packageRoot, "worker-extension.ts"),
       join(packageRoot, "scripts/pi"),
       join(packageRoot, "resources/theme.json"),
+      join(packageRoot, "resources/bunfig.toml"),
       join(packageRoot, "resources/socrates/references/dialogue.txt"),
       join(
         packageRoot,

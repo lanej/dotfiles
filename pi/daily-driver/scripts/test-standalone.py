@@ -36,8 +36,8 @@ with tempfile.TemporaryDirectory(prefix="pi-driver-standalone-") as temporary:
            "PATH": str(guard) + os.pathsep + os.environ["PATH"]}
     env.pop("PI_DRIVER_CONFIG", None)
     env.pop("PI_DRIVER_STATE_DIR", None)
-    def run(args, expected=0):
-        result = subprocess.run(args, cwd=source, env=env, text=True, capture_output=True, timeout=90)
+    def run(args, expected=0, cwd=None):
+        result = subprocess.run(args, cwd=cwd or source, env=env, text=True, capture_output=True, timeout=90)
         assert result.returncode == expected, (args, result.stdout[-4000:], result.stderr[-8000:])
         return result.stdout
     run(["git", "init", "-q"])
@@ -75,6 +75,19 @@ with tempfile.TemporaryDirectory(prefix="pi-driver-standalone-") as temporary:
     assert json.loads(run([str(launcher), "config", "--example"])) == json.loads(source_config)
     first = launcher.resolve()
     assert not (first.parents[1] / "local.env").exists()
+    hostile = work / "hostile-checkout"
+    hostile.mkdir()
+    preload = hostile / "preload.ts"
+    bootstrap_marker = work / "unexpected-preload"
+    preload.write_text('import { writeFileSync } from "node:fs"; writeFileSync(' + json.dumps(str(bootstrap_marker)) + ', "executed");')
+    (hostile / "bunfig.toml").write_text("preload = [" + json.dumps(str(preload)) + "]\n")
+    (hostile / ".env").write_text("PI_DRIVER_BOOTSTRAP_UNTRUSTED=dotenv\n")
+    assert "1.4.0" in run([str(first.with_name("pi")), "--version"], cwd=hostile)
+    for mode in ("0", "1"):
+        env["PI_DRIVER_USE_SOURCE"] = mode
+        assert json.loads(run([str(launcher), "config", "--example"], cwd=hostile)) == json.loads(source_config)
+        assert not bootstrap_marker.exists()
+    env.pop("PI_DRIVER_USE_SOURCE", None)
     deny("bun")
     env["PI_DRIVER_USE_SOURCE"] = "1"
     assert json.loads(run([str(launcher), "config", "--example"])) == json.loads(source_config)
