@@ -21,10 +21,9 @@ with tempfile.TemporaryDirectory(prefix="source-code-hydration-") as temporary:
     home = root / "home"
     commands = home / ".local/bin"
     commands.mkdir(parents=True)
-    (commands / "source-code").symlink_to(SOURCE / "bin/source-code")
     repo = root / "repo"
     repo.mkdir()
-    env = {**os.environ, "HOME": str(home), "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}
+    env = {**os.environ, "HOME": str(home), "GIT_CONFIG_GLOBAL": str(SOURCE / "git/gitconfig"), "GIT_CONFIG_NOSYSTEM": "1"}
 
     def git(*args, cwd=repo, expected=0):
         return run("git", "-c", "commit.gpgsign=false", "-c", "user.name=Hydration test",
@@ -38,6 +37,14 @@ with tempfile.TemporaryDirectory(prefix="source-code-hydration-") as temporary:
     (repo / "README.md").write_text("fixture\n")
     git("add", "README.md")
     git("commit", "-qm", "fixture")
+    # Global Git configuration is safe before the optional integration is installed.
+    assert git("config", "--get", "hook.source-code-checkout.enabled").strip() == "false"
+    unconfigured = root / "unconfigured"
+    git("worktree", "add", "-qb", "unconfigured", str(unconfigured))
+    git("worktree", "remove", str(unconfigured))
+    run("bash", str(SOURCE / "scripts/make/config.sh"), "source-code-config", str(SOURCE), str(home),
+        "uv", "Darwin", cwd=repo, env=env)
+    assert git("config", "--get", "hook.source-code-checkout.enabled").strip() == "true"
     # An unrelated repository receives no installation.
     hydrate(repo)
     assert not (repo / ".agents").exists()
@@ -64,7 +71,10 @@ enabled = false
     hook = hooks / "post-checkout"
     hook.write_text('#!/bin/sh\nexec "' + str(SOURCE / "bin/source-code-worktree-hook") + '" post-checkout "$@"\n')
     hook.chmod(0o755)
-    git("config", "core.hooksPath", str(hooks))
+    supported = subprocess.run(["git", "hook", "list", "post-checkout"], cwd=repo, env=env,
+                               text=True, capture_output=True).returncode == 0
+    if not supported:
+        git("config", "core.hooksPath", str(hooks))
     work = root / "work"
     git("worktree", "add", "-qb", "task", str(work))
     assert (work / ".agents/source-code.md").is_file()
@@ -75,6 +85,9 @@ enabled = false
     hydrate(work)
     assert before == (work / ".agents/repo-bootstrap.json").read_bytes()
     # Target configuration wins over the primary checkout's shadow configuration.
+    # Explicitly suppress global hooks when preparing manual hydration cases.
+    git("config", "hook.source-code-checkout.enabled", "false")
+    git("config", "hook.source-code-worktree.enabled", "false")
     second = root / "second"
     git("-c", "core.hooksPath=/dev/null", "worktree", "add", "-qb", "second", str(second))
     (second / "source-code.toml").write_text(config.replace('stage = "alpha"', 'stage = "production"'))
@@ -89,6 +102,8 @@ enabled = false
     hydrate(third, expected=1)
     assert (third / "AGENTS.override.md").read_text() == "custom guidance\n"
     assert not (third / ".agents/repo-bootstrap.json").exists()
+    git("config", "hook.source-code-checkout.enabled", "true")
+    git("config", "hook.source-code-worktree.enabled", "true")
     deferred = root / "deferred"
     git("worktree", "add", "--no-checkout", "-qb", "deferred", str(deferred))
     # Exercise the patched lifecycle callback after a checkout-free creation.
@@ -97,6 +112,8 @@ enabled = false
     assert not (deferred / ".agents").exists()
     git("checkout", "HEAD", cwd=deferred)
     assert (deferred / ".agents/source-code.md").is_file()
+    git("config", "hook.source-code-checkout.enabled", "false")
+    git("config", "hook.source-code-worktree.enabled", "false")
     lifecycle = root / "lifecycle"
     git("-c", "core.hooksPath=/dev/null", "worktree", "add", "-qb", "lifecycle", str(lifecycle))
     run(str(SOURCE / "bin/source-code-worktree-hook"), "post-worktree", "add", "fixture", "", str(lifecycle),

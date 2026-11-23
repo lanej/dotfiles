@@ -84,7 +84,7 @@ See [worktree policy](git-worktree-policy.md) for global inventory, optional per
 
 ## Source-code guidance
 
-Global named `post-worktree` and `post-checkout` hooks invoke `source-code-worktree-hook`, installed by `make source-code-config` or shell configuration. The source-code CLI must be installed for hydration to run. This uses configured-hook support from the patched Git runtime; older Git needs the same hook command integrated into its existing hook manager.
+Global named `post-worktree` and `post-checkout` hooks invoke `source-code-worktree-hook`. They are disabled by default; `make source-code-config` installs the hook and CLI and enables the integration through a local Git configuration include. Basic Git configuration therefore works without installing source-code. This uses configured-hook support from the patched Git runtime; older Git needs the same hook command integrated into its existing hook manager.
 
 On worktree creation, `source-code hydrate --repo PATH` restores a missing installation using the target checkout's `source-code.toml`. When that file is locally excluded, it falls back to the primary checkout's configuration and recorded selections. Configured packages are rendered separately in each worktree; canonical shared resources retain their normal links. Repositories without configuration or an existing installation are skipped. A complete installation is left alone, so this hook does not upgrade policy on ordinary checkouts.
 

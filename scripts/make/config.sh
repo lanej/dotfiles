@@ -45,6 +45,10 @@ case "$target" in
         ln -fs "$dotfiles/bin/source-code-worktree-hook" "$setup_home/.local/bin/source-code-worktree-hook"
         ln -fs "$dotfiles/bin/source-code" "$setup_home/.local/bin/source-code"
         ln -fs "$dotfiles/bin/repo-bootstrap" "$setup_home/.local/bin/repo-bootstrap"
+        mkdir -p "$setup_home/.config/dotfiles"
+        source_code_config="$setup_home/.config/dotfiles/source-code.gitconfig"
+        git config --file "$source_code_config" hook.source-code-worktree.enabled true
+        git config --file "$source_code_config" hook.source-code-checkout.enabled true
         ;;
     shell)
         mkdir -p "${setup_home}/.local/bin"
