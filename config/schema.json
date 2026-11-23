@@ -96,6 +96,10 @@
           "type": "boolean",
           "description": "Enable the node bootstrap recipe."
         },
+        "bun": {
+          "type": "boolean",
+          "description": "Shared Bun runtime; project requirements may raise its minimum version."
+        },
         "go": {
           "type": "boolean",
           "description": "Enable the go bootstrap recipe."
@@ -334,7 +338,7 @@
         },
         "studio": {
           "type": "boolean",
-          "description": "Install Studio's self-contained Pi host and extension; optional integrations stay separately configured."
+          "description": "Install Studio's Pi host and extension using the shared Bun runtime; optional integrations stay separately configured."
         },
         "octo-manager": {
           "type": "boolean",

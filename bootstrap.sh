@@ -385,6 +385,19 @@ node_current_semver() {
 	node --version 2>/dev/null | sed 's/^v//' | parse_semver
 }
 
+bun_current_semver() {
+	# A prerelease does not satisfy a stable minimum.
+	bun --version 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$'
+}
+
+install_bun_from_release() {
+	local root
+	root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
+	python3 "$root/scripts/bun_runtime.py" "$1" || return 1
+	export PATH="$HOME/.local/bin:$PATH"
+	hash -r
+}
+
 cargo_current_semver() {
 	cargo --version 2>/dev/null | parse_semver | head -n1
 }
@@ -1242,8 +1255,21 @@ install_rust_runtime() {
 install_dependencies() {
 	install_config_runtime || return 1
 	load_dotfiles_config || return 1
-	local tool installer package version go_bin dotfiles_root
+	local tool installer package version go_bin dotfiles_root requirements
 	dotfiles_root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
+	if dotfiles_has_tool studio || dotfiles_has_tool octo-manager; then
+		# Read every selected project's minimum before choosing one shared runtime.
+		requirements=$(mktemp) || return 1
+		if ! python3 "$dotfiles_root/scripts/prepare-project-runtimes.py" --tools "$DOTFILES_TOOLS" --output "$requirements"; then
+			rm -f "$requirements"
+			return 1
+		fi
+		if ! DOTFILES_RUNTIME_REQUIREMENTS_FILE="$requirements" load_dotfiles_config; then
+			rm -f "$requirements"
+			return 1
+		fi
+		rm -f "$requirements"
+	fi
 	while IFS=$'\t' read -r tool installer package version; do
 		[ -n "$tool" ] || continue
 		echo "Configuring tool: $tool"

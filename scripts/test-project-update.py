@@ -5,7 +5,6 @@ import json
 import fcntl
 import hashlib
 
-from bun_runtime import host_target
 import os
 import shutil
 import shlex
@@ -26,6 +25,7 @@ class LifecycleTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.base = Path(self.temporary.name)
         self.env = {**os.environ, "HOME": str(self.base), "XDG_CACHE_HOME": str(self.base / "cache"),
+                    "XDG_CONFIG_HOME": str(self.base / ".config"),
                     "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
                     "GIT_AUTHOR_NAME": "Fixture", "GIT_AUTHOR_EMAIL": "fixture@example.test",
                     "GIT_COMMITTER_NAME": "Fixture", "GIT_COMMITTER_EMAIL": "fixture@example.test"}
@@ -373,10 +373,11 @@ chmod +x "$HOME/.local/bin/worktree"
         self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_octo_staging_and_manual_activation(self):
+        (self.checkout / "package.json").write_text(json.dumps({"engines": {"bun": ">=1.4.4"}}))
         binary = self.base / ".local/bin/bun"
         binary.parent.mkdir(parents=True)
         log = self.base / "bun-args"
-        binary.write_text(f'#!{sys.executable}\nimport json, sys\nwith open({str(log)!r}, "a") as out: out.write(json.dumps(sys.argv[1:]) + "\\n")\nif "scripts/install-local.ts" in sys.argv: print(json.dumps({{"started": False, "manualCommand": "foreground"}}))\n')
+        binary.write_text(f'#!{sys.executable}\nimport json, sys\nif sys.argv[1:] == ["--version"]: print("1.10.0"); sys.exit(0)\nwith open({str(log)!r}, "a") as out: out.write(json.dumps(sys.argv[1:]) + "\\n")\nif "scripts/install-local.ts" in sys.argv: print(json.dumps({{"started": False, "manualCommand": "foreground"}}))\n')
         binary.chmod(0o755)
         env = {**self.env, "PATH": str(binary.parent) + os.pathsep + self.env["PATH"]}
         def invoke(action):
@@ -438,22 +439,21 @@ chmod +x "$HOME/.local/bin/worktree"
                 self.assertEqual(valuable.read_text(), "preserve")
                 self.assertEqual((self.base / ".local/bin" / project).read_text(), "installed " + project)
 
-    def test_studio_bootstrap_installs_selected_source_with_its_private_runtime(self):
-        (self.source / ".bun-version").write_text("1.4.5\n")
+    def test_studio_bootstrap_installs_selected_source_with_shared_runtime(self):
+        (self.source / "package.json").write_text(json.dumps({"engines": {"bun": ">=1.4.5"}}))
         (self.source / "scripts").mkdir()
         (self.source / "scripts/lifecycle.mjs").write_text("// Controlled Studio boundary\n")
         self.git(self.source, "add", ".")
         self.git(self.source, "commit", "-m", "Studio fixture")
         self.git(self.source, "push")
-        _, target = host_target()
-        runtime = self.base / ".local/share/studio/runtime" / target / "bun-1.4.5/bun"
+        runtime = self.base / ".local/bin/bun"
         runtime.parent.mkdir(parents=True)
         calls = self.base / "studio-calls"
         runtime.write_text(f"#!{sys.executable}\n" + f'''import json, os, sys
 from pathlib import Path
 args=sys.argv[1:]
 if args == ["--version"]:
-    print("1.4.5"); sys.exit(0)
+    print("1.10.0"); sys.exit(0)
 assert args[0] == "scripts/lifecycle.mjs", args
 with open({str(calls)!r}, "a") as out: out.write(json.dumps([str(Path.cwd()), *args])+"\\n")
 if args[1] == "build":
@@ -466,12 +466,12 @@ elif args[1] == "restart": sys.exit(3)
 else: raise AssertionError(args)
 ''')
         runtime.chmod(0o755)
-        env = {**self.env, "GIT_CONFIG_COUNT": "1",
+        env = {**self.env, "PATH": str(runtime.parent) + os.pathsep + self.env["PATH"], "GIT_CONFIG_COUNT": "1",
                "GIT_CONFIG_KEY_0": f"url.{self.origin}.insteadOf",
                "GIT_CONFIG_VALUE_0": "https://github.com/lanej/studio.git"}
         script = '''source "$1"
 install_config_runtime() { :; }
-load_dotfiles_config() { DOTFILES_INSTALL_PLAN=$'studio\\tstudio\\tstudio\\t-'; }
+load_dotfiles_config() { DOTFILES_TOOLS=studio; DOTFILES_INSTALL_PLAN=$'studio\\tstudio\\tstudio\\t-'; }
 install_dependencies
 '''
         def install():
@@ -481,6 +481,9 @@ install_dependencies
         self.assertEqual(first.returncode, 0, first.stdout+first.stderr)
         source=(self.base/"src/studio").resolve()
         self.assertEqual((self.base/".local/bin/studio").read_text(),"installed Studio")
+        declaration = self.base / ".config/dotfiles/runtime-requirements.d/studio.json"
+        self.assertEqual(json.loads(declaration.read_text())["engines"], {"bun": ">=1.4.5"})
+        self.assertFalse((self.base / ".local/share/studio/runtime").exists())
         selected=self.git(source,"rev-parse","HEAD")
         self.commit("new upstream")
         self.git(self.source,"push")

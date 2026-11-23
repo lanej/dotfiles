@@ -171,6 +171,10 @@ def main():
         (checkout / "scripts").mkdir()
         shutil.copyfile(root / "scripts/install-pi", checkout / "scripts/install-pi")
         shutil.copyfile(root / "scripts/dotfiles-config.py", checkout / "scripts/dotfiles-config.py")
+        shutil.copyfile(root / "scripts/runtime_requirements.py", checkout / "scripts/runtime_requirements.py")
+        (checkout / "scripts/prepare-project-runtimes.py").write_text(
+            'import json, pathlib, sys\n'
+            'pathlib.Path(sys.argv[sys.argv.index("--output")+1]).write_text(json.dumps({"projects": {}}))\n')
         (checkout / "scripts/install-approval-cli.py").write_text("from pathlib import Path\nimport os, sys\nPath(os.environ['HOME'], sys.argv[1] + '-installed').touch()\n")
         (checkout / "scripts/install-studio.py").write_text("from pathlib import Path\nimport os\nhome = Path(os.environ['HOME'])\n(home / 'studio-installed').touch()\nwith (home / 'events').open('a') as log: log.write('studio install\\n')\n")
         shutil.copyfile(root / "scripts/install-treehouse", checkout / "scripts/install-treehouse")
@@ -360,6 +364,9 @@ elif name == "python3":
 elif name == "node":
     print("v24.0.0" if ".nvm/versions/" in sys.argv[0] else
           "v22.23.3" if managed else "v16.19.1")
+elif name == "bun":
+    assert args == ["--version"], args
+    print("1.10.0")
 elif name == "npm" and args[:1] == ["list"]:
     print('{"dependencies": {"yaml-language-server": {"version": "99.0.0"}}}')
 elif name == "npm" and args[:2] == ["install", "-g"]:
@@ -540,7 +547,7 @@ else:
         suggestions.mkdir(parents=True)
         (suggestions / "zsh-autosuggestions.zsh").write_text("# version 99.0.0\n")
         for tool in (
-            "uname", "git", "sudo", "apt-get", "apt-cache", "dnf", "curl", "uv", "node", "npm",
+            "uname", "git", "sudo", "apt-get", "apt-cache", "dnf", "curl", "uv", "node", "npm", "bun",
             "make", "cmake", "cc", "cargo", "rustc", "rust-analyzer", "go",
             "fzf", "starship", "atuin", "sk", "delta", "bat", "fd",
             "zsh-autosuggestions", "cargo-sweep", "cargo-cache",
@@ -570,6 +577,7 @@ else:
             "XDG_CACHE_HOME": str(home / ".cache"),
             "XDG_STATE_HOME": str(home / ".local/state"),
             "XDG_CONFIG_HOME": str(home / ".config"),
+            "XDG_DATA_HOME": str(home / ".local/share"),
             "CARGO_BUILD_TARGET": "x86_64-unknown-linux-gnu",
         }
         env.pop("GOPATH", None)

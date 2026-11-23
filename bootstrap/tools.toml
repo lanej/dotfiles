@@ -1,4 +1,5 @@
-# Installation recipes and version pins. Machine files select tools; sets group them.
+# Installation recipes. Runtime versions are minimums; application revisions may be pinned.
+# Machine files select tools; sets group them.
 # installer = "config" delegates configuration/integration to Make and hooks.
 # requires_linux and requires_macos add prerequisites only on the named platform.
 
@@ -13,6 +14,10 @@ version = "1.93.1"
 
 [tools.node]
 version = "24"
+
+[tools.bun]
+description = "Shared Bun runtime; project requirements may raise its minimum version."
+version = "1.4.5"
 
 [tools.go]
 installer = "go"
@@ -279,15 +284,15 @@ setup = ["codex-config", "codex-skills", "codex-tmux-config", "codex-worktree-ho
 version = "0.164.0"
 
 [tools.studio]
-description = "Install Studio's self-contained Pi host and extension; optional integrations stay separately configured."
+description = "Install Studio's Pi host and extension using the shared Bun runtime; optional integrations stay separately configured."
 installer = "studio"
-requires = ["git"]
+requires = ["git", "bun"]
 
 [tools.octo-manager]
 description = "Opt-in Octo service with Codex session, PR tracking and receipt hooks on macOS and Linux."
 installer = "octo-manager"
-requires = ["git", "gh", "go"]
-revision = "ee1cb55aa53b057e4e2734c4af2c8f83806a14d4"
+requires = ["git", "gh", "go", "bun"]
+revision = "122edc74e42ff00a251885fb6f2d8f2706cbde91"
 
 [tools.beads]
 description = "Opt-in shared Beads HTTP endpoint with a private Dolt SQL server; Octo owns dispatch."

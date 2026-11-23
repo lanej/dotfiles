@@ -9,6 +9,8 @@ import re
 import shlex
 import sys
 
+from runtime_requirements import RUNTIMES, add_requirements, combined_requirements, version_key
+
 try:
     import tomllib
 except ImportError:
@@ -51,7 +53,7 @@ for tool, recipe in TOOLS.items():
     }
 
 
-def tool_plan(values, origins, specified, host):
+def tool_plan(values, origins, specified, host, requirements=None):
     """Resolve a concrete ordered tool plan; explicit disables constrain dependencies."""
     ordered, visiting = [], []
 
@@ -97,10 +99,23 @@ def tool_plan(values, origins, specified, host):
             origins[key] = f"required by tools.{required_by}"
         ordered.append(name)
 
+    for name, requirement in (requirements or {}).items():
+        key = f"tools.{name}"
+        source = ", ".join(entry["source"] for entry in requirement["sources"])
+        if key in specified and values[key] is False:
+            raise ValueError(f"{source} requires tools.{name}, explicitly disabled in {origins[key]}")
+        if not values[key]:
+            values[key] = True
+            origins[key] = f"required by {source}"
+        enable(name)
     for name in TOOLS:
         if values[f"tools.{name}"]:
             enable(name)
     plan = [{"name": name, **TOOLS[name]} for name in ordered]
+    for tool in plan:
+        if requirement := (requirements or {}).get(tool["name"]):
+            if version_key(requirement["minimum"]) > version_key(tool["version"]):
+                tool["version"] = requirement["minimum"]
 
     def phase(key):
         return list(dict.fromkeys(value for tool in plan for value in tool.get(key, [])))
@@ -200,12 +215,19 @@ def resolve(path, environment, explicit=False, host="linux"):
     baseline_specified = {key for key in specified if key in baseline_keys or values[key] is False}
     baseline_plan, baseline_setup, baseline_prepare, baseline_post = tool_plan(
         baseline_values, origins.copy(), baseline_specified, host)
-    plan, setup, prepare, post = tool_plan(values, origins, specified, host)
+    # Generated native targets never depend on a particular machine's installed projects.
+    runtime_requirements = combined_requirements(environment=environment) if path is not None else {}
+    plan, setup, prepare, post = tool_plan(values, origins, specified, host, runtime_requirements)
+    for tool in plan:
+        if tool["name"] in RUNTIMES:
+            add_requirements(runtime_requirements, {tool["name"]: TOOLS[tool["name"]]["version"]},
+                             f"{TOOL_FILE} tools.{tool['name']}")
     all_setup = list(dict.fromkeys(target for recipe in TOOLS.values() for target in recipe.get("setup", [])))
     if any(not isinstance(target, str) or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]*", target) for target in all_setup):
         raise ValueError(f"{TOOL_FILE}: invalid setup target")
     return {"sets": applied, "settings": values, "sources": origins, "config": str(path) if path is not None else None,
             "tools": plan, "setup": setup, "prepare": prepare, "post": post,
+            "runtime_requirements": runtime_requirements,
             "all_setup": all_setup,
             "baseline": {"sets": baseline_sets, "tools": baseline_plan, "setup": baseline_setup,
                          "prepare": baseline_prepare, "post": baseline_post}}
@@ -283,7 +305,7 @@ def main():
     if options.format == "json":
         print(json.dumps(result, indent=2))
     elif options.format == "plan":
-        print(json.dumps({key: result[key] for key in ("baseline", "sets", "tools", "setup", "prepare", "post")}, indent=2))
+        print(json.dumps({key: result[key] for key in ("baseline", "sets", "tools", "runtime_requirements", "setup", "prepare", "post")}, indent=2))
     elif options.format in ("make", "shell"):
         if options.format == "shell" and (options.config is not None or "DOTFILES_CONFIG" in os.environ):
             # Bootstrap changes directories when it invokes Make. Carry the

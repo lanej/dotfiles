@@ -283,8 +283,9 @@ async function main() {
   process.chdir(root);
   if (process.env.DOTFILES_TYPESCRIPT_QUALITY_ACTIVE === root) fail('Recursive quality command: preserve the original project gate instead of calling this runner from it.');
   if (!modes.has(mode) || (mode !== 'fmt' && args.length)) fail('Usage: bun scripts/check-typescript.mjs [all|alpha|lint|typecheck|fmt FILE...|test|audit|tools|baseline|ratchet]');
-  const version = readFileSync(path.join(root, '.bun-version'), 'utf8').trim();
-  if (process.versions.bun !== version) fail(`TypeScript quality requires Bun ${version}.`);
+  const requirement = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).engines?.bun;
+  if (typeof requirement !== 'string' || !/^>=\d+\.\d+\.\d+$/.test(requirement)) fail('Declare engines.bun as a minimum in package.json.');
+  if (!process.versions.bun || !Bun.semver.satisfies(process.versions.bun, requirement)) fail(`TypeScript quality requires Bun ${requirement} on PATH.`);
   if (mode === 'tools') {
     run([process.execPath, 'install', '--cwd', tools, '--ignore-scripts',
       ...(existsSync(path.join(tools, 'bun.lock')) ? ['--frozen-lockfile'] : [])]);

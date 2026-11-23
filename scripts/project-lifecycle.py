@@ -5,11 +5,12 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import platform
-import shutil
 import subprocess
 import sys
 import tempfile
+
+from bun_runtime import ensure_runtime, require_runtime
+from runtime_requirements import project_requirements, register_requirements
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -141,18 +142,20 @@ def main():
                               "activation": "New sessions load installed runtime and plugins; existing sessions require restart"}))
         return 0
     if project == "octo-manager":
-        architecture = {"aarch64": "arm64", "x86_64": "x64"}.get(platform.machine(), platform.machine())
-        private_bun = Path.home() / f".local/share/octo-manager/runtime/{sys.platform}-{architecture}/bun-1.4.4/bun"
-        bun = str(private_bun) if private_bun.is_file() else (shutil.which("bun") or str(private_bun))
         if action == "build":
-            run([bun, "install", "--frozen-lockfile", "--ignore-scripts"])
-            run([bun, "scripts/install-local.ts", "--no-start"])
+            bun = str(ensure_runtime(Path.cwd()))
+            environment = {**os.environ, "PATH": str(Path(bun).parent) + os.pathsep + os.environ.get("PATH", "")}
+            run([bun, "install", "--frozen-lockfile", "--ignore-scripts"], env=environment)
+            run([bun, "scripts/install-local.ts", "--no-start"], env=environment)
+            register_requirements("octo-manager", project_requirements(Path.cwd()), source=str(Path.cwd() / "package.json"))
         elif action == "restart":
             revision = run(["git", "rev-parse", "HEAD"], capture=True)
             metadata = Path.home() / ".local/share/octo-manager/current/release.json"
             if not metadata.exists() or json.loads(metadata.read_text())["revision"] != revision:
                 raise ValueError("Build this revision before restarting OctoManager")
-            result = json.loads(run([bun, "scripts/install-local.ts"], capture=True))
+            bun = str(require_runtime(Path.cwd()))
+            environment = {**os.environ, "PATH": str(Path(bun).parent) + os.pathsep + os.environ.get("PATH", "")}
+            result = json.loads(run([bun, "scripts/install-local.ts"], capture=True, env=environment))
             print(json.dumps(result))
             if result.get("started") is not True:
                 print("OctoManager requires manual startup; see manualCommand above", file=sys.stderr)
