@@ -120,8 +120,17 @@ def activate_targets(names, projects, rows, directory, save, ordering, failure):
                 reason = reason or blockers.get("null")
                 if reason:
                     failure(target, IncompleteActivation(reason))
+                value = inventory[name][target["target"]]
+                if (not projects[name].get("activation_deferred")
+                        and value.get("session_replacement_supported") is False):
+                    failure(target, IncompleteActivation("zellij-session-restoration-not-supported"))
             row["completed"].append("inventory")
             aggregate(row)
+            if projects[name].get("activation_deferred"):
+                row.update(activation="deferred", activation_verified=False,
+                           deferred_reason="terminal-session-restart-not-requested", phase="deferred")
+                for target in row["target_results"]:
+                    target["activation"] = "deferred"
         except ERRORS as error:
             failure(row, error)
         save()
@@ -134,7 +143,8 @@ def activate_targets(names, projects, rows, directory, save, ordering, failure):
         return any(
             any(target["replacement_needed"] for target in rows[dependency].get("target_results", []))
             or disrupted(dependency, seen)
-            for dependency in projects[name].get("depends_on", []) if dependency in names)
+            for dependency in projects[name].get("depends_on", []) if dependency in names
+            and not projects[dependency].get("activation_deferred"))
 
     def consumer_blocker(name):
         return next((consumer for consumer in names
@@ -144,7 +154,7 @@ def activate_targets(names, projects, rows, directory, save, ordering, failure):
     def terminal_disrupted(target):
         for session in target["sessions"]:
             owner = session.get("restoration_owner", target.get("restoration_owner")) or {}
-            if any(result["replacement_needed"]
+            if not projects.get(owner.get("project"), {}).get("activation_deferred") and any(result["replacement_needed"]
                    and owner.get("target") in (
                        result["target"],
                        inventory.get(owner.get("project"), {}).get(result["target"], {}).get("native_session_id"))
@@ -152,12 +162,19 @@ def activate_targets(names, projects, rows, directory, save, ordering, failure):
                 return True
         return False
 
+    def deferred_terminal(target):
+        for session in target["sessions"]:
+            owner = session.get("restoration_owner", target.get("restoration_owner")) or {}
+            if projects.get(owner.get("project"), {}).get("activation_deferred"):
+                return owner["project"]
+        return None
+
     # Complete inventory precedes all disruption; consumers settle first.
     checkpoint_order = sorted(reversed(ordering),
                               key=lambda name: projects[name].get("lifecycle") == "terminal")
     for name in checkpoint_order:
         row = rows[name]
-        if name not in inventory:
+        if name not in inventory or projects[name].get("activation_deferred"):
             continue
         for result in row["target_results"]:
             if result["outcome"] != "ok":
@@ -167,6 +184,9 @@ def activate_targets(names, projects, rows, directory, save, ordering, failure):
                 result["activation"] = "already-current"
                 continue
             try:
+                terminal = deferred_terminal(target)
+                if terminal is not None:
+                    raise IncompleteActivation(f"terminal-session-restart-deferred: {terminal}")
                 consumer = consumer_blocker(name)
                 if consumer is not None:
                     raise IncompleteActivation(f"dependent-checkpoint-incomplete: {consumer}")
@@ -206,7 +226,7 @@ def activate_targets(names, projects, rows, directory, save, ordering, failure):
 
     for name in ordering:
         row = rows[name]
-        if name not in inventory:
+        if name not in inventory or projects[name].get("activation_deferred"):
             continue
         for result in row["target_results"]:
             if result["outcome"] != "ok" or result.get("activation") == "already-current":
@@ -268,7 +288,7 @@ def activate_targets(names, projects, rows, directory, save, ordering, failure):
     # Recover only an original process whose replacement was never attempted.
     # Native owners may remove its admission fence; this path cannot launch.
     for name in names:
-        if name not in inventory:
+        if name not in inventory or projects[name].get("activation_deferred"):
             continue
         row = rows[name]
         for result in row["target_results"]:
@@ -292,7 +312,7 @@ def activate_targets(names, projects, rows, directory, save, ordering, failure):
 
     # All terminal-owned launches precede final consumer verification.
     for name in names:
-        if name not in inventory:
+        if name not in inventory or projects[name].get("activation_deferred"):
             continue
         row = rows[name]
         observed = dict(inventory[name])

@@ -27,18 +27,17 @@ export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-2}"
 # Installation evidence belongs with the binary, not in a restorable build cache.
 install_stamp="$HOME/.local/.dotfiles-zellij-install"
 zellij_scripts=$(cd -- "$(dirname -- "$0")" && pwd)
-zellij_patch="$zellij_scripts/../zellij/patches/activation-v1.patch"
-zellij_patch_sha=$(shasum -a 256 "$zellij_patch" | cut -d ' ' -f 1)
-install_identity="immutable-runtime-v4:$zellij_revision:$zellij_patch_sha"
+install_identity="immutable-runtime-v4:$zellij_revision:curated"
 if [ -x "$HOME/.local/bin/zellij" ] && [ "$(cat "$install_stamp" 2>/dev/null || true)" = "$install_identity" ]; then
     # A selected immutable image can be reused; never overwrite a mapped vnode.
-    if python3 "$zellij_scripts/zellij-artifacts.py" runtime-selected; then
+    if python3 "$zellij_scripts/zellij-artifacts.py" runtime-selected \
+        "$zellij_revision" "$zellij_toolchain" "$zellij_host"; then
         printf '%s\n' 'Selected immutable Zellij runtime is already installed.'
         exit 0
     fi
 fi
 python3 "$zellij_scripts/build-zellij-activation.py" "$zellij_revision" \
-    "$zellij_toolchain" "$zellij_host" "$zellij_patch"
+    "$zellij_toolchain" "$zellij_host"
 
 printf '%s\n' "$install_identity" > "$install_stamp"
 printf '%s\n' 'Restart existing Zellij sessions to use the installed runtime.'

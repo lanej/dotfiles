@@ -104,6 +104,72 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual([json.loads(line) for line in self.log.read_text().splitlines()],
                          [[action] for action in ("build", "inventory", "checkpoint", "restart", "restore", "verify")])
 
+    def test_zellij_update_is_deferred_until_explicitly_requested(self):
+        self.config.write_text(
+            f'[projects.zellij]\npath={json.dumps(str(self.checkout))}\n'
+            f'command={json.dumps([sys.executable, str(self.base / "hook.py")])}\n'
+            'lifecycle="terminal"\nautomatic_restart=false\n')
+        runtime = self.checkout / "runtime"
+        runtime.write_text("old-runtime")
+        rows = self.invoke("update", "--all")
+        self.assertEqual(rows[0]["activation"], "deferred")
+        self.assertFalse(rows[0]["activation_verified"])
+        self.assertEqual(rows[0]["staging"], "deferred")
+        self.assertEqual(rows[0]["completed"], ["pull", "inventory"])
+        self.assertEqual(runtime.read_text(), "old-runtime")
+        self.assertNotEqual(rows[0]["targets"][0]["expected_identity"],
+                            rows[0]["targets"][0]["running_identity"])
+        self.assertEqual([json.loads(line) for line in self.log.read_text().splitlines()], [["inventory"]])
+        self.invoke("verify", "--all", code=3)
+        requested = self.invoke("restart", "zellij", "--restart-zellij")
+        self.assertEqual(requested[0]["outcome"], "ok")
+        self.assertEqual(requested[0]["completed"],
+                         ["inventory", "checkpoint", "restart", "restore", "verify"])
+        self.assertNotEqual(runtime.read_text(), "old-runtime")
+
+    def test_deferred_terminal_preserves_its_application_before_checkpoint(self):
+        hook = self.base / "hook.py"
+        code = hook.read_text().replace(
+            "if action=='checkpoint': target['checkpoint']",
+            "if pathlib.Path('terminal-owned').exists(): target['sessions']=["
+            "{'session_id':'conversation','restoration':'unchanged',"
+            "'restoration_owner':{'project':'zellij','target':'local','pane_id':1}}]\n"
+            " if action=='checkpoint': target['checkpoint']")
+        hook.write_text(code)
+        application = self.base / "application"
+        shutil.copytree(self.checkout, application)
+        (application / "terminal-owned").touch()
+        (application / "runtime").write_text("old-application")
+        (self.checkout / "runtime").write_text("old-terminal")
+        self.config.write_text(
+            f'[projects.application]\npath={json.dumps(str(application))}\n'
+            f'command={json.dumps([sys.executable, str(hook)])}\nlifecycle="consumer"\n'
+            f'[projects.zellij]\npath={json.dumps(str(self.checkout))}\n'
+            f'command={json.dumps([sys.executable, str(hook)])}\nlifecycle="terminal"\n'
+            'automatic_restart=false\ndepends_on=["application"]\n')
+        rows = self.invoke("restart", "--all", code=3)
+        app = next(row for row in rows if row["project"] == "application")
+        self.assertEqual(app["reason"], "terminal-session-restart-deferred: zellij")
+        self.assertEqual((application / "runtime").read_text(), "old-application")
+        self.assertEqual((self.checkout / "runtime").read_text(), "old-terminal")
+        actions = [json.loads(line)[-1] for line in self.log.read_text().splitlines()]
+        self.assertTrue(set(actions) <= {"inventory", "verify"}, actions)
+
+    def test_unsupported_terminal_request_refuses_before_dependent_checkpoint(self):
+        self.config.write_text(
+            f'[projects.zellij]\npath={json.dumps(str(self.checkout))}\n'
+            f'command={json.dumps([sys.executable, str(self.base / "hook.py")])}\n'
+            'lifecycle="terminal"\nautomatic_restart=false\n')
+        hook = self.base / "hook.py"
+        hook.write_text(hook.read_text().replace(
+            "if action=='checkpoint': target['checkpoint']",
+            "target['session_replacement_supported']=False\n"
+            " if action=='checkpoint': target['checkpoint']"))
+        rows = self.invoke("restart", "zellij", "--restart-zellij", code=3)
+        self.assertEqual(rows[0]["reason"], "zellij-session-restoration-not-supported")
+        self.assertTrue(set(json.loads(line)[-1] for line in self.log.read_text().splitlines())
+                        <= {"inventory", "verify"})
+
     def test_nonconflicting_local_changes_survive_update(self):
         self.git(self.checkout, "config", "merge.autoStash", "true")
         (self.checkout / "content").write_text("local edit")
@@ -672,7 +738,8 @@ chmod +x "$HOME/.local/bin/worktree"
                 self.assertEqual(result.returncode, 3, result.stderr)
                 target = json.loads(result.stdout)["targets"][0]
                 self.assertFalse(target["ready"])
-                self.assertIn("detached activation operation", target["reason"])
+                self.assertEqual(target["reason"], "zellij-session-restoration-not-supported")
+                self.assertFalse(target["session_replacement_supported"])
                 self.assertEqual(target["sessions"], [])
 
     def test_octo_staging_preserves_legacy_cli_and_requires_native_activation(self):
@@ -761,6 +828,9 @@ chmod +x "$HOME/.local/bin/worktree"
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual({row["project"] for row in json.loads(result.stdout)},
                          {"octo-manager", "zellij", "beads", "bedrock-router", "intent", "keylease", "worktree-manager", "studio"})
+        terminal = next(row for row in json.loads(result.stdout) if row["project"] == "zellij")
+        self.assertEqual(terminal["activation"], "deferred")
+        self.assertEqual(terminal["steps"], ["pull", "inventory"])
 
     def test_dotfiles_install_clones_and_preserves_both_tools(self):
         for project, directory in (("intent", "intent"), ("keylease", "1password-agent")):

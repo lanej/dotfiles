@@ -384,4 +384,4 @@ For creating and updating pull requests, follow [the PR guidance](docs/pull-requ
 
 ## Ancillary project updates
 
-Use `project-update status --all --fetch` to compare registered checkouts with their upstream default branches, and `project-update update --all` to pull, build and activate them using project-specific restart controls. Individual actions remain available; see the [project update convention](docs/project-updates.md).
+Use `project-update status --all --fetch` to compare registered checkouts with their upstream default branches, and `project-update update --all` to update supported projects using native restart controls. Routine updates defer Zellij builds and session replacement; explicit installation updates preserve running sessions. Individual actions remain available; see the [project update convention](docs/project-updates.md).

@@ -159,7 +159,7 @@ entries:
     ring: adopt
     icon: zellij.png
     rationale: |-
-      [Zellij](zellij.md): my adopted terminal multiplexer with tmux-style bindings and a compact layout in Kitty. Bootstrap installs version 0.45.1 or newer; `zj main` attaches to or creates a named session. Tmux remains available for existing agent-status integrations.
+      [Zellij](zellij.md): my adopted terminal multiplexer with tmux-style bindings and a compact layout in Kitty. Bootstrap installs version 0.45.1 or newer; `zj main` attaches to or creates a named session. Routine project updates defer Zellij builds and session replacement; automatic restoration remains disabled. Tmux remains available for existing agent-status integrations.
   - id: paseo
     name: Paseo
     ring: trial

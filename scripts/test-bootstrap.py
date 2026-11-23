@@ -373,23 +373,25 @@ def main():
         shutil.copytree(root / "scripts/make", checkout / "scripts/make")
         shutil.copyfile(root / "scripts/install-zellij", checkout / "scripts/install-zellij")
         shutil.copyfile(root / "scripts/zellij-artifacts.py", checkout / "scripts/zellij-artifacts.py")
-        shutil.copytree(root / "zellij/patches", checkout / "zellij/patches")
         # Control the native build boundary; the wrapper selects real immutable artifacts.
         (checkout / "scripts/build-zellij-activation.py").write_text(
             "import hashlib,json,os,pathlib,subprocess,sys,tempfile\n"
             "home=pathlib.Path.home()\n"
-            "revision,toolchain,host,patch=sys.argv[1:]\n"
-            "sha=hashlib.sha256(pathlib.Path(patch).read_bytes()).hexdigest()\n"
+            "revision,toolchain,host=sys.argv[1:]\n"
             "assert toolchain=='1.95.0' and host=='aarch64-unknown-linux-gnu'\n"
             "assert os.environ['CARGO_PROFILE_RELEASE_LTO']=='true'\n"
             "assert os.environ['CARGO_PROFILE_RELEASE_CODEGEN_UNITS']=='1'\n"
-            "target=home/'.cache/dotfiles/zellij/target'/(revision+'-'+sha)\n"
-            "with (home/'zellij-installs').open('a') as log:log.write(json.dumps({'revision':revision,'target_dir':str(target),'patch':sha})+'\\n')\n"
+            "target=home/'.cache/dotfiles/zellij/target'/(revision+'-curated')\n"
+            "with (home/'zellij-installs').open('a') as log:log.write(json.dumps({'revision':revision,'target_dir':str(target),'patch':None})+'\\n')\n"
             "if os.environ.get('FIXTURE_FAIL_ZELLIJ_INSTALL'):sys.exit('fixture native build failed')\n"
             "with tempfile.TemporaryDirectory() as stage:\n"
             " out=pathlib.Path(stage)/'zellij'\n"
             " out.write_bytes((home/'fixture/driver').read_bytes()+('\\n# revision '+revision+'\\n').encode());out.chmod(0o755)\n"
             " subprocess.run([sys.executable,str(pathlib.Path(__file__).with_name('zellij-artifacts.py')),'runtime',str(out)],check=True)\n"
+            " selected=(home/'.local/bin/zellij').resolve()\n"
+            " receipt=selected.parent/'build.json'\n"
+            " if not receipt.exists():\n"
+            "  receipt.write_text(json.dumps({'schema_version':1,'base_revision':revision,'activation_patch':None,'toolchain':toolchain,'host':host,'sha256':hashlib.sha256(selected.read_bytes()).hexdigest()}));receipt.chmod(0o444)\n"
             "(home/'zellij-owned').write_text(revision)\n"
             "with (home/'events').open('a') as log:log.write('zellij\\n')\n"
         )
@@ -900,12 +902,27 @@ else:
             return [json.loads(line) for line in (home / "zellij-installs").read_text().splitlines()]
         first_call, = runtime_calls()
         revision = first_call["revision"]
-        assert first_call["target_dir"] == str(home / ".cache/dotfiles/zellij/target" / (revision + "-" + first_call["patch"]))
+        assert first_call["target_dir"] == str(home / ".cache/dotfiles/zellij/target" / (revision + "-curated"))
+        assert first_call["patch"] is None
         repeated = subprocess.run(runtime_command, env=runtime_env, capture_output=True, text=True)
         assert repeated.returncode == 0, repeated.stdout + repeated.stderr
         assert installed.resolve() == selected and installed.read_bytes() == previous
         assert len(runtime_calls()) == 1, f"Verified selection rebuilt: {runtime_calls()}; {repeated.stdout}; {repeated.stderr}; {installed.resolve()}"
         receipt = home / ".local/.dotfiles-zellij-install"
+        foreign = home / "foreign-zellij"
+        foreign.write_bytes(previous + b"\n# different immutable runtime\n")
+        foreign.chmod(0o755)
+        foreign_selected = subprocess.run(
+            [sys.executable, str(checkout / "scripts/zellij-artifacts.py"), "runtime", str(foreign)],
+            env=runtime_env, capture_output=True, text=True)
+        assert foreign_selected.returncode == 0, foreign_selected.stderr
+        other_image = installed.resolve()
+        assert other_image != selected
+        corrected = subprocess.run(runtime_command, env=runtime_env, capture_output=True, text=True)
+        assert corrected.returncode == 0, corrected.stdout + corrected.stderr
+        assert installed.resolve() == selected and selected.read_bytes() == previous
+        assert other_image.read_bytes() == foreign.read_bytes(), "Correction overwrote a foreign immutable image"
+        assert len(runtime_calls()) == 2, "A stale curated stamp hid a changed immutable selection"
         receipt.unlink()
         failed = subprocess.run(runtime_command,
                                 env={**runtime_env, "FIXTURE_FAIL_ZELLIJ_INSTALL": "1"},

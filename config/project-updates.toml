@@ -10,6 +10,7 @@ command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "octo-manager"
 path = "{dotfiles}"
 command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "zellij"]
 lifecycle = "terminal"
+automatic_restart = false
 depends_on = ["studio", "keylease"]
 
 # Beads and Dolt versions are curated together in the dotfiles catalog.

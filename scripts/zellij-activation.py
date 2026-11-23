@@ -1117,7 +1117,7 @@ def main():
         return 0
     expected = expected_identity()
     targets = sessions(expected)
-    if not targets and action not in ("checkpoint", "restart", "restore"):
+    if not targets:
         executable = shutil.which("zellij")
         correct = executable is not None and Path(executable).resolve() == (Path.home() / ".local/bin/zellij").resolve()
         targets = [{"target": "local", "expected_identity": expected, "running_identity": expected if correct else None,
@@ -1126,6 +1126,20 @@ def main():
     selected = os.environ.get("PROJECT_UPDATE_TARGET")
     if selected:
         targets = [target for target in targets if target["target"] == selected]
+    for target in targets:
+        target["session_replacement_supported"] = False
+    if action in ("checkpoint", "restart", "restore"):
+        # Native mode/layout restoration is unfinished. Refuse before any
+        # checkpoint, stop, exec, application launch, or recovery mutation.
+        for target in targets:
+            target.update(ready=False, reason="zellij-session-restoration-not-supported",
+                          checkpoint={"state": "refused",
+                                      "run_id": os.environ.get("PROJECT_UPDATE_RUN_ID")})
+            target.pop("_snapshot", None)
+            target.pop("_activation", None)
+        print(json.dumps({"schema_version": 1, "targets": targets,
+                          "reason": "zellij-session-restoration-not-supported"}))
+        return 3
     if action in ("checkpoint", "restart", "restore"):
         run_id = os.environ.get("PROJECT_UPDATE_RUN_ID")
         if not run_id or str(uuid.UUID(run_id)) != run_id:

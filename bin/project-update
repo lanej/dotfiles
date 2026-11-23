@@ -55,6 +55,10 @@ def load_projects(config):
             raise ValueError(f"{name}: depends_on must be an array of project names")
         if project.get("lifecycle", "service") not in ("service", "consumer", "terminal", "stateless"):
             raise ValueError(f"{name}: invalid lifecycle class")
+        if type(project.get("automatic_restart", True)) is not bool:
+            raise ValueError(f"{name}: automatic_restart must be a boolean")
+        if project.get("automatic_restart") is False and project.get("lifecycle") != "terminal":
+            raise ValueError(f"{name}: manual restart policy requires a terminal lifecycle")
         project["path"] = Path(project["path"].replace("{dotfiles}", str(ROOT))).expanduser().resolve()
         project["name"] = name
         project["command"] = [x.replace("{dotfiles}", str(ROOT)).replace("{python}", sys.executable) for x in command]
@@ -108,6 +112,7 @@ def affected_projects(names, projects):
                      and any(dependency in affected for dependency in project.get("depends_on", []))]
         terminal_owners = [dependency for name in affected
                            if projects[name].get("lifecycle") == "terminal"
+                           and not projects[name].get("activation_deferred")
                            for dependency in projects[name].get("depends_on", [])
                            if dependency not in affected and projects[dependency].get("lifecycle") == "consumer"]
         additions = list(dict.fromkeys([*consumers, *terminal_owners]))
@@ -228,6 +233,10 @@ def execute(action, names, projects, fetch=False, directory=None):
                 try:
                     if not path.is_dir():
                         raise ValueError(f"Checkout not found: {path}")
+                    if step == "build" and project.get("build_deferred"):
+                        row["staging"] = "deferred"
+                        save()
+                        continue
                     print(f"{name}: {step}", file=sys.stderr, flush=True)
                     if step == "status":
                         row.update(status(path, project, fetch))
@@ -370,9 +379,11 @@ def main():
     parser.add_argument("--config", type=Path, help="replace the bundled project registry")
     parser.add_argument("--fetch", action="store_true", help="refresh upstream while inspecting status")
     parser.add_argument("--dry-run", action="store_true", help="print the actions without running them")
+    parser.add_argument("--restart-zellij", action="store_true",
+                        help="explicitly request Zellij session replacement (currently unsupported)")
     args = parser.parse_args()
     if args.action == "wait":
-        if len(args.projects) != 1 or args.all or args.fetch or args.dry_run or args.config:
+        if len(args.projects) != 1 or args.all or args.fetch or args.dry_run or args.config or args.restart_zellij:
             parser.error("wait requires exactly one RUN_ID")
         try:
             uuid.UUID(args.projects[0])
@@ -387,6 +398,8 @@ def main():
         parser.error("select project names or --all")
     if args.fetch and args.action != "status":
         parser.error("--fetch applies only to status")
+    if args.restart_zellij and args.action not in ("update", "restart"):
+        parser.error("--restart-zellij applies only to update or restart")
     try:
         projects = load_projects(args.config or ROOT / "config/project-updates.toml")
     except (OSError, ValueError, tomllib.TOMLDecodeError) as error:
@@ -395,6 +408,15 @@ def main():
     unknown = set(names) - projects.keys()
     if unknown:
         parser.error("unknown projects: " + ", ".join(sorted(unknown)))
+    if args.action in ("update", "restart"):
+        for name, project in projects.items():
+            project["activation_deferred"] = (
+                not project.get("automatic_restart", True)
+                and not (name == "zellij" and args.restart_zellij))
+            project["build_deferred"] = (
+                args.all and name == "zellij" and project["activation_deferred"])
+        if args.restart_zellij and "zellij" not in affected_projects(names, projects):
+            parser.error("--restart-zellij requires Zellij in the affected selection")
     steps = ("pull", "build", "inventory", "checkpoint", "restart", "restore", "verify") if args.action == "update" else (
         ("inventory", "checkpoint", "restart", "restore", "verify") if args.action == "restart" else (args.action,))
     try:
@@ -403,7 +425,12 @@ def main():
         parser.error(str(error))
     if args.dry_run:
         print(json.dumps([{ "project": name, "path": str(projects[name]["path"]),
-                            "steps": list(steps), "command": projects[name]["command"]} for name in names], indent=2))
+                            "steps": list(("pull", "inventory") if projects[name].get("build_deferred")
+                                          else ("pull", "build", "inventory")
+                                          if args.action == "update" else ("inventory",))
+                            if projects[name].get("activation_deferred") else list(steps),
+                            **({"activation": "deferred"} if projects[name].get("activation_deferred") else {}),
+                            "command": projects[name]["command"]} for name in names], indent=2))
         return 0
     result = detached(args.action, names, projects) if args.action in ("update", "restart") else execute(
         args.action, names, projects, args.fetch)

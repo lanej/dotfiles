@@ -38,7 +38,10 @@ class Terminal:
         self.binary, self.env, self.name = binary, env, name
         self.output = bytearray()
         config = Path(env["HOME"]) / ".config/zellij/config.kdl"
-        for plugin in ("command-prompt", "copy-hop"):
+        optional_plugins = ["command-prompt", "copy-hop"]
+        if not install_navigation:
+            optional_plugins.append("pane-navigation")
+        for plugin in optional_plugins:
             installed = Path(env["HOME"]) / f".local/share/zellij/plugins/{plugin}.wasm"
             if config.exists() and not installed.exists():
                 # rationale(tests): Each detector loads only the optional plugin it exercises.

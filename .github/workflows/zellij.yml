@@ -30,6 +30,8 @@ on:
       - 'scripts/make/zellij-config.py'
       - 'scripts/make/require.sh'
       - 'scripts/install-zellij'
+      - 'scripts/build-zellij-activation.py'
+      - 'scripts/zellij-artifacts.py'
       - 'scripts/install-treehouse'
       - 'scripts/install-zellij-navigation.py'
       - 'scripts/install-zellij-command-prompt.py'
@@ -46,7 +48,8 @@ on:
       - 'nvim/lua/zellij-scrollback.lua'
       - '.github/workflows/zellij.yml'
   push:
-    branches: [master]
+    branches:
+      - master
     paths:
       - 'zellij/**'
       - 'design-system/generated/zellij-symbols.rs'
@@ -74,6 +77,8 @@ on:
       - 'scripts/make/zellij-config.py'
       - 'scripts/make/require.sh'
       - 'scripts/install-zellij'
+      - 'scripts/build-zellij-activation.py'
+      - 'scripts/zellij-artifacts.py'
       - 'scripts/install-treehouse'
       - 'scripts/install-zellij-navigation.py'
       - 'scripts/install-zellij-command-prompt.py'
@@ -98,7 +103,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os:
+          - ubuntu-latest
+          - macos-latest
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -116,7 +123,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os:
+          - ubuntu-latest
+          - macos-latest
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     env:
@@ -215,6 +224,8 @@ jobs:
       - name: Build native attention bar
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
         run: make zellij-status
+      - name: Check disposable plugin installations
+        run: python3 scripts/test-zellij-artifacts.py
       - name: Exercise fixed tab title controls
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
         run: |
