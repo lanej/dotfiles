@@ -139,9 +139,15 @@ def main():
             require_rejection(recursive_exit)
             terminal.until("surviving shell clears its rejected guest", lambda:
                            all(not pane.get("nested_session_name") for pane in terminal.terminals()))
-            terminal.until("surviving shell shows the rejection", lambda:
-                           "Cannot attach a containing session" in
-                           terminal.action("dump-screen", "--pane-id", str(outer["id"])))
+            def rejection_visible():
+                screen = terminal.action("dump-screen", "--pane-id", str(outer["id"]))
+                # Both ancestry guards reject through the same cleanup; handshake timing selects the reason.
+                return any(message in screen for message in (
+                    "Cannot attach a containing session",
+                    "The maximum nested session depth was reached.",
+                ))
+
+            terminal.until("surviving shell shows the rejection", rejection_visible)
             panes = terminal.terminals()
             assert [pane["id"] for pane in panes] == [outer["id"]]
             current = panes[0]
