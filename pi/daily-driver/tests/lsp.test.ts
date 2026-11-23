@@ -35,9 +35,15 @@ await test("LSP synchronizes edits, rejects stale diagnostics, cancels requests 
   });
   const path = join(root, "test.ts");
   try {
+    const publications: string[] = [];
+    const unsubscribe = client.onDiagnostics((path, result) => {
+      publications.push(`${path}:${String(result.items.length)}`);
+    });
     await writeFile(path, "BAD");
     const initial = await client.getDiagnostics(path);
     assert.equal(initial?.items.length, 1);
+    assert.ok(publications.includes(`${path}:1`));
+    unsubscribe();
     await writeFile(path, "good");
     const fixed = await client.getDiagnostics(path);
     assert.equal(fixed?.version, 2);

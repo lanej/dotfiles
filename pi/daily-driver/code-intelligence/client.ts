@@ -56,6 +56,9 @@ export class LspClient {
   private readonly documents = new Map<string, Document>();
   private readonly diagnostics = new Map<string, Diagnostics>();
   private readonly listeners = new Set<() => void>();
+  private readonly observers = new Set<
+    (path: string, diagnostics: Diagnostics) => void
+  >();
   private readonly ready: Promise<void>;
   private capabilities: ServerCapabilities = {};
   private stderr = "";
@@ -101,11 +104,14 @@ export class LspClient {
           (event.version !== undefined && event.version !== document.version)
         )
           return;
-        this.diagnostics.set(event.uri, {
+        const diagnostics: Diagnostics = {
           version: document.version,
           freshness: event.version === undefined ? "unversioned" : "versioned",
           items: event.diagnostics,
-        });
+        };
+        this.diagnostics.set(event.uri, diagnostics);
+        for (const observer of this.observers)
+          observer(fileURLToPath(event.uri), diagnostics);
         for (const listener of this.listeners) listener();
       },
     );
@@ -121,6 +127,15 @@ export class LspClient {
     this.ready = this.initialize();
     // Lazy startup is observed by requests; retain a failed status without an unhandled rejection.
     this.ready.catch(() => undefined);
+  }
+
+  onDiagnostics(
+    observer: (path: string, diagnostics: Diagnostics) => void,
+  ): () => void {
+    this.observers.add(observer);
+    return () => {
+      this.observers.delete(observer);
+    };
   }
 
   private terminate(signal: NodeJS.Signals): void {

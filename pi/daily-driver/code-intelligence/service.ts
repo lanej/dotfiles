@@ -1,3 +1,4 @@
+import { snapshot, type DiagnosticSnapshot } from "./diagnostics.ts";
 import { access, lstat, readFile, realpath, stat } from "node:fs/promises";
 import { createPatch } from "diff";
 import { randomUUID } from "node:crypto";
@@ -171,6 +172,17 @@ export class CodeIntelligence {
     ) => LspClient = (root, spec) => new LspClient(root, spec),
   ) {}
 
+  private readonly observers = new Set<
+    (snapshot: DiagnosticSnapshot) => void
+  >();
+  private readonly subscriptions: (() => void)[] = [];
+  onDiagnostics(observer: (snapshot: DiagnosticSnapshot) => void): () => void {
+    this.observers.add(observer);
+    return () => {
+      this.observers.delete(observer);
+    };
+  }
+
   private readonly clients = new Map<string, LspClient>();
   private readonly previews = new Map<string, RenamePreview>();
   private readonly unavailable = new Map<string, string>();
@@ -233,6 +245,12 @@ export class CodeIntelligence {
       this.unavailable.delete(spec.command);
       client = this.startClient(root, spec);
       this.clients.set(key, client);
+      this.subscriptions.push(
+        client.onDiagnostics((path, result) => {
+          for (const observer of this.observers)
+            observer(snapshot(path, result));
+        }),
+      );
     }
     await client.refresh();
     await client.sync(target);
@@ -294,42 +312,10 @@ export class CodeIntelligence {
     );
   }
 
-  async diagnostics(cwd: string, path: string): Promise<unknown> {
+  async diagnostics(cwd: string, path: string): Promise<DiagnosticSnapshot> {
     const { client, path: target } = await this.client(cwd, path);
     const result = await client.getDiagnostics(target);
-    if (result === undefined)
-      return {
-        path: target,
-        state: "pending",
-        message:
-          "No fresh diagnostics received; this does not establish a clean file",
-      };
-    const issues = result.items.filter(
-      (item) => item.severity === undefined || item.severity <= 2,
-    );
-    return {
-      path: target,
-      state: "received",
-      freshness: result.freshness,
-      ...(result.freshness === "unversioned"
-        ? {
-            note: "Server did not identify the document version; freshness is unverified",
-          }
-        : {}),
-      total: issues.length,
-      truncated: issues.length > 30,
-      diagnostics: issues.slice(0, 30).map((item) => ({
-        line: item.range.start.line + 1,
-        column: item.range.start.character + 1,
-        severity: item.severity === 2 ? "warning" : "error",
-        message: (typeof item.message === "string"
-          ? item.message
-          : item.message.value
-        ).slice(0, 2000),
-        source: item.source,
-        code: item.code,
-      })),
-    };
+    return snapshot(target, result);
   }
 
   async preview(
@@ -453,6 +439,7 @@ export class CodeIntelligence {
 
   async stop(): Promise<void> {
     this.previews.clear();
+    for (const unsubscribe of this.subscriptions.splice(0)) unsubscribe();
     const clients = [...this.clients.values()];
     this.clients.clear();
     this.unavailable.clear();

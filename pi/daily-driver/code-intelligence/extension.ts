@@ -1,3 +1,6 @@
+import { registerDiagnosticRendering } from "./rendering.ts";
+import type { DiagnosticSnapshot } from "./diagnostics.ts";
+import { resolve } from "node:path";
 import type {
   ExtensionAPI,
   ExtensionContext,
@@ -45,6 +48,7 @@ const message = (error: unknown) =>
 
 export function registerCodeIntelligence(pi: ExtensionAPI): CodeIntelligence {
   const intelligence = new CodeIntelligence();
+  const display = registerDiagnosticRendering(pi, intelligence);
   const renameCalls = new Set<string>();
   let approvedProject: string | undefined;
   let lifecycle = 0;
@@ -258,23 +262,34 @@ export function registerCodeIntelligence(pi: ExtensionAPI): CodeIntelligence {
       return;
     const input = z.object({ path: z.string() }).safeParse(event.input);
     if (!input.success) return;
+    const path = resolve(await realpath(ctx.cwd), input.data.path);
+    display.watch(event.toolCallId, path);
+    let diagnostics: DiagnosticSnapshot;
     try {
-      const diagnostics = await intelligence.serial(async () => {
+      diagnostics = await intelligence.serial(async () => {
         await requireTrust(ctx);
         return intelligence.diagnostics(ctx.cwd, input.data.path);
       });
-      return {
-        content: [...event.content, ...result({ lsp: diagnostics }).content],
-      };
     } catch (error) {
-      return {
-        content: [
-          ...event.content,
-          ...result({ lsp: { state: "unavailable", message: message(error) } })
-            .content,
-        ],
+      diagnostics = {
+        path,
+        state: "unavailable",
+        message: message(error),
+        diagnostics: [],
       };
     }
+    display.finish(event.toolCallId, diagnostics);
+    const native = z.record(z.string(), z.unknown()).safeParse(event.details);
+    return {
+      content: [...event.content, ...result({ lsp: diagnostics }).content],
+      details: {
+        ...(native.success ? native.data : {}),
+        piDriverDiagnostics: {
+          contentIndex: event.content.length,
+          snapshot: diagnostics,
+        },
+      },
+    };
   });
   return intelligence;
 }

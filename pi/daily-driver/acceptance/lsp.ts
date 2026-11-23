@@ -21,6 +21,7 @@ import {
   SessionManager,
   SettingsManager,
   ProjectTrustStore,
+  initTheme,
 } from "@earendil-works/pi-coding-agent";
 import {
   registerCodeIntelligence,
@@ -28,6 +29,7 @@ import {
   renameTool,
 } from "../code-intelligence/extension.ts";
 
+initTheme("dark", false);
 const root = await realpath(await mkdtemp(join(tmpdir(), "pi-lsp-native-")));
 const agentDir = join(root, "agent");
 await mkdir(agentDir);
@@ -85,7 +87,7 @@ const { session } = await createAgentSessionFromServices({
   sessionManager: SessionManager.inMemory(root),
 });
 await session.bindExtensions({ mode: "rpc" });
-session.agent.state.messages.push({
+session.sessionManager.appendMessage({
   role: "assistant",
   content: [
     { type: "toolCall", id: "acceptance", name: "acceptance", arguments: {} },
@@ -104,9 +106,12 @@ session.agent.state.messages.push({
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
   },
 });
+session.refreshContext();
 const tool = session.extensionRunner.createToolContext("acceptance", undefined);
+let lastOutcome: Awaited<ReturnType<typeof tool.executeTool>> | undefined;
 const call = async (name: string, args: unknown) => {
   const outcome = await tool.executeTool(name, args);
+  lastOutcome = outcome;
   assert.equal(outcome.isError, false, JSON.stringify(outcome.result));
   return outcome.result.content
     .filter((item) => item.type === "text")
@@ -149,12 +154,55 @@ try {
     column: 18,
   });
   assert.match(references, /b\.ts/u);
-  const introduced = await call("write", {
+  const introduced = await call("edit", {
     path: "b.ts",
-    content: valid.replace("answer: string", "answer: number"),
+    edits: [{ oldText: "answer: string", newText: "answer: number" }],
   });
-  // The server may publish after the bounded automatic feedback window.
+  // The real tool renderer must show diagnostics without a model-issued diagnostics query.
   assert.match(introduced, /lsp/u);
+  assert.ok(lastOutcome !== undefined);
+  const written = lastOutcome;
+  const native = session.getToolDefinition("edit");
+  const rendered = session.extensionRunner.resolveToolRenderers(
+    "write",
+    () => native,
+  );
+  assert.ok(rendered?.renderResult !== undefined);
+  const renderContext = {
+    args: { path: "b.ts" },
+    toolCallId: written.toolCall.id,
+    invalidate() {},
+    lastComponent: undefined,
+    state: {},
+    cwd: root,
+    executionStarted: true,
+    argsComplete: true,
+    isPartial: false,
+    expanded: false,
+    showImages: false,
+    isError: false,
+    durationMs: 0,
+    outputPad: 0,
+  };
+  assert.ok(rendered.renderCall !== undefined);
+  const callComponent = rendered.renderCall(
+    renderContext.args,
+    session.extensionRunner.getUIContext().theme,
+    renderContext,
+  );
+  const component = rendered.renderResult(
+    written.result,
+    { expanded: false, isPartial: false },
+    session.extensionRunner.getUIContext().theme,
+    renderContext,
+  );
+  await eventually(
+    () => Promise.resolve(component.render(100).join("\n")),
+    /TS2322/u,
+  );
+  assert.doesNotMatch(component.render(100).join("\n"), /"lsp"|"diagnostics"/u);
+  assert.match(component.render(60).join("\n"), /Diagnostics/u);
+  assert.match(callComponent.render(100).join("\n"), /answer.*number/u);
   await eventually(
     () => call(lspTool, { action: "diagnostics", path: "b.ts" }),
     /2322/u,
@@ -255,6 +303,42 @@ try {
     ],
     { timeout: 15_000 },
   );
+  session.sessionManager.appendCustomMessageEntry(
+    "pi-driver:diagnostics",
+    "Late diagnostic",
+    false,
+    {
+      toolCallId: written.toolCall.id,
+      snapshot: {
+        path: join(root, "b.ts"),
+        state: "received",
+        version: 99,
+        freshness: "versioned",
+        total: 1,
+        diagnostics: [
+          {
+            line: 2,
+            column: 1,
+            severity: "error",
+            message: "Retained late diagnostic",
+            source: "ts",
+            code: 2322,
+          },
+        ],
+      },
+    },
+  );
+  await session.extensionRunner.emit({
+    type: "session_start",
+    reason: "reload",
+  });
+  const restored = rendered.renderResult(
+    written.result,
+    { expanded: false, isPartial: false },
+    session.extensionRunner.getUIContext().theme,
+    renderContext,
+  );
+  assert.match(restored.render(100).join("\n"), /Retained late diagnostic/u);
   console.log(
     "Native Pi + TypeScript LSP: definitions, references, edit diagnostics, semantic rename and compiler verification passed.",
   );
