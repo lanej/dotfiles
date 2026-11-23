@@ -211,17 +211,12 @@ try {
   assert.doesNotMatch(component.render(60).join("\n"), /not assignable/u);
   assert.match(callComponent.render(100).join("\n"), /answer.*number/u);
   for (const width of [100, 120]) {
+    const rows = callComponent.render(width);
     assert.ok(
-      callComponent
-        .render(width)
-        .some((row) => row.includes("×") && row.includes("number")),
+      rows.some((row) => row.includes("×") && row.includes("not assignable")),
     );
+    assert.ok(rows.some((row) => row.includes("\x1b[4:3m")));
   }
-  assert.ok(
-    !callComponent
-      .render(100)
-      .some((row) => row.includes("×") && row.includes("answer: string")),
-  );
   assert.match(callComponent.render(120).join("\n"), /Before.*After/u);
   assert.doesNotMatch(
     callComponent.render(100).join("\n"),

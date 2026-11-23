@@ -16,6 +16,8 @@ export const diagnosticSnapshot = z.object({
       z.object({
         line: z.number(),
         column: z.number(),
+        endLine: z.number().optional(),
+        endColumn: z.number().optional(),
         severity: z.enum(["error", "warning"]),
         message: z.string(),
         source: z.string().optional(),
@@ -43,6 +45,8 @@ export function snapshot(
     diagnostics: issues.slice(0, 30).map((item) => ({
       line: item.range.start.line + 1,
       column: item.range.start.character + 1,
+      endLine: item.range.end.line + 1,
+      endColumn: item.range.end.character + 1,
       severity: item.severity === 2 ? "warning" : "error",
       message: (typeof item.message === "string"
         ? item.message
@@ -70,8 +74,6 @@ export function groupDiagnostics(
       severity: "error" | "warning";
       text: string;
       locations: Set<string>;
-      lines: Set<number>;
-      key: string;
     }
   >();
   for (const item of diagnostics) {
@@ -82,13 +84,10 @@ export function groupDiagnostics(
       groups.set(key, {
         severity: item.severity,
         text: clean(item.message),
-        key,
         locations: new Set([position]),
-        lines: new Set([item.line]),
       });
     } else {
       group.locations.add(position);
-      group.lines.add(item.line);
     }
   }
   return [...groups.values()].sort(
@@ -131,7 +130,7 @@ export function diagnosticRows(
   theme: Pick<Theme, "fg" | "bold">,
   width: number,
   expanded: boolean,
-  inlineKeys?: ReadonlySet<string>,
+  inlineLines?: ReadonlySet<number>,
 ): string[] {
   const wrap = (text: string) => wrapTextWithAnsi(text, Math.max(1, width));
   if (value.state !== "received")
@@ -153,13 +152,14 @@ export function diagnosticRows(
     value.total === 0
       ? "Diagnostics · no errors or warnings reported"
       : `Diagnostics · ${count(errors, "error")} · ${count(warnings, "warning")}${value.truncated === true ? " shown" : ""}`;
-  const items = groupDiagnostics(value.diagnostics).filter(
-    (item) => inlineKeys?.has(item.key) !== true,
+  const remaining = value.diagnostics.filter(
+    (item) => inlineLines?.has(item.line) !== true,
   );
+  const items = groupDiagnostics(remaining);
   const visible = expanded ? items : items.slice(0, 2);
   return [
     ...(items.length > 0 ||
-    (inlineKeys?.size ?? 0) === 0 ||
+    remaining.length === value.diagnostics.length ||
     value.truncated === true
       ? wrap(theme.fg("muted", theme.bold(heading)))
       : []),

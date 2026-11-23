@@ -137,3 +137,37 @@ await test("edit diffs switch between aligned split and unified layouts without 
   assert.ok(wrapped.every((row) => visibleWidth(row) <= 100));
   assert.match(wrapped.join("\n"), /short/u);
 });
+
+await test("edit inlays stay attached to each occurrence and underline the source range", () => {
+  const diff = '+1 const a = "bad";\n+2 const b = "bad";';
+  const issues: DiagnosticSnapshot["diagnostics"] = [1, 2].map((line) => ({
+    line,
+    column: 11,
+    endLine: line,
+    endColumn: 16,
+    severity: "error",
+    message: "Use a number",
+  }));
+  for (const width of [60, 100]) {
+    const rows = syntaxDiffRows(
+      diff,
+      "retry.ts",
+      plain,
+      width,
+      "/project",
+      (text) => text.split("\n"),
+      undefined,
+      issues,
+    );
+    assert.ok(rows.every((row) => visibleWidth(row) <= width));
+    for (const name of ["a", "b"]) {
+      assert.ok(
+        rows.some(
+          (row) =>
+            row.includes(`const ${name} = \x1b[4:3m"bad"\x1b[24m`) &&
+            row.includes("× Use a number"),
+        ),
+      );
+    }
+  }
+});

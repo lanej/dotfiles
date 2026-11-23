@@ -4,18 +4,15 @@ import {
   type Theme,
 } from "@earendil-works/pi-coding-agent";
 import { defaultMinSplitColumns, type DriverConfig } from "../config.ts";
-import {
-  diagnosticGlyph,
-  diagnosticMessageRows,
-  groupDiagnostics,
-  type DiagnosticSnapshot,
-} from "./diagnostics.ts";
+import { diagnosticGlyph, type DiagnosticSnapshot } from "./diagnostics.ts";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   getCapabilities,
   hyperlink,
+  sliceByColumn,
+  stripTerminalSequences,
   visibleWidth,
   wrapTextWithAnsi,
 } from "@earendil-works/pi-tui";
@@ -31,6 +28,7 @@ interface DiffLine {
   beforeNumber: string;
   afterNumber: string;
   code: string;
+  rawCode: string;
   before: string | undefined;
   after: string | undefined;
 }
@@ -45,6 +43,7 @@ function parseDiffLines(diff: string): DiffLine[] {
       beforeNumber: "",
       afterNumber: "",
       code: clean(match?.[3] ?? ""),
+      rawCode: match?.[3] ?? "",
       before: undefined,
       after: undefined,
     };
@@ -64,33 +63,55 @@ function parseDiffLines(diff: string): DiffLine[] {
   return lines;
 }
 
-function placeDiagnostics(
-  lines: DiffLine[],
-  diagnostics: DiagnosticSnapshot["diagnostics"],
-) {
-  const visibleLines = new Set(
-    lines.map((line) => Number(line.afterNumber)).filter((line) => line > 0),
-  );
-  const placements = [];
-  for (const group of groupDiagnostics(diagnostics)) {
-    const line = Math.min(
-      ...[...group.lines].filter((line) => visibleLines.has(line)),
-    );
-    if (Number.isFinite(line)) placements.push({ line: String(line), group });
-    if (placements.length === 2) break;
-  }
-  return placements;
-}
-
-export function inlineDiagnosticKeys(
-  diff: string,
-  diagnostics: DiagnosticSnapshot["diagnostics"],
-) {
+export function inlineDiagnosticLines(diff: string): ReadonlySet<number> {
   return new Set(
-    placeDiagnostics(parseDiffLines(diff), diagnostics).map(
-      ({ group }) => group.key,
+    parseDiffLines(diff).flatMap(({ afterNumber }) =>
+      afterNumber === "" ? [] : [Number(afterNumber)],
     ),
   );
+}
+
+type Issue = DiagnosticSnapshot["diagnostics"][number];
+
+function undercurl(
+  row: string,
+  line: DiffLine,
+  issues: Issue[],
+  offset: number,
+): string {
+  const edges = new Map<number, number>();
+  const rowWidth = visibleWidth(row);
+  const lineNumber = Number(line.afterNumber);
+  for (const issue of issues) {
+    if (issue.endColumn === undefined || issue.endLine === undefined) continue;
+    const start =
+      issue.line === lineNumber
+        ? visibleWidth(clean(line.rawCode.slice(0, issue.column - 1)))
+        : 0;
+    const end =
+      issue.endLine === lineNumber
+        ? visibleWidth(clean(line.rawCode.slice(0, issue.endColumn - 1)))
+        : visibleWidth(line.code);
+    const from = Math.max(0, start - offset);
+    const to = Math.min(rowWidth, end - offset);
+    if (from >= to) continue;
+    edges.set(from, (edges.get(from) ?? 0) + 1);
+    edges.set(to, (edges.get(to) ?? 0) - 1);
+  }
+  if (edges.size === 0) return row;
+  let position = 0;
+  let depth = 0;
+  let result = "";
+  for (const [edge, change] of [...edges].sort(([a], [b]) => a - b)) {
+    const span = sliceByColumn(row, position, edge - position);
+    result +=
+      depth > 0
+        ? `\x1b[4:3m${span.replaceAll("\x1b[0m", "\x1b[0m\x1b[4:3m")}\x1b[24m`
+        : span;
+    depth += change;
+    position = edge;
+  }
+  return `${result}${sliceByColumn(row, position, rowWidth - position)}\x1b[39m`;
 }
 
 export function syntaxDiffRows(
@@ -125,21 +146,14 @@ export function syntaxDiffRows(
     line.before = line.prefix === "+" ? undefined : old[before++];
     line.after = line.prefix === "-" ? undefined : updated[after++];
   }
-  const severityByLine = new Map<string, "error" | "warning">();
-  for (const issue of display.inline_diagnostics ? diagnostics : []) {
+  const issuesByLine = new Map<string, Issue[]>();
+  const activeIssues = display.inline_diagnostics ? diagnostics : [];
+  for (const issue of activeIssues) {
     const number = String(issue.line);
-    if (severityByLine.get(number) !== "error")
-      severityByLine.set(number, issue.severity);
+    const issues = issuesByLine.get(number);
+    if (issues === undefined) issuesByLine.set(number, [issue]);
+    else issues.push(issue);
   }
-  const hasMarkers = lines.some((line) => severityByLine.has(line.afterNumber));
-  const marker = (line: DiffLine, side: "before" | "after") => {
-    if (!hasMarkers) return "";
-    const severity =
-      side === "after" ? severityByLine.get(line.afterNumber) : undefined;
-    return severity === undefined
-      ? "  "
-      : theme.fg(severity, `${diagnosticGlyph(severity)} `);
-  };
   const inner = Math.max(1, width - 2);
   const digits = lines.reduce(
     (digits, line) =>
@@ -148,7 +162,7 @@ export function syntaxDiffRows(
   );
   const leftWidth = Math.floor((inner - 3) / 2);
   const rightWidth = inner - 3 - leftWidth;
-  const gutter = digits + 2 + (hasMarkers ? 2 : 0);
+  const gutter = digits + 2;
   const split = leftWidth - gutter >= display.min_split_columns;
   const pad = (text: string, columns: number) =>
     text + " ".repeat(Math.max(0, columns - visibleWidth(text)));
@@ -188,25 +202,62 @@ export function syntaxDiffRows(
         theme.fg("toolDiffContext", clean(line.raw)),
         columns,
       ).map((row) => pad(row, columns));
-    const code = side === "before" ? line.before : line.after;
-    return wrapTextWithAnsi(code ?? line.code, columns - gutter).map(
-      (row, index) => {
-        const number = side === "before" ? line.beforeNumber : line.afterNumber;
-        const label =
-          index === 0
-            ? `${line.prefix ?? " "}${number.padStart(digits)} `
-            : " ".repeat(gutter);
-        return background(
-          line,
-          pad(
-            theme.fg(tone(line), label) +
-              (index === 0 ? marker(line, side) : "") +
-              row,
-            columns,
+    const code = (side === "before" ? line.before : line.after) ?? line.code;
+    const number = side === "before" ? line.beforeNumber : line.afterNumber;
+    const issues = side === "after" ? (issuesByLine.get(number) ?? []) : [];
+    const ranges =
+      side === "after"
+        ? activeIssues.filter(
+            (issue) =>
+              issue.line <= Number(number) &&
+              (issue.endLine ?? issue.line) >= Number(number),
+          )
+        : [];
+    const label = theme.fg(
+      tone(line),
+      `${line.prefix}${number.padStart(digits)} `,
+    );
+    const indent = columns > gutter ? " ".repeat(gutter) : "";
+    let cursor = 0;
+    const sourceRows =
+      columns <= gutter
+        ? wrapTextWithAnsi(label + code, columns)
+        : wrapTextWithAnsi(code, columns - gutter).map((row, index) => {
+            const plain = stripTerminalSequences(row);
+            const start = line.code.indexOf(plain, cursor);
+            if (start >= 0) cursor = start + plain.length;
+            const marked =
+              start < 0
+                ? row
+                : undercurl(
+                    row,
+                    line,
+                    ranges,
+                    visibleWidth(line.code.slice(0, start)),
+                  );
+            return (index === 0 ? label : indent) + marked;
+          });
+    const inlayRows: string[] = [];
+    for (const issue of issues) {
+      const inlay = `${theme.fg(issue.severity, diagnosticGlyph(issue.severity))} ${theme.fg("muted", clean(issue.message))}`;
+      const last = sourceRows.at(-1);
+      if (
+        last !== undefined &&
+        inlayRows.length === 0 &&
+        visibleWidth(last) + 2 + visibleWidth(inlay) <= columns
+      )
+        sourceRows[sourceRows.length - 1] = `${last}  ${inlay}`;
+      else
+        inlayRows.push(
+          ...wrapTextWithAnsi(inlay, columns - indent.length).map(
+            (row) => indent + row,
           ),
         );
-      },
-    );
+    }
+    return [
+      ...sourceRows.map((row) => background(line, pad(row, columns))),
+      ...inlayRows.map((row) => pad(row, columns)),
+    ];
   };
   const paired = (
     left: DiffLine | undefined,
@@ -222,13 +273,6 @@ export function syntaxDiffRows(
         (newRows[row] ?? " ".repeat(rightWidth)),
     );
   };
-  const placements = display.inline_diagnostics
-    ? placeDiagnostics(lines, diagnostics)
-    : [];
-  const annotations = (line: DiffLine | undefined) =>
-    placements
-      .filter((placement) => placement.line === line?.afterNumber)
-      .flatMap(({ group }) => diagnosticMessageRows(group, theme, inner, true));
   const body: string[] = [];
   if (split) {
     body.push(
@@ -251,25 +295,15 @@ export function syntaxDiffRows(
           if (value !== undefined) added.push(value);
         }
         for (let row = 0; row < Math.max(removed.length, added.length); row++)
-          body.push(
-            ...paired(removed[row], added[row]),
-            ...annotations(added[row]),
-          );
+          body.push(...paired(removed[row], added[row]));
       } else {
-        body.push(...paired(line, line), ...annotations(line));
+        body.push(...paired(line, line));
         index++;
       }
     }
   } else {
-    for (const line of lines) {
-      const text =
-        line.prefix === undefined
-          ? theme.fg("toolDiffContext", clean(line.raw))
-          : `${theme.fg(tone(line), `${line.prefix}${line.number.padStart(digits)} `)}${marker(line, line.prefix === "-" ? "before" : "after")}${line.prefix === "-" ? (line.before ?? line.code) : (line.after ?? line.code)}`;
-      for (const row of wrapTextWithAnsi(text, inner))
-        body.push(background(line, pad(row, inner)));
-      body.push(...annotations(line));
-    }
+    for (const line of lines)
+      body.push(...cell(line, line.prefix === "-" ? "before" : "after", inner));
   }
   const rawPath = path.startsWith("~/")
     ? resolve(homedir(), path.slice(2))
