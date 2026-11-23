@@ -77,9 +77,6 @@ jobs:
           echo "$RUNNER_TEMP/bun-only" >> "$GITHUB_PATH"
       - run: bun install --cwd pi/daily-driver --frozen-lockfile --ignore-scripts
       - run: bun install --cwd pi/daily-driver/.typescript-quality --frozen-lockfile --ignore-scripts
-||||||| d33526d1
-      - run: npm --prefix pi/daily-driver ci --ignore-scripts
-      - run: npm --prefix pi/daily-driver/.typescript-quality ci --ignore-scripts
       - run: bun install --cwd tools/pi-components --frozen-lockfile --ignore-scripts
       - run: bun install --cwd tools/pi-components/.typescript-quality --frozen-lockfile --ignore-scripts
       - run: make test-pi-components
