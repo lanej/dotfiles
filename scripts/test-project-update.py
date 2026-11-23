@@ -398,7 +398,7 @@ chmod +x "$HOME/.local/bin/worktree"
                                 env=self.env, text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual({row["project"] for row in json.loads(result.stdout)},
-                         {"octo-manager", "zellij", "beads", "bedrock-router", "intent", "keylease", "worktree-manager"})
+                         {"octo-manager", "zellij", "beads", "bedrock-router", "intent", "keylease", "worktree-manager", "studio"})
 
     def test_dotfiles_install_clones_and_preserves_both_tools(self):
         for project, directory in (("intent", "intent"), ("keylease", "1password-agent")):

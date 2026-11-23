@@ -2,7 +2,7 @@
 
 Reusable TypeScript terminal components on `@earendil-works/pi-tui`. This package has no dependency on the Pi coding agent, the daily driver, Socrates, Beads or a managed worktree. Its first component is the Vim-first selector used by the daily driver's Socrates adapter.
 
-Install from a repository checkout with a local `file:` dependency on `tools/pi-components`. The package exports TypeScript source; callers need a TypeScript loader or bundler, as the Pi runtime and daily driver already provide. The package is private and is not published to npm. Use Bun 1.4.5 (pinned in `.bun-version`) for package installation, scripts and tests. The driver's existing installer consumes this local package through its own lockfile.
+Install from a repository checkout with a local `file:` dependency on `tools/pi-components`. The package exports TypeScript source; callers need a TypeScript loader or bundler, as the Pi runtime and daily driver already provide. The package is private and is not published to npm. Use Bun 1.4.5 (pinned in `.bun-version`) for package installation, scripts and tests. [Studio](https://github.com/lanej/studio) consumes a vendored snapshot through its own lockfile; refresh that snapshot deliberately when changing this package.
 
 ## Selector
 
@@ -36,4 +36,4 @@ bun run --cwd tools/pi-components quality:tools
 make test-pi-components
 ```
 
-The independent strict profile covers compiler, typed lint, formatting, interaction tests and dependency audit. The Pi daily-driver workflow also checks the consumer whenever this package changes. Native Socrates acceptance verifies the installed package through its real caller; it is described in [the driver's acceptance guide](../../pi/daily-driver/acceptance/local-run.md).
+The independent strict profile covers compiler, typed lint, formatting, interaction tests and dependency audit. Studio's independent workflow checks its vendored consumer. Native Socrates acceptance verifies the installed package through its real caller; it is described in [Studio's acceptance guide](https://github.com/lanej/studio/blob/main/acceptance/local-run.md).

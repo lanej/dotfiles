@@ -173,7 +173,7 @@ Strict Protobuf compilation, lint, formatting, and compatibility checks through 
 
 ### Pi
 
-[Pi](pi.md): a composable agent runtime under assessment, with shared skills and role instructions. Its opt-in [daily driver](../pi/daily-driver/README.md) runs one ready bead in a managed worktree and interactive Zellij pane, records verification and supports independent CLI inspection. The [runtime plan](../pi/daily-driver/RUNTIME.md) covers agent delegation, Octo delivery and archival.
+[Pi](pi.md): a composable agent runtime under assessment, with shared skills and role instructions. Its opt-in Bun-based [Studio daily driver](https://github.com/lanej/studio), maintained in its own repository with vendored shared clients and resources, runs one ready bead in a managed worktree and interactive Zellij pane, records verification and supports independent CLI inspection. The [runtime plan](https://github.com/lanej/studio/blob/main/RUNTIME.md) covers agent delegation, Octo delivery and archival.
 
 ### AeroSpace
 
