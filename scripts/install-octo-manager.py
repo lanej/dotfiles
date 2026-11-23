@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Install Octo releases and control their native macOS and Linux services."""
 import argparse
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -12,6 +11,8 @@ import sys
 import tempfile
 import tomllib
 import zipfile
+
+from bun_runtime import runtime as project_runtime, runtime_target, host_target
 
 ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY = "https://github.com/lanej/octo-manager.git"
@@ -45,60 +46,9 @@ def source_checkout(cache, revision):
 
 
 
-def runtime_target(system, machine, libc=""):
-    system_name = {"Darwin": "darwin", "Linux": "linux"}.get(system)
-    architecture = {"arm64": "aarch64", "aarch64": "aarch64", "x86_64": "x64", "amd64": "x64"}.get(machine.lower())
-    if system_name is None or architecture is None:
-        raise ValueError(f"Unsupported Octo platform: {system}/{machine}")
-    native_arch = "arm64" if architecture == "aarch64" else "x64"
-    suffix = "-musl" if system_name == "linux" and libc == "musl" else ""
-    baseline = "-baseline" if architecture == "x64" else ""
-    return f"bun-{system_name}-{architecture}{suffix}{baseline}", f"{system_name}-{native_arch}"
-
-
-def host_target():
-    libc = platform.libc_ver()[0]
-    if platform.system() == "Linux" and not libc:
-        libc = "musl" if list(Path("/lib").glob("ld-musl-*.so.1")) else "glibc"
-    return runtime_target(platform.system(), platform.machine(), libc)
-
-
 def runtime(home, source):
-    version = (source / ".bun-version").read_text().strip()
-    if not re.fullmatch(r"\d+\.\d+\.\d+", version):
-        raise ValueError("Invalid pinned Bun version")
-    name, target = host_target()
-    directory = home / ".local/share/octo-manager/runtime" / target / f"bun-{version}"
-    if directory.is_symlink():
-        raise ValueError(f"Preserve symlinked runtime: {directory}")
-    binary = directory / "bun"
-    if binary.is_symlink():
-        raise ValueError(f"Preserve symlinked runtime binary: {binary}")
-    if binary.exists():
-        if run([str(binary), "--version"]) != version:
-            raise ValueError(f"Installed private Bun version does not match {version}")
-        return binary
-    directory.mkdir(parents=True, mode=0o700, exist_ok=True)
-    asset = name + ".zip"
-    base = f"https://github.com/oven-sh/bun/releases/download/bun-v{version}"
-    with tempfile.TemporaryDirectory(prefix=".download-", dir=directory) as temporary:
-        stage = Path(temporary)
-        download(f"{base}/SHASUMS256.txt", stage / "checksums")
-        checksums = [line.split() for line in (stage / "checksums").read_text().splitlines()]
-        matches = [digest for digest, filename in checksums if filename.lstrip("*./") == asset]
-        if len(matches) != 1 or not re.fullmatch(r"[a-fA-F0-9]{64}", matches[0]):
-            raise ValueError(f"Missing or ambiguous checksum for {asset}")
-        download(f"{base}/{asset}", stage / asset)
-        if hashlib.sha256((stage / asset).read_bytes()).hexdigest() != matches[0].lower():
-            raise ValueError(f"Checksum mismatch for {asset}")
-        with zipfile.ZipFile(stage / asset) as archive:
-            candidate = stage / "bun"
-            candidate.write_bytes(archive.read(f"{name}/bun"))
-        candidate.chmod(0o755)
-        if run([str(candidate), "--version"]) != version:
-            raise ValueError("Downloaded Bun version does not match")
-        candidate.rename(binary)
-    return binary
+    return project_runtime(home, source, "octo-manager", download)
+
 
 
 def latest_revision():

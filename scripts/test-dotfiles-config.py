@@ -46,6 +46,7 @@ def main():
         assert baseline["settings"]["codex.easypost"] is False
         assert baseline["settings"]["features.nvim_ghlite"] is False
         assert "octo-manager" not in {tool["name"] for tool in baseline["tools"]}
+        assert "studio" not in {tool["name"] for tool in baseline["tools"]}
         assert "source-code" not in {tool["name"] for tool in baseline["tools"]}
         config = home / ".config/dotfiles/config.toml"
         sets = config.parent / "sets"
@@ -82,7 +83,19 @@ def main():
         config.write_text('sets = ["workstation"]\n')
         workstation = json.loads(run(*command, "--format", "json").stdout)
         names = [tool["name"] for tool in workstation["tools"]]
-        assert {"intent", "keylease"} <= set(names)
+        assert {"intent", "keylease", "studio"} <= set(names)
+        assert names.index("git") < names.index("studio")
+        config.write_text('sets = ["workstation"]\n[tools]\nstudio = false\n')
+        without_studio = json.loads(run(*command, "--format", "json").stdout)
+        assert "studio" not in {tool["name"] for tool in without_studio["tools"]}
+        config.write_text('[tools]\nstudio = true\n')
+        for host in ("macos", "linux"):
+            direct = json.loads(run(*command, "--platform", host, "--format", "json").stdout)
+            studio = next(tool for tool in direct["tools"] if tool["name"] == "studio")
+            assert studio["installer"] == "studio" and studio["requires"] == ["git"]
+            assert not {"pi", "octo-manager", "beads"} & {tool["name"] for tool in direct["tools"]}
+            assert not any("studio" in target for target in direct["setup"]), "Configuration must not download or install Studio"
+
         assert names.index("go") < names.index("intent") and names.index("go") < names.index("keylease")
         config.write_text('sets = ["workstation"]\n[tools]\nkeylease = false\n')
         selected = json.loads(run(*command, "--format", "json").stdout)

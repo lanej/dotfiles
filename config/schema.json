@@ -332,6 +332,10 @@
           "type": "boolean",
           "description": "Enable the codex bootstrap recipe."
         },
+        "studio": {
+          "type": "boolean",
+          "description": "Install Studio's self-contained Pi host and extension; optional integrations stay separately configured."
+        },
         "octo-manager": {
           "type": "boolean",
           "description": "Opt-in Octo service with Codex session, PR tracking and receipt hooks on macOS and Linux."

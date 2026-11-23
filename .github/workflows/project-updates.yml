@@ -10,6 +10,8 @@ on:
       - 'tools/beads/project-update.py'
       - 'scripts/make/project-update.sh'
       - 'scripts/test-project-update.py'
+      - 'scripts/install-studio.py'
+      - 'scripts/bun_runtime.py'
       - 'config/project-updates.toml'
       - '.github/workflows/project-updates.yml'
   push:

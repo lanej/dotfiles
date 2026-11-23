@@ -4,6 +4,8 @@
 import json
 import fcntl
 import hashlib
+
+from bun_runtime import host_target
 import os
 import shutil
 import shlex
@@ -435,6 +437,82 @@ chmod +x "$HOME/.local/bin/worktree"
                 self.assertNotEqual(install().returncode, 0)
                 self.assertEqual(valuable.read_text(), "preserve")
                 self.assertEqual((self.base / ".local/bin" / project).read_text(), "installed " + project)
+
+    def test_studio_bootstrap_installs_selected_source_with_its_private_runtime(self):
+        (self.source / ".bun-version").write_text("1.4.5\n")
+        (self.source / "scripts").mkdir()
+        (self.source / "scripts/lifecycle.mjs").write_text("// Controlled Studio boundary\n")
+        self.git(self.source, "add", ".")
+        self.git(self.source, "commit", "-m", "Studio fixture")
+        self.git(self.source, "push")
+        _, target = host_target()
+        runtime = self.base / ".local/share/studio/runtime" / target / "bun-1.4.5/bun"
+        runtime.parent.mkdir(parents=True)
+        calls = self.base / "studio-calls"
+        runtime.write_text(f"#!{sys.executable}\n" + f'''import json, os, sys
+from pathlib import Path
+args=sys.argv[1:]
+if args == ["--version"]:
+    print("1.4.5"); sys.exit(0)
+assert args[0] == "scripts/lifecycle.mjs", args
+with open({str(calls)!r}, "a") as out: out.write(json.dumps([str(Path.cwd()), *args])+"\\n")
+if args[1] == "build":
+    if Path("fail-build").exists(): sys.exit(12)
+    installed=Path.home()/".local/bin/studio"
+    installed.parent.mkdir(parents=True,exist_ok=True)
+    installed.write_text("installed Studio")
+elif args[1] == "status": print(json.dumps({{"installed":True,"running_revision":None}}))
+elif args[1] == "restart": sys.exit(3)
+else: raise AssertionError(args)
+''')
+        runtime.chmod(0o755)
+        env = {**self.env, "GIT_CONFIG_COUNT": "1",
+               "GIT_CONFIG_KEY_0": f"url.{self.origin}.insteadOf",
+               "GIT_CONFIG_VALUE_0": "https://github.com/lanej/studio.git"}
+        script = '''source "$1"
+install_config_runtime() { :; }
+load_dotfiles_config() { DOTFILES_INSTALL_PLAN=$'studio\\tstudio\\tstudio\\t-'; }
+install_dependencies
+'''
+        def install():
+            return subprocess.run(["bash", "-c", script, "test", str(ROOT / "bootstrap.sh")],
+                                  env=env, text=True, capture_output=True, timeout=20)
+        first=install()
+        self.assertEqual(first.returncode, 0, first.stdout+first.stderr)
+        source=(self.base/"src/studio").resolve()
+        self.assertEqual((self.base/".local/bin/studio").read_text(),"installed Studio")
+        selected=self.git(source,"rev-parse","HEAD")
+        self.commit("new upstream")
+        self.git(self.source,"push")
+        (source/"local-work").write_text("preserve")
+        again=install()
+        self.assertEqual(again.returncode,0,again.stdout+again.stderr)
+        self.assertEqual(self.git(source,"rev-parse","HEAD"),selected)
+        self.assertEqual((source/"local-work").read_text(),"preserve")
+        self.assertEqual([json.loads(line) for line in calls.read_text().splitlines()],
+                         [[str(source),"scripts/lifecycle.mjs","build"]]*2)
+        status=subprocess.run([sys.executable,str(COMMAND),"status","studio"],env=env,text=True,capture_output=True)
+        self.assertEqual(status.returncode,0,status.stderr)
+        self.assertTrue(json.loads(status.stdout)[0]["runtime"]["installed"])
+        restart=subprocess.run([sys.executable,str(COMMAND),"restart","studio"],env=env,text=True,capture_output=True)
+        self.assertEqual(restart.returncode,3,restart.stderr)
+        (source/"fail-build").touch()
+        failed=install()
+        self.assertNotEqual(failed.returncode,0)
+        self.assertEqual((self.base/".local/bin/studio").read_text(),"installed Studio")
+        self.git(source,"remote","set-url","origin","https://github.com/example/unrelated.git")
+        before=calls.read_bytes()
+        runtime.rename(runtime.with_name("retained-bun"))
+        unexpected=self.base/"unexpected-download"
+        curl=self.base/"fixture-bin/curl"
+        curl.write_text(f"#!{sys.executable}\nfrom pathlib import Path\nPath({str(unexpected)!r}).touch()\nraise SystemExit(99)\n")
+        curl.chmod(0o755)
+        for action in ("build", "status", "restart"):
+            rejected=subprocess.run([sys.executable,str(COMMAND),action,"studio"],env=env,text=True,capture_output=True)
+            self.assertEqual(rejected.returncode,1,rejected.stderr)
+            self.assertIn("Preserve unrecognized Studio checkout",rejected.stdout+rejected.stderr)
+        self.assertEqual(calls.read_bytes(),before)
+        self.assertFalse(unexpected.exists())
 
     def test_approval_projects_install_and_preserve_active_sessions(self):
         make = self.base / "tools/make"

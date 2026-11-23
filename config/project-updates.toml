@@ -35,4 +35,4 @@ pull_sources = true
 
 [projects.studio]
 path = "~/src/studio"
-command = ["bun", "scripts/lifecycle.mjs"]
+command = ["{python}", "{dotfiles}/scripts/install-studio.py"]
