@@ -1,7 +1,3 @@
-import {
-  defaultMinSplitColumns,
-  loadDiffDisplayConfig,
-} from "./display-config.ts";
 import { registerDiagnosticRendering } from "./rendering.ts";
 import type { DiagnosticSnapshot } from "./diagnostics.ts";
 import { resolve } from "node:path";
@@ -16,7 +12,7 @@ import {
 import { readFile, realpath } from "node:fs/promises";
 import { Type } from "typebox";
 import { z } from "zod";
-import { loadConfig } from "../config.ts";
+import { defaultMinSplitColumns, loadConfig } from "../config.ts";
 import { CodeIntelligence, Lookup } from "./service.ts";
 
 export const lspTool = "driver_lsp";
@@ -119,9 +115,9 @@ export function registerCodeIntelligence(pi: ExtensionAPI): CodeIntelligence {
     lifecycle++;
     approvedProject = undefined;
     await intelligence.stop();
-    intelligence.enabled = (await loadConfig()).lsp.enabled;
-    minSplitColumns = defaultMinSplitColumns;
-    minSplitColumns = (await loadDiffDisplayConfig()).min_split_columns;
+    const config = await loadConfig();
+    intelligence.enabled = config.lsp.enabled;
+    minSplitColumns = config.display.min_split_columns;
   });
   pi.on("session_shutdown", async () => {
     lifecycle++;

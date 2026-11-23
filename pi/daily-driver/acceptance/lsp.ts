@@ -35,8 +35,8 @@ const previousConfigHome = process.env["XDG_CONFIG_HOME"];
 process.env["XDG_CONFIG_HOME"] = join(root, "config");
 await mkdir(join(root, "config/pi-driver"), { recursive: true });
 await writeFile(
-  join(root, "config/pi-driver/display.toml"),
-  "[diff]\nmin_split_columns = 50\n",
+  join(root, "config/pi-driver/config.toml"),
+  "[display]\nmin_split_columns = 50\n",
 );
 const agentDir = join(root, "agent");
 await mkdir(agentDir);

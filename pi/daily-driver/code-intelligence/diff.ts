@@ -3,7 +3,7 @@ import {
   highlightCode,
   type Theme,
 } from "@earendil-works/pi-coding-agent";
-import { defaultMinSplitColumns } from "./display-config.ts";
+import { defaultMinSplitColumns } from "../config.ts";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";

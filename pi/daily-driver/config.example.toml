@@ -1,3 +1,3 @@
-[diff]
+[display]
 # Minimum code columns per side, excluding line numbers and the divider.
 min_split_columns = 40
