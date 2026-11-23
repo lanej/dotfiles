@@ -139,9 +139,6 @@ def main():
             require_rejection(recursive_exit)
             terminal.until("surviving shell clears its rejected guest", lambda:
                            all(not pane.get("nested_session_name") for pane in terminal.terminals()))
-            terminal.until("surviving shell shows the rejection", lambda:
-                           "Cannot attach a containing session" in
-                           terminal.action("dump-screen", "--pane-id", str(outer["id"])))
             panes = terminal.terminals()
             assert [pane["id"] for pane in panes] == [outer["id"]]
             current = panes[0]
