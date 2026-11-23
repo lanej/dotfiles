@@ -1,0 +1,22 @@
+# Socrates planning handoff
+
+Read `dialogue.txt` beside this file first. It exclusively owns readiness, freezing, reconciliation, and reopening. This companion governs planning after readiness, not execution authorization.
+
+## Draft the concrete plan
+
+Once readiness passes, draft in this turn without asking permission merely to plan. Trace each task to a requirement and each requirement to the problem. Identify inputs/outputs, dependencies, safe parallel work, constraints, and a proportionate feedback check for each task. A task can run in parallel only if it does not depend on another task's output or shared mutable state. Apply repository commit and review conventions rather than imposing a new commit policy.
+
+Use the actual host's planning and write capabilities:
+
+- **Claude Code:** call `EnterPlanMode` when available. Write only the harness-named plan file while plan mode restricts writes; `SESSION_DIR/plan.md` is not writable yet. Include the dependency plan and next action. After any required critique, use `ExitPlanMode` for approval. Do not claim that conversational text alone persisted the plan.
+- **Codex:** do not call nonexistent `EnterPlanMode`, `ExitPlanMode`, or `Workflow` tools or claim to change collaboration mode. Honor the currently active mode. Use its permitted plan artifact or present the draft in conversation when persistence is restricted, explicitly identifying what is unsaved. When writes are permitted, save a draft to `SESSION_DIR/plan.md`, preserving any previous plan under a unique timestamped `history/` path. Mark it as a draft awaiting approval; saving it is not approval.
+
+For consequential parallel/shared-state plans, irreversible changes, or consequential accepted uncertainty, obtain independent fresh-context plan critique when available. Give the critic the plan and matching spec, with no inherited author reasoning. Require findings inline, no file edits or further dispatch. Resolve actionable findings. If independence is required but unavailable, state the unmet gate; do not present an inline review as independent approval. Small sequential low-risk plans need no automatic critique dispatch.
+
+Present the concrete plan for approval. Readiness does not grant execution authority. A rejection leaves a draft to revise, not an approved plan. If a proposed plan changes a frozen requirement, return through the shared reopen procedure instead of silently changing the specification.
+
+## Approval and persistence
+
+Once approved, and only when writes are permitted, persist the matching plan as `SESSION_DIR/plan.md`. Preserve a previous plan in a unique non-overwriting timestamped history file before replacing it. Record the specification version and the actual approval reference. Set the matching frozen spec to `Status: Planned` only after approval. If either approval or persistence remains pending, say so.
+
+A resumed `Planned`, `Executing`, or `Verified` session stays in that supported state unless concrete new evidence or changed scope requires reopening. Resuming alone does not repeat planning, grant authority, or execute the plan. The invoking workflow and user's instruction determine the next action.

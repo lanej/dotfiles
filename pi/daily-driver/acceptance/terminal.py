@@ -25,7 +25,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--output", required=True)
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[1]
-palette = json.loads((root / "../../design-system/generated/colors.json").read_text())
+palette = json.loads((root / "resources/colors.json").read_text())
 output = Path(args.output)
 output.mkdir(parents=True, exist_ok=True)
 
@@ -66,7 +66,7 @@ elif 'show' in sys.argv: print(json.dumps([{'id':sys.argv[-1],'title':'Idle comp
     boundary.chmod(0o755)
     (home / "config.json").write_text(json.dumps({"beads": {"workspace": str(workspace), "database": "fixture", "branch": "main", "executable": str(boundary)}}))
     env = {**os.environ, "HOME": str(home), "PI_CODING_AGENT_DIR": str(agent), "PI_DRIVER_CONFIG": str(home / "config.json"), "TERM": "xterm-256color", "COLORTERM": "truecolor", "PI_TELEMETRY": "0", "PI_SKIP_VERSION_CHECK": "1"}
-    subprocess.run([sys.executable, str(root / "../../scripts/configure-pi-driver.py"), str(root), str(agent)], env=env, check=True, stdout=subprocess.DEVNULL)
+    subprocess.run([sys.executable, str(root / "scripts/configure.py"), str(root), str(agent)], env=env, check=True, stdout=subprocess.DEVNULL)
     (home / "design").mkdir()
     project = home / "development/dotfiles"
     project.mkdir(parents=True)
@@ -90,7 +90,7 @@ elif 'show' in sys.argv: print(json.dumps([{'id':sys.argv[-1],'title':'Idle comp
     for columns, rows in [(100, 26), (60, 20)]:
         master, slave = os.openpty()
         fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", rows, columns, 0, 0))
-        process = subprocess.Popen(["node", str(root / "node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js"), "--offline", "--no-mcp", "--model", "fixture/tiny"], env=env, cwd=project, stdin=slave, stdout=slave, stderr=slave)
+        process = subprocess.Popen(["bun", str(root / "node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js"), "--offline", "--no-mcp", "--model", "fixture/tiny"], env=env, cwd=project, stdin=slave, stdout=slave, stderr=slave)
         os.close(slave)
         screen = pyte.Screen(columns, rows)
         stream = pyte.Stream(screen)

@@ -1,0 +1,27 @@
+name: Pi driver
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - run: bun install --cwd .typescript-quality --frozen-lockfile --ignore-scripts
+      - run: bun run check
+      - run: bun run check:beads-api
+      - run: bun run check:zellij
+      - name: Install acceptance worktree manager
+        run: |
+          HOME="$RUNNER_TEMP/manager" sh acceptance/install-worktree-manager 0.2.0
+          echo "$RUNNER_TEMP/manager/.local/bin" >> "$GITHUB_PATH"
+      - run: bun run test:standalone --with-integrations

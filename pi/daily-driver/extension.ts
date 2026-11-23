@@ -1,3 +1,4 @@
+import { inspectIntegrations } from "./integrations.ts";
 import { registerSearchRendering } from "./search-renderer.ts";
 import { installFooter } from "./footer.ts";
 import type {
@@ -425,9 +426,15 @@ export default function dailyDriver(
 
   pi.registerCommand("driver-status", {
     description: "Inspect the daily-driver capability boundary",
-    handler: (_argument, ctx) => {
-      ctx.ui.notify(dispatchGate.reason, "warning");
-      return Promise.resolve();
+    handler: async (_argument, ctx) => {
+      const integrations = await inspectIntegrations(await loadConfig());
+      const summary = Object.entries(integrations)
+        .map(
+          ([name, state]) =>
+            `${name}: ${state.available ? "available" : state.reason}`,
+        )
+        .join("\n");
+      ctx.ui.notify(`${summary}\n${dispatchGate.reason}`, "info");
     },
   });
 }

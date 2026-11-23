@@ -7,21 +7,49 @@ The driver also provides the dotfiles theme, task browser and idle compaction. T
 ## Enable
 
 ```sh
-npm --prefix ~/.files/pi/daily-driver ci --ignore-scripts
-make pi-driver-config
+bun install --frozen-lockfile --ignore-scripts
+bun run install:local
 ```
 
-The configuration target registers this local Pi package, selects the generated `dotfiles` theme, and enables quiet startup. Providers, models, credentials, and unrelated packages are preserved. It performs no download, authentication, task claim, or service startup. It respects `PI_CODING_AGENT_DIR`. Start or reload Pi to discover `/cd`, `/tasks`, `/driver-profile`, and `/driver-status`. The repository's normal bin configuration exposes `pi-driver`; it can also be invoked directly from `~/.files/bin/pi-driver`.
+Installation builds a versioned bundle under `~/.local/share/pi-driver/releases`, exposes `~/.local/bin/pi-driver`, and registers that bundle with Pi. It includes the pinned Bun runtime, Pi host, extension sources, and resources. Providers, models, credentials, unrelated packages, and an existing theme choice are preserved. `PI_CODING_AGENT_DIR` selects an alternate Pi directory; `PI_DRIVER_PREFIX` selects an alternate installation prefix. Reload or relaunch Pi to discover `/cd`, `/tasks`, `/driver-profile`, and `/driver-status`. Existing sessions keep running.
 
-Run `make pi-driver-aot` after installing the package's locked npm dependencies and the Bun version in [`.bun-version`](.bun-version). The same `pi-driver` launcher then uses the compiled CLI for every command. Rebuild after updating the checkout. Set `PI_DRIVER_USE_SOURCE=1` to run the source CLI for a comparison or rollback. A checkout without a build runs from source. The managed worker still starts native Pi and loads its extension from the installed package.
+For development, `bun run configure` registers this source package without installing it. `bun run build:aot` builds the compiled CLI; `scripts/pi-driver` uses it when available. Set `PI_DRIVER_USE_SOURCE=1` to select source execution. `scripts/pi` starts the pinned native Pi host explicitly through Bun. Managed hosts and delegated children use Bun; Node/npm are not required by this package. Python is needed for installation/configuration helpers. The integration tools below are optional; installation does not provision them.
 
-The theme comes from the shared semantic adapter, with Nord selected by the current design-system preset. The terminal retains its canvas and opacity settings. The task tree opens as a right-side overlay with colored status glyphs. Enter opens task details with the state written out. Right focuses a task’s live managed Pi pane in the same Zellij session when the action is shown. Task selection and details omit keyboard instructions and policy boilerplate. The footer shows the current directory using [shortpath](../../tools/shortpath/README.md) when it is on PATH. Colored glyphs mark the lead mode and reasoning level alongside the bead ID and model. The same row fits Git changes, the Octo-tracked PR, context usage, and estimated session cost as space allows. GPT model IDs show a provider glyph, version, and variant glyph for Sol, Luna, Terra, and Astra. Secondary fields collapse as the pane narrows, and other extensions retain their status lines. Startup hints, resource listings, zero-usage counters, and the permanent compaction-policy line are hidden. Bash tool cards highlight shell syntax in command lines. Code from Pi’s grep tool and supported `rg` and `sed` shell tool calls uses the active syntax theme. Pi’s output folding and truncation remain available. Actionable errors remain visible.
+The project-owned updater adapter is `scripts/lifecycle.mjs`. Once the separate checkout is registered with the workstation's project updater, use `project-update pull pi-driver`, `project-update build pi-driver`, and `project-update restart pi-driver`, or `project-update update pi-driver` for the sequence. Restart returns 3 with a manual reload/relaunch reminder; it does not terminate sessions. Status reports installed source identity separately from the unknown running revision. Build stages the selected checkout without pulling. Previous bundles remain available.
+
+Register the chosen checkout using the existing updater registry format (replace the path with the selected destination):
+
+```toml
+[projects.pi-driver]
+path = "~/src/CHOSEN-CHECKOUT"
+command = ["bun", "scripts/lifecycle.mjs"]
+```
+
+Export standalone source with `python3 scripts/export.py /path/to/empty-destination`. Repository creation and updater registration await the destination choice. See [provenance and cutover](EXTRACTION.md).
+
+The theme comes from a bundled snapshot of the shared semantic adapter, with Nord selected by the current design-system preset. The terminal retains its canvas and opacity settings. The task tree opens as a right-side overlay with colored status glyphs. Enter opens task details with the state written out. Right focuses a task’s live managed Pi pane in the same Zellij session when the action is shown. Task selection and details omit keyboard instructions and policy boilerplate. The footer shows the current directory using [shortpath](https://github.com/lanej/dotfiles/blob/master/tools/shortpath/README.md) when it is on PATH. Colored glyphs mark the lead mode and reasoning level alongside the bead ID and model. The same row fits Git changes, the Octo-tracked PR, context usage, and estimated session cost as space allows. GPT model IDs show a provider glyph, version, and variant glyph for Sol, Luna, Terra, and Astra. Secondary fields collapse as the pane narrows, and other extensions retain their status lines. Startup hints, resource listings, zero-usage counters, and the permanent compaction-policy line are hidden. Bash tool cards highlight shell syntax in command lines. Code from Pi’s grep tool and supported `rg` and `sed` shell tool calls uses the active syntax theme. Pi’s output folding and truncation remain available. Actionable errors remain visible.
 
 Run `pi-driver config --example` to inspect the optional configuration format. Save your edited configuration at `${XDG_CONFIG_HOME:-~/.config}/pi-driver/config.json`, or point `PI_DRIVER_CONFIG` at an explicit file. Missing default configuration enables only the default idle-compaction policy; a missing explicitly selected file is an error. Configuration inspection and `pi-driver skill` need no services or credentials.
 
 ## Working directory
 
 Use `/cd /path/to/project` to change directories while continuing the current conversation. Relative paths, `~`, and paths containing spaces are supported; `/cd` alone opens your home directory. Conversation history, compaction summaries, the session tree and selected branch carry over, along with the model and thinking level. An explicitly selected driver profile is revalidated for the destination before delegation is re-enabled. Pi rebuilds its tools, project instructions, settings and resources for the destination, including its normal project trust checks. A directory-change message records the new location in the conversation. Pi saves the continuation under the destination with a link to the original session; the original file remains intact. Switching requires settled conversation and delegated work; managed Beads sessions stay in their assigned checkout. `/cd` is unavailable with `--no-session`, so switching never saves a deliberately private conversation.
+
+## Optional integrations
+
+Zellij, worktree manager, Octo, and Beads are optional. With no driver configuration, the extension still supplies directory switching, idle compaction, search rendering, and archive browsing; the CLI can inspect configuration and report integration status. Installation does not start or require these services.
+
+Set `integrations.zellij.enabled`, `integrations.worktrees.enabled`, or `integrations.octo.enabled` to opt in. Each accepts an `executable` name or absolute path. These integrations default to disabled and become available only when the configured executable is present. Configure Beads separately with `beadsService` or a read-only `beads` source. A configured service must be reachable to perform its operations. Missing or disabled integrations fail only the commands that need them, before task claims or checkout allocation.
+
+| Capability | Integrations needed |
+| --- | --- |
+| Task inspection | Configured Beads source |
+| Managed launch, focus, resume | Beads service, Zellij, worktree manager; launch/focus also need a live Zellij session |
+| Explorer/Reviewer delegation | Explicit delegation/profile configuration and worktree manager |
+| Publish, PR feedback, merge | Bound task/Beads workflow and Octo |
+| Finalize managed checkout | Bound task/Beads workflow, Octo, worktree manager |
+
+`pi-driver doctor` and `/driver-status` report enabled, present, and available states. Doctor also checks the package resources needed by the compiled CLI and native host. Doctor succeeds with no optional integrations configured; enabled integrations that are missing or configured Beads sources that fail verification make it fail. The full configuration example enables the managed workflow integrations; remove or disable the ones you do not use.
 
 ## Idle compaction
 
@@ -33,7 +61,7 @@ Managed Explorer and Reviewer children suspend idle compaction while their work 
 
 ## Task inspection and profiles
 
-Set `beadsService.url` to the configured [Beads service](../../docs/beads.md) and `beadsService.projectId` to the actual `project_id` from its `GET /v0/beads/context`. Replace the example UUID. If the service requires a bearer token, set `beadsService.tokenFile` to its absolute path. Each read and write carries the project identity. Existing configurations with only `beads.workspace`, `database` and `branch` retain native read-only browsing.
+Set `beadsService.url` to the configured [Beads service](https://github.com/lanej/dotfiles/blob/master/docs/beads.md) and `beadsService.projectId` to the actual `project_id` from its `GET /v0/beads/context`. Replace the example UUID. If the service requires a bearer token, set `beadsService.tokenFile` to its absolute path. Each read and write carries the project identity. Existing configurations with only `beads.workspace`, `database` and `branch` retain native read-only browsing.
 
 `/tasks` browses the native containment tree. `pi-driver tasks ID --json` reads the current bead directly from the service and includes the most recent execution attempt recorded on this host. It works after the Pi session exits. A local attempt records the admitted brief, checkout, native session and verification evidence. Reading another host's task requires only its service connection.
 
@@ -54,7 +82,7 @@ The lead starts in read-only planning mode. Use `/socrates` to work through scop
 
 Use `j` and `k` to move through choices, `;` and a letter hint to jump, `l` to inspect details, and `h` to return. The Markdown explanation beside the list follows keyboard focus. Evidence can include a source file and line, a URL, or an observation such as command output. Source and URL references use OSC 8. A `▸` beside a choice indicates a longer explanation or evidence links. Press `Enter` to select the focused choice. Escape backs out of hints or details before it dismisses the question.
 
-![Pi Socrates selector with single-letter hints and an explanation preview in a 60-column Zellij pane, reconstructed from a terminal capture](../../docs/assets/pi-driver/socrates-question.png)
+![Pi Socrates selector with single-letter hints and an explanation preview in a 60-column Zellij pane, reconstructed from a terminal capture](docs/assets/socrates-question.png)
 
 Run `pi-driver resume "$BEAD_ID"` in Zellij after Pi exits. The driver revalidates the Beads claim and opens the original transcript in the same managed checkout.
 
@@ -84,12 +112,12 @@ After Octo confirms the merge, exit the lead and settle its child beads. Run `pi
 ## Checks
 
 ```sh
-npm --prefix pi/daily-driver run quality:tools
-make test-pi-driver
-npm --prefix pi/daily-driver run test:beads-native -- --bd /absolute/path/to/bd --dolt /absolute/path/to/dolt
+bun run quality:tools
+make check
+bun run test:beads-native -- --bd /absolute/path/to/bd --dolt /absolute/path/to/dolt
 ```
 
-The tools command explicitly installs the pinned quality dependencies. `make test-pi-driver` runs the repository's complete strict TypeScript profile for this package: compiler checks, typed ESLint, Biome, Prettier, workflow tests and dependency audit, followed by loading the configured package and generated theme through the actual pinned Pi runtime without a provider request. All package TypeScript sources, including tests and acceptance scripts, are covered without a baseline or exclusions. Run `npm --prefix pi/daily-driver run typecheck` or `run lint` for focused checks; `run format -- FILE.ts` requires explicit package-relative paths.
+The tools command explicitly installs the pinned quality dependencies from their Bun lockfile. `make check` runs the repository's complete strict TypeScript profile for this package: compiler checks, typed ESLint, Biome, Prettier, workflow tests and dependency audit, followed by loading the configured package and generated theme through the actual pinned Pi runtime without a provider request. All authored TypeScript sources, including tests, acceptance scripts, and the adapted vendored client, are covered without a baseline. Generated declarations are checked by the strict compiler and regeneration. Run `bun run typecheck` or `run lint` for focused checks; `run format -- FILE.ts` requires explicit package-relative paths.
 
 The package retains the canonical compiler and typed lint rules under `.typescript-quality/`. Declaration checking stays enabled. Bundler resolution matches Pi's native TypeScript loader and the CLI's tsx loader. The Biome profile retains the previous recommended lint rules alongside the canonical correctness rules; only its stylistic `useLiteralKeys` rule is disabled because strict `noPropertyAccessFromIndexSignature` requires bracket access. Runtime modes, events, session/message kinds, navigation keys, profiles, roles, reasoning levels, task states and relationships use enums. External data is validated before enum-specific decisions; custom provider IDs, task states and relationship types remain representable.
 
@@ -97,15 +125,15 @@ The native Beads probe uses a disposable service to race claims, edit the accept
 
 The capture shows the native worker and verified Beads result in an isolated Zellij session with the installed `dotfiles` theme, `tmux` layout, and `lane-status` bar. The trial used a deterministic loopback provider.
 
-![Pi worker in Zellij submitting a verified result for its bead](../../docs/assets/pi-driver/local-run-submitted.png)
+![Pi worker in Zellij submitting a verified result for its bead](docs/assets/local-run-submitted.png)
 
-The separately invoked `uv run --script pi/daily-driver/acceptance/terminal.py --output docs/assets/pi-driver` exercises tree navigation, task details, Escape recovery, directory switching, invalid-directory recovery, and draft entry through actual Pi PTYs with a controlled Beads boundary. It checks the native theme colors, filled status pills and absence of startup/helper text. The retained renders preserve terminal-cell colors and crop unused terminal rows; they do not establish live provider behavior.
+The separately invoked `uv run --script acceptance/terminal.py --output docs/assets` exercises tree navigation, task details, Escape recovery, directory switching, invalid-directory recovery, and draft entry through actual Pi PTYs with a controlled Beads boundary. It checks the native theme colors, filled status pills and absence of startup/helper text. The retained renders preserve terminal-cell colors and crop unused terminal rows; they do not establish live provider behavior.
 
-![Native Pi task browser at 60 columns](../../docs/assets/pi-driver/tasks-60.png)
+![Native Pi task browser at 60 columns](docs/assets/tasks-60.png)
 
-![Native Pi task browser at 100 columns](../../docs/assets/pi-driver/tasks-100.png)
+![Native Pi task browser at 100 columns](docs/assets/tasks-100.png)
 
-![Native Pi task details at 60 columns](../../docs/assets/pi-driver/task-details-60.png)
+![Native Pi task details at 60 columns](docs/assets/task-details-60.png)
 
 ## Delegation and archives
 
@@ -115,4 +143,8 @@ The driver loads the pinned tintinweb runner through a small adapter. The config
 
 Run `/archives` to search and preview archived lead sessions alongside existing Session Snap archives. The default database is `~/.pi/agent/session-archive.db`. Set `archives.database` to an absolute alternate path when needed. The picker shows up to the latest 1,000 archived sessions and opens a local, bounded preview. It opens the database read-only and does not modify transcript history.
 
-Verify real delegation with `npm --prefix pi/daily-driver run test:delegation-native` and an installed native worktree manager. The terminal acceptance script also exercises archive search and preview at 60 and 100 columns.
+Verify real delegation with `bun run test:delegation-native` and an installed native worktree manager. The terminal acceptance script also exercises archive search and preview at 60 and 100 columns.
+
+## Standalone acceptance
+
+Run `bun run test:standalone` to export into an isolated directory, install frozen dependencies, run strict checks, load native Pi, build and install the CLI, verify repeatable registration and activation reporting, and test failed-build recovery with Node/npm blocked. Add `--with-integrations` to include worktree-backed native delegation when that tool is installed. The full managed Zellij/Beads flow remains an independently runnable acceptance check; a controlled provider does not establish live provider or Octo service behavior.

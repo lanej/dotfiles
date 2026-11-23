@@ -49,8 +49,31 @@ const profile = z
     [AgentRole.Explorer]: selection,
   })
   .strict();
+const optionalIntegration = (executable: string) =>
+  z
+    .object({
+      enabled: z.boolean().default(false),
+      executable: z
+        .string()
+        .min(1)
+        .refine(
+          (value) => !value.includes("/") || isAbsolute(value),
+          "Use an executable name or absolute path",
+        )
+        .default(executable),
+    })
+    .strict()
+    .prefault({});
 export const configSchema = z
   .object({
+    integrations: z
+      .object({
+        zellij: optionalIntegration("zellij"),
+        worktrees: optionalIntegration("worktree"),
+        octo: optionalIntegration("octo-manager"),
+      })
+      .strict()
+      .prefault({}),
     delegation: z
       .object({ enabled: z.boolean().default(false) })
       .strict()
@@ -157,6 +180,11 @@ const roles = (provider: string, prefix: string) => ({
 });
 
 export const exampleConfig = {
+  integrations: {
+    zellij: { enabled: true, executable: "zellij" },
+    worktrees: { enabled: true, executable: "worktree" },
+    octo: { enabled: true, executable: "octo-manager" },
+  },
   delegation: { enabled: false },
   idleCompaction: { enabled: true, idleMs: 300_000, minimumContextPercent: 60 },
   beadsService: {

@@ -1,7 +1,5 @@
 #!/bin/sh
-# Run the compiled driver when this checkout has one.
 set -eu
-
 launcher=$0
 while [ -L "$launcher" ]; do
     target=$(readlink "$launcher")
@@ -10,19 +8,4 @@ while [ -L "$launcher" ]; do
         *) launcher=${launcher%/*}/$target ;;
     esac
 done
-if ! package=$(CDPATH='' cd -P -- "${launcher%/*}/../pi/daily-driver" && pwd); then
-    printf '%s\n' 'Could not locate the Pi driver package.' >&2
-    exit 1
-fi
-
-compiled=$package/.aot/pi-driver
-if [ "${PI_DRIVER_USE_SOURCE:-0}" != 1 ] && [ -x "$compiled" ]; then
-    exec "$compiled" "$@"
-fi
-
-loader=$package/node_modules/tsx/dist/loader.mjs
-if [ ! -f "$loader" ]; then
-    printf '%s\n' 'Pi driver dependencies are missing. Run npm --prefix ~/.files/pi/daily-driver ci --ignore-scripts.' >&2
-    exit 1
-fi
-exec node --import "$loader" "$package/cli.ts" "$@"
+exec "${launcher%/*}/../pi/daily-driver/scripts/pi-driver" "$@"

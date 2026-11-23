@@ -1,3 +1,4 @@
+import { integrationStatus, requireIntegration } from "./integrations.ts";
 import { randomUUID } from "node:crypto";
 import {
   mkdirSync,
@@ -140,13 +141,14 @@ const inventory = z.object({
 async function allocate(
   attempt: Attempt,
   primary: string,
+  executable: string,
 ): Promise<z.infer<typeof allocation>> {
   let receipt: z.infer<typeof allocation>;
   try {
     receipt = createEnvelope.parse(
       JSON.parse(
         await run(
-          "worktree",
+          executable,
           [
             "create",
             "--agent",
@@ -164,7 +166,7 @@ async function allocate(
   } catch {
     // A failed command may have created a protected checkout. Recover identity,
     // but leave admission uncertain because provisioning hooks may have failed.
-    const stdout = await run("worktree", ["status", "--json"], {
+    const stdout = await run(executable, ["status", "--json"], {
       cwd: attempt.repository,
     }).catch((error: unknown) => processFailure(error).stdout ?? "");
     const scan = inventory.safeParse(
@@ -313,7 +315,10 @@ export function registerDelegation(
     pi.setActiveTools(activeTools);
     enabled = false;
     try {
-      enabled = (await loadConfig()).delegation.enabled;
+      const config = await loadConfig();
+      enabled =
+        config.delegation.enabled &&
+        (await integrationStatus(config, "worktrees")).available;
     } catch {
       // The driver's session initializer reports configuration errors.
     }
@@ -341,6 +346,7 @@ export function registerDelegation(
     async execute(_call, params, signal, _update, ctx) {
       const { role, brief } = delegateInput.parse(params);
       const config = await loadConfig();
+      const managerExecutable = await requireIntegration(config, "worktrees");
       const selected = profile();
       const roles =
         selected === undefined ? undefined : config.profiles[selected];
@@ -419,7 +425,7 @@ export function registerDelegation(
           run("git", ["worktree", "list", "--porcelain", "-z"], {
             cwd: ctx.cwd,
           }),
-          run("worktree", ["--version"], { cwd: ctx.cwd }),
+          run(managerExecutable, ["--version"], { cwd: ctx.cwd }),
         ]);
         const primary = listing.split("\0")[0]?.replace(/^worktree /, "");
         if (primary === undefined || !isAbsolute(primary))
@@ -437,7 +443,7 @@ export function registerDelegation(
           state: State.Allocating,
         };
         save(attempt);
-        const worktree = await allocate(attempt, primary);
+        const worktree = await allocate(attempt, primary, managerExecutable);
         const record = attempt;
         record.state = State.Ready;
         save(record);

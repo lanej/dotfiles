@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=24"
+    "bun": "1.4.5"
   },
   "pi": {
     "extensions": [
@@ -12,24 +12,30 @@
     ]
   },
   "scripts": {
-    "driver": "node --import tsx cli.ts",
-    "test": "node --import tsx --test tests/*.test.ts",
-    "test:beads-native": "node --import tsx acceptance/beads-control.ts",
-    "test:pi-native": "node --import tsx acceptance/pi-resources.ts",
-    "format": "node scripts/check-typescript.mjs fmt",
-    "check": "node scripts/check-typescript.mjs all",
-    "lint": "node scripts/check-typescript.mjs lint",
-    "typecheck": "node scripts/check-typescript.mjs typecheck",
-    "quality:tools": "node scripts/check-typescript.mjs tools",
-    "audit": "node scripts/check-typescript.mjs audit",
-    "test:delegation-native": "node --import tsx acceptance/delegation.ts",
-    "generate:zellij": "node scripts/generate-zellij.mjs",
-    "check:zellij": "node scripts/generate-zellij.mjs --check",
-    "build:aot": "node scripts/build-aot.mjs"
+    "driver": "bun cli.ts",
+    "test": "bun test tests/",
+    "test:beads-native": "bun acceptance/beads-control.ts",
+    "test:pi-native": "bun acceptance/pi-resources.ts",
+    "format": "bun scripts/check-typescript.mjs fmt",
+    "check": "bun scripts/check-typescript.mjs all",
+    "lint": "bun scripts/check-typescript.mjs lint",
+    "typecheck": "bun scripts/check-typescript.mjs typecheck",
+    "quality:tools": "bun scripts/check-typescript.mjs tools",
+    "audit": "bun scripts/check-typescript.mjs audit",
+    "test:delegation-native": "bun acceptance/delegation.ts",
+    "generate:zellij": "bun scripts/generate-zellij.mjs",
+    "check:zellij": "bun scripts/generate-zellij.mjs --check",
+    "build:aot": "bun scripts/build-aot.mjs",
+    "install:local": "bun scripts/lifecycle.mjs build",
+    "test:local": "bun acceptance/local-run.ts",
+    "configure": "python3 scripts/configure.py .",
+    "test:terminal": "uv run --script acceptance/terminal.py",
+    "test:standalone": "python3 scripts/test-standalone.py",
+    "check:beads-api": "bun --bun node_modules/.bin/openapi-typescript vendor/task-runtime/api/beads-1.3.4.yaml -o vendor/task-runtime/generated/beads.ts --check"
   },
   "dependencies": {
     "@bufbuild/protobuf": "2.16.0",
-    "@lanej/task-runtime": "file:../../tools/task-runtime",
+    "@lanej/task-runtime": "file:./vendor/task-runtime",
     "@tintinweb/pi-subagents": "0.26.2",
     "commander": "^14.0.0",
     "pi-git-diff": "0.1.1",
@@ -42,9 +48,9 @@
     "@earendil-works/pi-tui": "1.4.0",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@types/node": "^24.0.0",
-    "tsx": "^4.20.0",
     "typebox": "1.3.27",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "openapi-typescript": "7.13.0"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",
@@ -54,5 +60,6 @@
   "overrides": {
     "minimatch": "11.0.3",
     "undici": "8.12.3"
-  }
+  },
+  "packageManager": "bun@1.4.5"
 }

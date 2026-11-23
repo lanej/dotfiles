@@ -8,7 +8,7 @@ import { z } from "zod";
 import { withBeadsHttp } from "./beads-http-fixture.ts";
 
 const execute = promisify(execFile);
-const root = fileURLToPath(new URL("../../../", import.meta.url));
+const root = fileURLToPath(new URL("../", import.meta.url));
 const runtime = z.object({ bd: z.string(), dolt: z.string() }).parse(
   process.env["PI_DRIVER_NATIVE_BD"] !== undefined &&
     process.env["PI_DRIVER_NATIVE_DOLT"] !== undefined

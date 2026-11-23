@@ -1,4 +1,6 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
+import { inspectIntegrations } from "./integrations.ts";
+import { inspectPackageResources } from "./package-resources.ts";
 import { Command } from "commander";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -85,13 +87,25 @@ program
         };
       }
     }
+    const integrations = await inspectIntegrations(config);
+    const resources = await inspectPackageResources();
     output({
+      resources,
+      integrations,
       beads,
       beadsService,
       dispatch: dispatchGate,
       profiles: config.profiles,
     });
-    process.exitCode = beadsService.verified ? 0 : 1;
+    process.exitCode =
+      !resources.available ||
+      beads.readable === false ||
+      (beadsService.configured && !beadsService.verified) ||
+      Object.values(integrations).some(
+        (integration) => integration.enabled && !integration.present,
+      )
+        ? 1
+        : 0;
   });
 program
   .command("tasks [id]")

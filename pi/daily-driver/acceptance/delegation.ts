@@ -201,7 +201,7 @@ async function exercise(scenario: Scenario, fixture: string) {
       await mkdir(bin);
       await writeFile(
         join(bin, "worktree"),
-        `#!/usr/bin/env node
+        `#!/usr/bin/env bun
 const { spawnSync } = require("node:child_process");
 const args = process.argv.slice(2);
 const lose = args[0] === "create";
@@ -229,11 +229,7 @@ process.exit(lose ? 1 : (result.status ?? 1));
     ]);
     const source = (await command("git", ["rev-parse", "HEAD"])).trim();
     await writeFile(join(repo, "fixture.txt"), "uncommitted change\n");
-    await command("python3", [
-      join(root, "../../scripts/configure-pi-driver.py"),
-      root,
-      agent,
-    ]);
+    await command("python3", [join(root, "scripts/configure.py"), root, agent]);
 
     const models = Object.values(AgentRole).map((id) => ({
       id,
@@ -263,6 +259,7 @@ process.exit(lose ? 1 : (result.status ?? 1));
       config,
       JSON.stringify({
         delegation: { enabled: true },
+        integrations: { worktrees: { enabled: true } },
         profiles: {
           [DriverProfile.Personal]: Object.fromEntries(
             Object.values(AgentRole).map((model) => [

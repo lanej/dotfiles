@@ -123,16 +123,17 @@ class FixturePaths:
         models = (ADMITTED_MODEL, ALTERNATE_MODEL)
         providers = {model.provider: model.settings(port) for model in models}
         (self.agent / "models.json").write_text(json.dumps({"providers": providers}))
-        settings: dict[str, object] = {"packages": [str(options.root / "pi/daily-driver")]}
+        settings: dict[str, object] = {"packages": [str(options.root)]}
         if options.scenario in (Scenario.SOCRATES, Scenario.SOCRATES_READY):
             settings.update({"theme": "dotfiles", "quietStartup": True})
             themes = self.agent / "themes"
             themes.mkdir()
-            (themes / "dotfiles.json").symlink_to(options.root / "design-system/generated/pi.json")
+            (themes / "dotfiles.json").symlink_to(options.root / "resources/theme.json")
         (self.agent / "settings.json").write_text(json.dumps(settings))
         role = {"provider": ADMITTED_MODEL.provider, "model": ADMITTED_MODEL.id, "reasoning": "off"}
         (self.work / "driver.json").write_text(json.dumps({
             "beadsService": options.beads,
+            "integrations": {name: {"enabled": True} for name in ("zellij", "worktrees", "octo")},
             "profiles": {"personal": {name: role for name in ("lead", "worker", "reviewer", "explorer")}},
         }))
 
@@ -184,7 +185,7 @@ class Fixture:
 
     @property
     def driver(self) -> str:
-        return str(self.options.root / "bin/pi-driver")
+        return str(self.options.root / "scripts/pi-driver")
 
     def execute(
         self, args: Sequence[str | Path], *, cwd: str | Path | None = None, check: bool = True,
@@ -218,10 +219,10 @@ class Fixture:
         self.execute(["git", "branch", "-M", "main"])
 
     def start_terminal(self) -> Terminal:
-        workflow = runpy.run_path(str(self.options.root / "scripts/test-zellij.py"))
+        workflow = runpy.run_path(str(self.options.root / "acceptance/zellij_pty.py"))
         pty: Pty = workflow["Terminal"](self.binary, self.env, self.name, install_navigation=False)
         try:
-            return Terminal(pty, self.options.root / "pi/daily-driver", self.env, self.name)
+            return Terminal(pty, self.options.root, self.env, self.name)
         except OSError:
             pty.close()
             raise

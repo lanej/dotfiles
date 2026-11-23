@@ -1,3 +1,4 @@
+import { requireIntegration } from "./integrations.ts";
 import { createHash, randomUUID } from "node:crypto";
 import {
   link,
@@ -87,6 +88,8 @@ async function removed(primary: string, checkout: string): Promise<boolean> {
 
 export async function archiveLead(bead: string): Promise<Attempt> {
   const config = await loadConfig();
+  const managerExecutable = await requireIntegration(config, "worktrees");
+  await requireIntegration(config, "octo");
   if (config.beadsService === undefined)
     throw new Error("Configure the Beads service");
   const db = new Attempts(stateDirectory());
@@ -238,7 +241,7 @@ export async function archiveLead(bead: string): Promise<Attempt> {
     if (!(await removed(primary, path))) {
       const finished = manager.parse(
         JSON.parse(
-          await run("worktree", ["finish", checkout.task_id, "--json"], {
+          await run(managerExecutable, ["finish", checkout.task_id, "--json"], {
             cwd: primary,
           }),
         ),
@@ -269,7 +272,7 @@ export async function archiveLead(bead: string): Promise<Attempt> {
         })
         .parse(
           JSON.parse(
-            await run("worktree", [...options, "--json"], {
+            await run(managerExecutable, [...options, "--json"], {
               cwd: primary,
               timeout: 180_000,
             }),
@@ -285,7 +288,7 @@ export async function archiveLead(bead: string): Promise<Attempt> {
         throw new Error(
           `Worktree retained by the manager (${candidate?.action ?? "no removal candidate"})`,
         );
-      await run("worktree", [...options, "--apply", "--json"], {
+      await run(managerExecutable, [...options, "--apply", "--json"], {
         cwd: primary,
         timeout: 180_000,
       });

@@ -53,7 +53,12 @@ function sessionSocket(session: string, uid: number): string {
         absolute(process.env["XDG_CACHE_HOME"]) ?? join(homedir(), ".cache"),
         "zellij",
       )
-    : join(homedir(), "Library", "Caches", "org.Zellij-Contributors.Zellij");
+    : join(
+        process.env["HOME"] ?? homedir(),
+        "Library",
+        "Caches",
+        "org.Zellij-Contributors.Zellij",
+      );
   const index =
     override === undefined
       ? "session_index.sqlite"

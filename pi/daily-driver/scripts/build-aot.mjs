@@ -7,7 +7,7 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 const version = (await readFile(join(root, ".bun-version"), "utf8")).trim();
 let observed;
 try {
-  observed = execFileSync("bun", ["--version"], { encoding: "utf8" }).trim();
+  observed = execFileSync(process.execPath, ["--version"], { encoding: "utf8" }).trim();
 } catch {
   console.error(`Building pi-driver requires Bun ${version} on PATH.`);
   process.exit(1);
@@ -22,7 +22,7 @@ await mkdir(destination, { recursive: true });
 const staging = await mkdtemp(join(destination, "build-"));
 try {
   const output = join(staging, "pi-driver");
-  execFileSync("bun", [
+  execFileSync(process.execPath, [
     "build", "--compile", "--aot",
     "--no-compile-autoload-dotenv", "--no-compile-autoload-bunfig",
     "cli.ts", "--outfile", output,

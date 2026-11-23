@@ -1,11 +1,12 @@
+import { diffExtension, packageRoot } from "./package-resources.ts";
+import { integrationStatus, requireIntegration } from "./integrations.ts";
 import { getAgentDir, ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { WorktreeManager } from "@lanej/task-runtime/worktrees";
 import { randomUUID } from "node:crypto";
 import { constants } from "node:fs";
 import { access, realpath, stat } from "node:fs/promises";
-import { delimiter, dirname, join } from "node:path";
+import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
 import { Attempts, Phase, stateDirectory, type Attempt } from "./attempts.ts";
@@ -22,29 +23,11 @@ import { processFailure, processStart, run } from "./process.ts";
 import { ClaimRefused, TaskBeads } from "./task-service.ts";
 import { Zellij } from "./zellij.ts";
 
-// A compiled CLI lives in .aot, while Pi loads its extension from the installed package.
-const modulePath = fileURLToPath(import.meta.url);
-const packageRoot = modulePath.startsWith("/$bunfs/")
-  ? dirname(dirname(process.execPath))
-  : dirname(modulePath);
 const extension = join(packageRoot, "worker-extension.ts");
 async function piExecutable(): Promise<string> {
-  const dirs = (process.env["PATH"] ?? "")
-    .split(delimiter)
-    .filter((dir) => dir.length > 0);
-  const candidates = [
-    ...dirs.map((dir) => join(dir, "pi")),
-    join(packageRoot, "node_modules", ".bin", "pi"),
-  ];
-  for (const candidate of candidates) {
-    try {
-      await access(candidate, constants.X_OK);
-      return await realpath(candidate);
-    } catch {
-      // Keep searching the executable path.
-    }
-  }
-  throw new Error("Install the configured Pi runtime before starting a bead");
+  const executable = join(packageRoot, "scripts/pi");
+  await access(executable, constants.X_OK);
+  return executable;
 }
 
 async function focus(
@@ -68,6 +51,8 @@ async function focus(
 }
 
 export async function taskPaneBeads(project: string): Promise<Set<string>> {
+  if (!(await integrationStatus(await loadConfig(), "zellij")).available)
+    return new Set();
   const session = process.env["ZELLIJ_SESSION_NAME"];
   if (session === undefined || session === "") return new Set();
   const directory = stateDirectory();
@@ -89,6 +74,7 @@ export async function focusTaskPane(
   source: Attempt["source"],
   bead: string,
 ): Promise<void> {
+  await requireIntegration(await loadConfig(), "zellij");
   const session = z
     .string()
     .min(1, "Open the task tree inside Zellij to focus a pane")
@@ -221,12 +207,7 @@ async function launchPi(
       ? ["--session-id", attempt]
       : ["--session", record.transcript]),
     ...(lead
-      ? [
-          "--no-extensions",
-          "--no-mcp",
-          "--extension",
-          fileURLToPath(import.meta.resolve("pi-git-diff")),
-        ]
+      ? ["--no-extensions", "--no-mcp", "--extension", diffExtension()]
       : []),
     "--extension",
     extension,
@@ -287,6 +268,8 @@ export async function resumeLead(
   targetTab?: number,
 ): Promise<Attempt> {
   const config = await loadConfig();
+  await requireIntegration(config, "zellij");
+  const managerExecutable = await requireIntegration(config, "worktrees");
   if (config.beadsService === undefined)
     throw new Error("Configure the Beads service before resuming");
   const db = new Attempts(stateDirectory());
@@ -335,7 +318,7 @@ export async function resumeLead(
       throw new Error(
         "The managed checkout or Pi transcript no longer matches the attempt",
       );
-    await new WorktreeManager().requireAllocation(checkout);
+    await new WorktreeManager(managerExecutable).requireAllocation(checkout);
     if (record.leadPlan.mode === LeadMode.Applying)
       throw new Error("The plan batch needs reconciliation before resuming");
     await service.requireCurrent(record.bead, record.revision, record.id);
@@ -387,6 +370,8 @@ export async function startTask(
   lead = true,
 ): Promise<Attempt> {
   const config = await loadConfig();
+  await requireIntegration(config, "zellij");
+  const managerExecutable = await requireIntegration(config, "worktrees");
   const source = config.beadsService;
   if (source === undefined)
     throw new Error(
@@ -408,7 +393,7 @@ export async function startTask(
     .parse(process.env["ZELLIJ_SESSION_NAME"]);
   const zellij = new Zellij(session);
   const attempt = randomUUID();
-  const manager = new WorktreeManager();
+  const manager = new WorktreeManager(managerExecutable);
   const service = new TaskBeads(source);
   await access(extension, constants.R_OK);
   const [binary, reservation, bead, tab] = await Promise.all([

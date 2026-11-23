@@ -29,3 +29,5 @@ Local Pi prompts are preserved, including collisions with the `dotfiles-` names.
 ## Verification boundary
 
 `make test-pi-resources` exercises the real configuration target in an isolated home. CI also uses Pi 1.4.0 to discover the installed resources without making a model request. Resource discovery does not establish that a model follows every shared instruction or that Claude-specific skills work unchanged.
+
+The daily-driver package is being prepared for a standalone checkout. Its managed workflow uses the Bun version in `pi/daily-driver/.bun-version`, independently of the optional npm-installed Pi launcher above. See its [installation and extraction instructions](../pi/daily-driver/README.md). The standalone project owns installation and its `project-update` adapter; repository creation and registry registration await the destination choice.

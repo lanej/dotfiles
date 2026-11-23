@@ -5,9 +5,8 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const packageRoot = fileURLToPath(new URL("../", import.meta.url));
-const installer = await readFile(new URL("../../../scripts/install-zellij", import.meta.url), "utf8");
-const revision = /^zellij_revision=([a-f0-9]{40})$/mu.exec(installer)?.[1];
-if (revision === undefined) throw new Error("The Zellij installer has no pinned revision");
+const revision = (await readFile(new URL("../zellij-revision", import.meta.url), "utf8")).trim();
+if (!/^[a-f0-9]{40}$/u.test(revision)) throw new Error("Invalid pinned Zellij revision");
 const sources = [
   "app_control.proto", "client_to_server.proto", "common_types.proto",
   "pane_mirror.proto", "server_to_client.proto",
@@ -32,11 +31,11 @@ try {
   await Promise.all(sources.map(async (file) => {
     await writeFile(join(input, file), await readSource(upstream + file));
   }));
-  execFileSync(join(packageRoot, "node_modules", ".bin", "buf"), [
+  execFileSync(process.execPath, [join(packageRoot, "node_modules", ".bin", "buf"),
     "generate", input, "--template", JSON.stringify({
       version: "v2",
       plugins: [{
-        local: join(packageRoot, "node_modules", ".bin", "protoc-gen-es"),
+        local: [process.execPath, join(packageRoot, "node_modules", ".bin", "protoc-gen-es")],
         out: build,
         opt: ["target=ts", "import_extension=js"],
       }],
@@ -53,7 +52,7 @@ try {
     if (current.length !== generated.size) throw new Error("Unexpected Zellij generated files");
     for (const [file, content] of generated)
       if (!(await readFile(join(output, file))).equals(content))
-        throw new Error(`Zellij bindings are stale: ${file}. Run npm run generate:zellij`);
+        throw new Error(`Zellij bindings are stale: ${file}. Run bun run generate:zellij`);
   } else {
     await mkdir(output, { recursive: true });
     for (const [file, content] of generated) await writeFile(join(output, file), content);

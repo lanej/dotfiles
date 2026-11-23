@@ -1,0 +1,33 @@
+{
+  "name": "@lanej/task-runtime",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    "./beads": "./beads.ts",
+    "./worktrees": "./worktrees.ts",
+    "./worktree-contracts": "./worktree-contracts.ts"
+  },
+  "files": [
+    "*.ts",
+    "*.mjs",
+    "*.d.mts",
+    "generated/*.ts"
+  ],
+  "dependencies": {
+    "openapi-fetch": "^0.17.0"
+  },
+  "peerDependencies": {
+    "zod": "^4.4.3"
+  },
+  "scripts": {
+    "generate:beads": "bun --bun openapi-typescript api/beads-1.3.4.yaml -o generated/beads.ts",
+    "check:beads-api": "bun --bun openapi-typescript api/beads-1.3.4.yaml -o generated/beads.ts --check"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.13.0"
+  },
+  "engines": {
+    "bun": "1.4.5"
+  }
+}

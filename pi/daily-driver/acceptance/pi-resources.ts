@@ -29,11 +29,9 @@ for (const [role, selection] of Object.entries(exampleConfig.profiles.personal))
     `The personal example's ${role} model is unavailable: ${selection.model}`,
   );
 
-await run(
-  "python3",
-  [join(root, "../../scripts/configure-pi-driver.py"), root, agent],
-  { env: { ...process.env, PI_CODING_AGENT_DIR: agent } },
-);
+await run("python3", [join(root, "scripts/configure.py"), root, agent], {
+  env: { ...process.env, PI_CODING_AGENT_DIR: agent },
+});
 const workModel = {
   provider: "fixture-mantle",
   model: "work-model",

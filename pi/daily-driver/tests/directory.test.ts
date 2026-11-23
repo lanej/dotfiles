@@ -49,7 +49,12 @@ await test("/cd carries the active conversation and tree into rebuilt native Pi 
   process.env["PI_CODING_AGENT_DIR"] = agentDir;
   const configFile = join(root, "config.json");
   process.env["PI_DRIVER_CONFIG"] = configFile;
+  const managerExecutable = join(root, "worktree-fixture");
+  await writeFile(managerExecutable, "#!/bin/sh\nexit 97\n", { mode: 0o755 });
   const config = {
+    integrations: {
+      worktrees: { enabled: true, executable: managerExecutable },
+    },
     idleCompaction: { enabled: false },
     delegation: { enabled: true },
     profiles: {

@@ -30,6 +30,8 @@ shellcheck -x \
 	"$dotfiles/bin/ac-awake-service" \
 	"$dotfiles/bin/paseo-pi" \
 	"$dotfiles/bin/pi-driver" \
+	"$dotfiles/pi/daily-driver/scripts/pi-driver" \
+	"$dotfiles/pi/daily-driver/scripts/pi" \
 	"$dotfiles/bin/fix-ssh" \
 	"$dotfiles/bin/zellij-image-hints" \
 	"$dotfiles/scripts/build-zellij-helpers.sh" \

@@ -1,3 +1,4 @@
+import { requireIntegration } from "./integrations.ts";
 import { createHash } from "node:crypto";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -50,8 +51,9 @@ const mailbox = z.object({
 });
 
 export async function octo(cwd: string, ...args: string[]): Promise<unknown> {
+  const executable = await requireIntegration(await loadConfig(), "octo");
   return JSON.parse(
-    await run("octo-manager", [...args, "--json"], {
+    await run(executable, [...args, "--json"], {
       cwd,
       env: {
         ...process.env,
@@ -128,6 +130,7 @@ export async function publishLead(
   base: string,
 ): Promise<Attempt> {
   const config = await loadConfig();
+  await requireIntegration(config, "octo");
   if (config.beadsService === undefined)
     throw new Error("Configure the Beads service");
   const db = new Attempts(stateDirectory());
@@ -237,6 +240,7 @@ export async function leadDeliveryDecision(
 ): Promise<unknown> {
   sha.parse(head);
   const config = await loadConfig();
+  await requireIntegration(config, "octo");
   if (config.beadsService === undefined)
     throw new Error("Configure the Beads service");
   const db = new Attempts(stateDirectory());

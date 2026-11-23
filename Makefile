@@ -619,10 +619,10 @@ test-pi-resources:
 pi-driver-config:
 	@python3 "$(DOTFILES)/scripts/configure-pi-driver.py" "$(DOTFILES)/pi/daily-driver" "$(HOME)/.pi/agent"
 pi-driver-aot:
-	@npm --prefix "$(DOTFILES)/pi/daily-driver" run build:aot
+	@bun run --cwd "$(DOTFILES)/pi/daily-driver" build:aot
 test-pi-driver:
-	@npm --prefix "$(DOTFILES)/pi/daily-driver" run check
-	@npm --prefix "$(DOTFILES)/pi/daily-driver" run test:pi-native
+	@bun run --cwd "$(DOTFILES)/pi/daily-driver" check
+	@bun run --cwd "$(DOTFILES)/pi/daily-driver" test:pi-native
 
 firstmate-retire:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"

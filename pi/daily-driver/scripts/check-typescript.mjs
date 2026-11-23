@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // One entrypoint locally and in CI. Installation and source rewriting are explicit.
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -76,14 +76,10 @@ function policy() {
 
 function toolsReady() {
   const manifest = readJSON(path.join(tools, 'package.json'));
-  if (!existsSync(path.join(tools, 'package-lock.json'))) fail('Run the tools command, then review and commit .typescript-quality/package-lock.json.');
-  const lock = readJSON(safePath('.typescript-quality/package-lock.json'));
-  if (lock.lockfileVersion !== 3) fail('Regenerate the quality tool lockfile with npm on Node 22+.');
+  if (!existsSync(path.join(tools, 'bun.lock'))) fail('Run the tools command, then review and commit .typescript-quality/bun.lock.');
   for (const [name, version] of Object.entries(manifest.dependencies)) {
     const installed = readJSON(path.join(tools, 'node_modules', name, 'package.json')).version;
-    if (installed !== version || lock.packages?.['']?.dependencies?.[name] !== version) {
-      fail(`Quality tool ${name} must be ${version}; run the tools command and review the lockfile.`);
-    }
+    if (installed !== version) fail(`Quality tool ${name} must be ${version}; run the tools command.`);
   }
 }
 
@@ -283,11 +279,10 @@ async function main() {
   process.chdir(root);
   if (process.env.DOTFILES_TYPESCRIPT_QUALITY_ACTIVE === root) fail('Recursive quality command: preserve the original project gate instead of calling this runner from it.');
   if (!modes.has(mode) || (mode !== 'fmt' && args.length)) fail('Usage: node scripts/check-typescript.mjs [all|alpha|lint|typecheck|fmt FILE...|test|audit|tools|baseline|ratchet]');
-  if (Number(process.versions.node.split('.')[0]) < 22) fail('TypeScript quality requires Node 22+.');
+  if (!process.versions.bun) fail('TypeScript quality requires Bun.');
   if (mode === 'tools') {
-    run(['npm', existsSync(path.join(tools, 'package-lock.json')) ? 'ci' : 'install',
-      '--prefix', tools, '--ignore-scripts', '--no-audit', '--no-fund']);
-    console.log('Review and commit .typescript-quality/package-lock.json with the profile.');
+    run(['bun', 'install', '--cwd', tools, '--frozen-lockfile', '--ignore-scripts']);
+    console.log('Review and commit .typescript-quality/bun.lock with the profile.');
     return;
   }
   const settings = policy();

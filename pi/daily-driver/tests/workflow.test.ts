@@ -6,6 +6,7 @@ import {
   readFile,
   readlink,
   rm,
+  symlink,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -151,7 +152,7 @@ await test("CLI reads the explicitly configured source and dispatch never alloca
     const boundary = join(temporary, "native-bd");
     await writeFile(
       boundary,
-      `#!/usr/bin/env node\nimport fs from 'node:fs';\nconst args=process.argv.slice(2); fs.appendFileSync(${JSON.stringify(capture)},JSON.stringify(args)+'\\n');\nif (!args.includes('--readonly') || !args.includes('--sandbox')) process.exit(31);\nif(process.env.BEADS_DIR || process.env.BEADS_DOLT_SERVER_PORT) process.exit(32);\nif(args.includes('sql')) console.log(JSON.stringify([{branch:'main'}]));\nelse if(args.includes('list')) console.log(JSON.stringify([{id:'fixture-1',title:'Task tree',status:'open'}]));\nelse if(args.includes('show')) console.log(JSON.stringify([{id:'fixture-1',title:'Task tree',status:'open',description:'Keep state'}]));\nelse process.exit(33);\n`,
+      `#!/usr/bin/env bun\nimport fs from 'node:fs';\nconst args=process.argv.slice(2); fs.appendFileSync(${JSON.stringify(capture)},JSON.stringify(args)+'\\n');\nif (!args.includes('--readonly') || !args.includes('--sandbox')) process.exit(31);\nif(process.env.BEADS_DIR || process.env.BEADS_DOLT_SERVER_PORT) process.exit(32);\nif(args.includes('sql')) console.log(JSON.stringify([{branch:'main'}]));\nelse if(args.includes('list')) console.log(JSON.stringify([{id:'fixture-1',title:'Task tree',status:'open'}]));\nelse if(args.includes('show')) console.log(JSON.stringify([{id:'fixture-1',title:'Task tree',status:'open',description:'Keep state'}]));\nelse process.exit(33);\n`,
       { mode: 0o755 },
     );
     const config = join(temporary, "config.json");
@@ -173,14 +174,14 @@ await test("CLI reads the explicitly configured source and dispatch never alloca
       BEADS_DOLT_SERVER_PORT: "1",
     };
     const driver = (...args: string[]) =>
-      execute(join(root, "../../bin/pi-driver"), args, {
+      execute(join(root, "scripts/pi-driver"), args, {
         cwd: workspace,
         env,
         timeout: 10_000,
       });
     const compiledConfig = await driver("config", "--example");
     const sourceConfig = await execute(
-      join(root, "../../bin/pi-driver"),
+      join(root, "scripts/pi-driver"),
       ["config", "--example"],
       {
         cwd: workspace,
@@ -227,11 +228,9 @@ await test("opt-in registration preserves local settings and is idempotent", asy
       }),
     );
     const install = () =>
-      execute(
-        "python3",
-        [join(root, "../../scripts/configure-pi-driver.py"), root, agent],
-        { env: { ...process.env, PI_CODING_AGENT_DIR: agent } },
-      );
+      execute("python3", [join(root, "scripts/configure.py"), root, agent], {
+        env: { ...process.env, PI_CODING_AGENT_DIR: agent },
+      });
     await install();
     await install();
     const settings = z
@@ -242,17 +241,102 @@ await test("opt-in registration preserves local settings and is idempotent", asy
         packages: z.array(z.string()),
       })
       .parse(JSON.parse(await readFile(join(agent, "settings.json"), "utf8")));
-    assert.equal(settings.theme, "dotfiles");
+    assert.equal(settings.theme, "dark");
     assert.equal(settings.quietStartup, true);
     assert.equal(
       await readlink(join(agent, "themes/dotfiles.json")),
-      join(root, "../../design-system/generated/pi.json"),
+      join(root, "resources/theme.json"),
     );
     assert.equal(settings.defaultModel, "keep-model");
     assert.deepEqual(settings.packages, [
       "keep-package",
       root.replace(/\/$/, ""),
     ]);
+    const saved = await readFile(join(agent, "settings.json"), "utf8");
+    const linked = join(temporary, "linked-settings.json");
+    await writeFile(linked, saved);
+    await rm(join(agent, "settings.json"));
+    await symlink(linked, join(agent, "settings.json"));
+    await assert.rejects(install(), /Preserving linked Pi settings/);
+    assert.equal(await readFile(linked, "utf8"), saved);
+    await rm(join(agent, "settings.json"));
+    await writeFile(join(agent, "settings.json"), saved);
+    const theme = join(agent, "themes/dotfiles.json");
+    await rm(theme);
+    await symlink(linked, theme);
+    await assert.rejects(install(), /Preserving the existing dotfiles.json/);
+    assert.equal(await readlink(theme), linked);
+    assert.equal(await readFile(join(agent, "settings.json"), "utf8"), saved);
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
+});
+
+await test("optional integrations stay inactive until enabled and fail before effects when absent", async () => {
+  const temporary = await mkdtemp(join(tmpdir(), "pi-driver-optional-"));
+  try {
+    const config = join(temporary, "config.json");
+    const marker = join(temporary, "unexpected-effect");
+    const executable = join(temporary, "integration");
+    await writeFile(
+      executable,
+      `#!/bin/sh\nprintf called >> "${marker}"\nexit 99\n`,
+      { mode: 0o755 },
+    );
+    const invoke = (...args: string[]) =>
+      execute(join(root, "scripts/pi-driver"), args, {
+        cwd: temporary,
+        env: {
+          ...process.env,
+          PI_DRIVER_CONFIG: config,
+          PI_DRIVER_STATE_DIR: join(temporary, "state"),
+        },
+      });
+    await writeFile(
+      config,
+      JSON.stringify({
+        integrations: {
+          zellij: { executable },
+          worktrees: { executable },
+          octo: { executable },
+        },
+      }),
+    );
+    const report = z
+      .object({
+        integrations: z.record(
+          z.string(),
+          z.object({ enabled: z.boolean(), available: z.boolean() }),
+        ),
+      })
+      .parse(JSON.parse((await invoke("doctor")).stdout));
+    assert.ok(
+      Object.values(report.integrations).every(
+        (integration) => !integration.enabled && !integration.available,
+      ),
+    );
+    await assert.rejects(
+      invoke("start", "fixture", "--profile", "personal"),
+      /Enable integrations.zellij.enabled/,
+    );
+    await writeFile(
+      config,
+      JSON.stringify({
+        integrations: {
+          zellij: { enabled: true, executable: join(temporary, "missing") },
+        },
+      }),
+    );
+    await assert.rejects(
+      invoke("start", "fixture", "--profile", "personal"),
+      /Install .*missing or configure integrations.zellij.executable/,
+    );
+    await assert.rejects(invoke("doctor"));
+    await assert.rejects(readFile(marker), /ENOENT/);
+    await assert.rejects(
+      readFile(join(temporary, "state/attempts.sqlite")),
+      /ENOENT/,
+    );
   } finally {
     await rm(temporary, { recursive: true, force: true });
   }
