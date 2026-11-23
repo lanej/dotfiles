@@ -65,6 +65,7 @@ export default defineConfig({
         { label: 'Go style guide', slug: 'reference/go-style' },
         { label: 'TypeScript style guide', slug: 'reference/typescript-style' },
         { label: 'Repository bootstrap', slug: 'reference/repository-bootstrap' },
+        { label: 'Project skill rendering', slug: 'reference/source-code-skills' },
       ] },
       { label: 'Contributing', items: [
         { label: 'Code comments', slug: 'contributing/code-comments' },

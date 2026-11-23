@@ -16,6 +16,7 @@ shellcheck -x \
 	"$dotfiles/scripts/install-zellij" \
 	"$dotfiles/scripts/install-treehouse" \
 	"$dotfiles/scripts/install-worktree-policy" \
+	"$dotfiles/scripts/install-pi" \
 	"$dotfiles/scripts/install-worktree-manager" \
 	"$dotfiles/scripts/install-shfmt.sh" \
 	"$dotfiles/scripts/build-worktree-policy.sh" \
@@ -29,6 +30,7 @@ shellcheck -x \
 	"$dotfiles/scripts/build-git-worktree-hooks.sh" \
 	"$dotfiles/bin/ac-awake-service" \
 	"$dotfiles/bin/paseo-pi" \
+	"$dotfiles/bin/pi-driver" \
 	"$dotfiles/bin/fix-ssh" \
 	"$dotfiles/bin/zellij-image-hints" \
 	"$dotfiles/scripts/build-zellij-helpers.sh" \

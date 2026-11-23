@@ -127,6 +127,10 @@ The [project tool-choice policy](../ai/skills/source-code-lifecycle/references/t
 
 Strict Protobuf compilation, lint, formatting, and compatibility checks through the reusable [source-code profile](repository-bootstrap.md#protobuf-correctness-profile), with a small native Buf check plugin rejecting string fields ending in `_json`.
 
+### Ogen
+
+[Ogen](https://ogen.dev/) is the preferred Go client generator for OpenAPI-described JSON APIs in the shared [Go guidance](../ai/skills/go/references/common.md#api-client-generation). Generate from authoritative specifications, pin generator versions, and preserve established project tools unless a migration is authorized.
+
 ### Project-scoped engineering guidance
 
 [Source-code profiles](repository-bootstrap.md#optional-project-capabilities) own PR review and merge assessment, optional data-pipeline architecture, and optional UI acceptance. User-level guidance retains authorization, tool operation, and personal feedback. Viewrule installation does not impose application design policy or gates; project profiles preserve their selected lifecycle, authority, adoption, and existing conventions.
@@ -137,7 +141,7 @@ Strict Protobuf compilation, lint, formatting, and compatibility checks through 
 
 ### Beads and Dolt
 
-[Beads](beads.md) provides a shared local work graph through one managed HTTP endpoint backed by a private Dolt SQL server. Native binaries are pinned and checksum-verified. Octo retains dispatch ownership; issue synchronization and an Octo adapter require separate integration.
+[Beads](beads.md) provides a shared local work graph through one managed HTTP endpoint backed by a private Dolt SQL server. Native binaries are pinned and checksum-verified. Pi's local task workflow reads and claims native beads over HTTP. Octo owns GitHub delivery. Issue synchronization requires separate integration.
 
 ### Mergiraf
 
@@ -169,7 +173,7 @@ Strict Protobuf compilation, lint, formatting, and compatibility checks through 
 
 ### Pi
 
-[Pi](pi.md): a composable agent runtime under assessment. It can reuse the existing shared skills, Builder guidance, and role instructions. Assess supervision, review results, and status reporting before starting a trial.
+[Pi](pi.md): a composable agent runtime under assessment, with shared skills and role instructions. Its opt-in [daily driver](../pi/daily-driver/README.md) runs one ready bead in a managed worktree and interactive Zellij pane, records verification and supports independent CLI inspection. The [runtime plan](../pi/daily-driver/RUNTIME.md) covers agent delegation, Octo delivery and archival.
 
 ### AeroSpace
 

@@ -227,6 +227,9 @@ test-zellij-helpers: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-helpers.py"
 test-zellij-pane: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-helpers.py" --live-panes
+.PHONY: test-zellij-file-hints
+test-zellij-file-hints: zellij-helpers
+	@python3 "$(DOTFILES)/scripts/test-zellij-file-hints.py"
 .PHONY: test-zellij-notifications test-zellij-notifications-ui
 test-zellij-notifications: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-notifications.py"
@@ -611,6 +614,18 @@ pi-resources: codex-skills
 	@python3 "$(DOTFILES)/bin/sync-pi-resources" --source "$(DOTFILES)/ai" --home "$(HOME)"
 test-pi-resources:
 	@python3 "$(DOTFILES)/scripts/test-pi-resources.py"
+
+.PHONY: pi-driver-config pi-driver-aot test-pi-driver test-pi-components
+test-pi-components:
+	@bun run --cwd "$(DOTFILES)/tools/pi-components" check
+
+pi-driver-config:
+	@python3 "$(DOTFILES)/scripts/configure-pi-driver.py" "$(DOTFILES)/pi/daily-driver" "$(HOME)/.pi/agent"
+pi-driver-aot:
+	@bun run --cwd "$(DOTFILES)/pi/daily-driver" build:aot
+test-pi-driver:
+	@bun run --cwd "$(DOTFILES)/pi/daily-driver" check
+	@bun run --cwd "$(DOTFILES)/pi/daily-driver" test:pi-native
 
 firstmate-retire:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"

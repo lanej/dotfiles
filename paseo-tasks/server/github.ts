@@ -10,7 +10,6 @@ import {
   watchPR,
 } from "./pr-watch";
 import type { Store } from "./store";
-
 export const digest = (value: unknown) =>
   createHash("sha256").update(JSON.stringify(value)).digest("hex");
 export function githubObject(url: string) {
@@ -30,7 +29,9 @@ type Comment = {
   id: number;
   body?: string | null;
   html_url?: string;
-  user?: { login: string } | null;
+  user?: {
+    login: string;
+  } | null;
   updated_at?: string;
   submitted_at?: string | null;
   state?: string;
@@ -43,7 +44,10 @@ export type Observation = {
   head: string | null;
   state: unknown;
   pullRequest?: PullRequest;
-  events: { type: string; item: Comment }[];
+  events: {
+    type: string;
+    item: Comment;
+  }[];
 };
 export interface GitHubPort {
   observe(url: string): Promise<Observation>;
@@ -54,7 +58,9 @@ export interface GitHubPort {
     inline: boolean,
     commentId: number | null,
     body: string,
-  ): Promise<{ html_url: string }>;
+  ): Promise<{
+    html_url: string;
+  }>;
 }
 export class GitHub implements GitHubPort {
   private client?: Octokit;
@@ -103,7 +109,7 @@ export class GitHub implements GitHubPort {
   }
   async comments(url: string, inline: boolean) {
     const value = githubObject(url);
-    return this.list(
+    return await this.list(
       inline
         ? "GET /repos/{owner}/{repo}/pulls/{pull_number}/comments"
         : "GET /repos/{owner}/{repo}/issues/{issue_number}/comments",
@@ -280,7 +286,6 @@ type Reply = {
   state: "intent" | "unknown" | "confirmed";
   source: string | null;
 };
-
 export class Feedback {
   constructor(
     readonly store: Store,
@@ -290,7 +295,7 @@ export class Feedback {
   ) {}
   async poll(value: Task) {
     for (const url of value.github) {
-      const saved = this.store.read<ObjectState>("objects", url) ?? {
+      const saved = (await this.store.read<ObjectState>("objects", url)) ?? {
         seen: [],
         state: null,
         version: 0,
@@ -303,7 +308,9 @@ export class Feedback {
       } catch (error) {
         const failure = error as {
           status?: number;
-          response?: { headers?: Record<string, string> };
+          response?: {
+            headers?: Record<string, string>;
+          };
         };
         const headers = failure.response?.headers ?? {};
         const retry = Number(headers["retry-after"]);
@@ -320,14 +327,14 @@ export class Feedback {
               : 0,
           ),
         ).toISOString();
-        this.store.write("objects", url, saved);
+        await this.store.write("objects", url, saved);
         throw new Error(
           `GitHub polling failed for ${url}; retry after ${saved.nextPollAt}: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
-      const previous = this.store.get(value.taskId).error;
+      const previous = (await this.store.get(value.taskId)).error;
       if (previous?.startsWith(`GitHub polling failed for ${url};`)) {
-        this.store.change(value.taskId, (current) => {
+        await this.store.change(value.taskId, (current) => {
           if (current.error === previous) current.error = null;
         });
       }
@@ -340,7 +347,7 @@ export class Feedback {
             item.body ?? "",
           );
         const reply = marker
-          ? this.store.read<Reply>("replies", marker[1])
+          ? await this.store.read<Reply>("replies", marker[1])
           : null;
         if (
           reply &&
@@ -357,7 +364,7 @@ export class Feedback {
           item.state,
         ]);
         if (saved.seen.includes(id)) continue;
-        this.store.addEvent(value.taskId, "github", item.body ?? "", {
+        await this.store.addEvent(value.taskId, "github", item.body ?? "", {
           id,
           source: item.html_url ?? url,
           payload: {
@@ -380,19 +387,18 @@ export class Feedback {
       if (watch && observation.pullRequest) {
         const pr = observation.pullRequest;
         const previousStatus =
-          this.store
-            .events(value.taskId)
-            .find(
-              (entry) =>
-                entry.delivery === "queued" &&
-                entry.payload.type === "repair" &&
-                entry.payload.url === url &&
-                ["complete", "decision"].includes(
-                  String(entry.payload.previousStatus),
-                ),
-            )?.payload.previousStatus ?? this.store.get(value.taskId).status;
+          (await this.store.events(value.taskId)).find(
+            (entry) =>
+              entry.delivery === "queued" &&
+              entry.payload.type === "repair" &&
+              entry.payload.url === url &&
+              ["complete", "decision"].includes(
+                String(entry.payload.previousStatus),
+              ),
+          )?.payload.previousStatus ??
+          (await this.store.get(value.taskId)).status;
         if (watch.repair)
-          this.store.addEvent(
+          await this.store.addEvent(
             value.taskId,
             "github",
             `Repair the linked PR within the accepted task scope: ${watch.detail}`,
@@ -418,7 +424,7 @@ export class Feedback {
               },
             },
           );
-        this.store.change(value.taskId, (current) => {
+        await this.store.change(value.taskId, (current) => {
           const recorded = {
             url,
             head: pr.head,
@@ -442,21 +448,19 @@ export class Feedback {
               watch.repair,
             ])
           : null;
-        const superseded = this.store
-          .events(value.taskId)
-          .filter(
-            (item) =>
-              item.delivery === "queued" &&
-              item.payload.type === "repair" &&
-              item.payload.url === url &&
-              item.id !== currentRepair &&
-              (["closed", "review"].includes(watch.phase) ||
-                currentRepair !== null ||
-                item.payload.revision !== pr.head ||
-                item.payload.baseRevision !== pr.base),
-          );
+        const superseded = (await this.store.events(value.taskId)).filter(
+          (item) =>
+            item.delivery === "queued" &&
+            item.payload.type === "repair" &&
+            item.payload.url === url &&
+            item.id !== currentRepair &&
+            (["closed", "review"].includes(watch.phase) ||
+              currentRepair !== null ||
+              item.payload.revision !== pr.head ||
+              item.payload.baseRevision !== pr.base),
+        );
         for (const entry of superseded) {
-          this.store.saveEvent({
+          await this.store.saveEvent({
             ...entry,
             delivery: "handled",
             payload: {
@@ -478,17 +482,15 @@ export class Feedback {
         if (
           !currentRepair &&
           waiting &&
-          !this.store
-            .events(value.taskId)
-            .some(
-              (entry) =>
-                entry.delivery !== "handled" &&
-                (entry.kind === "feedback" ||
-                  (entry.kind === "github" && entry.payload.type !== "state") ||
-                  ["queued", "sending", "unknown"].includes(entry.delivery)),
-            )
+          !(await this.store.events(value.taskId)).some(
+            (entry) =>
+              entry.delivery !== "handled" &&
+              (entry.kind === "feedback" ||
+                (entry.kind === "github" && entry.payload.type !== "state") ||
+                ["queued", "sending", "unknown"].includes(entry.delivery)),
+          )
         ) {
-          this.store.change(value.taskId, (current) => {
+          await this.store.change(value.taskId, (current) => {
             if (current.status === "active" && current.activity === "idle")
               current.status = waiting as "complete" | "decision";
           });
@@ -497,8 +499,8 @@ export class Feedback {
       const state = digest(observation.state);
       if (state !== saved.state) {
         saved.version++;
-        this.store.transaction(() => {
-          const passive = this.store.addEvent(
+        await this.store.transaction(async () => {
+          const passive = await this.store.addEvent(
             value.taskId,
             "github",
             "GitHub revision and checks changed",
@@ -513,7 +515,7 @@ export class Feedback {
               },
             },
           );
-          this.store.saveEvent({ ...passive, delivery: "handled" });
+          await this.store.saveEvent({ ...passive, delivery: "handled" });
         });
         saved.state = state;
       }
@@ -523,7 +525,7 @@ export class Feedback {
             ? this.intervals.checks
             : this.intervals.review),
       ).toISOString();
-      this.store.write("objects", url, saved);
+      await this.store.write("objects", url, saved);
     }
   }
   async reply(
@@ -532,9 +534,9 @@ export class Feedback {
     text: string,
     expectedHead: string | null,
   ) {
-    const entry = this.store
-      .events(value.taskId)
-      .find((item) => item.id === eventId && item.kind === "github");
+    const entry = (await this.store.events(value.taskId)).find(
+      (item) => item.id === eventId && item.kind === "github",
+    );
     if (
       !entry ||
       !["comment", "review", "inline"].includes(String(entry.payload.type))
@@ -550,7 +552,7 @@ export class Feedback {
       throw new Error(
         "GitHub revision changed; inspect the current revision before replying",
       );
-    const previous = this.store.read<Reply>("replies", eventId);
+    const previous = await this.store.read<Reply>("replies", eventId);
     const body =
       previous?.body ?? `${text}\n\n<!-- paseo-task-feedback:${eventId} -->`;
     if (previous && !previous.body.startsWith(`${text}\n\n<!--`))
@@ -565,7 +567,7 @@ export class Feedback {
       (item) => item.body === body && item.user?.login === login,
     );
     if (found?.html_url) {
-      this.store.write("replies", eventId, {
+      await this.store.write("replies", eventId, {
         body,
         login,
         state: "confirmed",
@@ -584,12 +586,12 @@ export class Feedback {
     }
     // WHY: Concurrent tool calls must reserve one durable POST after their asynchronous reads.
     if (
-      !this.store.claimReply(eventId, {
+      !(await this.store.claimReply(eventId, {
         body,
         login,
         state: "intent",
         source: null,
-      })
+      }))
     ) {
       throw new Error(
         "Another GitHub submission already owns this event; reconcile its receipt before retrying",
@@ -602,7 +604,7 @@ export class Feedback {
         Number(entry.payload.commentId),
         body,
       );
-      this.store.write("replies", eventId, {
+      await this.store.write("replies", eventId, {
         body,
         login,
         state: "confirmed",
@@ -610,7 +612,7 @@ export class Feedback {
       });
       return result.html_url;
     } catch (error) {
-      this.store.write("replies", eventId, {
+      await this.store.write("replies", eventId, {
         body,
         login,
         state: "unknown",
@@ -619,11 +621,11 @@ export class Feedback {
       throw error;
     }
   }
-  acknowledge(entry: TaskEvent, summary: string) {
+  async acknowledge(entry: TaskEvent, summary: string) {
     if (!summary.trim()) throw new Error("Supply a feedback outcome");
-    this.store.change(entry.taskId, (value) => {
+    await this.store.change(entry.taskId, (value) => {
       value.progress = summary;
     });
-    this.store.saveEvent({ ...entry, delivery: "handled" });
+    await this.store.saveEvent({ ...entry, delivery: "handled" });
   }
 }

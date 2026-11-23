@@ -169,6 +169,7 @@ def main():
         shutil.copytree(root / "config", checkout / "config")
         shutil.copytree(root / "bootstrap", checkout / "bootstrap")
         (checkout / "scripts").mkdir()
+        shutil.copyfile(root / "scripts/install-pi", checkout / "scripts/install-pi")
         shutil.copyfile(root / "scripts/dotfiles-config.py", checkout / "scripts/dotfiles-config.py")
         (checkout / "scripts/install-approval-cli.py").write_text("from pathlib import Path\nimport os, sys\nPath(os.environ['HOME'], sys.argv[1] + '-installed').touch()\n")
         shutil.copyfile(root / "scripts/install-treehouse", checkout / "scripts/install-treehouse")
@@ -203,6 +204,7 @@ def main():
         driver.write_text(f"#!{sys.executable}\n" + r'''
 import os
 from pathlib import Path
+import hashlib
 import io
 import json
 import shutil
@@ -282,6 +284,22 @@ NVM
 ln -fs "$HOME/fixture/driver" "$HOME/.cargo/bin/rustup"
 echo 'export PATH="$HOME/.cargo/bin:$PATH"' > "$HOME/.cargo/env"
 """
+    elif url.startswith("https://github.com/earendil-works/pi/releases/download/v1.4.0/"):
+        name = "pi-linux-arm64.tar.gz"
+        if url.endswith("/" + name):
+            with tarfile.open(target, "w:gz") as archive:
+                content = (fixture / "driver").read_bytes()
+                binary = tarfile.TarInfo("pi/pi")
+                binary.mode = 0o755
+                binary.size = len(content)
+                archive.addfile(binary, io.BytesIO(content))
+            (home / "pi-version").write_text("1.4.0")
+            record("pi")
+        else:
+            assert url.endswith("/SHA256SUMS"), url
+            digest = hashlib.sha256(Path(target).with_name(name).read_bytes()).hexdigest()
+            Path(target).write_text(f"{digest}  {name}\n")
+        sys.exit(0)
     elif url.endswith("/Hack.zip"):
         with zipfile.ZipFile(target, "w") as archive:
             archive.writestr("HackNerdFontMono-Regular.ttf", b"fixture font")
@@ -345,9 +363,7 @@ elif name == "npm" and args[:1] == ["list"]:
     print('{"dependencies": {"yaml-language-server": {"version": "99.0.0"}}}')
 elif name == "npm" and args[:2] == ["install", "-g"]:
     package, version = args[-1].rsplit("@", 1)
-    tool = {"@openai/codex": "codex", "@earendil-works/pi-coding-agent": "pi"}[package]
-    if tool == "pi":
-        assert args[2] == "--ignore-scripts", args
+    tool = {"@openai/codex": "codex"}[package]
     node_bin = Path(shutil.which("node")).parent
     (node_bin / tool).symlink_to(fixture / "driver")
     (home / (tool + "-version")).write_text(version)
@@ -578,6 +594,11 @@ else:
         assert not (home / ".local/bin/codex").exists()
         assert not (home / ".config/bedrock/env").exists()
 
+        # An up-to-date npm launcher must not satisfy the standalone Pi install.
+        legacy_pi = fixture / "pi"
+        legacy_pi.symlink_to(driver)
+        (home / "pi-version").write_text("1.4.0")
+
         # Stage two installs the configured workstation on ARM Linux, including
         # an older Neovim that needs a source build and missing eza/yq/btop.
         machine_config.write_text('sets = ["workstation", "easypost"]\n[tools]\nmermaid = false\npi = true\nworktree-manager = true\nworktree-policy = true\ntreehouse = true\n')
@@ -606,6 +627,8 @@ else:
             raise AssertionError(result.stdout + result.stderr)
         assert shadow_node.is_symlink() and shadow_node.resolve() == driver.resolve()
         events = (home / "events").read_text().splitlines()
+        assert legacy_pi.resolve() == driver.resolve()
+        assert (home / ".local/bin/pi").readlink() == home / ".local/share/pi-standalone/1.4.0/pi/pi"
         assert "mergiraf" in events
         assert (home / ".cargo/bin/mergiraf").is_file()
         assert events.index("make") > max(

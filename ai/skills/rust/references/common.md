@@ -1,8 +1,8 @@
 # Rust / cargo
 
-Before selecting application tools or an API protocol, read [the project tool-choice policy](../../source-code-lifecycle/references/tool-choices.md). Apply the declared authority and adoption at the configured maturity; preserve external providers’ protocols and established stacks according to that policy.
+Before selecting application tools or an API protocol, read [the installed project policy](../../source-code-lifecycle/SKILL.md). Apply the declared authority and adoption at the configured maturity; preserve external providers’ protocols and established stacks according to that policy.
 
-Read the project’s stage through [source-code lifecycle](../../source-code-lifecycle/SKILL.md) and use [testing](../../testing/SKILL.md) for proportionate evidence. Language detection installs this guidance; it does not add or replace compiler, test, or CI configuration. Preserve existing repository gates.
+Use the installed [testing](../../testing/SKILL.md) for proportionate evidence. Language detection installs this guidance; it does not add or replace compiler, test, or CI configuration. Preserve existing repository gates.
 
 Standard cargo usage works as documented. This file covers build-cost discipline and clippy triage,
 where the default instinct is usually wrong.

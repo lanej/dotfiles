@@ -57,6 +57,22 @@ await test("native manager allocations preserve base, ownership and lost-respons
     await git("add", ".gitignore");
     await git("commit", "-qm", "initial");
     const initial = await git("rev-parse", "HEAD");
+    const beforeMissingManager = await git("worktree", "list", "--porcelain");
+    await assert.rejects(
+      () =>
+        new WorktreeManager(join(root, "missing-manager")).prepare(
+          repo,
+          "paseo-task:missing-manager",
+          "task/missing-manager",
+          "main",
+          "pi",
+        ),
+      /Worktree manager is unavailable/,
+    );
+    assert.equal(
+      await git("worktree", "list", "--porcelain"),
+      beforeMissingManager,
+    );
     const stale = join(root, "stale");
     await git("clone", "-q", repo, stale);
     await execute(binary, ["backfill", stale, "--json"]);
