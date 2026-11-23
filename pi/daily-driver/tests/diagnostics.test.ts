@@ -17,7 +17,7 @@ await test("inline diagnostics distinguish pending and reported results, wrap, a
     path: "/project/retry.ts",
     state: "received",
     freshness: "unversioned",
-    total: 3,
+    total: 4,
     diagnostics: [
       {
         line: 3,
@@ -29,6 +29,14 @@ await test("inline diagnostics distinguish pending and reported results, wrap, a
       },
       {
         line: 7,
+        column: 3,
+        severity: "error",
+        message: "Type 'string' is not assignable to type 'number'.",
+        code: 2322,
+        source: "ts",
+      },
+      {
+        line: 9,
         column: 3,
         severity: "error",
         message: "Type 'string' is not assignable to type 'number'.",
@@ -48,18 +56,20 @@ await test("inline diagnostics distinguish pending and reported results, wrap, a
   const narrow = diagnosticRows(value, plain, 30, false);
   assert.ok(narrow.every((row) => visibleWidth(row) <= 30));
   const text = narrow.join("\n");
-  assert.match(text, /E 7:3 {2}TS2322\n {2}Type/u);
-  assert.doesNotMatch(text, /W 3:1/u);
-  assert.match(text, /1 more diagnostics/u);
+  assert.match(text, /× 7:3, 9:3\n {2}Type/u);
+  assert.doesNotMatch(text, /⚠ 3:1/u);
+  assert.match(text, /1 more message/u);
+  assert.doesNotMatch(text, /TS2322/u);
+  assert.equal(text.match(/assignable/gu)?.length, 1);
   assert.equal(text.includes("\x1b"), false);
   assert.match(
     diagnosticRows(value, plain, 100, true).join("\n"),
-    /W 3:1 {2}TS6133 {2}Unused value/u,
+    /⚠ 3:1 {2}Unused value/u,
   );
-  const wide = diagnosticRows(value, plain, 58, false);
-  const first = wide.findIndex((row) => row.startsWith("E 7:3"));
-  assert.match(wide[first] ?? "", /^E 7:3 {2}TS2322 {2}Type/u);
-  assert.match(wide[first + 1] ?? "", /^ {15}\S/u);
+  const wide = diagnosticRows(value, plain, 55, false);
+  const first = wide.findIndex((row) => row.startsWith("× 7:3"));
+  assert.match(wide[first] ?? "", /^× 7:3, 9:3 {2}Type/u);
+  assert.match(wide[first + 1] ?? "", /^ {12}\S/u);
   assert.match(text, /document version/u);
   assert.match(
     diagnosticRows(

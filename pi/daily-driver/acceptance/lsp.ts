@@ -205,11 +205,23 @@ try {
   );
   await eventually(
     () => Promise.resolve(component.render(100).join("\n")),
-    /TS2322/u,
+    /Type 'string' is not assignable/u,
   );
   assert.doesNotMatch(component.render(100).join("\n"), /"lsp"|"diagnostics"/u);
   assert.match(component.render(60).join("\n"), /Diagnostics/u);
   assert.match(callComponent.render(100).join("\n"), /answer.*number/u);
+  for (const width of [100, 120]) {
+    assert.ok(
+      callComponent
+        .render(width)
+        .some((row) => row.includes("×") && row.includes("number")),
+    );
+  }
+  assert.ok(
+    !callComponent
+      .render(100)
+      .some((row) => row.includes("×") && row.includes("string")),
+  );
   assert.match(callComponent.render(120).join("\n"), /Before.*After/u);
   assert.doesNotMatch(
     callComponent.render(100).join("\n"),

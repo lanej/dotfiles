@@ -4,6 +4,7 @@ import {
   type Theme,
 } from "@earendil-works/pi-coding-agent";
 import { defaultMinSplitColumns, type DriverConfig } from "../config.ts";
+import { diagnosticGlyph, type DiagnosticSnapshot } from "./diagnostics.ts";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -39,6 +40,7 @@ export function syntaxDiffRows(
   display: DriverConfig["display"] = {
     min_split_columns: defaultMinSplitColumns,
   },
+  diagnostics: DiagnosticSnapshot["diagnostics"] = [],
 ): string[] {
   if (width < 3) return [];
   const lines: DiffLine[] = diff.split("\n").map((line) => {
@@ -81,6 +83,21 @@ export function syntaxDiffRows(
     line.before = line.prefix === "+" ? undefined : old[before++];
     line.after = line.prefix === "-" ? undefined : updated[after++];
   }
+  const severityByLine = new Map<string, "error" | "warning">();
+  for (const issue of diagnostics) {
+    const number = String(issue.line);
+    if (severityByLine.get(number) !== "error")
+      severityByLine.set(number, issue.severity);
+  }
+  const hasMarkers = lines.some((line) => severityByLine.has(line.afterNumber));
+  const marker = (line: DiffLine, side: "before" | "after") => {
+    if (!hasMarkers) return "";
+    const severity =
+      side === "after" ? severityByLine.get(line.afterNumber) : undefined;
+    return severity === undefined
+      ? "  "
+      : theme.fg(severity, diagnosticGlyph(severity)) + " ";
+  };
   const inner = Math.max(1, width - 2);
   const digits = lines.reduce(
     (digits, line) =>
@@ -89,7 +106,7 @@ export function syntaxDiffRows(
   );
   const leftWidth = Math.floor((inner - 3) / 2);
   const rightWidth = inner - 3 - leftWidth;
-  const gutter = digits + 2;
+  const gutter = digits + 2 + (hasMarkers ? 2 : 0);
   const split = leftWidth - gutter >= display.min_split_columns;
   const pad = (text: string, columns: number) =>
     text + " ".repeat(Math.max(0, columns - visibleWidth(text)));
@@ -139,7 +156,12 @@ export function syntaxDiffRows(
             : " ".repeat(gutter);
         return background(
           line,
-          pad(theme.fg(tone(line), label) + row, columns),
+          pad(
+            theme.fg(tone(line), label) +
+              (index === 0 ? marker(line, side) : "") +
+              row,
+            columns,
+          ),
         );
       },
     );
@@ -191,7 +213,7 @@ export function syntaxDiffRows(
       const text =
         line.prefix === undefined
           ? theme.fg("toolDiffContext", clean(line.raw))
-          : `${theme.fg(tone(line), `${line.prefix}${line.number.padStart(digits)} `)}${line.prefix === "-" ? (line.before ?? line.code) : (line.after ?? line.code)}`;
+          : `${theme.fg(tone(line), `${line.prefix}${line.number.padStart(digits)} `)}${marker(line, line.prefix === "-" ? "before" : "after")}${line.prefix === "-" ? (line.before ?? line.code) : (line.after ?? line.code)}`;
       for (const row of wrapTextWithAnsi(text, inner))
         body.push(background(line, pad(row, inner)));
     }

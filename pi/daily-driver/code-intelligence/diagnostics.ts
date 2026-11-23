@@ -53,6 +53,9 @@ export function snapshot(
     })),
   };
 }
+export function diagnosticGlyph(severity: "error" | "warning") {
+  return severity === "error" ? "×" : "⚠";
+}
 const clean = (text: string) => text.replace(/\p{Cc}/gu, " ");
 export function diagnosticRows(
   value: DiagnosticSnapshot,
@@ -80,26 +83,37 @@ export function diagnosticRows(
     value.total === 0
       ? "Diagnostics · no errors or warnings reported"
       : `Diagnostics · ${count(errors, "error")} · ${count(warnings, "warning")}${value.truncated === true ? " shown" : ""}`;
-  const items = [...value.diagnostics].sort(
+  const groups = new Map<
+    string,
+    { severity: "error" | "warning"; text: string; locations: Set<string> }
+  >();
+  for (const item of value.diagnostics) {
+    const key = JSON.stringify([item.severity, item.message]);
+    const position = `${String(item.line)}:${String(item.column)}`;
+    const group = groups.get(key);
+    if (group === undefined) {
+      groups.set(key, {
+        severity: item.severity,
+        text: clean(item.message),
+        locations: new Set([position]),
+      });
+    } else {
+      group.locations.add(position);
+    }
+  }
+  const items = [...groups.values()].sort(
     (a, b) =>
       Number(a.severity === "warning") - Number(b.severity === "warning"),
   );
   const visible = expanded ? items : items.slice(0, 2);
   return [
     ...wrap(theme.fg("muted", theme.bold(heading))),
-    ...visible.flatMap((item) => {
-      const code =
-        item.code === undefined
-          ? ""
-          : `  ${item.source === "typescript" || item.source === "ts" ? "TS" : ""}${String(item.code)}`;
-      const location = theme.fg(
-        item.severity,
-        theme.bold(
-          `${item.severity === "error" ? "E" : "W"} ${String(item.line)}:${String(item.column)}`,
-        ),
-      );
-      const metadata = location + theme.fg("muted", clean(code));
-      const text = clean(item.message);
+    ...visible.flatMap(({ severity, text, locations }) => {
+      const positions = [...locations];
+      const shown = expanded ? positions : positions.slice(0, 3);
+      const remaining = positions.length - shown.length;
+      const glyph = theme.fg(severity, theme.bold(diagnosticGlyph(severity)));
+      const metadata = `${glyph} ${theme.fg("muted", shown.join(", ") + (remaining > 0 ? ` +${String(remaining)}` : ""))}`;
       const gutter = visibleWidth(metadata) + 2;
       // Keep enough room for the message before placing it beside its metadata.
       if (width - gutter < 40) {
@@ -120,7 +134,7 @@ export function diagnosticRows(
       ? wrap(
           theme.fg(
             "muted",
-            `… ${String(items.length - visible.length)} more diagnostics`,
+            `… ${count(items.length - visible.length, "more message")}`,
           ),
         )
       : []),

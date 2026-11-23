@@ -109,6 +109,7 @@ export function registerDiagnosticRendering(
                         context.cwd,
                         undefined,
                         diffDisplay(),
+                        views.get(context.toolCallId)?.snapshot.diagnostics,
                       );
                 },
               };
