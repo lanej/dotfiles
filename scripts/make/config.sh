@@ -42,6 +42,7 @@ case "$target" in
         ;;
     source-code-config)
         mkdir -p "$setup_home/.local/bin"
+        ln -fs "$dotfiles/bin/source-code-worktree-hook" "$setup_home/.local/bin/source-code-worktree-hook"
         ln -fs "$dotfiles/bin/source-code" "$setup_home/.local/bin/source-code"
         ln -fs "$dotfiles/bin/repo-bootstrap" "$setup_home/.local/bin/repo-bootstrap"
         ;;

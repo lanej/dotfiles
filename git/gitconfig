@@ -204,3 +204,10 @@
 	command = ~/.local/bin/git-worktree-policy-hook post-checkout
 [include]
 	path = ~/.config/dotfiles/worktree-policy.gitconfig
+
+[hook "source-code-worktree"]
+	event = post-worktree
+	command = ~/.local/bin/source-code-worktree-hook post-worktree
+[hook "source-code-checkout"]
+	event = post-checkout
+	command = ~/.local/bin/source-code-worktree-hook post-checkout

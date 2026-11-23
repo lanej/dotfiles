@@ -1,0 +1,23 @@
+#!/bin/sh
+# Git runs lifecycle hooks in the invoking checkout, not necessarily the new one.
+case "$1" in
+    post-worktree)
+        case "$2" in
+            add) target=$5 ;;
+            *) exit 0 ;;
+        esac
+        ;;
+    post-checkout)
+        # Branch checkouts also repair worktrees initially created with --no-checkout.
+        [ "$4" = 1 ] || exit 0
+        target=.
+        ;;
+    *) exit 0 ;;
+esac
+[ -n "$target" ] || exit 0
+command="$HOME/.local/bin/source-code"
+[ -x "$command" ] || exit 0
+"$command" hydrate --repo "$target" || {
+    echo "source-code: worktree guidance restoration failed for $target; inspect before starting work" >&2
+    exit 1
+}

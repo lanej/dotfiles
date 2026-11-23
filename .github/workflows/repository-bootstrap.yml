@@ -5,6 +5,9 @@ on:
     paths:
       - 'bin/repo-bootstrap'
       - 'bin/source-code'
+      - 'bin/source-code-worktree-hook'
+      - 'scripts/test-source-code-hydration.py'
+      - 'git/gitconfig'
       - 'scripts/source_code_languages.py'
       - 'ai/skills/source-code-versions.json'
       - 'ai/skills/source-code/**'
@@ -51,6 +54,9 @@ on:
     paths:
       - 'bin/repo-bootstrap'
       - 'bin/source-code'
+      - 'bin/source-code-worktree-hook'
+      - 'scripts/test-source-code-hydration.py'
+      - 'git/gitconfig'
       - 'scripts/source_code_languages.py'
       - 'ai/skills/source-code-versions.json'
       - 'ai/skills/source-code/**'
@@ -109,4 +115,4 @@ jobs:
         with:
           python-version: '3.11'
       - run: python3 -m pip install PyYAML==6.0.3
-      - run: make test-repo-bootstrap
+      - run: make test-repo-bootstrap test-source-code-hydration

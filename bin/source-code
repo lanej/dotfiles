@@ -177,6 +177,8 @@ class Arguments(argparse.Namespace):
     detect_languages: bool | None = None
     strict: bool = False
     json: bool = False
+    hydration: bool = False
+    inherited_state: Manifest | None = None
 
 
 SOURCE = Path(__file__).resolve().parents[1]
@@ -1999,6 +2001,9 @@ def install(args: Arguments) -> None:
         if args.init and root != requested:
             raise ValueError(f"target is already inside {root}; refusing to initialize a nested repository")
     state, state_before = read_state(root)
+    if args.inherited_state is not None and state_before is None:
+        state = args.inherited_state.copy()
+        state["files"] = {}
     old_pins = state.get("skill_versions", {})
     snapshot = inspect(root, POLICY)
     if not old_pins and snapshot is not None:
@@ -2268,6 +2273,14 @@ def install(args: Arguments) -> None:
             + "\n  ".join(conflicts)
             + "\nChoose --conflict skip, or --conflict replace to back up and replace regular files."
         )
+    if args.hydration:
+        tracked_paths = set(git(root, "ls-files", "-z").stdout.split("\0"))
+        unsafe = [path for path, _, _ in changes if path in tracked_paths or snapshots.get(path) is not None]
+        if unsafe or removals:
+            raise ValueError(
+                "worktree hydration preserves existing files; run an explicit setup/upgrade: "
+                + ", ".join(sorted(set(unsafe) | removals))
+            )
     paths = set(managed) | {STATE}
     if "octo-manager" in skills:
         paths.add("octo-manager.toml")
@@ -3054,6 +3067,38 @@ def explain_policy(args: Arguments) -> int:
     return 0
 
 
+def hydrate_worktree(args: Arguments) -> None:
+    """Recreate local installation artifacts without claiming another checkout's files."""
+    root = Path(git(args.repo.expanduser().resolve(), "rev-parse", "--show-toplevel").stdout.strip()).resolve()
+    args.repo = root
+    index = Path(git(root, "rev-parse", "--path-format=absolute", "--git-path", "index").stdout.strip())
+    if not index.exists():
+        return  # --no-checkout has no branch files/configuration to hydrate yet.
+    state, snapshot = read_state(root)
+    if snapshot is not None and all(inspect(root, path) is not None for path in state["files"]):
+        return
+    # The common directory identifies the primary checkout even when invoked from
+    # another linked checkout; no mutable guidance directory is shared between them.
+    entries = git(root, "worktree", "list", "--porcelain", "-z").stdout.split("\0")
+    primary = next((Path(item.removeprefix("worktree ")) for item in entries if item.startswith("worktree ")), root)
+    inherited, inherited_snapshot = read_state(primary)
+    if snapshot is None:
+        args.inherited_state = inherited if inherited_snapshot is not None else None
+    if not (root / "source-code.toml").exists():
+        if (primary / "source-code.toml").is_file():
+            args.config = primary / "source-code.toml"
+        elif snapshot is None and inherited_snapshot is None:
+            return
+    load_configuration(args)
+    selection = resolve_policy(root, args, state if snapshot is not None else inherited)
+    if selection["authority"] is None or selection["adoption"] is None:
+        raise ValueError(
+            "worktree hydration requires recorded authority and adoption; run source-code setup explicitly"
+        )
+    args.hydration = True
+    install(args)
+
+
 def main() -> None:
     command = argparse.ArgumentParser(description="Manage source-code standards and repository setup.")
     subcommands = command.add_subparsers(dest="command", required=True)
@@ -3066,6 +3111,11 @@ def main() -> None:
     add_install_arguments(explain_parser, inspection=True)
     explain_parser.add_argument("--json", action="store_true", help="emit one versioned JSON object")
     upgrade_parser = subcommands.add_parser("upgrade", help="update an existing installation to this source's versions")
+    hydration_parser = subcommands.add_parser(
+        "hydrate", help="restore missing worktree guidance from project selections without replacing existing files"
+    )
+    hydration_parser.add_argument("--repo", type=Path, default=Path.cwd())
+    hydration_parser.add_argument("--dry-run", action="store_true")
     validation_parser = subcommands.add_parser(
         "validate", help="check skill best practices, version pins, and installed integrity"
     )
@@ -3099,6 +3149,9 @@ def main() -> None:
     )
     args = command.parse_args(namespace=Arguments())
     try:
+        if args.command == "hydrate":
+            hydrate_worktree(args)
+            command.exit(0)
         if args.command == "skill":
             package = SOURCE / "ai/skills/source-code"
             skill_path = package / "references" / f"{args.topic}.md" if args.topic else package / "SKILL.md"

@@ -37,6 +37,7 @@ shellcheck -x \
 	"$dotfiles/bin/fzf-path-preview" \
 	"$dotfiles/bin/git-ssh" \
 	"$dotfiles/bin/git-worktree-policy-hook" \
+	"$dotfiles/bin/source-code-worktree-hook" \
 	"$dotfiles/bin/git-worktree-policy" \
 	"$dotfiles/bin/dotfiles-fzf" \
 	"$dotfiles/bin/sync-codex-mcp-servers" \
