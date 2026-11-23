@@ -3,6 +3,7 @@ import { WorktreeManager } from "@lanej/task-runtime/worktrees";
 import { randomUUID } from "node:crypto";
 import { constants } from "node:fs";
 import { access, open, realpath, stat } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { delimiter, dirname, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
@@ -230,7 +231,9 @@ async function launchPi(
           "--no-extensions",
           "--no-mcp",
           "--extension",
-          fileURLToPath(import.meta.resolve("pi-git-diff")),
+          createRequire(join(packageRoot, "package.json")).resolve(
+            "pi-git-diff",
+          ),
         ]
       : []),
     "--extension",

@@ -5,8 +5,8 @@ import type {
 import { Text } from "@earendil-works/pi-tui";
 import { isDeepStrictEqual } from "node:util";
 import { Type } from "typebox";
-import type { Attempt, Attempts } from "./attempts.ts";
-import { LeadMode } from "./lead-plan.ts";
+import type { Attempt, Attempts } from "../attempts.ts";
+import { LeadMode } from "../lead-plan.ts";
 import {
   DecisionDisposition,
   SpecStatus,
@@ -16,13 +16,13 @@ import {
   specQuestion,
   specText,
   type SpecQuestion,
-} from "./lead-spec.ts";
-import { questionEvidenceParameter } from "./question-evidence.ts";
-import { questionLinks, renderQuestionEvidence } from "./question-links.ts";
-import { chooseQuestion, QuestionSelectionKind } from "./question-selector.ts";
-import { socratesGuidance } from "./socrates-guidance.ts";
-import { TaskBeads } from "./task-service.ts";
-import { reviewPlan, showTask } from "./ui.ts";
+} from "./spec.ts";
+import { questionEvidenceParameter } from "./evidence.ts";
+import { questionLinks, renderQuestionEvidence } from "./links.ts";
+import { chooseQuestion, QuestionSelectionKind } from "./selector.ts";
+import { socratesGuidance } from "./guidance.ts";
+import { TaskBeads } from "../task-service.ts";
+import { reviewPlan, showTask } from "../ui.ts";
 
 export const askTool = "ask_user_question";
 export const specTool = "draft_socrates_specification";
