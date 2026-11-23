@@ -1,6 +1,8 @@
+import { existsSync } from "node:fs";
+import { parse } from "smol-toml";
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { isAbsolute, join } from "node:path";
+import { extname, isAbsolute, join } from "node:path";
 import { z } from "zod";
 
 export enum DriverProfile {
@@ -49,8 +51,35 @@ const profile = z
     [AgentRole.Explorer]: selection,
   })
   .strict();
+export const defaultMinSplitColumns = 40;
+
 export const configSchema = z
   .object({
+    display: z
+      .strictObject({
+        min_split_columns: z
+          .number()
+          .int()
+          .positive()
+          .default(defaultMinSplitColumns),
+        inline_diagnostics: z.boolean().default(true),
+        added_background: z
+          .string()
+          .regex(/^#[0-9a-f]{6}$/iu)
+          .optional(),
+        removed_background: z
+          .string()
+          .regex(/^#[0-9a-f]{6}$/iu)
+          .optional(),
+      })
+      .default({
+        min_split_columns: defaultMinSplitColumns,
+        inline_diagnostics: true,
+      }),
+    lsp: z
+      .object({ enabled: z.boolean().default(true) })
+      .strict()
+      .default({ enabled: true }),
     delegation: z
       .object({ enabled: z.boolean().default(false) })
       .strict()
@@ -107,18 +136,23 @@ export const configSchema = z
 export type DriverConfig = z.infer<typeof configSchema>;
 
 export function configPath(): string {
-  return (
-    process.env["PI_DRIVER_CONFIG"] ??
-    join(
-      process.env["XDG_CONFIG_HOME"] ?? join(homedir(), ".config"),
-      "pi-driver/config.json",
-    )
+  const explicit = process.env["PI_DRIVER_CONFIG"];
+  if (explicit !== undefined) return explicit;
+  const directory = join(
+    process.env["XDG_CONFIG_HOME"] ?? join(homedir(), ".config"),
+    "pi-driver",
   );
+  const toml = join(directory, "config.toml");
+  const json = join(directory, "config.json");
+  return existsSync(toml) || !existsSync(json) ? toml : json;
 }
 
 export async function loadConfig(path = configPath()): Promise<DriverConfig> {
   try {
-    return configSchema.parse(JSON.parse(await readFile(path, "utf8")));
+    const contents = await readFile(path, "utf8");
+    return configSchema.parse(
+      extname(path) === ".toml" ? parse(contents) : JSON.parse(contents),
+    );
   } catch (error) {
     if (
       z.object({ code: z.literal("ENOENT") }).safeParse(error).success &&
@@ -157,6 +191,11 @@ const roles = (provider: string, prefix: string) => ({
 });
 
 export const exampleConfig = {
+  display: {
+    min_split_columns: defaultMinSplitColumns,
+    inline_diagnostics: true,
+  },
+  lsp: { enabled: true },
   delegation: { enabled: false },
   idleCompaction: { enabled: true, idleMs: 300_000, minimumContextPercent: 60 },
   beadsService: {

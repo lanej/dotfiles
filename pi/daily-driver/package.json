@@ -25,7 +25,8 @@
     "test:delegation-native": "bun acceptance/delegation.ts",
     "generate:zellij": "bun scripts/generate-zellij.mjs",
     "check:zellij": "bun scripts/generate-zellij.mjs --check",
-    "build:aot": "bun scripts/build-aot.mjs"
+    "build:aot": "bun scripts/build-aot.mjs",
+    "test:lsp-native": "bun acceptance/lsp.ts"
   },
   "dependencies": {
     "@bufbuild/protobuf": "2.16.0",
@@ -34,7 +35,10 @@
     "commander": "^14.0.0",
     "pi-git-diff": "0.1.1",
     "zod": "^4.0.0",
-    "@lanej/pi-components": "file:../../tools/pi-components"
+    "@lanej/pi-components": "file:../../tools/pi-components",
+    "diff": "8.0.4",
+    "smol-toml": "1.9.1",
+    "vscode-languageserver-protocol": "3.18.6"
   },
   "devDependencies": {
     "@bufbuild/buf": "1.75.0",
