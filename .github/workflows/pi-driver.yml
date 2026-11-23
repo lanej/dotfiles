@@ -9,6 +9,7 @@ on:
       - 'design-system/generated/pi.json'
       - 'bin/pi-driver'
       - 'scripts/configure-pi-driver.py'
+      - 'scripts/install-pi'
       - 'scripts/install-worktree-manager'
       - 'bootstrap/tools.toml'
       - 'tools/task-runtime/**'
@@ -26,6 +27,7 @@ on:
       - 'design-system/generated/pi.json'
       - 'bin/pi-driver'
       - 'scripts/configure-pi-driver.py'
+      - 'scripts/install-pi'
       - 'scripts/install-worktree-manager'
       - 'bootstrap/tools.toml'
       - 'tools/task-runtime/**'
@@ -52,21 +54,9 @@ jobs:
           python-version: '3.11'
       - name: Install standalone Pi
         run: |
-          case "$RUNNER_OS/$RUNNER_ARCH" in
-            macOS/ARM64) platform=darwin-arm64 ;;
-            macOS/X64) platform=darwin-x64 ;;
-            Linux/X64) platform=linux-x64 ;;
-            *) exit 1 ;;
-          esac
-          archive="pi-$platform.tar.gz"
-          mkdir -p "$RUNNER_TEMP/pi-release"
-          cd "$RUNNER_TEMP/pi-release"
-          url=https://github.com/earendil-works/pi/releases/download/v1.4.0
-          curl -fsSLO "$url/$archive"
-          curl -fsSLO "$url/SHA256SUMS"
-          awk -v archive="$archive" '$2 == archive { print }' SHA256SUMS | shasum -a 256 -c
-          tar -xzf "$archive"
-          echo "$PWD/pi" >> "$GITHUB_PATH"
+          version=$(python3 -c 'import tomllib; print(tomllib.load(open("bootstrap/tools.toml", "rb"))["tools"]["pi"]["version"])')
+          sh scripts/install-pi "$version"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Block Node and npm subprocesses
         run: |
           mkdir -p "$RUNNER_TEMP/bun-only"

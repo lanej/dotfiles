@@ -16,6 +16,7 @@ shellcheck -x \
 	"$dotfiles/scripts/install-zellij" \
 	"$dotfiles/scripts/install-treehouse" \
 	"$dotfiles/scripts/install-worktree-policy" \
+	"$dotfiles/scripts/install-pi" \
 	"$dotfiles/scripts/install-worktree-manager" \
 	"$dotfiles/scripts/install-shfmt.sh" \
 	"$dotfiles/scripts/build-worktree-policy.sh" \

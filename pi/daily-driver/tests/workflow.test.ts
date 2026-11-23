@@ -238,12 +238,20 @@ await test("opt-in registration preserves local settings and is idempotent", asy
         packages: ["keep-package"],
       }),
     );
-    const install = () =>
+    const install = (path = process.env["PATH"]) =>
       execute(
         "python3",
         [join(root, "../../scripts/configure-pi-driver.py"), root, agent],
-        { env: { ...process.env, PI_CODING_AGENT_DIR: agent } },
+        { env: { ...process.env, PATH: path, PI_CODING_AGENT_DIR: agent } },
       );
+    const legacy = join(temporary, "pi");
+    await writeFile(legacy, "#!/bin/sh\nexit 99\n", { mode: 0o755 });
+    const before = await readFile(join(agent, "settings.json"), "utf8");
+    await assert.rejects(
+      install(`${temporary}:${process.env["PATH"] ?? ""}`),
+      /Put standalone Pi ahead of script-based Pi launchers/,
+    );
+    assert.equal(await readFile(join(agent, "settings.json"), "utf8"), before);
     await install();
     await install();
     const settings = z

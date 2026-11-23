@@ -22,6 +22,8 @@ The selector returns an item index or cancellation. Socrates owns the typed-answ
 
 ## Enable
 
+Install [standalone Pi](../../docs/pi.md#install) and put it first on PATH before configuring or opening the daily driver.
+
 ```sh
 bun install --cwd ~/.files/pi/daily-driver --frozen-lockfile --ignore-scripts
 make pi-driver-config
@@ -29,7 +31,7 @@ make pi-driver-config
 
 The configuration target registers this local Pi package, selects the generated `dotfiles` theme, and enables quiet startup. Providers, models, credentials, and unrelated packages are preserved. It performs no download, authentication, task claim, or service startup. It respects `PI_CODING_AGENT_DIR`. Start or reload Pi to discover `/cd`, `/tasks`, `/driver-profile`, and `/driver-status`. The repository's normal bin configuration exposes `pi-driver`; it can also be invoked directly from `~/.files/bin/pi-driver`.
 
-Run `make pi-driver-aot` after installing the package's locked Bun dependencies and the Bun version in [`.bun-version`](.bun-version). The same `pi-driver` launcher then uses the compiled CLI for every command. Rebuild after updating the checkout. Set `PI_DRIVER_USE_SOURCE=1` to run the source CLI for a comparison or rollback. A checkout without a build runs from source. Install [standalone Pi 1.4.0](https://github.com/earendil-works/pi/releases/tag/v1.4.0) on PATH before running a managed worker. The managed worker starts standalone Pi and loads its extension from the installed package.
+Run `make pi-driver-aot` after installing the package's locked Bun dependencies and the Bun version in [`.bun-version`](.bun-version). The same `pi-driver` launcher then uses the compiled CLI for every command. Rebuild after updating the checkout. Set `PI_DRIVER_USE_SOURCE=1` to run the source CLI for a comparison or rollback. A checkout without a build runs from source. The managed worker starts standalone Pi and loads its extension from the installed package.
 
 The theme comes from the shared semantic adapter, with Nord selected by the current design-system preset. The terminal retains its canvas and opacity settings. The task tree opens as a right-side overlay with colored status glyphs. Enter opens task details with the state written out. Right focuses a task’s live managed Pi pane in the same Zellij session when the action is shown. Task selection and details omit keyboard instructions and policy boilerplate. The footer shows the current directory using [shortpath](../../tools/shortpath/README.md) when it is on PATH. Colored glyphs mark the lead mode and reasoning level alongside the bead ID and model. The same row fits Git changes, the Octo-tracked PR, context usage, and estimated session cost as space allows. GPT model IDs show a provider glyph, version, and variant glyph for Sol, Luna, Terra, and Astra. Secondary fields collapse as the pane narrows, and other extensions retain their status lines. Startup hints, resource listings, zero-usage counters, and the permanent compaction-policy line are hidden. Bash tool cards highlight shell syntax in command lines. Code from Pi’s grep tool and supported `rg` and `sed` shell tool calls uses the active syntax theme. Pi’s output folding and truncation remain available. Actionable errors remain visible.
 

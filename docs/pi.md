@@ -6,9 +6,9 @@ The [runtime integration plan](../pi/daily-driver/RUNTIME.md) evaluates existing
 
 ## Install
 
-Select `pi = true` under `[tools]` in the machine TOML and run `make install` to install `@earendil-works/pi-coding-agent` at version 1.4.0 or retain an already installed newer version, then configure its shared resources. Bootstrap installs Node 24 first. The Pi package is installed with npm lifecycle scripts disabled.
+Select `pi = true` under `[tools]` in the machine TOML and run `make install` to install the configured standalone Pi release and share its resources. The installer places the launcher at `~/.local/bin/pi`. If an older npm launcher appears first in your shell, open a new shell or put `~/.local/bin` first on PATH.
 
-For managed daily-driver workers, install standalone Pi on PATH and follow the [daily-driver setup](../pi/daily-driver/README.md#enable).
+Follow the [daily-driver setup](../pi/daily-driver/README.md#enable) to enable the Bun-based extension.
 
 If Pi is already installed, run `make pi` to share resources. `make pi-config` removes retired Firstmate integration registrations while preserving unrelated Pi settings and saved work. These configuration targets do not download Pi. Authenticate and select a provider/model using Pi's own setup. The shared-resource synchronizer does not copy credentials or configure providers.
 

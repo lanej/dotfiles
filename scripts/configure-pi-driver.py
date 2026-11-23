@@ -2,6 +2,7 @@
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 
@@ -9,6 +10,12 @@ package = Path(sys.argv[1]).resolve()
 agent = Path(os.environ.get("PI_CODING_AGENT_DIR", sys.argv[2]))
 if not (package / "node_modules/commander/package.json").is_file():
     raise SystemExit("Install the Pi driver dependencies explicitly with bun install --frozen-lockfile --ignore-scripts first.")
+pi = shutil.which("pi")
+if pi is None:
+    raise SystemExit("Install standalone Pi and put it on PATH before enabling the daily driver.")
+with Path(pi).open("rb") as executable:
+    if executable.read(2) == b"#!":
+        raise SystemExit("Put standalone Pi ahead of script-based Pi launchers on PATH before enabling the daily driver.")
 settings = agent / "settings.json"
 if settings.is_symlink():
     raise SystemExit("Preserving linked Pi settings; add the local package through its source configuration.")
