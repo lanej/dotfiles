@@ -49,6 +49,57 @@ package_semver() {
 	fi
 }
 
+install_bsdtar_rocky_archive() (
+	local ID='' version release arch installed library_arch package stage signature identity rocky_release
+	# A pinned libarchive can predate the OS minor and the active repositories.
+	# shellcheck disable=SC1091
+	source /etc/os-release || return 1
+	if [ "$ID" != rocky ]; then
+		echo 'No archived bsdtar fallback is available for this distribution' >&2
+		return 1
+	fi
+	arch=$(uname -m) || return 1
+	case "$arch" in
+		x86_64 | aarch64) ;;
+		*)
+			echo "Unsupported bsdtar architecture: $arch" >&2
+			return 1
+			;;
+	esac
+	installed=$(rpm -q --qf '%{VERSION} %{RELEASE} %{ARCH}\n' "libarchive.$arch") || return 1
+	read -r version release library_arch <<<"$installed"
+	if [[ ! $version =~ ^[0-9]+(\.[0-9]+)+$ || ! $release =~ ^[[:alnum:]_.+]+$ || $library_arch != "$arch" ]]; then
+		echo 'Cannot determine the installed libarchive package identity' >&2
+		return 1
+	fi
+	if [[ $release =~ \.el([0-9]+)_([0-9]+)(\.[[:alnum:]_.+]+)?$ ]]; then
+		rocky_release="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+	else
+		echo "Cannot map libarchive release $release to a Rocky archive" >&2
+		return 1
+	fi
+	package="bsdtar-$version-$release.$arch"
+	stage=$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-bsdtar.XXXXXXXX") || return 1
+	trap 'rm -rf "$stage"' EXIT
+	curl -fsSL --proto '=https' --proto-redir '=https' \
+		"https://dl.rockylinux.org/vault/rocky/$rocky_release/BaseOS/$arch/os/Packages/b/$package.rpm" \
+		-o "$stage/$package.rpm" || return 1
+	signature=$(LC_ALL=C rpm --checksig "$stage/$package.rpm") || return 1
+	case "$signature" in
+		*": digests signatures OK") ;;
+		*)
+			echo 'Archived bsdtar RPM lacks a trusted signature' >&2
+			return 1
+			;;
+	esac
+	identity=$(rpm -qp --qf '%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}' "$stage/$package.rpm") || return 1
+	if [ "$identity" != "$package" ]; then
+		echo "Archived bsdtar RPM identity differs from $package" >&2
+		return 1
+	fi
+	sudo dnf install -y --setopt=localpkg_gpgcheck=1 "$stage/$package.rpm"
+)
+
 install_bsdtar_package() {
 	if command -v bsdtar >/dev/null; then
 		return 0
@@ -56,7 +107,7 @@ install_bsdtar_package() {
 	if command -v brew >/dev/null; then
 		brew install libarchive
 	elif command -v dnf >/dev/null; then
-		sudo dnf install -y bsdtar
+		sudo dnf install -y bsdtar || install_bsdtar_rocky_archive
 	elif command -v apt-get >/dev/null; then
 		sudo apt-get install -y libarchive-tools
 	elif command -v pacman >/dev/null; then
@@ -1300,7 +1351,8 @@ install_dependencies() {
 					go_bin=$(go env GOPATH)
 					go_bin="${go_bin%%:*}/bin"
 				fi
-				export PATH="$go_bin:$PATH"
+				# Keep the selected Node runtime and dotfiles tools ahead of older Go binaries.
+				export PATH="${NVM_BIN:+$NVM_BIN:}$HOME/.local/bin:$go_bin:$PATH"
 				;;
 			zellij) install_zellij_runtime || return 1 ;;
 			font) install_hack_nerd_font || return 1 ;;
