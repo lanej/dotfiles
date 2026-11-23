@@ -530,8 +530,11 @@ test-zellij-tab-labels: zellij-helpers
 test-zellij-ancestor-navigation:
 	@python3 "$(DOTFILES)/scripts/test-zellij-sessions.py" --ancestor-navigation-only
 
-test-zellij-sessions: zellij-helpers
+.PHONY: test-zellij-session-cycles
+test-zellij-session-cycles:
 	@python3 "$(DOTFILES)/scripts/test-zellij-session-cycles.py"
+
+test-zellij-sessions: zellij-helpers test-zellij-session-cycles
 	@python3 "$(DOTFILES)/scripts/test-zellij-sessions.py"
 
 .PHONY: directory-picker

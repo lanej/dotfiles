@@ -60,7 +60,7 @@ Shutdown validates the owning Unix socket again before ending a session. The cli
 
 Nested viewers cannot switch into a containing session, including through the native session manager or `--close-current`. The runtime rejects the switch before detaching or scheduling closure. Ancestry follows committed renames and includes all attached containing viewers; detached viewers cannot recreate an old ancestry through a late reply.
 
-The session-cycle detector also requires recursive direct attachments to exit without registering a nested guest. The current pinned runtime rejects guest registration but leaves the recursive client alive, so this final assertion remains failing until the runtime is corrected.
+Recursive direct attachments exit with an error and clear their nested guest state. The host session remains available, and panes opened with `--close-on-exit` close when the rejected client exits.
 
 ## Verification
 
@@ -78,6 +78,7 @@ make test-zellij-codex-titles
 make test-zellij-claude-titles
 make test-zellij-navigation
 make test-zellij-layout
+make test-zellij-session-cycles
 make test-zellij-sessions
 make test-zellij-auto-title
 make test-zellij-tab-labels
@@ -86,6 +87,8 @@ make test-zellij-session-keys
 ```
 
 `make test-zellij-helpers` runs Rust formatting, Clippy with warnings denied, unit tests, and native CLI checks with controlled external-command responses. These validate command contracts and file behavior without claiming a live Zellij integration.
+
+`make test-zellij-session-cycles` checks recursive switches, renames, and direct attachment against the installed runtime without building helpers or plugins. It also runs as part of `make test-zellij-sessions`.
 
 The real-terminal detectors install into private temporary homes and sessions. They exercise configured prefix keys, preserve process and scrollback identity, and clean up only their own sessions. Some checks require Neovim, fzf, Rust, or installed navigation artifacts. Runtime installation has its own cache and upstream-download boundary; orchestration tests do not establish live release availability.
 

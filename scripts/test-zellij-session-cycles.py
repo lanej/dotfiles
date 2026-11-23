@@ -5,6 +5,7 @@ import argparse
 import os
 from pathlib import Path
 import runpy
+import shlex
 import shutil
 import subprocess
 import sys
@@ -66,8 +67,8 @@ def main():
             terminal.until("outer shell starts", lambda: b"cycle-ready> " in terminal.output)
             outer = terminal.terminals()[0]
             child = ["env", "-u", "ZELLIJ", "-u", "ZELLIJ_SESSION_NAME", "-u", "ZELLIJ_PANE_ID",
-                     binary, "--config", str(guest_config), "attach", "--create", guest]
-            terminal.action("new-pane", "--floating", "--", *child)
+                     binary, "--config", str(guest_config)]
+            terminal.action("new-pane", "--floating", "--", *child, "attach", "--create", guest)
             log = temp_files / f"zellij-{os.getuid()}" / "zellij-log/zellij.log"
             terminal.until("nested handshake completes", lambda:
                            log.exists() and "nested session handshake complete" in log.read_text())
@@ -104,13 +105,45 @@ def main():
             assert terminal.action("list-panes", "--json", session=guest), "Switching lost the renamed guest"
             terminal.action("close-pane", "--pane-id", str(nested["id"]))
             terminal.until("nested viewer closes", lambda: len(terminal.terminals()) == 1)
+
+            def client_ids():
+                return {int(line.split()[0]) for line in
+                        terminal.action("list-clients").splitlines()[1:] if line.strip()}
+
+            original_clients = client_ids()
+            assert len(original_clients) == 1, "Expected only the original host client"
+
+            def recursive_command(exit_file):
+                return ["/bin/sh", "-c",
+                        'exit_file=$1; shift; "$@"; status=$?; '
+                        'printf "%s\\n" "$status" > "$exit_file"; exit "$status"',
+                        "recursive-attach", str(exit_file), *child, "attach", host]
+
+            def require_rejection(exit_file):
+                terminal.until("recursive client records its exit status", lambda:
+                               exit_file.exists() and exit_file.stat().st_size > 0)
+                assert int(exit_file.read_text()) == 1, "Recursive attachment did not exit with a rejection"
+                terminal.until("recursive client is unregistered", lambda: client_ids() == original_clients)
+
+            recursive_exit = temporary / "recursive-pane-exit"
             terminal.action("new-pane", "--floating", "--close-on-exit", "--",
-                            *child[:-3], "attach", host)
-            terminal.until("direct recursive attach exits", lambda:
-                           "Rejected cyclic or invalid nested guest" in log.read_text()
-                           and len(terminal.terminals()) == 1)
-            current = terminal.terminals()[0]
-            assert current["id"] == outer["id"]
+                            *recursive_command(recursive_exit))
+            require_rejection(recursive_exit)
+            terminal.until("recursive attach pane closes", lambda:
+                           [pane["id"] for pane in terminal.terminals()] == [outer["id"]])
+
+            terminal.action("focus-pane-id", str(outer["id"]))
+            recursive_exit = temporary / "recursive-shell-exit"
+            terminal.send((shlex.join(recursive_command(recursive_exit)) + "\r").encode())
+            require_rejection(recursive_exit)
+            terminal.until("surviving shell clears its rejected guest", lambda:
+                           all(not pane.get("nested_session_name") for pane in terminal.terminals()))
+            terminal.until("surviving shell shows the rejection", lambda:
+                           "Cannot attach a containing session" in
+                           terminal.action("dump-screen", "--pane-id", str(outer["id"])))
+            panes = terminal.terminals()
+            assert [pane["id"] for pane in panes] == [outer["id"]]
+            current = panes[0]
             assert (current["pane_content_rows"], current["pane_content_columns"]) == (
                 outer["pane_content_rows"], outer["pane_content_columns"])
             if not current["is_focused"]:
