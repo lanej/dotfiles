@@ -1,7 +1,7 @@
 # Each command receives one action as its last argument, in the project checkout.
 # Add missing projects only after identifying their real build/restart entrypoints.
 [projects.octo-manager]
-path = "~/src/octo-manager"
+path = "~/src/oss/octo-manager"
 command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "octo-manager"]
 
 # Dotfiles owns the curated runtime pin and compatible plugin revisions.
@@ -9,6 +9,8 @@ command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "octo-manager"
 [projects.zellij]
 path = "{dotfiles}"
 command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "zellij"]
+lifecycle = "terminal"
+depends_on = ["studio", "keylease"]
 
 # Beads and Dolt versions are curated together in the dotfiles catalog.
 [projects.beads]
@@ -26,13 +28,18 @@ command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "intent"]
 [projects.keylease]
 path = "~/src/1password-agent"
 command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "keylease"]
+lifecycle = "consumer"
+depends_on = ["intent", "bedrock-router"]
 
 # Dotfiles pins the manager and patches; pull also selects upstream stable Git.
 [projects.worktree-manager]
 path = "{dotfiles}"
 command = ["bash", "{dotfiles}/scripts/worktree-manager-update.sh"]
 pull_sources = true
+lifecycle = "stateless"
 
 [projects.studio]
 path = "~/src/studio"
 command = ["{python}", "{dotfiles}/scripts/install-studio.py"]
+lifecycle = "consumer"
+depends_on = ["beads", "octo-manager", "intent"]

@@ -206,6 +206,8 @@ def main():
         assert selected["settings"]["tools.mermaid"] is False
         assert selected["settings"]["codex.easypost"] is True
         assert {"neovim", "codex", "zellij", "ep-direnv", "bedrock"} <= {tool["name"] for tool in selected["tools"]}
+        assert "bedrock-router" in selected["post"] and "bedrock-router" not in selected["setup"]
+        assert "bedrock-router" not in baseline["post"]
         names = [tool["name"] for tool in selected["tools"]]
         assert "mergiraf" in names
         assert names.index("rust") < names.index("zellij") and len(names) == len(set(names))
@@ -215,6 +217,12 @@ def main():
         plan = json.loads(run("make", "--no-print-directory", "plan").stdout)
         assert plan["tools"] == selected["tools"] and plan["setup"] == selected["setup"]
         assert plan["baseline"] == selected["baseline"]
+        previous_config = config.read_text()
+        config.write_text('sets = ["easypost"]\n[tools]\nbedrock = false\n')
+        disabled_bedrock = json.loads(run(*command, "--format", "json").stdout)
+        assert "bedrock-router" not in disabled_bedrock["post"]
+        assert "bedrock-credentials" not in disabled_bedrock["prepare"]
+        config.write_text(previous_config)
 
         # Exercise the real Make -> bootstrap -> installer path. Only compilation
         # and release downloads are fixtures; the installed binaries and source

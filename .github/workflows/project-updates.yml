@@ -5,7 +5,12 @@ on:
     paths: &update-paths
       - 'bin/project-update'
       - 'scripts/project-lifecycle.py'
+      - 'scripts/project_update_*.py'
+      - 'scripts/service-project-activation.py'
+      - 'scripts/approval-project-activation.py'
+      - 'scripts/zellij-activation.py'
       - 'scripts/worktree-manager-update.sh'
+      - 'scripts/worktree-manager-activation.py'
       - 'scripts/lib/git-worktree-runtime.sh'
       - 'tools/beads/project-update.py'
       - 'scripts/make/project-update.sh'

@@ -127,8 +127,8 @@ case "$target" in
     zellij-status)
         status_wasm=${6:-$dotfiles/zellij/status/target/wasm32-wasip1/release/lane-status.wasm}
         if [ "$status_wasm" = "$dotfiles/zellij/status/target/wasm32-wasip1/release/lane-status.wasm" ]; then
-            cd "$dotfiles/zellij/status"
-            cargo build --locked --release --target wasm32-wasip1 --target-dir target
+            python3 "$dotfiles/scripts/zellij-artifacts.py" plugin lane-status \
+                "$dotfiles/zellij/status" "$dotfiles/zellij/status/target" "$status_wasm"
         else
             test -s "$status_wasm"
         fi

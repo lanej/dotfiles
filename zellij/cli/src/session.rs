@@ -3,9 +3,10 @@ use anyhow::{bail, Context, Result};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use std::env;
 use std::fs;
-use std::io::{self, IsTerminal, Write};
+use std::io::{self, IsTerminal, Read, Write};
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::os::unix::process::{CommandExt, ExitStatusExt};
 use std::path::{Path, PathBuf};
@@ -62,13 +63,115 @@ impl Drop for RemoteTitle {
     }
 }
 
+fn immutable_image(path: &Path) -> Result<String> {
+    let mut file = fs::File::open(path)?;
+    let before = file.metadata()?;
+    anyhow::ensure!(
+        before.is_file()
+            && before.uid() == unsafe { libc::getuid() }
+            && before.mode() & 0o222 == 0
+            && before.mode() & 0o111 != 0,
+        "Expected an owned immutable executable"
+    );
+    let fingerprint = |info: &fs::Metadata| {
+        (
+            info.dev(),
+            info.ino(),
+            info.size(),
+            info.mtime(),
+            info.mtime_nsec(),
+            info.ctime(),
+            info.ctime_nsec(),
+            info.mode(),
+        )
+    };
+    let mut hasher = Sha256::new();
+    let mut buffer = [0; 64 * 1024];
+    loop {
+        let count = file.read(&mut buffer)?;
+        if count == 0 {
+            break;
+        }
+        hasher.update(&buffer[..count]);
+    }
+    anyhow::ensure!(
+        fingerprint(&before) == fingerprint(&file.metadata()?)
+            && fingerprint(&before) == fingerprint(&fs::metadata(path)?),
+        "The selected executable changed during inspection"
+    );
+    let image = format!("{:x}", hasher.finalize());
+    anyhow::ensure!(
+        path.parent()
+            .and_then(Path::file_name)
+            .and_then(|name| name.to_str())
+            == Some(image.as_str()),
+        "The selected executable differs from its immutable image name"
+    );
+    Ok(image)
+}
+
+fn managed_runtime() -> Option<PathBuf> {
+    let candidate = env::split_paths(&env::var_os("PATH")?)
+        .map(|directory| directory.join("zellij"))
+        .find(|path| {
+            fs::metadata(path).is_ok_and(|info| info.is_file() && info.mode() & 0o111 != 0)
+        })?;
+    let runtime = candidate.canonicalize().ok()?;
+    let store = home()
+        .ok()?
+        .join(".local/lib/zellij/runtimes")
+        .canonicalize()
+        .ok()?;
+    if runtime.file_name()? != "zellij" || runtime.parent()?.parent()? != store {
+        return None;
+    }
+    let image = immutable_image(&runtime).ok()?;
+    let reply = run(
+        runtime.to_str()?,
+        &["--activation-capabilities"],
+        Instant::now() + Duration::from_secs(2),
+    )
+    .ok()?;
+    if reply.len() > 16 * 1024 {
+        return None;
+    }
+    let value: Value = serde_json::from_str(&reply).ok()?;
+    if value["schema_version"] != 1
+        || value["activation_build"].as_str().is_none_or(str::is_empty)
+        || ![
+            "managed_clients",
+            "raw_input_checkpoint",
+            "mutation_fence",
+            "drain",
+            "operation_bound_stop",
+            "no_forced_children",
+        ]
+        .iter()
+        .all(|name| value["capabilities"][name] == true)
+        || immutable_image(&runtime).ok()? != image
+    {
+        return None;
+    }
+    Some(runtime)
+}
+
+fn attach_command() -> Command {
+    if let Some(runtime) = managed_runtime() {
+        let mut command = Command::new(runtime);
+        command.arg("--activation-client");
+        command
+    } else {
+        Command::new("zellij")
+    }
+}
+
 pub fn attach(args: &[String]) -> Result<()> {
     if env::var("ZELLIJ").is_ok_and(|s| !s.is_empty()) {
         bail!("already inside Zellij; detach before attaching to another session.");
     }
     let defaults = vec!["main".to_owned()];
     let args = if args.is_empty() { &defaults } else { args };
-    let mut command = Command::new("zellij");
+    let mut command = attach_command();
     command.args(["attach", "--create"]).args(args);
     if let Some(path) = crate::agent::select()? {
         command.env("SSH_AUTH_SOCK", path);
@@ -157,7 +260,7 @@ pub fn popup() -> Result<()> {
     let layout = fs::read_to_string(config.join("layouts/tmux.kdl"))
         .context("The installed tmux layout is missing; run make zellij")?;
     let layout=layout+"\n// Scratch processes survive detaching, but are never resurrected after exit.\nsession_serialization false\nkeybinds {\n    tmux {\n        bind \"P\" \"d\" \"D\" { SwitchToMode \"Locked\"; Detach; }\n    }\n}\n";
-    let mut command = Command::new("zellij");
+    let mut command = attach_command();
     if let Some(path) = crate::agent::select()? {
         command.env("SSH_AUTH_SOCK", path);
     }

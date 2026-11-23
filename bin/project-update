@@ -3,11 +3,10 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Run the shared source/build/restart convention without owning processes."""
+"""Update selected projects through verified, project-owned activation."""
 
 import argparse
 from contextlib import ExitStack
-import fcntl
 import hashlib
 import json
 import os
@@ -15,9 +14,16 @@ from pathlib import Path
 import subprocess
 import sys
 import tomllib
+import uuid
 
 ROOT = Path(__file__).resolve().parent.parent
-ACTIONS = ("status", "pull", "build", "restart", "clean", "update")
+sys.path.insert(0, str(ROOT / "scripts"))
+from project_update_activation import (IncompleteActivation, native, reconcile_sessions,
+                                       verified)
+from project_update_operations import (acquire, operation_path, private_directory,
+                                      read_json, state_root, wait_result, write_json)
+
+ACTIONS = ("status", "pull", "build", "restart", "clean", "update", "verify", "wait")
 
 
 def run(args, cwd, capture=False):
@@ -44,11 +50,257 @@ def load_projects(config):
             raise ValueError(f"{name}: command must be a nonempty argv array")
         if not isinstance(project.get("pull_sources", False), bool):
             raise ValueError(f"{name}: pull_sources must be a boolean")
+        dependencies = project.get("depends_on", [])
+        if not isinstance(dependencies, list) or not all(isinstance(x, str) for x in dependencies):
+            raise ValueError(f"{name}: depends_on must be an array of project names")
+        if project.get("lifecycle", "service") not in ("service", "consumer", "terminal", "stateless"):
+            raise ValueError(f"{name}: invalid lifecycle class")
         project["path"] = Path(project["path"].replace("{dotfiles}", str(ROOT))).expanduser().resolve()
+        project["name"] = name
         project["command"] = [x.replace("{dotfiles}", str(ROOT)).replace("{python}", sys.executable) for x in command]
         if "remote" in project and (not isinstance(project["remote"], str) or not project["remote"] or project["remote"].startswith("-")):
             raise ValueError(f"{name}: invalid remote name")
     return projects
+
+
+def result_code(results):
+    return 1 if any(row["outcome"] == "failed" for row in results) else (
+        3 if any(row["outcome"] != "ok" for row in results) else 0)
+
+
+def failure(row, error):
+    pending = isinstance(error, (IncompleteActivation, subprocess.TimeoutExpired))
+    row.update(outcome="incomplete" if pending else "failed",
+               reason="checkpoint-or-effect-outcome-unknown" if isinstance(error, subprocess.TimeoutExpired) else str(error))
+    row["error"] = row["reason"]
+    if isinstance(error, IncompleteActivation) and error.targets is not None:
+        row["targets"] = error.targets
+    if isinstance(error, subprocess.CalledProcessError) and error.stderr:
+        row["error"] += ": " + error.stderr.strip()[-2000:]
+
+
+def ordered(names, projects):
+    """Respect prerequisites within the service/consumer/terminal ordering."""
+    result, visiting = [], set()
+    rank = {"stateless": 0, "service": 1, "consumer": 2, "terminal": 3}
+    def visit(name):
+        if name in visiting:
+            raise ValueError(f"Activation dependency cycle at {name}")
+        if name in result:
+            return
+        visiting.add(name)
+        for dependency in projects[name].get("depends_on", []):
+            if dependency not in projects:
+                raise ValueError(f"{name}: unknown prerequisite {dependency}")
+            if dependency in names:
+                visit(dependency)
+        visiting.remove(name)
+        result.append(name)
+    for name in sorted(names, key=lambda name: rank[projects[name].get("lifecycle", "service")]):
+        visit(name)
+    return result
+
+
+def affected_projects(names, projects):
+    affected = list(names)
+    while True:
+        consumers = [name for name, project in projects.items() if name not in affected
+                     and any(dependency in affected for dependency in project.get("depends_on", []))]
+        terminal_owners = [dependency for name in affected
+                           if projects[name].get("lifecycle") == "terminal"
+                           for dependency in projects[name].get("depends_on", [])
+                           if dependency not in affected and projects[dependency].get("lifecycle") == "consumer"]
+        additions = list(dict.fromkeys([*consumers, *terminal_owners]))
+        if not additions:
+            return affected
+        affected.extend(additions)
+
+
+def reconcile_previous(name, project, directory):
+    """Reconcile issued effects, never a preflight that made no native call."""
+    blockers = {}
+    for previous in state_root().iterdir():
+        if previous == directory or not previous.is_dir() or not (previous / "intent.json").is_file():
+            continue
+        private_directory(previous)
+        intent = read_json(previous / "intent.json")
+        owner = intent.get("projects", {}).get(name)
+        if owner is None or Path(owner["path"]) != project["path"]:
+            continue
+        state_path = previous / ("result.json" if (previous / "result.json").exists() else "progress.json")
+        state = read_json(state_path)
+        row = next((value for value in state["results"] if value["project"] == name), None)
+        if row is None or (row["outcome"] == "ok" and row.get("phase") == "verified"):
+            continue
+        settled = {value["target"] for value in row.get("target_results", [])
+                   if value.get("phase") == "verified" or value.get("recovered_original") is True}
+        reconciled = previous / f"{name}-reconciled.json"
+        if reconciled.is_file():
+            settled.update(value["target"] for value in read_json(reconciled)["targets"])
+        journal = previous / "evidence"
+        unresolved = set()
+        if journal.is_dir():
+            for path in journal.iterdir():
+                attempt = read_json(path)
+                if attempt.get("project") != name or attempt.get("action") not in ("checkpoint", "restart", "restore"):
+                    continue
+                target = attempt.get("target")
+                if target in settled:
+                    continue
+                response = attempt.get("response", {}).get("targets", [])
+                if (attempt.get("state") == "observed" and attempt.get("action") == "checkpoint"
+                        and response and all(value.get("checkpoint", {}).get("state") == "refused" for value in response)):
+                    continue
+                unresolved.add(target)
+        if not unresolved:
+            continue
+        frozen_path = previous / f"{name}-inventory.json"
+        if not frozen_path.is_file():
+            for target in unresolved:
+                blockers[target] = f"previous-update-outcome-unknown: {previous.name}"
+            continue
+        before = read_json(frozen_path)["targets"]
+        restoration_path = previous / "restoration-plan.json"
+        if restoration_path.is_file():
+            before = read_json(restoration_path).get(name, {"targets": before})["targets"]
+        observed = []
+        for target in before:
+            if None not in unresolved and target["target"] not in unresolved:
+                continue
+            try:
+                after = native({**project, "target": target["target"]}, "verify", directory)
+                reconcile_sessions([target], after, restored=True)
+                complete, reason = verified(after)
+                if not complete:
+                    raise IncompleteActivation(reason, after)
+                observed.extend(after)
+            except (OSError, ValueError, IncompleteActivation, subprocess.SubprocessError) as error:
+                blockers[target["target"]] = f"previous-update-not-restored: {previous.name}: {error}"
+        if observed:
+            old = read_json(reconciled)["targets"] if reconciled.is_file() else []
+            combined = {target["target"]: target for target in [*old, *observed]}
+            write_json(reconciled, {"targets": list(combined.values()), "observed_by": directory.name})
+    return blockers
+
+
+def activate(names, projects, rows, directory, save):
+    from project_update_coordinator import activate_targets
+    activate_targets(names, projects, rows, directory, save, ordered(names, projects), failure)
+
+
+def execute(action, names, projects, fetch=False, directory=None):
+    rows = {name: {"project": name, "completed": [], "outcome": "ok"} for name in names}
+    affected = affected_projects(names, projects) if action in ("update", "restart") else names
+    for name in affected:
+        if name not in rows:
+            rows[name] = {"project": name, "completed": [], "outcome": "ok",
+                          "participation": "dependent-recovery"}
+    if directory is not None:
+        for row in rows.values():
+            row.update(run_id=directory.name, recovery_path=str(directory))
+    def save():
+        if directory is not None:
+            write_json(directory / "progress.json", {"results": list(rows.values())})
+    save()
+    pulled = {}
+    with ExitStack() as locks:
+        if action not in ("status", "verify") or fetch:
+            cache = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "dotfiles/project-update"
+            cache.mkdir(parents=True, exist_ok=True)
+            for path in sorted({projects[name]["path"] for name in affected}):
+                key = hashlib.sha256(os.fsencode(path)).hexdigest()
+                locks.enter_context(acquire(cache / f"{key}.lock", private=False))
+        if directory is not None:
+            for name in affected:
+                try:
+                    rows[name]["previous_target_blockers"] = reconcile_previous(name, projects[name], directory)
+                except (OSError, ValueError, IncompleteActivation, subprocess.SubprocessError) as error:
+                    failure(rows[name], error)
+            save()
+        steps = ("pull", "build") if action == "update" else (() if action == "restart" else (action,))
+        # Stage the whole selection before any checkpoint or replacement.
+        for step in steps:
+            for name in names:
+                project, row = projects[name], rows[name]
+                if row["outcome"] != "ok":
+                    continue
+                path = project["path"]
+                try:
+                    if not path.is_dir():
+                        raise ValueError(f"Checkout not found: {path}")
+                    print(f"{name}: {step}", file=sys.stderr, flush=True)
+                    if step == "status":
+                        row.update(status(path, project, fetch))
+                    elif step == "verify":
+                        row["targets"] = native(project, "verify")
+                        complete, reason = verified(row["targets"])
+                        if not complete:
+                            raise IncompleteActivation(reason)
+                    elif step == "pull":
+                        key = (path, project.get("remote"))
+                        if key not in pulled:
+                            try:
+                                pull(path, project)
+                                pulled[key] = None
+                            except (OSError, ValueError, subprocess.SubprocessError) as error:
+                                pulled[key] = error
+                        if pulled[key] is not None:
+                            raise pulled[key]
+                        if project.get("pull_sources", False):
+                            run([*project["command"], "pull"], path)
+                    else:
+                        run([*project["command"], step], path)
+                    row["completed"].append(step)
+                except (OSError, ValueError, IncompleteActivation, subprocess.SubprocessError) as error:
+                    failure(row, error)
+                save()
+        if action in ("update", "restart"):
+            activate(affected, projects, rows, directory, save)
+    return {"exit_code": result_code(rows.values()), "results": list(rows.values())}
+
+
+def coordinator(directory, lock_fd):
+    with os.fdopen(lock_fd, "w"):
+        os.umask(0o077)
+        intent = read_json(directory / "intent.json")
+        projects = intent["projects"]
+        for project in projects.values():
+            project["path"] = Path(project["path"])
+        try:
+            result = execute(intent["action"], intent["names"], projects, directory=directory)
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
+            rows = read_json(directory / "progress.json")["results"]
+            for row in rows:
+                failure(row, error)
+            result = {"exit_code": result_code(rows), "results": rows}
+        write_json(directory / "result.json", result)
+    return result["exit_code"]
+
+
+def detached(action, names, projects):
+    run_id = str(uuid.uuid4())
+    directory = private_directory(state_root() / run_id)
+    lock = acquire(directory / "coordinator.lock")
+    try:
+        write_json(directory / "intent.json", {
+            "action": action, "names": names,
+            "projects": {name: {**project, "path": str(project["path"])} for name, project in projects.items()}})
+        write_json(directory / "progress.json", {"results": [
+            {"project": name, "completed": [], "outcome": "ok", "run_id": run_id,
+             "recovery_path": str(directory)} for name in names]})
+        private_directory(directory / "checkpoints")
+        with (directory / "coordinator.log").open("x") as log:
+            os.chmod(directory / "coordinator.log", 0o600)
+            child = subprocess.Popen([sys.executable, str(Path(__file__).resolve()),
+                                      "--coordinate", str(directory), str(lock.fileno())],
+                                     stdin=subprocess.DEVNULL, stdout=log, stderr=log,
+                                     start_new_session=True, pass_fds=(lock.fileno(),))
+        print(f"project-update: run {run_id}; recover with project-update wait {run_id}", file=sys.stderr, flush=True)
+    finally:
+        lock.close()
+    result = wait_result(directory)
+    child.wait()
+    return result
 
 
 def remote_for(path, project):
@@ -109,6 +361,8 @@ def status(path, project, fetch):
 
 
 def main():
+    if len(sys.argv) == 4 and sys.argv[1] == "--coordinate":
+        return coordinator(Path(sys.argv[2]), int(sys.argv[3]))
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=ACTIONS)
     parser.add_argument("projects", nargs="*")
@@ -117,58 +371,44 @@ def main():
     parser.add_argument("--fetch", action="store_true", help="refresh upstream while inspecting status")
     parser.add_argument("--dry-run", action="store_true", help="print the actions without running them")
     args = parser.parse_args()
+    if args.action == "wait":
+        if len(args.projects) != 1 or args.all or args.fetch or args.dry_run or args.config:
+            parser.error("wait requires exactly one RUN_ID")
+        try:
+            uuid.UUID(args.projects[0])
+            if str(uuid.UUID(args.projects[0])) != args.projects[0]:
+                raise ValueError()
+        except ValueError:
+            parser.error("RUN_ID must be a complete operation UUID")
+        result = wait_result(operation_path(args.projects[0]))
+        print(json.dumps(result["results"], indent=2))
+        return result["exit_code"]
     if args.all == bool(args.projects):
         parser.error("select project names or --all")
     if args.fetch and args.action != "status":
         parser.error("--fetch applies only to status")
-    projects = load_projects(args.config or ROOT / "config/project-updates.toml")
+    try:
+        projects = load_projects(args.config or ROOT / "config/project-updates.toml")
+    except (OSError, ValueError, tomllib.TOMLDecodeError) as error:
+        parser.error(str(error))
     names = list(projects) if args.all else list(dict.fromkeys(args.projects))
     unknown = set(names) - projects.keys()
     if unknown:
         parser.error("unknown projects: " + ", ".join(sorted(unknown)))
-    steps = ("pull", "build", "restart") if args.action == "update" else (args.action,)
+    steps = ("pull", "build", "inventory", "checkpoint", "restart", "restore", "verify") if args.action == "update" else (
+        ("inventory", "checkpoint", "restart", "restore", "verify") if args.action == "restart" else (args.action,))
+    try:
+        ordered(names, projects)
+    except ValueError as error:
+        parser.error(str(error))
     if args.dry_run:
         print(json.dumps([{ "project": name, "path": str(projects[name]["path"]),
                             "steps": list(steps), "command": projects[name]["command"]} for name in names], indent=2))
         return 0
-    results, pulled = [], set()
-    with ExitStack() as locks:
-        if args.action != "status" or args.fetch:
-            cache = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "dotfiles/project-update"
-            cache.mkdir(parents=True, exist_ok=True)
-            for path in sorted({projects[name]["path"] for name in names}):
-                key = hashlib.sha256(os.fsencode(path)).hexdigest()
-                lock = locks.enter_context((cache / f"{key}.lock").open("a"))
-                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        for name in names:
-            project = projects[name]
-            path = project["path"]
-            row = {"project": name, "completed": [], "outcome": "ok"}
-            try:
-                if not path.is_dir():
-                    raise ValueError(f"Checkout not found: {path}")
-                for step in steps:
-                    print(f"{name}: {step}", file=sys.stderr, flush=True)
-                    if step == "status":
-                        row.update(status(path, project, args.fetch))
-                    elif step == "pull":
-                        key = (path, project.get("remote"))
-                        if key not in pulled:
-                            pull(path, project)
-                            pulled.add(key)
-                        if project.get("pull_sources", False):
-                            run([*project["command"], "pull"], path)
-                    else:
-                        run([*project["command"], step], path)
-                    row["completed"].append(step)
-            except (OSError, ValueError, subprocess.CalledProcessError) as error:
-                pending = isinstance(error, subprocess.CalledProcessError) and error.returncode == 3
-                row.update(outcome="restart-required" if pending else "failed", error=str(error))
-                if isinstance(error, subprocess.CalledProcessError) and error.stderr:
-                    row["error"] += ": " + error.stderr.strip()
-            results.append(row)
-    print(json.dumps(results, indent=2))
-    return 1 if any(r["outcome"] == "failed" for r in results) else 3 if any(r["outcome"] == "restart-required" for r in results) else 0
+    result = detached(args.action, names, projects) if args.action in ("update", "restart") else execute(
+        args.action, names, projects, args.fetch)
+    print(json.dumps(result["results"], indent=2))
+    return result["exit_code"]
 
 
 if __name__ == "__main__":

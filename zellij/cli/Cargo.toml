@@ -19,5 +19,6 @@ tempfile = "3"
 unicode-width = "0.2"
 unicode-general-category = "1"
 prost = "0.12.6"
+kdl = { version = "=4.5.0", default-features = false }
 socket2 = "0.5"
 directories = { version = "6.0", default-features = false }

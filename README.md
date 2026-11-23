@@ -273,11 +273,11 @@ Go modules also receive a strict correctness profile: exhaustive enums and sum t
 
 ## Studio
 
-Studio is included in `workstation`, or can be selected independently with `tools.studio = true`. `make install` clones a missing `~/src/studio` checkout, provisions its pinned private Bun runtime, and delegates installation and Pi resource registration to Studio. Existing checkouts stay at their selected revision; use `project-update update studio` for explicit updates. `tools.studio = false` disables installation without uninstalling it. See [Pi and Studio setup](docs/pi.md).
+Studio is included in `workstation`, or can be selected independently with `tools.studio = true`. `make install` clones a missing `~/src/studio` checkout, ensures the shared Bun runtime satisfies the combined project minimums, and delegates installation and Pi resource registration to Studio. Existing checkouts stay at their selected revision; use `project-update update studio` for explicit updates. `tools.studio = false` disables installation without uninstalling it. See [Pi and Studio setup](docs/pi.md).
 
 ## SSH approval on the Mac
 
-Dotfiles installs both Keylease, the credential broker, and Intent, the approval library and transport tooling, through the `workstation` set or `make intent-install keylease-install`. Automatic SSH approval awaits production integration of the stable remote socket design. See [SSH approval setup](docs/intent-ssh.md) for installation, experimental status and removal of the obsolete managed hook.
+Dotfiles installs both Keylease, the credential broker, and Intent, the approval library and transport tooling, through the `workstation` set or `make intent-install keylease-install`. Native lifecycle controls discover existing Intent profiles and paired brokers; installation does not create SSH approval transports or change authentication. See [SSH approval setup](docs/intent-ssh.md) for installation, transport setup limits, and removal of the obsolete managed hook.
 
 ## Shared shell history
 

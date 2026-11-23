@@ -1,0 +1,1957 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index 29f9eff8..13d4f78d 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -6526,6 +6526,7 @@ dependencies = [
+  "rustls-pki-types",
+  "serde",
+  "serde_json",
++ "sha2",
+  "serial_test",
+  "signal-hook 0.3.18",
+  "tempfile",
+@@ -6604,6 +6605,7 @@ dependencies = [
+  "regex",
+  "serde",
+  "serde_json",
++ "sha2",
+  "signal-hook 0.3.18",
+  "sixel-image",
+  "sixel-tokenizer",
+diff --git a/zellij-client/Cargo.toml b/zellij-client/Cargo.toml
+index 7ba3a405..95bd4006 100644
+--- a/zellij-client/Cargo.toml
++++ b/zellij-client/Cargo.toml
+@@ -30,6 +30,7 @@ num_cpus = { workspace = true }
+ regex = { workspace = true }
+ serde = { workspace = true }
+ serde_json = { workspace = true }
++sha2 = { workspace = true }
+ url = { workspace = true }
+ uuid = { workspace = true }
+ include_dir = { workspace = true }
+diff --git a/zellij-client/src/input_handler.rs b/zellij-client/src/input_handler.rs
+index ab6984ab..51fd1104 100644
+--- a/zellij-client/src/input_handler.rs
++++ b/zellij-client/src/input_handler.rs
+@@ -173,6 +173,13 @@ fn handle_input(&mut self) {
+             }
+             match self.receive_input_instructions.recv() {
+                 Ok((InputInstruction::KeyEvent(input_event, raw_bytes), _error_context)) => {
++                    #[cfg(unix)]
++                    let Some(_activation_admission) =
++                        crate::activation_client::input_admission(&raw_bytes)
++                            .expect("Native checkpointed input retention failed")
++                    else {
++                        continue;
++                    };
+                     match input_event {
+                         InputEvent::Key(key_event) => {
+                             let key = cast_termwiz_key(
+diff --git a/zellij-client/src/lib.rs b/zellij-client/src/lib.rs
+index 73cf8808..d0a8918e 100644
+--- a/zellij-client/src/lib.rs
++++ b/zellij-client/src/lib.rs
+@@ -1,3 +1,5 @@
++#[cfg(unix)]
++mod activation_client;
+ pub mod os_input_output;
+ 
+ #[cfg(not(windows))]
+@@ -1246,7 +1248,13 @@ pub fn start_client(
+         start_server_detached(os_input, cli_args, config, config_options, info);
+         return None;
+     }
+-    let attachment_env = attachment_environment();
++    #[cfg(unix)]
++    let activation_parent = if cli_args.activation_client {
++        activation_client::parent_owner().expect("Native parent owner is unavailable")
++    } else {
++        None
++    };
++    let mut attachment_env = attachment_environment();
+     info!("Starting Zellij client!");
+ 
+     let reminders = zellij_utils::desktop_integration::ReminderContext {
+@@ -1317,23 +1325,10 @@ pub fn start_client(
+         include_kitty_exit: !explicitly_disable_kitty_keyboard_protocol,
+     };
+ 
+-    let Handshake {
+-        message: first_msg,
+-        starts_server,
+-    } = first_message(
+-        &info,
+-        &cli_args,
+-        &config_options,
+-        full_screen_ws,
+-        attachment_env,
+-        tab_position_to_focus,
+-        pane_id_to_focus,
+-        switch_context,
+-    );
+-
+     envs::set_session_name(own_session_name.clone());
+     os_input.update_session_name(own_session_name.clone());
+     // A session we start gets a freshly registered id; an existing one is resolved by name.
++    let starts_server = matches!(&info, ClientInfo::New(..) | ClientInfo::Resurrect(..));
+     let ipc_pipe = if starts_server {
+         create_ipc_pipe(&own_session_name, Some(terminal_teardown))
+     } else {
+@@ -1354,6 +1349,48 @@ pub fn start_client(
+     if let Err(e) = os_input.connect_to_server(&*ipc_pipe) {
+         exit_after_startup_error(Some(terminal_teardown), connect_error_message(e));
+     }
++    #[cfg(unix)]
++    let managed_client = activation_client::ManagedClient::create(
++        cli_args.activation_client,
++        cli_args.activation_client_restoration.as_deref(),
++        cli_args.activation_client_owner_restoration.as_deref(),
++        activation_parent,
++        &own_session_name,
++        &ipc_pipe,
++    )
++    .expect("Managed native client initialization refused");
++    #[cfg(unix)]
++    if let Some(client) = &managed_client {
++        attachment_env.insert("ZELLIJ_ACTIVATION_CLIENT_ID".into(), client.nonce());
++    }
++    #[cfg(unix)]
++    let retained_focus = activation_client::ManagedClient::restoration_focus(
++        cli_args
++            .activation_client_restoration
++            .as_deref()
++            .or(cli_args.activation_client_owner_restoration.as_deref()),
++    )
++    .expect("Native client focus restoration refused");
++    #[cfg(not(unix))]
++    let retained_focus: Option<(usize, (u32, bool))> = None;
++    let tab_position_to_focus = retained_focus
++        .map(|focus| focus.0)
++        .or(tab_position_to_focus);
++    let pane_id_to_focus = retained_focus.map(|focus| focus.1).or(pane_id_to_focus);
++    let Handshake {
++        message: first_msg,
++        starts_server: _,
++    } = first_message(
++        &info,
++        &cli_args,
++        &config_options,
++        full_screen_ws,
++        attachment_env,
++        tab_position_to_focus,
++        pane_id_to_focus,
++        switch_context,
++    );
++
+     os_input.send_to_server(first_msg);
+ 
+     let mut command_is_executing = CommandIsExecuting::new();
+@@ -1390,6 +1427,13 @@ pub fn start_client(
+         ClientInstruction,
+     > = channels::bounded(50);
+     let send_client_instructions = SenderWithContext::new(send_client_instructions);
++    #[cfg(unix)]
++    if let Some(client) = &managed_client {
++        let sender = send_client_instructions.clone();
++        client.retirement_callback(move || {
++            let _ = sender.send(ClientInstruction::Exit(ExitReason::NormalDetached));
++        });
++    }
+ 
+     let (send_input_instructions, receive_input_instructions): ChannelWithContext<
+         InputInstruction,
+@@ -1547,11 +1591,19 @@ pub fn start_client(
+                         send_client_instructions
+                             .send(ClientInstruction::UnblockInputThread)
+                             .unwrap();
+-                        send_client_instructions
+-                            .send(ClientInstruction::Error(
++                        #[cfg(unix)]
++                        let retired_instruction = if activation_client::checkpointed() {
++                            ClientInstruction::Exit(ExitReason::Disconnect)
++                        } else {
++                            ClientInstruction::Error(
+                                 "Lost connection to the Zellij server".to_string(),
+-                            ))
+-                            .unwrap();
++                            )
++                        };
++                        #[cfg(not(unix))]
++                        let retired_instruction = ClientInstruction::Error(
++                            "Lost connection to the Zellij server".to_string(),
++                        );
++                        send_client_instructions.send(retired_instruction).unwrap();
+                         break;
+                     },
+                     Err(IpcReceiveError::Undecodable) => {
+@@ -1613,12 +1665,32 @@ pub fn start_client(
+         err_ctx.add_call(ContextType::Client((&client_instruction).into()));
+ 
+         match client_instruction {
++            ClientInstruction::Connected =>
++            {
++                #[cfg(unix)]
++                if let Some(client) = &managed_client {
++                    client
++                        .connected()
++                        .expect("Native managed client connection receipt failed");
++                }
++            },
+             ClientInstruction::Exit(reason) => {
+                 os_input.send_to_server(ClientToServerMsg::ClientExited);
+ 
+                 if let ExitReason::Error(_) = reason {
+                     handle_error(reason.to_string(), outer_grapheme_cluster_mode.is_enabled());
+                 }
++                #[cfg(unix)]
++                if matches!(reason, ExitReason::Normal | ExitReason::Disconnect) {
++                    if let Some(client) = &managed_client {
++                        if let Err(error) = client.resume_after_retirement() {
++                            log::error!("Native client retirement remains unconfirmed: {}. Retaining the original TTY without repeating exec.",error);
++                            loop {
++                                thread::sleep(std::time::Duration::from_secs(1));
++                            }
++                        }
++                    }
++                }
+                 exit_msg = reason.to_string();
+                 break;
+             },
+@@ -1626,6 +1698,12 @@ pub fn start_client(
+                 handle_error(backtrace, outer_grapheme_cluster_mode.is_enabled());
+             },
+             ClientInstruction::Render(output) => {
++                #[cfg(unix)]
++                if let Some(client) = &managed_client {
++                    client
++                        .connected()
++                        .expect("Native rendered client connection receipt failed");
++                }
+                 let mut stdout = os_input.get_stdout_writer();
+                 if let Err(e) = write_render_output(&mut *stdout, &output, synchronised_output) {
+                     let message = format!("Failed to write to the terminal: {}", e);
+diff --git a/zellij-client/src/session_resolution.rs b/zellij-client/src/session_resolution.rs
+index 81ce817b..5deed87f 100644
+--- a/zellij-client/src/session_resolution.rs
++++ b/zellij-client/src/session_resolution.rs
+@@ -241,6 +241,40 @@ pub fn resolve_attach(
+         None => config_options,
+     };
+     let create = args.create || create_detached;
++    if let Some(path) = &args.activation_layout {
++        use std::os::unix::fs::MetadataExt;
++        let name = args.session_name.as_ref().ok_or_else(|| {
++            ResolutionFailure::to_stderr("Activation requires an indexed session name", 2)
++        })?;
++        if !create || args.index.is_some() || session_exists(name).unwrap_or(true) {
++            return Err(ResolutionFailure::to_stderr(
++                "Activation refuses an active or unverified session",
++                2,
++            ));
++        }
++        let metadata = std::fs::symlink_metadata(path)
++            .map_err(|e| ResolutionFailure::to_stderr(e.to_string(), 2))?;
++        if !path.is_absolute()
++            || !metadata.is_file()
++            || metadata.uid() != unsafe { nix::libc::getuid() }
++            || metadata.mode() & 0o077 != 0
++        {
++            return Err(ResolutionFailure::to_stderr(
++                "Activation layout must be an owned private regular file",
++                2,
++            ));
++        }
++        if zellij_utils::sessions::resolve_session_id(name).is_none() {
++            return Err(ResolutionFailure::to_stderr(
++                "Activation session has no persistent native identity",
++                2,
++            ));
++        }
++        return Ok(Resolved {
++            client: ClientInfo::Resurrect(name.clone(), path.clone(), false, new_session_cwd),
++            config_options,
++        });
++    }
+     let session_name = args.session_name.clone();
+ 
+     let client = if let Some(index) = args.index {
+diff --git a/zellij-server/Cargo.toml b/zellij-server/Cargo.toml
+index c31e2e6f..52b258ed 100644
+--- a/zellij-server/Cargo.toml
++++ b/zellij-server/Cargo.toml
+@@ -32,6 +32,7 @@ prost = { workspace = true }
+ regex = { workspace = true }
+ serde = { workspace = true }
+ serde_json = { workspace = true }
++sha2 = { workspace = true }
+ sixel-image = { version = "0.2.1", default-features = false }
+ sixel-tokenizer = { version = "0.1.0", default-features = false }
+ sysinfo = { version = "0.39.5", default-features = false, features = ["system"] }
+diff --git a/zellij-server/src/lib.rs b/zellij-server/src/lib.rs
+index 5be9e582..60894374 100644
+--- a/zellij-server/src/lib.rs
++++ b/zellij-server/src/lib.rs
+@@ -3332,6 +3332,55 @@ pub fn start_server(os_input: Box<dyn ServerOsApi>, socket_path: PathBuf) {
+     start_server_impl(os_input, socket_path, true);
+ }
+ 
++/// Read the actual connection peer rather than trusting a client-supplied nonce.
++#[cfg(unix)]
++fn activation_peer_pid(stream: &interprocess::local_socket::Stream) -> Option<u32> {
++    use std::os::fd::AsRawFd;
++    let interprocess::local_socket::Stream::UdSocket(socket) = stream;
++    let fd = socket.inner().as_raw_fd();
++    #[cfg(target_os = "linux")]
++    {
++        let mut credentials = std::mem::MaybeUninit::<nix::libc::ucred>::uninit();
++        let mut size = std::mem::size_of::<nix::libc::ucred>() as nix::libc::socklen_t;
++        if unsafe {
++            nix::libc::getsockopt(
++                fd,
++                nix::libc::SOL_SOCKET,
++                nix::libc::SO_PEERCRED,
++                credentials.as_mut_ptr().cast(),
++                &mut size,
++            )
++        } != 0
++        {
++            return None;
++        }
++        let credentials = unsafe { credentials.assume_init() };
++        if credentials.uid != unsafe { nix::libc::getuid() } {
++            return None;
++        }
++        return u32::try_from(credentials.pid).ok();
++    }
++    #[cfg(target_os = "macos")]
++    {
++        let mut uid = 0;
++        let mut gid = 0;
++        let mut pid: i32 = 0;
++        let mut size = std::mem::size_of::<i32>() as nix::libc::socklen_t;
++        if unsafe { nix::libc::getpeereid(fd, &mut uid, &mut gid) } != 0
++            || uid != unsafe { nix::libc::getuid() }
++        {
++            return None;
++        }
++        if unsafe { nix::libc::getsockopt(fd, 0, 2, (&mut pid as *mut i32).cast(), &mut size) } != 0
++        {
++            return None;
++        }
++        return u32::try_from(pid).ok();
++    }
++    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
++    None
++}
++
+ fn handle_new_connection(
+     session_data: Arc<RwLock<Option<SessionMetaData>>>,
+     session_state: Arc<RwLock<SessionState>>,
+@@ -3340,11 +3389,15 @@ fn handle_new_connection(
+     stream: interprocess::local_socket::Stream,
+     #[cfg(windows)] reply_stream: interprocess::local_socket::Stream,
+ ) -> Result<()> {
++    #[cfg(unix)]
++    let activation_peer = activation_peer_pid(&stream);
++    #[cfg(not(unix))]
++    let activation_peer: Option<u32> = None;
+     let mut receiver: IpcReceiverWithContext<ClientToServerMsg> =
+         IpcReceiverWithContext::new(stream);
+ 
+     let _ = receiver.set_read_timeout(Some(PRE_HANDSHAKE_READ_TIMEOUT));
+-    let first_instruction = match receiver.try_recv_client_msg() {
++    let mut first_instruction = match receiver.try_recv_client_msg() {
+         Ok((instruction, _err_ctx)) => instruction,
+         Err(IpcReceiveError::Undecodable) => {
+             answer_before_registration(
+@@ -3360,6 +3413,18 @@ fn handle_new_connection(
+         Err(IpcReceiveError::Disconnected) => return Ok(()),
+     };
+     let _ = receiver.set_read_timeout(None);
++    if let ClientToServerMsg::FirstClientConnected { cli_assets, .. }
++    | ClientToServerMsg::AttachClient { cli_assets, .. } = &mut first_instruction
++    {
++        cli_assets
++            .host_terminal_env
++            .remove("ZELLIJ_ACTIVATION_CLIENT_PID");
++        if let Some(pid) = activation_peer {
++            cli_assets
++                .host_terminal_env
++                .insert("ZELLIJ_ACTIVATION_CLIENT_PID".into(), pid.to_string());
++        }
++    }
+ 
+     match first_instruction {
+         ClientToServerMsg::ConnStatus => {
+diff --git a/zellij-server/src/os_input_output.rs b/zellij-server/src/os_input_output.rs
+index 7f388e3e..8df570b8 100644
+--- a/zellij-server/src/os_input_output.rs
++++ b/zellij-server/src/os_input_output.rs
+@@ -424,6 +424,9 @@ fn spawn_terminal(
+     fn reserve_terminal_id(&self) -> Result<u32> {
+         unimplemented!()
+     }
++    fn reserve_activation_terminal_id(&self, _terminal_id: u32) -> Result<u32> {
++        anyhow::bail!("Native activation ID allocation is unavailable")
++    }
+     /// Write bytes to the standard input of the virtual terminal referred to by `terminal_id`.
+     fn write_to_tty_stdin(&self, terminal_id: u32, buf: &[u8]) -> Result<usize>;
+     /// Wait until all output written to the terminal has been transmitted.
+@@ -512,12 +515,21 @@ fn spawn_terminal(
+     ) -> Result<(u32, Box<dyn AsyncReader>, Option<u32>)> {
+         let err_context = || "failed to spawn terminal".to_string();
+ 
+-        let terminal_id = self
+-            .pty_backend
+-            .next_terminal_id()
+-            .context("no more terminal IDs left to allocate")?;
+-
+-        self.pty_backend.reserve_terminal_id(terminal_id);
++        let terminal_id = match &terminal_action {
++            TerminalAction::RunCommand(command) if command.activation_pane_id.is_some() => {
++                let id = command.activation_pane_id.unwrap();
++                self.pty_backend.reserve_activation_terminal_id(id)?;
++                id
++            },
++            _ => {
++                let id = self
++                    .pty_backend
++                    .next_terminal_id()
++                    .context("no more terminal IDs left to allocate")?;
++                self.pty_backend.reserve_terminal_id(id);
++                id
++            },
++        };
+ 
+         let (cmd, failover_cmd) = build_command(terminal_action, default_editor, pane_env);
+ 
+@@ -536,6 +548,11 @@ fn reserve_terminal_id(&self) -> Result<u32> {
+         self.pty_backend.reserve_terminal_id(terminal_id);
+         Ok(terminal_id)
+     }
++    fn reserve_activation_terminal_id(&self, terminal_id: u32) -> Result<u32> {
++        self.pty_backend
++            .reserve_activation_terminal_id(terminal_id)?;
++        Ok(terminal_id)
++    }
+     fn write_to_tty_stdin(&self, terminal_id: u32, buf: &[u8]) -> Result<usize> {
+         self.pty_backend.write_to_tty_stdin(terminal_id, buf)
+     }
+diff --git a/zellij-server/src/os_input_output_unix.rs b/zellij-server/src/os_input_output_unix.rs
+index 9605c8d0..caceb0fd 100644
+--- a/zellij-server/src/os_input_output_unix.rs
++++ b/zellij-server/src/os_input_output_unix.rs
+@@ -480,6 +480,20 @@ pub fn reserve_terminal_id(&self, terminal_id: u32) {
+             .insert(terminal_id, None);
+     }
+ 
++    pub fn reserve_activation_terminal_id(&self, terminal_id: u32) -> Result<()> {
++        let next = terminal_id
++            .checked_add(1)
++            .ok_or_else(|| anyhow::anyhow!("Activation terminal ID exhausted"))?;
++        let mut ids = self.terminal_id_to_raw_fd.lock().unwrap();
++        anyhow::ensure!(
++            !ids.contains_key(&terminal_id),
++            "Activation terminal ID is already owned"
++        );
++        ids.insert(terminal_id, None);
++        self.next_terminal_id_counter
++            .fetch_max(next, Ordering::Relaxed);
++        Ok(())
++    }
+     pub fn clear_terminal_id(&self, terminal_id: u32) {
+         self.terminal_id_to_raw_fd
+             .lock()
+@@ -502,6 +516,15 @@ mod tests {
+     use nix::sys::termios;
+     use std::io::{Read, Write};
+ 
++    #[test]
++    fn activation_terminal_ids_preserve_gaps_and_refuse_existing_owners() {
++        let backend = UnixPtyBackend::new().unwrap();
++        backend.reserve_activation_terminal_id(3).unwrap();
++        backend.reserve_activation_terminal_id(37).unwrap();
++        assert!(backend.reserve_activation_terminal_id(3).is_err());
++        assert_eq!(backend.next_terminal_id(), Some(38));
++        assert!(backend.reserve_activation_terminal_id(u32::MAX).is_err());
++    }
+     #[test]
+     fn raw_fd_reader_returns_exact_bytes_in_order() {
+         let mut fds = [0 as libc::c_int; 2];
+diff --git a/zellij-server/src/os_input_output_windows.rs b/zellij-server/src/os_input_output_windows.rs
+index 95d4668c..c433daae 100644
+--- a/zellij-server/src/os_input_output_windows.rs
++++ b/zellij-server/src/os_input_output_windows.rs
+@@ -682,6 +682,20 @@ pub fn reserve_terminal_id(&self, terminal_id: u32) {
+         self.terminals.lock().unwrap().insert(terminal_id, None);
+     }
+ 
++    pub fn reserve_activation_terminal_id(&self, terminal_id: u32) -> Result<()> {
++        let next = terminal_id
++            .checked_add(1)
++            .ok_or_else(|| anyhow::anyhow!("Activation terminal ID exhausted"))?;
++        let mut ids = self.terminals.lock().unwrap();
++        anyhow::ensure!(
++            !ids.contains_key(&terminal_id),
++            "Activation terminal ID is already owned"
++        );
++        ids.insert(terminal_id, None);
++        self.next_terminal_id_counter
++            .fetch_max(next, Ordering::Relaxed);
++        Ok(())
++    }
+     pub fn clear_terminal_id(&self, terminal_id: u32) {
+         self.terminals.lock().unwrap().remove(&terminal_id);
+     }
+diff --git a/zellij-server/src/plugins/mod.rs b/zellij-server/src/plugins/mod.rs
+index e8f52700..db256106 100644
+--- a/zellij-server/src/plugins/mod.rs
++++ b/zellij-server/src/plugins/mod.rs
+@@ -145,7 +145,12 @@ pub enum PluginInstruction {
+         PermissionStatus,
+         Option<PathBuf>,
+     ),
+-    DumpLayout(SessionLayoutMetadata, ClientId, Option<NotificationEnd>),
++    DumpLayout(
++        bool,
++        SessionLayoutMetadata,
++        ClientId,
++        Option<NotificationEnd>,
++    ),
+     ListClientsMetadata(SessionLayoutMetadata, ClientId, Option<NotificationEnd>),
+     DumpLayoutToPlugin {
+         session_layout_metadata: SessionLayoutMetadata,
+@@ -1003,6 +1008,7 @@ pub(crate) fn plugin_thread_main(
+                 )?;
+             },
+             PluginInstruction::DumpLayout(
++                activation_ids,
+                 mut session_layout_metadata,
+                 client_id,
+                 completion_tx,
+@@ -1014,6 +1020,7 @@ pub(crate) fn plugin_thread_main(
+                     None,
+                 );
+                 drop(bus.senders.send_to_pty(PtyInstruction::DumpLayout(
++                    activation_ids,
+                     session_layout_metadata,
+                     client_id,
+                     completion_tx,
+@@ -1738,6 +1745,7 @@ fn populate_session_layout_metadata(
+         session_layout_metadata.remove_plugin_from_layout(plugin_id);
+     }
+ 
++    session_layout_metadata.activation_images = wasm_bridge.loaded_images();
+     let plugin_ids = session_layout_metadata.all_plugin_ids();
+     let mut plugin_ids_to_cmds: HashMap<u32, RunPlugin> = HashMap::new();
+     for plugin_id in plugin_ids {
+diff --git a/zellij-server/src/plugins/pinned_executor.rs b/zellij-server/src/plugins/pinned_executor.rs
+index 263efd00..f327175a 100644
+--- a/zellij-server/src/plugins/pinned_executor.rs
++++ b/zellij-server/src/plugins/pinned_executor.rs
+@@ -438,9 +438,10 @@ fn create_test_dependencies() -> (
+         let plugin_map = Arc::new(Mutex::new(PluginMap::default()));
+         let connected_clients = Arc::new(Mutex::new(vec![]));
+ 
+-        let plugin_cache = Arc::new(Mutex::new(
+-            std::collections::HashMap::<PathBuf, Module>::new(),
+-        ));
++        let plugin_cache = Arc::new(Mutex::new(std::collections::HashMap::<
++            PathBuf,
++            (Module, String),
++        >::new()));
+ 
+         let engine = Engine::default();
+ 
+diff --git a/zellij-server/src/plugins/plugin_loader.rs b/zellij-server/src/plugins/plugin_loader.rs
+index 806a31e2..c79ec66e 100644
+--- a/zellij-server/src/plugins/plugin_loader.rs
++++ b/zellij-server/src/plugins/plugin_loader.rs
+@@ -7,6 +7,7 @@
+ use crate::plugins::zellij_exports::{wasi_write_object, zellij_exports};
+ use crate::plugins::PluginId;
+ use prost::Message;
++use sha2::{Digest, Sha256};
+ use std::{
+     collections::{HashMap, HashSet, VecDeque},
+     fs,
+@@ -62,6 +63,7 @@ fn create_plugin_fs_entries(plugin_own_data_dir: &PathBuf, plugin_own_cache_dir:
+ 
+ pub struct PluginLoader<'a> {
+     skip_cache: bool,
++    loaded_image: Option<String>,
+     plugin_id: PluginId,
+     client_id: ClientId,
+     plugin_cwd: PathBuf,
+@@ -120,6 +122,7 @@ pub fn new(
+             size: loading_context.size,
+ 
+             skip_cache,
++            loaded_image: None,
+             senders,
+             engine,
+             plugin_cache,
+@@ -174,6 +177,13 @@ fn interpret_module(&mut self) -> Result<Module> {
+         let wasm_bytes = self.plugin_config.resolve_wasm_bytes(&self.plugin_dir)?;
+         let timer = std::time::Instant::now();
+         let module = Module::new(&self.engine, &wasm_bytes)?;
++        // Identity comes from exactly the bytes consumed by this native module.
++        self.loaded_image = Some(
++            Sha256::digest(&wasm_bytes)
++                .iter()
++                .map(|byte| format!("{byte:02x}"))
++                .collect(),
++        );
+         log::info!(
+             "Loaded plugin '{}' in {:?}",
+             self.plugin_config.path.display(),
+@@ -189,7 +199,8 @@ fn load_module_from_memory(&mut self) -> Result<Module> {
+             .remove(&self.plugin_config.path) // TODO: do we still bring it back later?
+             // maybe we can forgo this dance?
+             .ok_or(anyhow!("Plugin is not stored in memory"))?;
+-        Ok(module)
++        self.loaded_image = Some(module.1);
++        Ok(module.0)
+     }
+     fn load_plugin_instance(
+         &mut self,
+@@ -274,7 +285,7 @@ fn load_plugin_instance(
+         Ok(plugin)
+     }
+     pub fn create_plugin_environment(
+-        &self,
++        &mut self,
+         module: Module,
+     ) -> Result<(Store<PluginEnv>, Instance)> {
+         let err_context = || {
+@@ -344,10 +355,21 @@ pub fn create_plugin_environment(
+             }
+         }
+ 
+-        self.plugin_cache
+-            .lock()
+-            .unwrap()
+-            .insert(plugin_path.clone(), module);
++        self.plugin_cache.lock().unwrap().insert(
++            plugin_path.clone(),
++            (
++                module,
++                self.loaded_image
++                    .clone()
++                    .ok_or(anyhow!("Loaded plugin image identity missing"))?,
++            ),
++        );
++        self.plugin_map.loaded_images.insert(
++            self.plugin_id,
++            self.loaded_image
++                .clone()
++                .ok_or(anyhow!("Loaded plugin image identity missing"))?,
++        );
+         Ok((store, instance))
+     }
+     pub fn clone_instance_for_other_clients(&mut self) -> Result<()> {
+@@ -386,7 +408,7 @@ pub fn create_plugin_instance_and_wasi_env_for_worker(
+             .get(&self.plugin_config.path)
+             .with_context(err_context)?
+             .clone();
+-        let (store, instance) = self.create_plugin_instance_env(&module)?;
++        let (store, instance) = self.create_plugin_instance_env(&module.0)?;
+         Ok((store, instance))
+     }
+     fn create_plugin_instance_env(&self, module: &Module) -> Result<(Store<PluginEnv>, Instance)> {
+diff --git a/zellij-server/src/plugins/plugin_map.rs b/zellij-server/src/plugins/plugin_map.rs
+index 65f1b4ae..deb03460 100644
+--- a/zellij-server/src/plugins/plugin_map.rs
++++ b/zellij-server/src/plugins/plugin_map.rs
+@@ -51,6 +51,7 @@ pub struct PluginMetadata {
+ pub struct PluginMap {
+     plugin_assets: HashMap<PluginKey, PluginAssets>,
+     plugin_metadata: HashMap<PluginId, PluginMetadata>,
++    pub loaded_images: HashMap<PluginId, String>,
+     shared_assets: HashMap<PluginId, PluginAssets>,
+     shared_blocking_calls: HashMap<PluginId, Arc<AtomicBool>>,
+ }
+@@ -58,6 +59,7 @@ pub struct PluginMap {
+ impl PluginMap {
+     pub fn remove_plugins(&mut self, pid: PluginId) -> RemovedPluginAssets {
+         self.plugin_metadata.remove(&pid);
++        self.loaded_images.remove(&pid);
+         let mut removed = HashMap::new();
+         let ids_in_plugin_map: Vec<PluginKey> = self.plugin_assets.keys().copied().collect();
+         for (plugin_id, client_id) in ids_in_plugin_map {
+@@ -95,11 +97,13 @@ pub fn insert_shared(
+             },
+             None => {
+                 self.shared_blocking_calls.remove(&instance_id);
++                self.loaded_images.remove(&instance_id);
+             },
+         }
+     }
+     pub fn remove_shared(&mut self, instance_id: PluginId) -> Option<PluginAssets> {
+         self.shared_blocking_calls.remove(&instance_id);
++        self.loaded_images.remove(&instance_id);
+         self.shared_assets.remove(&instance_id)
+     }
+     pub fn shared_instance_in_blocking_call(&self, instance_id: PluginId) -> bool {
+diff --git a/zellij-server/src/plugins/wasm_bridge.rs b/zellij-server/src/plugins/wasm_bridge.rs
+index 448d6284..e06d833f 100644
+--- a/zellij-server/src/plugins/wasm_bridge.rs
++++ b/zellij-server/src/plugins/wasm_bridge.rs
+@@ -208,7 +208,7 @@ pub fn update_plugin_path(&mut self, new_path: PathBuf) {
+     }
+ }
+ 
+-pub type PluginCache = Arc<Mutex<HashMap<PathBuf, Module>>>;
++pub type PluginCache = Arc<Mutex<HashMap<PathBuf, (Module, String)>>>;
+ 
+ const SLOT_ADDED_WAIT_MS: u64 = 200;
+ 
+@@ -323,6 +323,16 @@ pub struct WasmBridge {
+ }
+ 
+ impl WasmBridge {
++    pub fn loaded_images(&self) -> HashMap<PluginId, String> {
++        let mut images = self.plugin_map.lock().unwrap().loaded_images.clone();
++        for (slot, instance) in &self.shared_slot_owner {
++            if let Some(image) = images.get(instance).cloned() {
++                images.insert(*slot, image);
++            }
++        }
++        images
++    }
++
+     pub fn new(
+         senders: ThreadSenders,
+         engine: Engine,
+@@ -339,8 +349,7 @@ pub fn new(
+     ) -> Self {
+         let plugin_map = Arc::new(Mutex::new(PluginMap::default()));
+         let connected_clients: Arc<Mutex<Vec<ClientId>>> = Arc::new(Mutex::new(vec![]));
+-        let plugin_cache: Arc<Mutex<HashMap<PathBuf, Module>>> =
+-            Arc::new(Mutex::new(HashMap::new()));
++        let plugin_cache: PluginCache = Arc::new(Mutex::new(HashMap::new()));
+         let watcher = None;
+         let downloader = Downloader::new(ZELLIJ_CACHE_DIR.to_path_buf());
+         let max_threads = num_cpus::get().max(4).min(16);
+diff --git a/zellij-server/src/pty.rs b/zellij-server/src/pty.rs
+index 419f21d7..0a57dfa5 100644
+--- a/zellij-server/src/pty.rs
++++ b/zellij-server/src/pty.rs
+@@ -123,7 +123,12 @@ pub enum PtyInstruction {
+         Option<NotificationEnd>, // completion signal
+         Option<PaneId>,
+     ), // String is an optional pane name
+-    DumpLayout(SessionLayoutMetadata, ClientId, Option<NotificationEnd>),
++    DumpLayout(
++        bool,
++        SessionLayoutMetadata,
++        ClientId,
++        Option<NotificationEnd>,
++    ),
+     DumpLayoutToPlugin {
+         session_layout_metadata: SessionLayoutMetadata,
+         plugin_id: PluginId,
+@@ -746,13 +751,29 @@ pub(crate) fn pty_thread_main(mut pty: Pty, layout: Box<Layout>, session_id: Str
+                     },
+                 }
+             },
+-            PtyInstruction::DumpLayout(mut session_layout_metadata, client_id, completion_tx) => {
++            PtyInstruction::DumpLayout(
++                activation_ids,
++                mut session_layout_metadata,
++                client_id,
++                completion_tx,
++            ) => {
+                 let err_context = || format!("Failed to dump layout");
+                 pty.populate_session_layout_metadata(&mut session_layout_metadata);
++                let activation_images = session_layout_metadata.activation_images.clone();
++                let activation_clients = session_layout_metadata.activation_clients.clone();
++                if activation_ids {
++                    session_layout_metadata.mark_activation_panes();
++                }
+                 match session_serialization::serialize_session_layout(
+                     session_layout_metadata.into(),
+                 ) {
+                     Ok((kdl_layout, _pane_contents)) => {
++                        let kdl_layout = if activation_ids {
++                            serde_json::json!({"schema_version":1,"activation_build":option_env!("ZELLIJ_ACTIVATION_BUILD_ID"),"layout":kdl_layout,"loaded_images":activation_images,"terminal_processes":pty.id_to_child_pid,"clients":activation_clients,
++                                "environment":(["TERM","COLORTERM","NO_COLOR","GIT_PAGER"].into_iter().map(|key|(key,std::env::var(key).ok())).collect::<std::collections::BTreeMap<_,_>>())}).to_string()
++                        } else {
++                            kdl_layout
++                        };
+                         pty.bus
+                             .senders
+                             .send_to_server(ServerInstruction::Log(
+@@ -863,6 +884,7 @@ pub(crate) fn pty_thread_main(mut pty: Pty, layout: Box<Layout>, session_id: Str
+                 completion_tx: _completion_tx, // Dropped at end to signal completion
+             } => {
+                 pty.populate_session_layout_metadata(&mut session_layout_metadata);
++
+                 match session_serialization::serialize_session_layout(
+                     session_layout_metadata.into(),
+                 ) {
+@@ -1214,7 +1236,12 @@ pub fn spawn_terminal(
+                 .os_input
+                 .as_mut()
+                 .context("couldn't get mutable reference to OS interface")
+-                .and_then(|os_input| os_input.reserve_terminal_id())
++                .and_then(|os_input| match &terminal_action {
++                    TerminalAction::RunCommand(command) if command.activation_pane_id.is_some() => {
++                        os_input.reserve_activation_terminal_id(command.activation_pane_id.unwrap())
++                    },
++                    _ => os_input.reserve_terminal_id(),
++                })
+                 .with_context(err_context)?;
+             if let Some(origin_pane_id) = origin_pane_id {
+                 self.origin_pane_ids.insert(terminal_id, origin_pane_id);
+@@ -1825,13 +1852,16 @@ fn apply_run_instruction(
+                 let cmd = TerminalAction::RunCommand(command.clone());
+                 if starts_held {
+                     // we don't actually open a terminal in this case, just wait for the user to run it
+-                    match self
++                    let os_input = self
+                         .bus
+                         .os_input
+                         .as_mut()
+                         .context("no OS I/O interface found")
+-                        .with_context(err_context)?
+-                        .reserve_terminal_id()
++                        .with_context(err_context)?;
++                    match command
++                        .activation_pane_id
++                        .map(|id| os_input.reserve_activation_terminal_id(id))
++                        .unwrap_or_else(|| os_input.reserve_terminal_id())
+                     {
+                         Ok(terminal_id) => {
+                             Ok(Some((
+diff --git a/zellij-server/src/route.rs b/zellij-server/src/route.rs
+index fd3d4da7..1c08d2af 100644
+--- a/zellij-server/src/route.rs
++++ b/zellij-server/src/route.rs
+@@ -671,13 +671,14 @@ fn route_action_with_origin(
+                 ))
+                 .with_context(err_context)?;
+         },
+-        Action::DumpLayout => {
++        Action::DumpLayout { activation_ids } => {
+             let default_shell = match default_shell {
+                 Some(TerminalAction::RunCommand(run_command)) => Some(run_command.command),
+                 _ => None,
+             };
+             senders
+                 .send_to_screen(ScreenInstruction::DumpLayout(
++                    activation_ids,
+                     default_shell,
+                     cli_client_id.unwrap_or(client_id), // we prefer the cli client here because
+                     // this is a cli query and we want to print
+diff --git a/zellij-server/src/screen.rs b/zellij-server/src/screen.rs
+index 52f55737..cb24b3d7 100644
+--- a/zellij-server/src/screen.rs
++++ b/zellij-server/src/screen.rs
+@@ -447,7 +447,7 @@ pub enum ScreenInstruction {
+         Option<ClientId>, // cli_client_id - used to send output to the CLI client's STDOUT
+         bool,             // ansi - preserve ANSI styling in the dump output
+     ),
+-    DumpLayout(Option<PathBuf>, ClientId, Option<NotificationEnd>), // PathBuf is the default configured
++    DumpLayout(bool, Option<PathBuf>, ClientId, Option<NotificationEnd>), // PathBuf is the default configured
+     // shell
+     SaveSession(ClientId, Option<NotificationEnd>),
+     DumpLayoutToPlugin {
+@@ -10469,6 +10469,14 @@ fn get_layout_metadata(
+         tab_index: Option<usize>,
+     ) -> SessionLayoutMetadata {
+         let mut session_layout_metadata = SessionLayoutMetadata::new(self.default_layout.clone());
++        session_layout_metadata.activation_clients = self.connected_clients.borrow().keys().chain(self.watcher_clients.keys()).map(|client_id| {
++            let activation_id = self.client_host_terminal_env.get(client_id).and_then(|env|env.get("ZELLIJ_ACTIVATION_CLIENT_ID"));
++            let focus = self.active_tab_ids.get(client_id).and_then(|index|self.tabs.get(index)).and_then(|tab|tab.get_active_pane_id(*client_id).map(|pane| {
++                let (id,plugin) = match pane {PaneId::Terminal(id)=>(id,false),PaneId::Plugin(id)=>(id,true)};
++                serde_json::json!({"tab_position":tab.position+1,"pane_id":[id,plugin]})
++            }));
++            serde_json::json!({"client_id":client_id,"activation_id":activation_id,"peer_pid":self.client_host_terminal_env.get(client_id).and_then(|env|env.get("ZELLIJ_ACTIVATION_CLIENT_PID")).and_then(|value|value.parse::<u32>().ok()),"focus":focus})
++        }).collect();
+         if let Some(default_shell) = default_shell {
+             session_layout_metadata.update_default_shell(default_shell);
+         }
+@@ -11315,7 +11323,7 @@ pub(crate) fn screen_thread_main(
+     );
+     screen.navigation_guard = crate::nested_navigation::NavigationGuard::new(server_instance_id);
+     screen.navigation_guard.add_client(initial_client_id);
+-    screen.configure_nesting_client(initial_client_id, &initial_host_terminal_env);
++    screen.set_client_host_terminal_env(initial_client_id, initial_host_terminal_env);
+     screen.announce_server_identity(initial_client_id);
+ 
+     screen.default_keybinds = default_keybinds;
+@@ -12341,13 +12349,19 @@ pub(crate) fn screen_thread_main(
+                     },
+                 }
+             },
+-            ScreenInstruction::DumpLayout(default_shell, client_id, completion_tx) => {
++            ScreenInstruction::DumpLayout(
++                activation_ids,
++                default_shell,
++                client_id,
++                completion_tx,
++            ) => {
+                 let err_context = || format!("Failed to dump layout");
+                 let session_layout_metadata = screen.get_layout_metadata(default_shell, None);
+                 screen
+                     .bus
+                     .senders
+                     .send_to_plugin(PluginInstruction::DumpLayout(
++                        activation_ids,
+                         session_layout_metadata,
+                         client_id,
+                         completion_tx,
+diff --git a/zellij-server/src/session_layout_metadata.rs b/zellij-server/src/session_layout_metadata.rs
+index 2ea2cc3f..7df02310 100644
+--- a/zellij-server/src/session_layout_metadata.rs
++++ b/zellij-server/src/session_layout_metadata.rs
+@@ -24,6 +24,8 @@ pub struct SessionLayoutMetadata {
+     pub default_shell: Option<PathBuf>,
+     pub default_editor: Option<PathBuf>,
+     tabs: Vec<TabLayoutMetadata>,
++    pub activation_images: HashMap<u32, String>,
++    pub activation_clients: Vec<serde_json::Value>,
+     session_attention_muted: bool,
+ }
+ 
+@@ -250,6 +252,25 @@ pub fn add_tab(
+             attention_muted: false,
+         })
+     }
++    /// Native pane bindings are explicit in this read-only activation snapshot.
++    /// Ordinary resurrection snapshots retain their original commands and titles.
++    pub fn mark_activation_panes(&mut self) {
++        for tab in &mut self.tabs {
++            for pane in tab
++                .tiled_panes
++                .iter_mut()
++                .chain(tab.floating_panes.iter_mut())
++            {
++                pane.title = Some(match pane.id {
++                    PaneId::Terminal(id) => format!("__zellij_activation_terminal_{}__", id),
++                    PaneId::Plugin(id) => format!("__zellij_activation_plugin_{}__", id),
++                });
++                // Never capture terminal contents as command or input recovery evidence.
++                pane.pane_contents = None;
++            }
++        }
++    }
++
+     pub fn all_terminal_ids(&self) -> Vec<u32> {
+         let mut terminal_ids = vec![];
+         for tab in &self.tabs {
+@@ -797,6 +818,26 @@ fn get_first_tiled_run(meta: &SessionLayoutMetadata) -> Option<&Run> {
+         meta.tabs[0].tiled_panes[0].run.as_ref()
+     }
+ 
++    #[test]
++    fn activation_snapshot_binds_native_panes_without_changing_cached_layouts() {
++        let pane = make_command_pane(37, "pi", vec!["--session", "/private/transcript.jsonl"]);
++        let original = session_with_editor("nvim", vec![pane]);
++        let mut activation = original.clone();
++        activation.mark_activation_panes();
++        assert_eq!(
++            activation.tabs[0].tiled_panes[0].title.as_deref(),
++            Some("__zellij_activation_terminal_37__")
++        );
++        assert_eq!(
++            get_first_tiled_run(&activation),
++            get_first_tiled_run(&original)
++        );
++        assert_ne!(
++            original.tabs[0].tiled_panes[0].title.as_deref(),
++            Some("__zellij_activation_terminal_37__")
++        );
++    }
++
+     #[test]
+     fn detects_editor_pane_no_line_number() {
+         let pane = make_command_pane(1, "nvim", vec!["file.txt"]);
+diff --git a/zellij-utils/assets/prost_ipc/client_server_contract.rs b/zellij-utils/assets/prost_ipc/client_server_contract.rs
+index f90fc14e..d9b28caf 100644
+--- a/zellij-utils/assets/prost_ipc/client_server_contract.rs
++++ b/zellij-utils/assets/prost_ipc/client_server_contract.rs
+@@ -600,6 +600,8 @@ pub struct ClearScreenAction {
+ #[allow(clippy::derive_partial_eq_without_eq)]
+ #[derive(Clone, PartialEq, ::prost::Message)]
+ pub struct DumpLayoutAction {
++    #[prost(bool, tag="1")]
++    pub activation_ids: bool,
+ }
+ #[allow(clippy::derive_partial_eq_without_eq)]
+ #[derive(Clone, PartialEq, ::prost::Message)]
+@@ -1840,6 +1842,8 @@ pub struct RunCommandAction {
+     pub use_terminal_title: bool,
+     #[prost(bool, tag="9")]
+     pub notify: bool,
++    #[prost(uint32, optional, tag="10")]
++    pub activation_pane_id: ::core::option::Option<u32>,
+ }
+ #[allow(clippy::derive_partial_eq_without_eq)]
+ #[derive(Clone, PartialEq, ::prost::Message)]
+diff --git a/zellij-utils/src/cli.rs b/zellij-utils/src/cli.rs
+index f39c6d2c..d5bb6694 100644
+--- a/zellij-utils/src/cli.rs
++++ b/zellij-utils/src/cli.rs
+@@ -43,6 +43,15 @@ fn validate_session(name: &str) -> Result<String, String> {
+     args_override_self = true
+ )]
+ pub struct CliArgs {
++    /// Opt in to guarded native client checkpoint and same-TTY restoration.
++    #[clap(long, global = true)]
++    pub activation_client: bool,
++    /// Private confirmed client checkpoint used only after one native exec.
++    #[clap(long, global = true)]
++    pub activation_client_restoration: Option<PathBuf>,
++    /// Private parent-pane handoff for an owned nested client.
++    #[clap(long, hide = true, global = true)]
++    pub activation_client_owner_restoration: Option<PathBuf>,
+     /// Maximum panes on screen, caution: opening more panes will close old ones
+     #[clap(long, value_parser = clap::builder::RangedU64ValueParser::<usize>::new().range(1..))]
+     pub max_panes: Option<usize>,
+@@ -525,6 +534,10 @@ pub struct AttachArgs {
+     #[clap(short, long, value_parser)]
+     pub create: bool,
+ 
++    /// Restore this private layout instead of cached commands, preserving the indexed session ID.
++    #[clap(long, value_parser)]
++    pub activation_layout: Option<PathBuf>,
++
+     /// Number of the session index in the active sessions ordered creation date.
+     #[clap(long, value_parser)]
+     pub index: Option<usize>,
+@@ -1321,7 +1334,11 @@ pub enum CliAction {
+         ansi: bool,
+     },
+     /// Dump current layout to stdout
+-    DumpLayout,
++    DumpLayout {
++        /// Include native pane bindings for controlled activation.
++        #[clap(long)]
++        activation_ids: bool,
++    },
+     /// Save the current session state to disk immediately
+     SaveSession,
+     /// Open the pane scrollback in your default editor
+diff --git a/zellij-utils/src/client_server_contract/common_types.proto b/zellij-utils/src/client_server_contract/common_types.proto
+index 6e60e743..fe1b3912 100644
+--- a/zellij-utils/src/client_server_contract/common_types.proto
++++ b/zellij-utils/src/client_server_contract/common_types.proto
+@@ -376,7 +376,7 @@ message ToggleHostFullscreenAction {}
+ message SwitchFocusAction {}
+ message MovePaneBackwardsAction {}
+ message ClearScreenAction {}
+-message DumpLayoutAction {}
++message DumpLayoutAction { bool activation_ids = 1; }
+ message SaveSessionAction {}
+ message EditScrollbackAction {
+   bool ansi = 1;
+@@ -1075,6 +1075,7 @@ message RunCommandAction {
+   optional OriginatingPlugin originating_plugin = 7;   // Added missing originating_plugin field
+   bool use_terminal_title = 8;                         // Added missing use_terminal_title field
+   bool notify = 9;
++  optional uint32 activation_pane_id = 10;
+ }
+ 
+ message TiledPaneLayout {
+diff --git a/zellij-utils/src/input/actions.rs b/zellij-utils/src/input/actions.rs
+index f6601581..9cc5bdfa 100644
+--- a/zellij-utils/src/input/actions.rs
++++ b/zellij-utils/src/input/actions.rs
+@@ -235,7 +235,9 @@ pub enum Action {
+         ansi: bool,
+     },
+     /// Dumps
+-    DumpLayout,
++    DumpLayout {
++        activation_ids: bool,
++    },
+     /// Save the current session state to disk
+     SaveSession,
+     EditScrollback {
+@@ -1198,7 +1200,9 @@ pub fn actions_from_cli(
+                     ansi,
+                 }]),
+             },
+-            CliAction::DumpLayout => Ok(vec![Action::DumpLayout]),
++            CliAction::DumpLayout { activation_ids } => {
++                Ok(vec![Action::DumpLayout { activation_ids }])
++            },
+             CliAction::SaveSession => Ok(vec![Action::SaveSession]),
+             CliAction::EditScrollback { pane_id, ansi } => match pane_id {
+                 Some(pane_id_str) => {
+diff --git a/zellij-utils/src/input/command.rs b/zellij-utils/src/input/command.rs
+index 1d1626d0..561586d9 100644
+--- a/zellij-utils/src/input/command.rs
++++ b/zellij-utils/src/input/command.rs
+@@ -58,6 +58,9 @@ pub fn with_originating_plugin(mut self, originating_plugin: OriginatingPlugin)
+ 
+ #[derive(Clone, Debug, Deserialize, Default, Serialize, PartialEq, Eq)]
+ pub struct RunCommand {
++    /// Private activation layouts may retain an exact native terminal identifier.
++    #[serde(default, skip_serializing_if = "Option::is_none")]
++    pub activation_pane_id: Option<u32>,
+     #[serde(alias = "cmd")]
+     pub command: PathBuf,
+     #[serde(default)]
+@@ -118,6 +121,7 @@ pub struct RunCommandAction {
+ impl From<RunCommandAction> for RunCommand {
+     fn from(action: RunCommandAction) -> Self {
+         RunCommand {
++            activation_pane_id: None,
+             command: action.command,
+             args: action.args,
+             cwd: action.cwd,
+diff --git a/zellij-utils/src/ipc/protobuf_conversion.rs b/zellij-utils/src/ipc/protobuf_conversion.rs
+index 141d7c48..5c8869c1 100644
+--- a/zellij-utils/src/ipc/protobuf_conversion.rs
++++ b/zellij-utils/src/ipc/protobuf_conversion.rs
+@@ -1784,8 +1784,8 @@ fn from(action: crate::input::actions::Action) -> Self {
+                     ansi,
+                 })
+             },
+-            crate::input::actions::Action::DumpLayout => {
+-                ActionType::DumpLayout(DumpLayoutAction {})
++            crate::input::actions::Action::DumpLayout { activation_ids } => {
++                ActionType::DumpLayout(DumpLayoutAction { activation_ids })
+             },
+             crate::input::actions::Action::EditScrollback { ansi } => {
+                 ActionType::EditScrollback(EditScrollbackAction { ansi })
+@@ -2892,7 +2892,9 @@ fn try_from(
+                     ansi: dump_screen_action.ansi,
+                 })
+             },
+-            ActionType::DumpLayout(_) => Ok(crate::input::actions::Action::DumpLayout),
++            ActionType::DumpLayout(action) => Ok(crate::input::actions::Action::DumpLayout {
++                activation_ids: action.activation_ids,
++            }),
+             ActionType::SaveSession(_) => Ok(crate::input::actions::Action::SaveSession),
+             ActionType::EditScrollback(edit_scrollback_action) => {
+                 Ok(crate::input::actions::Action::EditScrollback {
+@@ -4890,6 +4892,7 @@ impl From<crate::input::command::RunCommandAction>
+ {
+     fn from(action: crate::input::command::RunCommandAction) -> Self {
+         Self {
++            activation_pane_id: None,
+             command: action.command.to_string_lossy().to_string(),
+             args: action.args,
+             cwd: action.cwd.map(|p| p.to_string_lossy().to_string()),
+@@ -4993,6 +4996,7 @@ fn from(run: crate::input::layout::Run) -> Self {
+             crate::input::layout::Run::Command(cmd) => Self {
+                 run_type: Some(RunType::Command(
+                     crate::client_server_contract::client_server_contract::RunCommandAction {
++                        activation_pane_id: cmd.activation_pane_id,
+                         command: cmd.command.to_string_lossy().to_string(),
+                         args: cmd.args,
+                         cwd: cmd.cwd.map(|p| p.to_string_lossy().to_string()),
+@@ -5385,6 +5389,7 @@ fn try_from(run: crate::client_server_contract::client_server_contract::Run) ->
+         match run_type {
+             RunType::Command(cmd) => Ok(crate::input::layout::Run::Command(
+                 crate::input::command::RunCommand {
++                    activation_pane_id: cmd.activation_pane_id,
+                     command: std::path::PathBuf::from(cmd.command),
+                     args: cmd.args,
+                     cwd: cmd.cwd.map(std::path::PathBuf::from),
+diff --git a/zellij-utils/src/ipc/tests/roundtrip_tests.rs b/zellij-utils/src/ipc/tests/roundtrip_tests.rs
+index 0e3ce0c1..3691caba 100644
+--- a/zellij-utils/src/ipc/tests/roundtrip_tests.rs
++++ b/zellij-utils/src/ipc/tests/roundtrip_tests.rs
+@@ -1085,7 +1085,17 @@ fn test_client_messages() {
+         is_cli_client: true,
+     });
+     test_client_roundtrip!(ClientToServerMsg::Action {
+-        action: Action::DumpLayout,
++        action: Action::DumpLayout {
++            activation_ids: true
++        },
++        terminal_id: Some(1),
++        client_id: Some(100),
++        is_cli_client: true,
++    });
++    test_client_roundtrip!(ClientToServerMsg::Action {
++        action: Action::DumpLayout {
++            activation_ids: false
++        },
+         terminal_id: Some(1),
+         client_id: Some(100),
+         is_cli_client: true,
+@@ -2152,6 +2162,7 @@ fn test_client_messages() {
+         action: Action::NewTab {
+             tiled_layout: Some(TiledPaneLayout {
+                 run: Some(Run::Command(RunCommand {
++                    activation_pane_id: Some(37),
+                     command: PathBuf::from("/path/to/command"),
+                     args: vec![],
+                     cwd: None,
+@@ -2180,6 +2191,7 @@ fn test_client_messages() {
+         action: Action::NewTab {
+             tiled_layout: Some(TiledPaneLayout {
+                 run: Some(Run::Command(RunCommand {
++                    activation_pane_id: Some(37),
+                     command: PathBuf::from("/path/to/command"),
+                     args: vec!["arg1".to_owned(), "arg2".to_owned(), "arg3".to_owned()],
+                     cwd: Some(PathBuf::from("/path/to/cwd")),
+diff --git a/zellij-utils/src/kdl/kdl_layout_parser.rs b/zellij-utils/src/kdl/kdl_layout_parser.rs
+index 0c003313..a47dac6c 100644
+--- a/zellij-utils/src/kdl/kdl_layout_parser.rs
++++ b/zellij-utils/src/kdl/kdl_layout_parser.rs
+@@ -78,6 +78,7 @@ fn is_a_reserved_word(&self, word: &str) -> bool {
+             || word == "args"
+             || word == "close_on_exit"
+             || word == "start_suspended"
++            || word == "activation_pane_id"
+             || word == "borderless"
+             || word == "focus"
+             || word == "name"
+@@ -109,6 +110,7 @@ fn is_a_valid_pane_property(&self, property_name: &str) -> bool {
+             || property_name == "args"
+             || property_name == "close_on_exit"
+             || property_name == "start_suspended"
++            || property_name == "activation_pane_id"
+             || property_name == "split_direction"
+             || property_name == "pane"
+             || property_name == "children"
+@@ -171,6 +173,7 @@ fn is_a_valid_floating_pane_property(&self, property_name: &str) -> bool {
+             || property_name == "args"
+             || property_name == "close_on_exit"
+             || property_name == "start_suspended"
++            || property_name == "activation_pane_id"
+             || property_name == "x"
+             || property_name == "y"
+             || property_name == "width"
+@@ -488,6 +491,16 @@ fn parse_pane_command(
+         pane_node: &KdlNode,
+         is_template: bool,
+     ) -> Result<Option<Run>, ConfigError> {
++        let activation_pane_id =
++            match kdl_get_int_property_or_child_value!(pane_node, "activation_pane_id") {
++                Some(value) => Some(u32::try_from(value).map_err(|_| {
++                    kdl_parsing_error!(
++                        "Activation pane identifier must be a nonnegative u32".to_string(),
++                        pane_node
++                    )
++                })?),
++                None => None,
++            };
+         let command = self.parse_path(pane_node, "command")?;
+         let edit = self.parse_path(pane_node, "edit")?;
+         let cwd = self.parse_path(pane_node, "cwd")?;
+@@ -511,6 +524,7 @@ fn parse_pane_command(
+             (None, None, Some(cwd)) => Ok(Some(Run::Cwd(cwd))),
+             (Some(command), None, cwd) => Ok(Some(Run::Command(RunCommand {
+                 command,
++                activation_pane_id,
+                 args: args.unwrap_or_else(|| vec![]),
+                 cwd,
+                 hold_on_close,
+diff --git a/zellij-utils/src/kdl/mod.rs b/zellij-utils/src/kdl/mod.rs
+index f1a07339..f513e362 100644
+--- a/zellij-utils/src/kdl/mod.rs
++++ b/zellij-utils/src/kdl/mod.rs
+@@ -630,7 +630,9 @@ pub fn new_from_string(
+                 pane_id: None,
+                 ansi: false,
+             }),
+-            "DumpLayout" => Ok(Action::DumpLayout),
++            "DumpLayout" => Ok(Action::DumpLayout {
++                activation_ids: false,
++            }),
+             "NewPane" => {
+                 if string.is_empty() {
+                     return Ok(Action::NewPane {
+@@ -798,7 +800,7 @@ pub fn to_kdl(&self) -> Option<KdlNode> {
+             Action::DumpScreen {
+                 file_path: None, ..
+             } => None,
+-            Action::DumpLayout => Some(KdlNode::new("DumpLayout")),
++            Action::DumpLayout { .. } => Some(KdlNode::new("DumpLayout")),
+             Action::EditScrollback { ansi } => {
+                 let mut node = KdlNode::new("EditScrollback");
+                 if *ansi {
+diff --git a/zellij-utils/src/plugin_api/action.rs b/zellij-utils/src/plugin_api/action.rs
+index 8f8990a6..08849caf 100644
+--- a/zellij-utils/src/plugin_api/action.rs
++++ b/zellij-utils/src/plugin_api/action.rs
+@@ -2646,7 +2646,7 @@ fn try_from(action: Action) -> Result<Self, &'static str> {
+             }
+             | Action::Deny
+             | Action::Copy
+-            | Action::DumpLayout
++            | Action::DumpLayout { .. }
+             | Action::CliPipe { .. }
+             | Action::ListClients
+             | Action::ListPanes { .. }
+diff --git a/zellij-client/src/activation_client.rs b/zellij-client/src/activation_client.rs
+new file mode 100644
+index 00000000..07d2ef43
+--- /dev/null
++++ b/zellij-client/src/activation_client.rs
+@@ -0,0 +1,666 @@
++//! Private opt-in native client checkpoint and same-TTY image replacement.
++use anyhow::{bail, ensure, Context, Result};
++use serde_json::{json, Value};
++use sha2::{Digest, Sha256};
++use std::{
++    fs::{self, File, OpenOptions},
++    io::{BufRead, BufReader, Read, Write},
++    os::unix::{
++        ffi::OsStrExt,
++        fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsExt},
++        net::{UnixListener, UnixStream},
++        process::CommandExt,
++    },
++    path::{Path, PathBuf},
++    process::Command,
++    sync::{Arc, Mutex, OnceLock},
++    thread,
++    time::Duration,
++};
++use uuid::Uuid;
++
++struct State {
++    record: Value,
++    metadata: PathBuf,
++    checkpoint: Option<(PathBuf, Value)>,
++    pending_input: usize,
++    retire: Option<Arc<dyn Fn() + Send + Sync>>,
++}
++static ACTIVE: OnceLock<Mutex<Option<Arc<Mutex<State>>>>> = OnceLock::new();
++
++fn private_directory(path: &Path) -> Result<()> {
++    fs::DirBuilder::new()
++        .recursive(true)
++        .mode(0o700)
++        .create(path)?;
++    let info = fs::symlink_metadata(path)?;
++    ensure!(
++        info.is_dir() && info.uid() == unsafe { nix::libc::getuid() } && info.mode() & 0o077 == 0,
++        "Native client lifecycle directory is not owned and private"
++    );
++    Ok(())
++}
++fn read_private(path: &Path) -> Result<Value> {
++    let file = OpenOptions::new()
++        .read(true)
++        .custom_flags(nix::libc::O_NOFOLLOW)
++        .open(path)?;
++    let info = file.metadata()?;
++    ensure!(
++        info.is_file()
++            && info.uid() == unsafe { nix::libc::getuid() }
++            && info.mode() & 0o077 == 0
++            && info.len() <= 4 * 1024 * 1024,
++        "Native client lifecycle file is not owned and private"
++    );
++    let mut bytes = Vec::new();
++    file.take(4 * 1024 * 1024 + 1).read_to_end(&mut bytes)?;
++    ensure!(
++        bytes.len() <= 4 * 1024 * 1024,
++        "Native client checkpoint exceeds its private limit"
++    );
++    Ok(serde_json::from_slice(&bytes)?)
++}
++
++fn save(path: &Path, value: &Value) -> Result<()> {
++    let parent = path
++        .parent()
++        .context("Native lifecycle parent is unavailable")?;
++    let temporary = parent.join(format!(".client-{}", Uuid::new_v4()));
++    let mut file = OpenOptions::new()
++        .write(true)
++        .create_new(true)
++        .mode(0o600)
++        .open(&temporary)?;
++    serde_json::to_writer(&mut file, value)?;
++    file.write_all(b"\n")?;
++    file.sync_all()?;
++    fs::rename(&temporary, path)?;
++    File::open(parent)?.sync_all()?;
++    Ok(())
++}
++fn started() -> Result<String> {
++    let result = Command::new("ps")
++        .args(["-p", &std::process::id().to_string(), "-o", "lstart="])
++        .env("LC_ALL", "C")
++        .env("TZ", "UTC")
++        .output()?;
++    ensure!(
++        result.status.success(),
++        "Native client start identity unavailable"
++    );
++    let value = String::from_utf8(result.stdout)?.trim().to_owned();
++    ensure!(
++        !value.is_empty(),
++        "Native client start identity unavailable"
++    );
++    Ok(value)
++}
++fn tty() -> Result<Value> {
++    ensure!(
++        unsafe { nix::libc::isatty(0) } == 1,
++        "Managed activation requires the original user TTY"
++    );
++    let mut info = std::mem::MaybeUninit::<nix::libc::stat>::uninit();
++    ensure!(
++        unsafe { nix::libc::fstat(0, info.as_mut_ptr()) } == 0,
++        "Native TTY identity unavailable"
++    );
++    let info = unsafe { info.assume_init() };
++    Ok(
++        json!({"dev":info.st_dev.to_string(),"ino":info.st_ino.to_string(),"rdev":info.st_rdev.to_string()}),
++    )
++}
++pub fn socket_identity(path: &Path) -> Result<Value> {
++    let info = fs::symlink_metadata(path)?;
++    ensure!(
++        std::os::unix::fs::FileTypeExt::is_socket(&info.file_type())
++            && info.uid() == unsafe { nix::libc::getuid() },
++        "Native server socket is not owned"
++    );
++    let ctime = i128::from(info.ctime()) * 1_000_000_000 + i128::from(info.ctime_nsec());
++    Ok(json!([
++        path,
++        info.dev().to_string(),
++        info.ino().to_string(),
++        ctime.to_string()
++    ]))
++}
++fn sha256(bytes: &[u8]) -> String {
++    Sha256::digest(bytes)
++        .iter()
++        .map(|byte| format!("{byte:02x}"))
++        .collect()
++}
++fn immutable_image(path: &Path) -> Result<String> {
++    let path = path.canonicalize()?;
++    let info = fs::metadata(&path)?;
++    let bytes = fs::read(&path)?;
++    let after = fs::metadata(&path)?;
++    ensure!(
++        info.is_file()
++            && info.mode() & 0o222 == 0
++            && info.dev() == after.dev()
++            && info.ino() == after.ino()
++            && info.ctime() == after.ctime()
++            && info.ctime_nsec() == after.ctime_nsec(),
++        "Immutable native image changed"
++    );
++    let image = sha256(&bytes);
++    ensure!(
++        path.file_name().and_then(|s| s.to_str()) == Some("zellij")
++            && path
++                .parent()
++                .and_then(|p| p.file_name())
++                .and_then(|s| s.to_str())
++                == Some(&image),
++        "Managed clients require a content-addressed native image"
++    );
++    Ok(image)
++}
++fn own_image() -> Result<(PathBuf, String)> {
++    #[cfg(target_os = "linux")]
++    let path = fs::read_link("/proc/self/exe")?;
++    #[cfg(target_os = "macos")]
++    let path = {
++        #[link(name = "proc")]
++        unsafe extern "C" {
++            fn proc_pidpath(pid: i32, buffer: *mut std::ffi::c_void, size: u32) -> i32;
++        }
++        let mut buffer = [0u8; 4096];
++        ensure!(
++            unsafe { proc_pidpath(std::process::id() as i32, buffer.as_mut_ptr().cast(), 4096) }
++                > 0,
++            "Mapped native client path unavailable"
++        );
++        let end = buffer
++            .iter()
++            .position(|byte| *byte == 0)
++            .context("Mapped path is unterminated")?;
++        PathBuf::from(std::ffi::OsStr::from_bytes(&buffer[..end]))
++    };
++    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
++    let path = std::env::current_exe()?;
++    let image = immutable_image(&path)?;
++    Ok((path, image))
++}
++fn peer_owned(stream: &UnixStream) -> Result<()> {
++    use std::os::fd::AsRawFd;
++    #[cfg(target_os = "macos")]
++    {
++        let mut uid = 0;
++        let mut gid = 0;
++        ensure!(
++            unsafe { nix::libc::getpeereid(stream.as_raw_fd(), &mut uid, &mut gid) } == 0
++                && uid == unsafe { nix::libc::getuid() },
++            "Native client control peer is not owned"
++        );
++    }
++    #[cfg(target_os = "linux")]
++    {
++        let mut credentials = std::mem::MaybeUninit::<nix::libc::ucred>::uninit();
++        let mut size = std::mem::size_of::<nix::libc::ucred>() as nix::libc::socklen_t;
++        ensure!(
++            unsafe {
++                nix::libc::getsockopt(
++                    stream.as_raw_fd(),
++                    nix::libc::SOL_SOCKET,
++                    nix::libc::SO_PEERCRED,
++                    credentials.as_mut_ptr().cast(),
++                    &mut size,
++                )
++            } == 0
++                && unsafe { credentials.assume_init() }.uid == unsafe { nix::libc::getuid() },
++            "Native client control peer is not owned"
++        );
++    }
++    Ok(())
++}
++pub fn parent_owner() -> Result<Option<Value>> {
++    let Ok(name) = std::env::var("ZELLIJ_SESSION_NAME") else {
++        return Ok(None);
++    };
++    let pane = std::env::var("ZELLIJ_PANE_ID")
++        .context("Native parent pane unavailable")?
++        .parse::<u32>()?;
++    let target = zellij_utils::sessions::resolve_session_id(&name)
++        .context("Native parent session UUID unavailable")?;
++    Ok(Some(
++        json!({"project":"zellij","target":target,"pane_id":pane}),
++    ))
++}
++
++impl State {
++    fn publish(&self) -> Result<()> {
++        save(&self.metadata, &self.record)
++    }
++    fn command(&mut self, request: Value) -> Result<Value> {
++        let action = request["action"]
++            .as_str()
++            .context("Native client action missing")?;
++        if matches!(action, "inventory" | "verify") {
++            return Ok(self.record.clone());
++        }
++        ensure!(
++            request["expected_process"] == self.record["process"],
++            "Native client incarnation changed"
++        );
++        if action == "retire_owned" {
++            let (path, cp) = self
++                .checkpoint
++                .as_mut()
++                .context("Owned nested client checkpoint unavailable")?;
++            ensure!(
++                cp["run_id"] == request["run_id"]
++                    && cp["defer_to_parent"] == true
++                    && cp["restoration_owner"] == request["restoration_owner"]
++                    && self.pending_input == 0
++                    && self.retire.is_some(),
++                "Native nested retirement owner differs"
++            );
++            if cp["retire_submitted"] == true {
++                return Ok(self.record.clone());
++            }
++            ensure!(
++                self.record["connected"] == true
++                    && socket_identity(Path::new(cp["server_identity"][0].as_str().unwrap()))?
++                        == cp["server_identity"],
++                "Native nested connection changed before retirement"
++            );
++            cp["retire_submitted"] = json!(true);
++            save(path, cp)?;
++            self.record["retire_submitted"] = json!(true);
++            self.publish()?;
++            return Ok(self.record.clone());
++        }
++        ensure!(
++            self.record["retire_submitted"] != true,
++            "Native nested retirement has already been submitted"
++        );
++        if action == "release_original" {
++            let (_, cp) = self
++                .checkpoint
++                .as_ref()
++                .context("Native client checkpoint unavailable")?;
++            ensure!(
++                cp["run_id"] == request["run_id"]
++                    && self.record["connected"] == true
++                    && socket_identity(Path::new(
++                        self.record["server_identity"][0].as_str().unwrap()
++                    ))? == self.record["server_identity"],
++                "Original client cannot be released after retirement"
++            );
++            self.checkpoint = None;
++            self.record["checkpoint"] = Value::Null;
++            self.publish()?;
++            return Ok(self.record.clone());
++        }
++        ensure!(action == "checkpoint", "Unsupported native client mutation");
++        let run = request["run_id"]
++            .as_str()
++            .context("Native client operation missing")?;
++        ensure!(
++            Uuid::parse_str(run)?.to_string() == run,
++            "Native client operation is invalid"
++        );
++        if let Some((_, cp)) = &self.checkpoint {
++            ensure!(
++                cp["run_id"] == request["run_id"],
++                "An earlier client checkpoint still owns this TTY"
++            );
++            return Ok(self.record.clone());
++        }
++        ensure!(
++            self.pending_input == 0,
++            "An admitted native client input handler is still unsettled"
++        );
++        ensure!(
++            self.record["connected"] == true
++                && request["server_identity"] == self.record["server_identity"]
++                && request["baseline_display"] == self.record["display"],
++            "Native client connection or independent display baseline changed"
++        );
++        let directory = PathBuf::from(
++            request["operation_directory"]
++                .as_str()
++                .context("Native client operation directory missing")?,
++        );
++        ensure!(
++            directory.is_absolute(),
++            "Native client operation must be absolute"
++        );
++        let info = fs::symlink_metadata(&directory)?;
++        ensure!(
++            info.is_dir()
++                && info.uid() == unsafe { nix::libc::getuid() }
++                && info.mode() & 0o077 == 0,
++            "Native client operation directory is not private"
++        );
++        let replacement = PathBuf::from(
++            request["replacement_path"]
++                .as_str()
++                .context("Native client replacement missing")?,
++        );
++        let replacement_sha = immutable_image(&replacement)?;
++        ensure!(
++            request["replacement_sha256"] == replacement_sha,
++            "Native client selected image changed"
++        );
++        let server_process = &request["server_process"];
++        ensure!(
++            server_process["owner_verified"] == true
++                && server_process["pid"].as_u64().is_some()
++                && server_process["start_identity"].as_str().is_some()
++                && serde_json::from_str::<Value>(
++                    server_process["native_id"]
++                        .as_str()
++                        .context("Server incarnation missing")?
++                )? == self.record["server_identity"],
++            "Native client server process binding changed"
++        );
++        let focus = &request["focus"];
++        ensure!(
++            focus["tab_position"].as_u64().is_some()
++                && focus["pane_id"].as_array().map(|a| a.len()) == Some(2),
++            "Native client focus is unavailable"
++        );
++        ensure!(
++            request["defer_to_parent"] != true || self.record["restoration_owner"].is_object(),
++            "Native client lacks a parent-pane owner"
++        );
++        let path = directory.join(format!(
++            "zellij-client-{}.json",
++            self.record["process"]["native_id"].as_str().unwrap()
++        ));
++        let cp = json!({"schema_version":1,"restoration_owner":self.record["restoration_owner"],"defer_to_parent":request["defer_to_parent"]==true,"state":"confirmed","run_id":run,"process":self.record["process"],"tty":self.record["tty"],"server_identity":self.record["server_identity"],"server_process":server_process,"session":self.record["session"],"runtime":replacement,"replacement_sha256":replacement_sha,"focus":focus,"recoverable_input":[]});
++        save(&path, &cp)?;
++        self.checkpoint = Some((path, cp));
++        self.record["checkpoint"] = json!({"run_id":run,"state":"confirmed"});
++        self.publish()?;
++        Ok(self.record.clone())
++    }
++}
++
++pub struct ManagedClient {
++    state: Arc<Mutex<State>>,
++}
++impl ManagedClient {
++    pub fn create(
++        enabled: bool,
++        restore: Option<&Path>,
++        owner_restore: Option<&Path>,
++        parent: Option<Value>,
++        session: &str,
++        server_socket: &Path,
++    ) -> Result<Option<Self>> {
++        if !enabled {
++            return Ok(None);
++        }
++        let (_path, image) = own_image()?;
++        let home = std::env::var_os("HOME").context("Native client HOME missing")?;
++        let root = std::env::var_os("XDG_STATE_HOME")
++            .map(PathBuf::from)
++            .unwrap_or_else(|| PathBuf::from(home).join(".local/state"))
++            .join("dotfiles/zellij-activation/clients");
++        private_directory(&root)?;
++        let nonce = Uuid::new_v4().to_string();
++        let socket = root.join(format!("{}.sock", &nonce[..8]));
++        let process = json!({"pid":std::process::id(),"start_identity":started()?,"native_id":nonce,"owner_verified":true});
++        let mut record = json!({"schema_version":1,"restoration_owner":parent,"socket":socket,"process":process,"session":session,"server_identity":socket_identity(server_socket)?,"tty":tty()?,"image_sha256":image,"connected":false,"checkpoint":null,"display": (["TERM","COLORTERM","NO_COLOR","GIT_PAGER"].into_iter().map(|key|(key,std::env::var(key).ok())).collect::<std::collections::BTreeMap<_,_>>())});
++        if let Some(path) = restore.or(owner_restore) {
++            let cp = read_private(path)?;
++            ensure!(
++                cp["state"] == "confirmed"
++                    && cp["session"] == session
++                    && cp["replacement_sha256"] == image
++                    && cp["server_identity"] != record["server_identity"],
++                "Native restored client session/image/server differs"
++            );
++            if owner_restore.is_some() {
++                ensure!(
++                    cp["defer_to_parent"] == true
++                        && cp["retire_submitted"] == true
++                        && cp["restoration_owner"] == record["restoration_owner"]
++                        && cp["process"] != process,
++                    "Native restored parent-pane ownership differs"
++                );
++                let owner = &cp["restoration_owner"];
++                let launch = read_private(&path.parent().unwrap().join(format!(
++                    "zellij-pane-launch-{}-{}.json",
++                    owner["target"].as_str().unwrap(),
++                    owner["pane_id"].as_u64().unwrap()
++                )))?;
++                ensure!(
++                    launch["run_id"] == cp["run_id"]
++                        && launch["terminal_session_id"] == owner["target"]
++                        && launch["pane_id"] == owner["pane_id"]
++                        && launch["wrapper_process"]["pid"] == process["pid"]
++                        && launch["wrapper_process"]["start_identity"] == process["start_identity"],
++                    "Native nested one-time wrapper binding differs"
++                );
++            } else {
++                ensure!(
++                    cp["process"]["pid"] == process["pid"]
++                        && cp["process"]["start_identity"] == process["start_identity"]
++                        && cp["tty"] == record["tty"],
++                    "Native restored client differs from original TTY/PID"
++                );
++                let launch = read_private(&path.parent().unwrap().join(format!(
++                    "zellij-client-exec-{}.json",
++                    cp["process"]["native_id"].as_str().unwrap()
++                )))?;
++                ensure!(
++                    launch["run_id"] == cp["run_id"] && launch["process"] == cp["process"],
++                    "Native client one-time exec receipt differs"
++                );
++            }
++            record["restored_checkpoint"] = json!({"run_id":cp["run_id"],"process":cp["process"],"tty":cp["tty"],"focus":cp["focus"],"input_recovery_path":path});
++        }
++        let listener = UnixListener::bind(&socket)?;
++        fs::set_permissions(&socket, fs::Permissions::from_mode(0o600))?;
++        let state = Arc::new(Mutex::new(State {
++            record,
++            metadata: root.join(format!("{}.json", nonce)),
++            checkpoint: None,
++            pending_input: 0,
++            retire: None,
++        }));
++        state.lock().unwrap().publish()?;
++        *ACTIVE.get_or_init(|| Mutex::new(None)).lock().unwrap() = Some(state.clone());
++        let served = state.clone();
++        thread::Builder::new()
++            .name("activation-client".into())
++            .spawn(move || {
++                for stream in listener.incoming() {
++                    let Ok(mut stream) = stream else { continue };
++                    let result = (|| -> Result<Value> {
++                        peer_owned(&stream)?;
++                        stream.set_read_timeout(Some(Duration::from_secs(5)))?;
++                        let mut line = String::new();
++                        BufReader::new(&stream).take(16_385).read_line(&mut line)?;
++                        ensure!(line.len() <= 16_384, "Native client request exceeds limit");
++                        served.lock().unwrap().command(serde_json::from_str(&line)?)
++                    })();
++                    let reply = match result {
++                        Ok(value) => value,
++                        Err(error) => json!({"error":error.to_string()}),
++                    };
++                    let _ = writeln!(stream, "{}", reply);
++                    let callback = {
++                        let mut state = served.lock().unwrap();
++                        if state.record["retire_submitted"] == true {
++                            state.retire.take()
++                        } else {
++                            None
++                        }
++                    };
++                    if let Some(callback) = callback {
++                        callback();
++                    }
++                }
++            })?;
++        Ok(Some(Self { state }))
++    }
++    pub fn nonce(&self) -> String {
++        self.state.lock().unwrap().record["process"]["native_id"]
++            .as_str()
++            .unwrap()
++            .to_owned()
++    }
++    pub fn connected(&self) -> Result<()> {
++        let mut state = self.state.lock().unwrap();
++        if state.record["connected"] == true {
++            return Ok(());
++        }
++        state.record["connected"] = json!(true);
++        state.publish()
++    }
++    pub fn retirement_callback(&self, callback: impl Fn() + Send + Sync + 'static) {
++        self.state.lock().unwrap().retire = Some(Arc::new(callback));
++    }
++    pub fn restoration_focus(path: Option<&Path>) -> Result<Option<(usize, (u32, bool))>> {
++        let Some(path) = path else { return Ok(None) };
++        let cp = read_private(path)?;
++        Ok(Some((
++            cp["focus"]["tab_position"]
++                .as_u64()
++                .context("Retained client tab unavailable")? as usize,
++            (
++                cp["focus"]["pane_id"][0]
++                    .as_u64()
++                    .context("Retained client pane unavailable")? as u32,
++                cp["focus"]["pane_id"][1]
++                    .as_bool()
++                    .context("Retained client pane type unavailable")?,
++            ),
++        )))
++    }
++    /// Retirement only waits for the owning operation's verified server-ready receipt.
++    pub fn resume_after_retirement(&self) -> Result<()> {
++        let (path, cp) = {
++            let mut state = self.state.lock().unwrap();
++            state.record["connected"] = json!(false);
++            state.publish()?;
++            ensure!(
++                state.record["input_retention_error"].is_null(),
++                "Native client input durability is unresolved; retain this TTY"
++            );
++            match &state.checkpoint {
++                Some(value) => value.clone(),
++                None => return Ok(()),
++            }
++        };
++        let old_socket = PathBuf::from(
++            cp["server_identity"][0]
++                .as_str()
++                .context("Retained native socket unavailable")?,
++        );
++        loop {
++            let key = sha256(cp["session"].as_str().unwrap().as_bytes());
++            let ready_path = path
++                .parent()
++                .unwrap()
++                .join(format!("zellij-server-ready-{}.json", key));
++            if let Ok(ready) = read_private(&ready_path) {
++                if ready["run_id"] == cp["run_id"]
++                    && ready["original_process"] == cp["server_process"]
++                    && socket_identity(&old_socket).ok()
++                        == Some(serde_json::from_str(
++                            ready["process"]["native_id"]
++                                .as_str()
++                                .context("Verified server incarnation missing")?,
++                        )?)
++                    && ready["process"]["native_id"] != cp["server_identity"].to_string()
++                {
++                    let runtime = PathBuf::from(cp["runtime"].as_str().unwrap());
++                    ensure!(
++                        immutable_image(&runtime)? == cp["replacement_sha256"],
++                        "Client replacement image changed before exec"
++                    );
++                    let launch = path.parent().unwrap().join(format!(
++                        "zellij-client-exec-{}.json",
++                        cp["process"]["native_id"].as_str().unwrap()
++                    ));
++                    let mut out = OpenOptions::new()
++                        .write(true)
++                        .create_new(true)
++                        .mode(0o600)
++                        .open(&launch)
++                        .context("Retained client exec intent: reconcile without replay")?;
++                    serde_json::to_writer(
++                        &mut out,
++                        &json!({"state":"requested","run_id":cp["run_id"],"process":cp["process"]}),
++                    )?;
++                    out.sync_all()?;
++                    File::open(path.parent().unwrap())?.sync_all()?;
++                    let error = Command::new(runtime)
++                        .args([
++                            "--activation-client",
++                            "--activation-client-restoration",
++                            path.to_str().unwrap(),
++                            "attach",
++                            cp["session"].as_str().unwrap(),
++                        ])
++                        .env_remove("ZELLIJ")
++                        .env_remove("ZELLIJ_SESSION_NAME")
++                        .env_remove("ZELLIJ_PANE_ID")
++                        .exec();
++                    bail!("Native client exec remains unconfirmed: {}", error);
++                }
++            }
++            thread::sleep(Duration::from_millis(20));
++        }
++    }
++}
++pub struct InputAdmission {
++    state: Option<Arc<Mutex<State>>>,
++}
++impl Drop for InputAdmission {
++    fn drop(&mut self) {
++        if let Some(state) = &self.state {
++            state.lock().unwrap().pending_input -= 1;
++        }
++    }
++}
++/// The admission count starts before forwarding and ends after the whole input handler.
++pub fn input_admission(bytes: &[u8]) -> Result<Option<InputAdmission>> {
++    let active = ACTIVE
++        .get()
++        .and_then(|global| global.lock().unwrap().clone());
++    let Some(active) = active else {
++        return Ok(Some(InputAdmission { state: None }));
++    };
++    let mut state = active.lock().unwrap();
++    if let Some((path, cp)) = &mut state.checkpoint {
++        cp["recoverable_input"]
++            .as_array_mut()
++            .unwrap()
++            .push(json!(bytes));
++        let retained = (|| -> Result<()> {
++            ensure!(
++                serde_json::to_vec(&cp["recoverable_input"])?.len() <= 3 * 1024 * 1024,
++                "Native recoverable input checkpoint reached its private size limit"
++            );
++            save(path, cp)
++        })();
++        state.record["input_retention_error"] = retained
++            .err()
++            .map(|error| json!(error.to_string()))
++            .unwrap_or(Value::Null);
++        let _ = state.publish();
++        return Ok(None);
++    }
++    state.pending_input += 1;
++    drop(state);
++    Ok(Some(InputAdmission {
++        state: Some(active),
++    }))
++}
++
++pub fn checkpointed() -> bool {
++    ACTIVE
++        .get()
++        .and_then(|global| global.lock().ok()?.clone())
++        .map(|active| active.lock().unwrap().checkpoint.is_some())
++        .unwrap_or(false)
++}

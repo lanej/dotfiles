@@ -24,30 +24,21 @@ export CARGO_PROFILE_RELEASE_LTO=true
 export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
 export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-2}"
 
-install_flags=(--locked)
 # Installation evidence belongs with the binary, not in a restorable build cache.
 install_stamp="$HOME/.local/.dotfiles-zellij-install"
-install_identity="revision-target-v2:$zellij_revision"
-if [ ! -x "$HOME/.local/bin/zellij" ] || [ "$(cat "$install_stamp" 2>/dev/null || true)" != "$install_identity" ]; then
-    # Cargo otherwise skips an owned same-revision binary, even if it was built
-    # from stale shared artifacts before revision-isolated installation existed.
-    install_flags+=(--force)
-else
-    installed=$(rustup run "$zellij_toolchain" cargo install --list --root "$HOME/.local")
-    # A successful isolated install can use Cargo's normal same-revision skip.
-    if ! grep -Fxq '    zellij' <<< "$installed"; then
-        install_flags+=(--force)
+zellij_scripts=$(cd -- "$(dirname -- "$0")" && pwd)
+zellij_patch="$zellij_scripts/../zellij/patches/activation-v1.patch"
+zellij_patch_sha=$(shasum -a 256 "$zellij_patch" | cut -d ' ' -f 1)
+install_identity="immutable-runtime-v4:$zellij_revision:$zellij_patch_sha"
+if [ -x "$HOME/.local/bin/zellij" ] && [ "$(cat "$install_stamp" 2>/dev/null || true)" = "$install_identity" ]; then
+    # A selected immutable image can be reused; never overwrite a mapped vnode.
+    if python3 "$zellij_scripts/zellij-artifacts.py" runtime-selected; then
+        printf '%s\n' 'Selected immutable Zellij runtime is already installed.'
+        exit 0
     fi
 fi
-rustup run "$zellij_toolchain" cargo install \
-    --git https://github.com/lanej/zellij.git \
-    --rev "$zellij_revision" \
-    "${install_flags[@]}" \
-    --root "$HOME/.local" \
-    --target "$zellij_host" \
-    --no-default-features \
-    --features plugins_from_target,vendored_curl,web_server_capability \
-    --bin zellij zellij
+python3 "$zellij_scripts/build-zellij-activation.py" "$zellij_revision" \
+    "$zellij_toolchain" "$zellij_host" "$zellij_patch"
 
 printf '%s\n' "$install_identity" > "$install_stamp"
 printf '%s\n' 'Restart existing Zellij sessions to use the installed runtime.'
