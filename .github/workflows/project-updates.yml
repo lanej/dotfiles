@@ -12,6 +12,11 @@ on:
       - 'scripts/test-project-update.py'
       - 'scripts/install-studio.py'
       - 'scripts/bun_runtime.py'
+      - 'scripts/runtime_requirements.py'
+      - 'scripts/prepare-project-runtimes.py'
+      - 'scripts/dotfiles-config.py'
+      - 'bootstrap.sh'
+      - 'bootstrap/tools.toml'
       - 'config/project-updates.toml'
       - '.github/workflows/project-updates.yml'
   push:

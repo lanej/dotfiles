@@ -12,8 +12,69 @@ import tempfile
 import tarfile
 import tomllib
 
+from runtime_requirements import combined_requirements, project_requirements, register_requirements
+
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def check_runtime_requirements(home, env, run, command, config):
+    """Installed requirements and a pending install share the same observable plan."""
+    original = config.read_text()
+    config.write_text("")
+    source = home / "project"
+    source.mkdir()
+    manifest = source / "package.json"
+    manifest.write_text(json.dumps({"engines": {"bun": ">=1.9.0", "npm": ">=10"}, "packageManager": "bun@1.4.5"}))
+    assert project_requirements(source) == {"bun": "1.9.0"}, "Package-manager metadata is not a runtime constraint"
+    first = register_requirements("first", project_requirements(source), home, environment=env, source=manifest)
+    second = register_requirements("second", {"bun": "1.10.0", "node": "22.0.0"}, home, environment=env)
+    before = {path: path.read_bytes() for path in first.parent.iterdir()}
+    plan = json.loads(run(*command, "--format", "plan").stdout)
+    tools = {tool["name"]: tool for tool in plan["tools"]}
+    assert tools["bun"]["version"] == "1.10.0", "Numeric minimum comparison must not sort 1.9 above 1.10"
+    assert tools["node"]["version"] == "24", "A project cannot lower the catalog baseline"
+    requirement = plan["runtime_requirements"]["bun"]
+    assert requirement["minimum"] == "1.10.0"
+    assert {str(first), str(second)} <= {entry["source"] for entry in requirement["sources"]}
+    assert "bun" not in {tool["name"] for tool in plan["baseline"]["tools"]}
+    assert before == {path: path.read_bytes() for path in first.parent.iterdir()}, "Planning must not rewrite declarations"
+    assert (ROOT / "config/targets.mk").read_text() == run(*command, "--format", "make-targets").stdout
+    assert combined_requirements(environment={"HOME": str(home / "another-home")}) == {}, "Resolution must use its supplied environment"
+
+    prepared = home / "prepared.json"
+    prepared.write_text(json.dumps({"projects": {"incoming": {"engines": {"bun": ">=1.11.0", "go": ">=1.30", "rust": ">=1.95.0"}, "source": str(manifest)}}}))
+    env["DOTFILES_RUNTIME_REQUIREMENTS_FILE"] = str(prepared)
+    pending = json.loads(run(*command, "--format", "plan").stdout)
+    versions = {tool["name"]: tool["version"] for tool in pending["tools"] if "version" in tool}
+    assert (versions["bun"], versions["go"], versions["rust"]) == ("1.11.0", "1.30.0", "1.95.0")
+    assert before == {path: path.read_bytes() for path in first.parent.iterdir()}, "Prepared requirements remain ephemeral"
+    env.pop("DOTFILES_RUNTIME_REQUIREMENTS_FILE")
+
+    config.write_text("[tools]\nbun = false\n")
+    blocked = run(*command, "--format", "plan", check=False)
+    assert blocked.returncode != 0 and "requires tools.bun" in blocked.stderr
+    config.write_text("")
+    for unsupported in ("1.4.5", "^1.4.5", ">=1.4.5 <2.0.0", ">=1.4.5-beta.1"):
+        second.write_text(json.dumps({"engines": {"bun": unsupported}}))
+        rejected = run(*command, "--format", "plan", check=False)
+        assert rejected.returncode != 0 and "runtime requirement" in rejected.stderr, rejected.stderr
+    second.unlink()
+    register_requirements("first", {"bun": "1.12.0"}, home, environment=env)
+    assert combined_requirements(environment=env)["bun"]["minimum"] == "1.12.0", "A reinstall replaces its declaration atomically"
+    first.unlink()
+    first.symlink_to(manifest)
+    preserved = manifest.read_bytes()
+    try:
+        register_requirements("first", {"bun": "1.13.0"}, home, environment=env)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Registration overwrote a symlinked declaration")
+    assert manifest.read_bytes() == preserved
+    first.unlink()
+    first.parent.rmdir()
+    config.write_text(original)
 
 
 def main():
@@ -21,7 +82,7 @@ def main():
         home = Path(temporary)
         env = {**os.environ, "HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config"),
                "XDG_CACHE_HOME": str(home / ".cache")}
-        for name in ("DOTFILES_CONFIG", "IS_EASYPOST", "BOOTSTRAP_MERMAID"):
+        for name in ("DOTFILES_CONFIG", "IS_EASYPOST", "BOOTSTRAP_MERMAID", "DOTFILES_RUNTIME_REQUIREMENTS_FILE"):
             env.pop(name, None)
         command = [sys.executable, str(ROOT / "scripts/dotfiles-config.py")]
 
@@ -64,7 +125,7 @@ def main():
         octo = json.loads(run(*command, "--platform", "macos", "--format", "json").stdout)
         octo_names = [tool["name"] for tool in octo["tools"]]
         assert "octo-manager" in octo_names
-        assert all(octo_names.index(dependency) < octo_names.index("octo-manager") for dependency in ("git", "gh", "go"))
+        assert all(octo_names.index(dependency) < octo_names.index("octo-manager") for dependency in ("git", "gh", "go", "bun"))
         assert not any("octo" in target for target in octo["setup"]), "Configuration must not install or start the service"
         linux_octo=json.loads(run(*command,"--platform","linux","--format","json").stdout)
         assert "octo-manager" in {tool["name"] for tool in linux_octo["tools"]}
@@ -92,10 +153,11 @@ def main():
         for host in ("macos", "linux"):
             direct = json.loads(run(*command, "--platform", host, "--format", "json").stdout)
             studio = next(tool for tool in direct["tools"] if tool["name"] == "studio")
-            assert studio["installer"] == "studio" and studio["requires"] == ["git"]
+            assert studio["installer"] == "studio" and studio["requires"] == ["git", "bun"]
             assert not {"pi", "octo-manager", "beads"} & {tool["name"] for tool in direct["tools"]}
             assert not any("studio" in target for target in direct["setup"]), "Configuration must not download or install Studio"
 
+        check_runtime_requirements(home, env, run, command, config)
         assert names.index("go") < names.index("intent") and names.index("go") < names.index("keylease")
         config.write_text('sets = ["workstation"]\n[tools]\nkeylease = false\n')
         selected = json.loads(run(*command, "--format", "json").stdout)
