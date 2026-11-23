@@ -348,3 +348,52 @@ await test("optional integrations stay inactive until enabled and fail before ef
     await rm(temporary, { recursive: true, force: true });
   }
 });
+
+await test("configuration upgrades the exact legacy dotfiles package and theme pair", async () => {
+  const temporary = await mkdtemp(join(tmpdir(), "pi-driver-legacy-config-"));
+  try {
+    const agent = join(temporary, "agent");
+    const previous = join(temporary, "dotfiles/pi/daily-driver");
+    const legacyTheme = join(
+      temporary,
+      "dotfiles/design-system/generated/pi.json",
+    );
+    await mkdir(previous, { recursive: true });
+    await mkdir(join(temporary, "dotfiles/design-system/generated"), {
+      recursive: true,
+    });
+    await mkdir(join(agent, "themes"), { recursive: true });
+    await writeFile(
+      join(previous, "package.json"),
+      JSON.stringify({ name: "@lanej/pi-daily-driver" }),
+    );
+    await writeFile(legacyTheme, "{}");
+    await symlink(legacyTheme, join(agent, "themes/dotfiles.json"));
+    await writeFile(
+      join(agent, "settings.json"),
+      JSON.stringify({
+        theme: "dotfiles",
+        packages: ["keep-package", previous],
+      }),
+    );
+    await execute(
+      "python3",
+      [join(root, "scripts/configure.py"), root, agent],
+      { env: { ...process.env, PI_CODING_AGENT_DIR: agent } },
+    );
+    const settings = z
+      .object({ packages: z.array(z.string()), theme: z.string() })
+      .parse(JSON.parse(await readFile(join(agent, "settings.json"), "utf8")));
+    assert.deepEqual(settings.packages, [
+      "keep-package",
+      root.replace(/\/$/, ""),
+    ]);
+    assert.equal(settings.theme, "dotfiles");
+    assert.equal(
+      await readlink(join(agent, "themes/dotfiles.json")),
+      join(root, "resources/theme.json"),
+    );
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
+});

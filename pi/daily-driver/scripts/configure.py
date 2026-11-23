@@ -47,6 +47,25 @@ with (agent / ".pi-driver-configure.lock").open("a") as lock:
         raise SystemExit("The installed driver theme is missing.")
     theme_link = agent / "themes/dotfiles.json"
     owned_themes = {str(Path(item) / "resources/theme.json") for item in [*managed, str(package)]}
+    # The former dotfiles helper registered this package and its generated theme together.
+    # Recognize that exact pair while leaving unrelated packages and theme links alone.
+    for entry in packages:
+        if not isinstance(entry, str):
+            continue
+        previous = Path(entry)
+        if not previous.is_absolute() or previous.name != "daily-driver" or previous.parent.name != "pi":
+            continue
+        legacy_theme = previous.parents[1] / "design-system/generated/pi.json"
+        if not theme_link.is_symlink() or theme_link.resolve() != legacy_theme.resolve():
+            continue
+        try:
+            metadata = json.loads((previous / "package.json").read_text())
+        except (OSError, ValueError):
+            continue
+        if isinstance(metadata, dict) and metadata.get("name") == "@lanej/pi-daily-driver":
+            owned_themes.add(str(legacy_theme.resolve()))
+            if entry not in managed:
+                managed.append(entry)
     if theme_link.is_symlink():
         if str(theme_link.resolve()) not in owned_themes:
             raise SystemExit("Preserving the existing dotfiles.json theme link; configure its source explicitly.")
