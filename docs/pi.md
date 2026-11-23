@@ -1,6 +1,8 @@
-# Pi trial
+# Pi
 
-[Pi](https://github.com/earendil-works/pi) is an optional coding-agent runtime. The dotfiles integration shares the existing Builder standard, skills, and agent instructions. It does not change the default coding client.
+[Pi](https://github.com/earendil-works/pi) is an optional coding-agent runtime. The dotfiles integration shares skills and role instructions. The [daily driver](../pi/daily-driver/README.md) adds the shared theme, task browser, idle compaction, work/personal profiles and a terminal workflow for an existing Beads task. Start it from Zellij, steer the Pi worker in its managed checkout and inspect the outcome from a separate terminal with Paseo offline.
+
+The [runtime integration plan](../pi/daily-driver/RUNTIME.md) evaluates existing Pi packages for subagent delegation and session management, with adapters for the native worktree manager, Beads authority, Octo feedback delivery, and the merge/removal/archive sequence. It separates the next read-only delegation increment from task-bound coding and the complete delivery lifecycle.
 
 ## Install
 
@@ -15,14 +17,14 @@ This integration uses Pi's default `~/.pi/agent` directory. If you set `PI_CODIN
 | Source | Pi interface |
 | --- | --- |
 | Existing `ai/skills/` catalog | `~/.agents/skills/dotfiles`, already used by Codex and discovered by Pi |
-| Shared Builder package | A managed guidance block in Pi's active user context file |
+| User guidance | Existing instructions are preserved; retired managed Builder blocks are removed |
 | `ai/agents/*.md` | `/dotfiles-<filename> <task>` prompt templates |
 
 For example, `/dotfiles-code-reviewer review the current diff` asks the current Pi conversation to read and follow `ai/agents/code-reviewer.md`. Templates point at the shared files, so role edits are available without maintaining a separate Pi copy. Run `make pi` after adding or removing roles or changing the shared skill catalog, then `/reload` in running Pi sessions.
 
 The templates are role prompts in the current conversation. They do not create subagents, choose models, or enforce the Claude tool names in agent frontmatter. In particular, the reviewer template does not restrict an otherwise writable Pi session. A runtime adapter must supply a restricted tool set when that boundary is required. Skills that depend on Claude-specific hooks or APIs also need an adapter before those capabilities work in Pi.
 
-Local Pi prompts are preserved, including collisions with the `dotfiles-` names. Only generated templates with the installer's marker are refreshed or removed. Existing user guidance is retained around the managed Builder block; linked instruction files are left alone with an actionable error. The existing shared skill synchronizer retains its platform exclusions and standalone Builder package.
+Local Pi prompts are preserved, including collisions with the `dotfiles-` names. Only generated templates with the installer's marker are refreshed or removed. Existing user guidance is retained while retired managed Builder blocks are removed; linked instruction files are left alone with an actionable error. The existing shared skill synchronizer retains its project-only and platform exclusions.
 
 ## Verification boundary
 

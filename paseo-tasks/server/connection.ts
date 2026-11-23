@@ -8,7 +8,7 @@ import type { Router } from "./service";
 
 export class Connection implements Router {
   readonly raw: DaemonClient;
-  constructor(home: string) {
+  constructor(home: string, { reconnect = true } = {}) {
     const config = JSON.parse(readFileSync(join(home, "config.json"), "utf8"));
     const listen = config.daemon?.listen;
     if (
@@ -24,15 +24,21 @@ export class Connection implements Router {
       url: `ws://${listen}/ws`,
       clientId: `tasks-${randomUUID()}`,
       password: process.env.PASEO_PASSWORD,
-      reconnect: { enabled: true },
+      reconnect: { enabled: reconnect },
     });
   }
-  async open() {
+  async localServerId() {
     await this.raw.connect();
     const info = this.raw.getLastServerInfoMessage();
     if (!info?.serverId)
       throw new Error("Paseo did not establish this host's identity");
-    return { serverId: info.serverId, paseo: createPaseoApi(this.raw) };
+    return info.serverId;
+  }
+  async open() {
+    return {
+      serverId: await this.localServerId(),
+      paseo: createPaseoApi(this.raw),
+    };
   }
   async call(serverId: string, method: string, input: unknown) {
     const self = this.raw.getLastServerInfoMessage()?.serverId;

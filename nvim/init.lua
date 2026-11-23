@@ -7,6 +7,7 @@
 --
 
 local use_ghlite = require("dotfiles-config").enabled("features.nvim_ghlite")
+require("file-opener").setup()
 
 vim.opt.autoread = true
 vim.opt.autoindent = true

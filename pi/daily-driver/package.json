@@ -1,0 +1,59 @@
+{
+  "name": "@lanej/pi-daily-driver",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "pi": {
+    "extensions": [
+      "./extension.ts"
+    ]
+  },
+  "scripts": {
+    "driver": "node --import tsx cli.ts",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "test:beads-native": "node --import tsx acceptance/beads-control.ts",
+    "test:pi-native": "node --import tsx acceptance/pi-resources.ts",
+    "format": "node scripts/check-typescript.mjs fmt",
+    "check": "node scripts/check-typescript.mjs all",
+    "lint": "node scripts/check-typescript.mjs lint",
+    "typecheck": "node scripts/check-typescript.mjs typecheck",
+    "quality:tools": "node scripts/check-typescript.mjs tools",
+    "audit": "node scripts/check-typescript.mjs audit",
+    "test:delegation-native": "node --import tsx acceptance/delegation.ts",
+    "generate:zellij": "node scripts/generate-zellij.mjs",
+    "check:zellij": "node scripts/generate-zellij.mjs --check",
+    "build:aot": "node scripts/build-aot.mjs"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "2.16.0",
+    "@lanej/task-runtime": "file:../../tools/task-runtime",
+    "@tintinweb/pi-subagents": "0.26.2",
+    "commander": "^14.0.0",
+    "pi-git-diff": "0.1.1",
+    "zod": "^4.0.0",
+    "@lanej/pi-components": "file:../../tools/pi-components"
+  },
+  "devDependencies": {
+    "@bufbuild/buf": "1.75.0",
+    "@bufbuild/protoc-gen-es": "2.16.0",
+    "@earendil-works/pi-coding-agent": "1.4.0",
+    "@earendil-works/pi-tui": "1.4.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
+    "typebox": "1.3.27",
+    "typescript": "^5.9.3"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
+    "typebox": "*"
+  },
+  "overrides": {
+    "minimatch": "11.0.3",
+    "undici": "8.12.3"
+  }
+}

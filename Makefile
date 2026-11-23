@@ -106,7 +106,7 @@ instruction-size:
 	$(call require-command,jq)
 	@bash "$(DOTFILES)/claude/evals/skill-maintenance/check_size.sh" --base "$(INSTRUCTION_SIZE_BASE)" --installed-home "$(HOME)"
 
-lint: shellcheck audit-skills instruction-size theme-check lua-check
+lint: shellcheck shell-format-check audit-skills instruction-size theme-check lua-check
 
 .PHONY: lua-check lua-format
 lua-check:
@@ -132,6 +132,12 @@ test-theme-presentation:
 	@"$(UV)" run --script "$(DOTFILES)/scripts/test-theme-presentation.py"
 test-theme-native:
 	@"$(UV)" run --script "$(DOTFILES)/scripts/test-theme-native.py"
+
+.PHONY: shell-format shell-format-check
+shell-format:
+	@bash "$(MAKE_SCRIPTS)/shell-format.sh" "$(DOTFILES)" --write
+shell-format-check:
+	@bash "$(MAKE_SCRIPTS)/shell-format.sh" "$(DOTFILES)" --check
 
 shellcheck:
 	$(call require-command,shellcheck)
@@ -221,6 +227,9 @@ test-zellij-helpers: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-helpers.py"
 test-zellij-pane: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-helpers.py" --live-panes
+.PHONY: test-zellij-file-hints
+test-zellij-file-hints: zellij-helpers
+	@python3 "$(DOTFILES)/scripts/test-zellij-file-hints.py"
 .PHONY: test-zellij-notifications test-zellij-notifications-ui
 test-zellij-notifications: zellij-helpers
 	@python3 "$(DOTFILES)/scripts/test-zellij-notifications.py"
@@ -304,7 +313,7 @@ test-treehouse-worktree-policy: worktree-policy-native
 test-worktree-manager:
 	@"$(UV)" run --no-project "$(DOTFILES)/scripts/test-worktree-manager.py" --binary "$(WORKTREE_MANAGER_BINARY)" --git "$(GIT_WORKTREE_HOOKS_GIT)"
 test-install-git-worktree-hooks:
-	@"$(UV)" run --no-project "$(DOTFILES)/scripts/test-install-git-worktree-hooks.py" --archive "$(GIT_WORKTREE_HOOKS_ARCHIVE)"
+	@"$(UV)" run --no-project --python ">=3.11" bash "$(DOTFILES)/scripts/test-install-git-worktree-hooks.sh" --archive "$(GIT_WORKTREE_HOOKS_ARCHIVE)"
 claude-plugins:
 	$(call require-command,claude)
 	@"$(DOTFILES)/bin/claude-remove-blocked-plugins" --blocklist "$(DOTFILES)/claude/blocked-plugins.json"
@@ -605,6 +614,18 @@ pi-resources: codex-skills
 	@python3 "$(DOTFILES)/bin/sync-pi-resources" --source "$(DOTFILES)/ai" --home "$(HOME)"
 test-pi-resources:
 	@python3 "$(DOTFILES)/scripts/test-pi-resources.py"
+
+.PHONY: pi-driver-config pi-driver-aot test-pi-driver test-pi-components
+test-pi-components:
+	@bun run --cwd "$(DOTFILES)/tools/pi-components" check
+
+pi-driver-config:
+	@python3 "$(DOTFILES)/scripts/configure-pi-driver.py" "$(DOTFILES)/pi/daily-driver" "$(HOME)/.pi/agent"
+pi-driver-aot:
+	@npm --prefix "$(DOTFILES)/pi/daily-driver" run build:aot
+test-pi-driver:
+	@npm --prefix "$(DOTFILES)/pi/daily-driver" run check
+	@npm --prefix "$(DOTFILES)/pi/daily-driver" run test:pi-native
 
 firstmate-retire:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"

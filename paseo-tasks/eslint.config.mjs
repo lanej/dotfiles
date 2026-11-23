@@ -1,6 +1,6 @@
 import tseslint from "typescript-eslint";
 export default [
-  { ignores: ["node_modules/**"] },
+  { ignores: ["node_modules/**", "server/generated/**"] },
   {
     files: ["**/*.ts", "**/*.tsx"],
     languageOptions: {

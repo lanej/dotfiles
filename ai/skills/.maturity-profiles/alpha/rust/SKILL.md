@@ -7,4 +7,4 @@ description: "Rust development with cargo - build strategy, clippy triage, testi
 
 Run check-only formatting and affected retained-behavior tests, using `cargo check` for compile feedback as needed. Prioritize primary happy paths and keep provisional interfaces easy to change. Preserve stronger existing project requirements.
 
-Read [shared guidance](references/common.md) for invariant rules and tool mechanics. Command examples there describe available capabilities; they do not add checks beyond this selected entrypoint and the repository's requirements. When selecting verification, use the installed testing guidance for minimum effective coverage and useful CLI diagnostics. Preserve authored project requirements and explicit authority limits.
+<!-- source-code:shared-guidance -->

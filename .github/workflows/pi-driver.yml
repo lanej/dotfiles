@@ -1,0 +1,90 @@
+name: Pi daily driver
+
+on:
+  pull_request:
+    paths:
+      - 'pi/daily-driver/**'
+      - 'ai/skills/socrates/SKILL.md'
+      - 'ai/skills/socrates/references/dialogue.txt'
+      - 'design-system/generated/pi.json'
+      - 'bin/pi-driver'
+      - 'scripts/configure-pi-driver.py'
+      - 'scripts/install-worktree-manager'
+      - 'bootstrap/tools.toml'
+      - 'tools/task-runtime/**'
+      - 'tools/pi-components/**'
+      - 'tools/beads/**'
+      - 'config/beads/**'
+      - 'scripts/install-zellij'
+      - '.github/workflows/pi-driver.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'pi/daily-driver/**'
+      - 'ai/skills/socrates/SKILL.md'
+      - 'ai/skills/socrates/references/dialogue.txt'
+      - 'design-system/generated/pi.json'
+      - 'bin/pi-driver'
+      - 'scripts/configure-pi-driver.py'
+      - 'scripts/install-worktree-manager'
+      - 'bootstrap/tools.toml'
+      - 'tools/task-runtime/**'
+      - 'tools/pi-components/**'
+      - 'tools/beads/**'
+      - 'config/beads/**'
+      - 'scripts/install-zellij'
+      - '.github/workflows/pi-driver.yml'
+
+jobs:
+  foundation:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: pi/daily-driver/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: tools/pi-components/.bun-version
+      - run: bun install --cwd tools/pi-components --frozen-lockfile --ignore-scripts
+      - run: bun install --cwd tools/pi-components/.typescript-quality --frozen-lockfile --ignore-scripts
+      - run: make test-pi-components
+      - run: npm --prefix pi/daily-driver ci --ignore-scripts
+      - run: npm --prefix pi/daily-driver/.typescript-quality ci --ignore-scripts
+      - name: Verify generated Zellij bindings against the runtime pin
+        if: runner.os == 'Linux'
+        run: npm --prefix pi/daily-driver run check:zellij
+      - run: make test-pi-driver
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+      - name: Install pinned worktree manager
+        run: |
+          version=$(python3 -c 'import tomllib; print(tomllib.load(open("bootstrap/tools.toml","rb"))["tools"]["worktree-manager"]["version"])')
+          HOME="$RUNNER_TEMP/manager" sh scripts/install-worktree-manager "$version"
+          echo "$RUNNER_TEMP/manager/.local/bin" >> "$GITHUB_PATH"
+      - run: npm --prefix pi/daily-driver run test:delegation-native
+      - run: npm --prefix pi/daily-driver run test:delegation-native -- --lost-allocation
+      - run: npm --prefix pi/daily-driver run test:delegation-native -- --cancel
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: pi/daily-driver/.bun-version
+      - name: Verify the compiled driver entry point
+        run: |
+          npm --prefix pi/daily-driver run build:aot
+          npm --prefix pi/daily-driver test
+      - name: Verify admission and completion against the pinned Beads service
+        if: runner.os == 'Linux'
+        run: |
+          python3 tools/beads/beads-service.py install --no-start
+          manifest="$HOME/.local/share/beads-service/runtime.json"
+          npm --prefix pi/daily-driver run test:beads-native -- \
+            --bd "$(jq -er .bd "$manifest")" --dolt "$(jq -er .dolt "$manifest")"

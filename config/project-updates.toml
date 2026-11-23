@@ -13,7 +13,7 @@ command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "zellij"]
 # Beads and Dolt versions are curated together in the dotfiles catalog.
 [projects.beads]
 path = "{dotfiles}"
-command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "beads"]
+command = ["{python}", "{dotfiles}/tools/beads/project-update.py"]
 
 [projects.bedrock-router]
 path = "~/src/bedrock-router"
@@ -26,3 +26,9 @@ command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "intent"]
 [projects.keylease]
 path = "~/src/1password-agent"
 command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "keylease"]
+
+# Dotfiles pins the manager and patches; pull also selects upstream stable Git.
+[projects.worktree-manager]
+path = "{dotfiles}"
+command = ["bash", "{dotfiles}/scripts/worktree-manager-update.sh"]
+pull_sources = true

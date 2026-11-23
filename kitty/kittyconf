@@ -10,7 +10,7 @@ map shift+super+r load_config_file ~/.config/kitty/kitty.conf
 map shift+super+o kitten open_last_url.py
 # kitty.select-url: Select a visible URL with home-row hints.
 map ctrl+shift+e kitten select_hint.py url
-# kitty.select-hyperlink: Select a hyperlink or preview an image from the current Zellij pane.
+# kitty.select-hyperlink: Select a hyperlink or open a file from the current Zellij pane.
 map shift+super+u kitten select_hint.py
 # kitty.new-tab: Open a new tab.
 map super+n new_tab

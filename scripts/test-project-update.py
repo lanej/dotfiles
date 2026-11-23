@@ -6,6 +6,7 @@ import fcntl
 import hashlib
 import os
 import shutil
+import shlex
 from pathlib import Path
 import subprocess
 import sys
@@ -230,10 +231,10 @@ class LifecycleTests(unittest.TestCase):
                 self.assertEqual(arguments, ["-C", str(ROOT.resolve()), *targets])
 
     def test_beads_stages_then_restarts_only_matching_artifacts(self):
-        scripts = self.checkout / "scripts"
-        scripts.mkdir()
-        adapter = scripts / "project-lifecycle.py"
-        shutil.copyfile(ADAPTER, adapter)
+        scripts = self.checkout / "tools/beads"
+        scripts.mkdir(parents=True)
+        adapter = scripts / "project-update.py"
+        shutil.copyfile(ROOT / "tools/beads/project-update.py", adapter)
         (scripts / "beads_config.py").write_text("# Fixture config reader\n")
         catalog = self.checkout / "bootstrap/tools.toml"
         catalog.parent.mkdir()
@@ -276,7 +277,7 @@ elif action=='status':
         self.git(self.checkout, "commit", "-m", "Beads adapter fixture")
         revision = self.git(self.checkout, "rev-parse", "HEAD")
         self.config.write_text(f'[projects.beads]\npath={json.dumps(str(self.checkout))}\n'
-                               f'command={json.dumps([sys.executable, str(adapter), "beads"])}\n')
+                               f'command={json.dumps([sys.executable, str(adapter)])}\n')
         persistent = self.base / ".local/state/beads-service/workspace/valuable"
         persistent.parent.mkdir(parents=True)
         persistent.write_text("retained task data")
@@ -306,6 +307,56 @@ elif action=='status':
         self.assertEqual((self.base / "beads-restarts").read_text(), "restart\nrestart\n")
         self.assertEqual(persistent.read_text(), "retained task data")
         self.assertEqual(local_config.read_text(), "# retained operator settings\n")
+
+    def test_worktree_manager_pulls_sources_then_builds_and_activates(self):
+        scripts = self.checkout / "scripts"
+        scripts.mkdir()
+        adapter = scripts / "worktree-manager-update.sh"
+        shutil.copyfile(ROOT / "scripts/worktree-manager-update.sh", adapter)
+        catalog = self.checkout / "bootstrap/tools.toml"
+        catalog.parent.mkdir()
+        library = scripts / "lib/git-worktree-runtime.sh"
+        library.parent.mkdir()
+        shutil.copyfile(ROOT / "scripts/lib/git-worktree-runtime.sh", library)
+        catalog.write_text('[tools.worktree-manager]\nversion="0.2.0"\n'
+                           '[tools.git-worktree-hooks]\nversion="2.57.0"\nruntime_version="2.57.0.worktree-hooks.1"\n')
+        self.git(self.source, "tag", "v2.57.0")
+        (scripts / "pull-git-worktree-source.sh").write_text(
+            'cache="$XDG_CACHE_HOME/dotfiles/git-worktree-hooks"\nmkdir -p "$cache"\n'
+            f'printf \'%s\\n\' {shlex.quote(str(self.source))} > "$cache/selected-source"\n'
+            'touch "$HOME/pulled-git"\n')
+        (scripts / "install-git-worktree-hooks.sh").write_text('''#!/bin/sh
+set -eu
+[ -f "$HOME/pulled-git" ]
+mkdir -p "$HOME/.local/bin"
+printf '#!/bin/sh\\necho "git version 2.57.0.worktree-hooks.1"\\n' > "$HOME/.local/bin/git"
+chmod +x "$HOME/.local/bin/git"
+''')
+        (scripts / "install-worktree-manager").write_text('''#!/bin/sh
+set -eu
+[ "$1" = 0.2.0 ]
+[ -x "$HOME/.local/bin/git" ]
+printf '#!/bin/sh\\necho "worktree 0.2.0"\\n' > "$HOME/.local/bin/worktree"
+chmod +x "$HOME/.local/bin/worktree"
+''')
+        (self.checkout / "Makefile").write_text("git:\n\t@touch configured\n")
+        self.git(self.checkout, "add", ".")
+        self.git(self.checkout, "commit", "-m", "Worktree adapter fixture")
+        self.git(self.checkout, "push")
+        self.config.write_text(f'[projects.worktree-manager]\npath={json.dumps(str(self.checkout))}\n'
+                               f'command={json.dumps(["bash", str(adapter)])}\npull_sources=true\n')
+        self.invoke("restart", "worktree-manager", code=1)
+        self.invoke("build", "worktree-manager", code=1)
+        self.invoke("update", "worktree-manager")
+        self.assertTrue((self.checkout / "configured").is_file())
+        status = self.invoke("status", "worktree-manager")[0]["runtime"]
+        self.assertEqual(status["installed_versions"]["git"], "git version 2.57.0.worktree-hooks.1")
+        self.assertEqual(status["installed_versions"]["worktree"], "worktree 0.2.0")
+        self.assertIsNone(status["running_revision"])
+        (scripts / "pull-git-worktree-source.sh").write_text('exit 9\n')
+        (self.checkout / "configured").unlink()
+        self.invoke("update", "worktree-manager", code=1)
+        self.assertFalse((self.checkout / "configured").exists())
 
     def test_zellij_restart_preserves_live_sessions(self):
         binary = self.base / ".local/bin/zellij"
@@ -347,7 +398,7 @@ elif action=='status':
                                 env=self.env, text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual({row["project"] for row in json.loads(result.stdout)},
-                         {"octo-manager", "zellij", "beads", "bedrock-router", "intent", "keylease"})
+                         {"octo-manager", "zellij", "beads", "bedrock-router", "intent", "keylease", "worktree-manager"})
 
     def test_dotfiles_install_clones_and_preserves_both_tools(self):
         for project, directory in (("intent", "intent"), ("keylease", "1password-agent")):
