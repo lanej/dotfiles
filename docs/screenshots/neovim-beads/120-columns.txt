@@ -1,21 +1,21 @@
-  󰠮  TASKS                                   │󰌕 󰼏  Make task authoring feel native
-  󰉋  personal                                │    Unsaved  ·  in progress  ·  personal / trial-theme
-  7 tasks  ·  1 blocked                      │
-                                             │󰌖 󰎨  Problem
-   󰐊  Native task authoring                 │  Tasks should feel at home in the editor.
-  ├─     Editable task documents            │
-▎ ├─   󰐊  Theme and status indica…   Review │󰌖 󰎨  Outcome
-  └─     Tree and keyboard navigation       │  Clear hierarchy, readable state, and safe saves.
-    󰥔  Recover an uncertain save             │
-     Studio integration                    │󰌖 󰎨  Scope
-                                             │  Use the shared theme and keyboard navigation.
-                                             │
-                                             │
-                                             │󰌖 󰎨  Acceptance criteria
-                                             │
-                                             │   󰗠 Reuse the task buffer
-                                             │   󰗠 Preserve ownership on save
-                                             │   󰄰 Review narrow layouts
+  󰠮  TASKS                                   │  1 󰼏  Make task authoring feel native
+  󰉋  personal                                │      Unsaved  ·  in progress  ·  personal / trial-theme
+  7 tasks  ·  1 blocked                      │  2
+                                             │  3 󰎨  Problem
+   󰐊  Native task authoring                 │  4 Tasks should feel at home in the editor.
+  ├─     Editable task documents            │  5
+▎ ├─   󰐊  Theme and status indica…   Review │  6 󰎨  Outcome
+  └─     Tree and keyboard navigation       │  7 Clear hierarchy, readable state, and safe saves.
+    󰥔  Recover an uncertain save             │  8
+     Studio integration                    │  9 󰎨  Scope
+                                             │ 10 Use the shared theme and keyboard navigation.
+                                             │ 11
+                                             │ 12
+                                             │ 13 󰎨  Acceptance criteria
+                                             │ 14
+                                             │ 15  󰗠 Reuse the task buffer
+                                             │ 16  󰗠 Preserve ownership on save
+                                             │ 17  󰄰 Review narrow layouts
                                              │~
                                              │~
                                              │~
@@ -26,5 +26,5 @@
                                              │~
                                              │~
                                              │~
-  <CR> open   a child   ? help                beads://personal/trial-theme.md [+]                     1,1-4          All
-
+                                             │~
+ NORMAL     b//personal [-]                    beads://personal/trial-theme.md [+]

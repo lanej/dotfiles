@@ -42,9 +42,11 @@ Filled status icons identify tasks: `` open, `󰐊` in progress, `` blocke
 
 ![Neovim screen cells at 120 columns](screenshots/neovim-beads/120-columns.png)
 
-[The 64-column capture](screenshots/neovim-beads/64-columns.png) exercises the same split and editable document at a narrower width. These images preserve RGB highlight attributes and bold Nerd Font glyphs from an isolated Neovim UI.
+[The 64-column capture](screenshots/neovim-beads/64-columns.png) exercises the same split and editable document at a narrower width. These grid reconstructions use the full Neovim configuration and installed plugins, with transparent cells composited against the configured Kitty background. They preserve RGB highlight attributes and bold Nerd Font glyphs; they do not capture terminal window chrome.
 
 ## Appearance
+
+Beads keeps its tree and task panes outside focus.nvim automatic resizing so the sidebar stays fixed and narrow layouts can open below the normal editor-window minimum. Other buffers retain the configured focus behavior.
 
 The sidebar uses the pinned [Nui tree component](https://github.com/MunifTanjim/nui.nvim/tree/main/lua/nui/tree) for task nodes, with file-browser conventions familiar from nvim-tree: disclosure arrows, branch guides, emphasized parents and a distinct selection. The fixed-width panel has a project summary, keyboard hints and visible loading/stale states. Long titles are clipped at character boundaries to fit the panel; open the document to read the full title and task identity.
 
@@ -74,4 +76,4 @@ Missing tasks, unavailable reads, mismatched markers/parents or intervening remo
 
 For native compatibility, use a [Studio source checkout](https://github.com/lanej/studio) with its pinned Bun version and locked dependencies installed, then run `make test-nvim-beads-native STUDIO_TEST_SOURCE=/absolute/path/to/studio BEADS_TEST_BD=/path/to/pinned/bd BEADS_TEST_DOLT=/path/to/pinned/dolt`. The harness imports Studio’s isolated fixtures and runtime guard directly; CI pins that public source checkout to a specific commit. The native check creates disposable task storage, verifies atomic relationships and guarded saves, and checks that editing claimed work preserves ownership while the existing runtime rejects the old accepted brief. It never targets the installed task service.
 
-`uv run --script scripts/capture-nvim-beads.py` reproduces the normal and narrow RGB captures using the same disposable HTTP fixture. Override `--nui`, `--markview`, `--fonts` or `--output-dir` as needed; the Markview checkout must match the lockfile, and `--fonts` expects the regular and bold Hack Nerd Font Mono files. This capture tooling is independent of editor runtime dependencies.
+`uv run --script scripts/capture-nvim-beads.py` reproduces the normal and narrow RGB captures using the same disposable HTTP fixture. It loads this checkout’s complete `nvim/init.lua` with the installed plugins, rather than assembling a separate editor profile. Override `--terminal-theme`, `--fonts` or `--output-dir` as needed; `--terminal-theme` defaults to the installed Kitty theme, and `--fonts` expects the regular and bold Hack Nerd Font Mono files.

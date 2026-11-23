@@ -1,30 +1,30 @@
-  󰠮  TASKS                │󰌕 󰼏  Make task authoring feel
-  󰉋  personal             │  native
-  7 tasks  ·  1 blocked   │    Unsaved  ·  in progress  ·  perso
+  󰠮  TASKS                │  1 󰼏  Make task authoring feel
+  󰉋  personal             │    native
+  7 tasks  ·  1 blocked   │      Unsaved  ·  in progress  ·  per
+                          │  2
+   󰐊  Native task autho… │  3 󰎨  Problem
+  ├─     Editable task … │  4 Tasks should feel at home in the
+▎ ├─   󰐊  Theme and s…   │    editor.
+  └─     Tree and keybo… │  5
+    󰥔  Recover an uncert… │  6 󰎨  Outcome
+     Studio integration │  7 Clear hierarchy, readable state,
+                          │    and safe saves.
+                          │  8
+                          │  9 󰎨  Scope
+                          │ 10 Use the shared theme and
+                          │    keyboard navigation.
+                          │ 11
+                          │ 12
                           │
-   󰐊  Native task autho… │󰌖 󰎨  Problem
-  ├─     Editable task … │  Tasks should feel at home in the
-▎ ├─   󰐊  Theme and s…   │  editor.
-  └─     Tree and keybo… │
-    󰥔  Recover an uncert… │󰌖 󰎨  Outcome
-     Studio integration │  Clear hierarchy, readable state,
-                          │  and safe saves.
-                          │
-                          │󰌖 󰎨  Scope
-                          │  Use the shared theme and keyboard
-                          │  navigation.
-                          │
-                          │
-                          │
-                          │󰌖 󰎨  Acceptance criteria
-                          │
-                          │   󰗠 Reuse the task buffer
-                          │   󰗠 Preserve ownership on save
-                          │   󰄰 Review narrow layouts
+                          │ 13 󰎨  Acceptance criteria
+                          │ 14
+                          │ 15  󰗠 Reuse the task buffer
+                          │ 16  󰗠 Preserve ownership on
+                          │       save
+                          │ 17  󰄰 Review narrow layouts
                           │~
                           │~
                           │~
                           │~
                           │~
-<> open   a child   ? help <rial-theme.md [+] 1,1-4          All
-
+ NORMAL <b//personal [-]      b//p/trial-theme.md [+]

@@ -46,7 +46,14 @@ local function open(id)
 	return vim.api.nvim_get_current_buf()
 end
 
+vim.o.columns = 64
+vim.o.winwidth = 40
+vim.o.winminwidth = 40
 vim.cmd("Beads trial")
+assert(not vim.g.focus_disable, "Opening the sidebar changed global focus behavior")
+vim.o.winminwidth = 1
+vim.o.winwidth = 1
+vim.o.columns = 120
 local tree_buf, tree_win = vim.api.nvim_get_current_buf(), vim.api.nvim_get_current_win()
 local function tree_lines()
 	return table.concat(vim.api.nvim_buf_get_lines(tree_buf, 0, -1, false), "\n")

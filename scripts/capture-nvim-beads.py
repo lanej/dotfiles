@@ -3,14 +3,12 @@
 # requires-python = ">=3.11"
 # dependencies = ["pynvim==0.6.0", "pillow==12.0.0"]
 # ///
-"""Capture actual Neovim grid cells and RGB highlights against the Beads fixture."""
+"""Render Neovim grid captures using the full editor config and a disposable Beads fixture."""
 from __future__ import annotations
 
 import argparse
 import importlib.util
 import json
-import os
-import subprocess
 from pathlib import Path
 import tempfile
 import threading
@@ -30,7 +28,7 @@ class Screen:
         self.attributes = {0: {}}
         self.defaults = dict(foreground=0xD8DEE9, background=background)
         self.cursor = (0, 0)
-        self.errors = []
+        self.inherit_terminal_background = False
 
     def notification(self, name, updates):
         if name != "redraw":
@@ -42,7 +40,8 @@ class Screen:
                     self.attributes[event[0]] = event[1]
                 elif kind == "default_colors_set":
                     for key, value in zip(("foreground", "background", "special"), event):
-                        self.defaults[key] = value if value >= 0 else (self.terminal_background if key == "background" else 0xD8DEE9)
+                        self.defaults[key] = (self.terminal_background if key == "background" and self.inherit_terminal_background
+                                              else value if value >= 0 else (self.terminal_background if key == "background" else 0xD8DEE9))
                 elif kind == "grid_line" and event[0] == 1:
                     _, row, col, values, *_ = event
                     current = 0
@@ -92,13 +91,10 @@ class Screen:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--nui", type=Path, default=Path.home() / ".local/share/nvim/lazy/nui.nvim")
     parser.add_argument("--fonts", type=Path, default=Path.home() / "Library/Fonts")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "docs/screenshots/neovim-beads")
-    parser.add_argument("--markview", type=Path, default=Path(os.environ.get("NVIM_TEST_MARKVIEW", str(Path.home() / ".local/share/nvim/lazy/markview.nvim"))))
+    parser.add_argument("--terminal-theme", type=Path, default=Path.home() / ".config/dotfiles/theme/kitty.conf")
     args = parser.parse_args()
-    pin = json.loads((ROOT / "nvim/lazy-lock.json").read_text())["markview.nvim"]["commit"]
-    assert subprocess.check_output(["git", "-C", str(args.markview), "rev-parse", "HEAD"], text=True).strip() == pin, "Use the lockfile's Markview revision"
     spec = importlib.util.spec_from_file_location("beads_fixture", ROOT / "scripts/test-nvim-beads.py")
     fixture = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(fixture)
@@ -124,7 +120,9 @@ def main():
     state.edges = [dict(issue_id=child, depends_on_id=parent, type="parent-child", created_at="2026-11-23T00:00:00Z")
                    for child, parent in (("trial-tree", "trial-authoring"), ("trial-theme", "trial-authoring"),
                                          ("trial-buffers", "trial-authoring"), ("trial-admission", "trial-runtime"))]
-    background = int(json.loads((ROOT / "design-system/generated/colors.json").read_text())["roles"]["surface"][1:], 16)
+    terminal_colors = dict(line.split(maxsplit=1) for line in args.terminal_theme.read_text().splitlines()
+                           if line.strip() and not line.lstrip().startswith("#"))
+    background = int(terminal_colors["background"].lstrip("#"), 16)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="beads-ui-") as temporary, ThreadingHTTPServer(("127.0.0.1", 0), state.handler()) as server:
         thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -132,7 +130,9 @@ def main():
         try:
             for width in (120, 64):
                 screen = Screen(width, 30, background)
-                nvim = pynvim.attach("child", argv=["nvim", "--embed", "-u", "NONE", "-i", "NONE", "-n"])
+                nvim = pynvim.attach("child", argv=["nvim", "--embed", "--cmd",
+                    "lua vim.opt.rtp:prepend(" + json.dumps(str(ROOT / "nvim")) + "); vim.g.prosession_dir=" + json.dumps(temporary + f"/sessions-{width}/"),
+                    "-u", str(ROOT / "nvim/init.lua"), "-i", "NONE", "-n"])
                 def notification(name, data):
                     if name == "beads_capture_ready":
                         nvim.stop_loop()
@@ -140,19 +140,21 @@ def main():
                         screen.notification(name, data)
                 def setup():
                     nvim.ui_attach(width, 30, rgb=True, ext_linegrid=True)
-                    nvim.exec_lua('vim.opt.rtp:prepend(... .. "/nvim")', str(ROOT))
-                    nvim.exec_lua('vim.opt.rtp:append(...)', str(args.nui.resolve()))
-                    nvim.command("set hidden termguicolors laststatus=2")
-                    nvim.command("syntax enable")
-                    nvim.exec_lua('vim.opt.rtp:append(...)', str(args.markview.resolve()))
-                    nvim.exec_lua('require("markview").setup(require("markview-config"))')
-                    nvim.command("runtime plugin/markview.lua")
-                    nvim.exec_lua('require("dotfiles-theme").setup()')
+                    # Lazy resets runtimepath to stdpath(config); keep this assigned checkout active.
+                    nvim.exec_lua('vim.opt.rtp:prepend(...)', str(ROOT / "nvim"))
+                    assert nvim.exec_lua('return vim.wait(5000,function() return vim.v.vim_did_enter == 1 and vim.g.did_very_lazy end,10)'), "Editor startup did not finish"
+                    normal = nvim.exec_lua('return vim.api.nvim_get_hl(0,{name="Normal",link=false})')
+                    screen.inherit_terminal_background = "bg" not in normal
+                    screen.defaults["background"] = normal.get("bg", background)
+                    startup_error = nvim.exec_lua('return vim.v.errmsg')
+                    if startup_error:
+                        print("Full config startup message: " + startup_error)
+                    assert nvim.exec_lua('return package.loaded["lazy"] ~= nil'), "Full editor config did not load"
                     nvim.exec_lua('local settings=...; settings.attention=function(task) return task.metadata and task.metadata.attention end; require("beads").setup({projects={personal=settings}})',
                                   dict(url=f"http://127.0.0.1:{server.server_port}", project_id=fixture.PROJECT, state_dir=temporary))
                     nvim.command("Beads personal")
                     tree_window = nvim.current.window.handle
-                    assert nvim.exec_lua('return vim.wait(5000,function() return vim.b.beads_selection ~= nil end,10)')
+                    assert nvim.exec_lua('return vim.wait(5000,function() return vim.b.beads_selection ~= nil end,10)'), "Beads tree did not load"
                     nvim.input("l")
                     nvim.command("BeadsOpen trial-theme")
                     assert nvim.exec_lua('return vim.wait(5000,function() return vim.b.beads_id=="trial-theme" end,10)')
@@ -164,7 +166,7 @@ def main():
                     nvim.exec_lua('for i,line in ipairs(vim.api.nvim_buf_get_lines(0,0,-1,false)) do if line:find("Theme") then vim.api.nvim_win_set_cursor(0,{i,0}) end end')
                     nvim.command("doautocmd CursorMoved")
                     nvim.command("redraw!")
-                    nvim.exec_lua('local channel=...; vim.defer_fn(function() vim.rpcnotify(channel,"beads_capture_ready") end,50)', nvim.channel_id)
+                    nvim.exec_lua('local channel=...; vim.defer_fn(function() vim.rpcnotify(channel,"beads_capture_ready") end,1000)', nvim.channel_id)
                 try:
                     nvim.run_loop(None, notification, setup_cb=setup)
                     assert any("TASKS" in "".join(c[0] for c in row) for row in screen.cells)

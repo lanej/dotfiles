@@ -193,6 +193,7 @@ local function make_doc(p, fields, options)
 	vim.bo[buf].bufhidden = "hide"
 	vim.bo[buf].swapfile = false
 	vim.bo[buf].modeline = false
+	vim.b[buf].focus_disable = true
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, options.lines or document.render(fields, doc.marker))
 	vim.bo[buf].modified = not options.base
 	vim.b[buf].beads_project = p.name
@@ -292,7 +293,7 @@ function M.open(id, name)
 	local tick = vim.api.nvim_buf_get_changedtick(original)
 	open_requests[win] = (open_requests[win] or 0) + 1
 	local generation = open_requests[win]
-	vim.api.nvim_set_current_win(win)
+	local source_win = vim.api.nvim_get_current_win()
 	async(function()
 		p.store.client:verify()
 		return p.store:get(id)
@@ -310,6 +311,9 @@ function M.open(id, name)
 			and vim.api.nvim_buf_get_changedtick(original) == tick
 		then
 			vim.api.nvim_win_set_buf(win, buf)
+			if vim.api.nvim_get_current_win() == source_win then
+				vim.api.nvim_set_current_win(win)
+			end
 		end
 	end)
 end
@@ -449,6 +453,7 @@ function M.explorer(name)
 		vim.api.nvim_buf_set_name(p.tree_buf, "beads-tree://" .. p.name)
 		vim.bo[p.tree_buf].filetype = "beads"
 		vim.bo[p.tree_buf].bufhidden = "hide"
+		vim.b[p.tree_buf].focus_disable = true
 		local function map(key, callback)
 			vim.keymap.set("n", key, function()
 				local ok, err = pcall(callback)
@@ -535,13 +540,20 @@ function M.explorer(name)
 			break
 		end
 	end
+	local sidebar_width = math.min(52, math.max(26, math.floor(vim.o.columns * 0.38)))
 	if not win then
-		vim.cmd("topleft vsplit")
-		win = vim.api.nvim_get_current_win()
-		vim.api.nvim_win_set_buf(win, p.tree_buf)
+		-- A fixed sidebar must also fit when the user's normal-window minimum is wide.
+		local minimum, focus_disabled = vim.o.winminwidth, vim.g.focus_disable
+		vim.g.focus_disable = true
+		vim.o.winminwidth = 1
+		local ok, result = pcall(vim.api.nvim_open_win, p.tree_buf, true, { split = "left", win = 0 })
+		vim.g.focus_disable = focus_disabled
+		vim.o.winminwidth = math.min(minimum, vim.o.winwidth, sidebar_width)
+		assert(ok, result)
+		win = result
 	end
 	vim.api.nvim_set_current_win(win)
-	vim.api.nvim_win_set_width(win, math.min(52, math.max(26, math.floor(vim.o.columns * 0.38))))
+	vim.api.nvim_win_set_width(win, sidebar_width)
 	ui.window(win)
 	render(p)
 	M.refresh(p.name)
