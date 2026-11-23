@@ -62,6 +62,14 @@ export const configSchema = z
           .int()
           .positive()
           .default(defaultMinSplitColumns),
+        added_background: z
+          .string()
+          .regex(/^#[0-9a-f]{6}$/iu)
+          .optional(),
+        removed_background: z
+          .string()
+          .regex(/^#[0-9a-f]{6}$/iu)
+          .optional(),
       })
       .default({ min_split_columns: defaultMinSplitColumns }),
     lsp: z

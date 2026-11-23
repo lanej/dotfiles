@@ -3,7 +3,7 @@ import {
   highlightCode,
   type Theme,
 } from "@earendil-works/pi-coding-agent";
-import { defaultMinSplitColumns } from "../config.ts";
+import { defaultMinSplitColumns, type DriverConfig } from "../config.ts";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -36,7 +36,9 @@ export function syntaxDiffRows(
   width: number,
   cwd: string,
   highlight: Highlighter = highlightCode,
-  minimumSourceWidth = defaultMinSplitColumns,
+  display: DriverConfig["display"] = {
+    min_split_columns: defaultMinSplitColumns,
+  },
 ): string[] {
   if (width < 3) return [];
   const lines: DiffLine[] = diff.split("\n").map((line) => {
@@ -88,9 +90,28 @@ export function syntaxDiffRows(
   const leftWidth = Math.floor((inner - 3) / 2);
   const rightWidth = inner - 3 - leftWidth;
   const gutter = digits + 2;
-  const split = leftWidth - gutter >= minimumSourceWidth;
+  const split = leftWidth - gutter >= display.min_split_columns;
   const pad = (text: string, columns: number) =>
     text + " ".repeat(Math.max(0, columns - visibleWidth(text)));
+  const toolBackground = theme.bg("toolSuccessBg", "").replace("\x1b[49m", "");
+  const background = (line: DiffLine, row: string): string => {
+    const color =
+      line.prefix === "+"
+        ? display.added_background
+        : line.prefix === "-"
+          ? display.removed_background
+          : undefined;
+    if (color === undefined) return row;
+    const rgb = [1, 3, 5].map((offset) =>
+      Number.parseInt(color.slice(offset, offset + 2), 16),
+    );
+    const start = `\x1b[48;2;${rgb.join(";")}m`;
+    return (
+      start +
+      row.replaceAll("\x1b[0m", `\x1b[0m${start}`) +
+      (toolBackground === "" ? "\x1b[49m" : toolBackground)
+    );
+  };
   const tone = (line: DiffLine) =>
     line.prefix === "+"
       ? "toolDiffAdded"
@@ -116,7 +137,10 @@ export function syntaxDiffRows(
           index === 0
             ? `${line.prefix ?? " "}${number.padStart(digits)} `
             : " ".repeat(gutter);
-        return pad(theme.fg(tone(line), label) + row, columns);
+        return background(
+          line,
+          pad(theme.fg(tone(line), label) + row, columns),
+        );
       },
     );
   };
@@ -163,12 +187,14 @@ export function syntaxDiffRows(
       }
     }
   } else {
-    for (const line of lines)
-      body.push(
+    for (const line of lines) {
+      const text =
         line.prefix === undefined
           ? theme.fg("toolDiffContext", clean(line.raw))
-          : `${theme.fg(tone(line), `${line.prefix}${line.number.padStart(digits)} `)}${line.prefix === "-" ? (line.before ?? line.code) : (line.after ?? line.code)}`,
-      );
+          : `${theme.fg(tone(line), `${line.prefix}${line.number.padStart(digits)} `)}${line.prefix === "-" ? (line.before ?? line.code) : (line.after ?? line.code)}`;
+      for (const row of wrapTextWithAnsi(text, inner))
+        body.push(background(line, pad(row, inner)));
+    }
   }
   const rawPath = path.startsWith("~/")
     ? resolve(homedir(), path.slice(2))
@@ -179,16 +205,17 @@ export function syntaxDiffRows(
     : label;
   return [
     "",
-    `${theme.fg("toolTitle", theme.bold("edit"))} ${pathLabel}`,
+    ...wrapTextWithAnsi(
+      `${theme.fg("toolTitle", theme.bold("edit"))} ${pathLabel}`,
+      inner,
+    ),
     "",
     ...body,
     "",
-  ]
-    .flatMap((line) => wrapTextWithAnsi(line, inner))
-    .map((line) =>
-      theme.bg(
-        "toolSuccessBg",
-        ` ${line}${" ".repeat(Math.max(0, width - 1 - visibleWidth(line)))}`,
-      ),
-    );
+  ].map((line) =>
+    theme.bg(
+      "toolSuccessBg",
+      ` ${line}${" ".repeat(Math.max(0, width - 1 - visibleWidth(line)))}`,
+    ),
+  );
 }

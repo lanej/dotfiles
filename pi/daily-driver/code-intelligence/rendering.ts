@@ -1,3 +1,4 @@
+import type { DriverConfig } from "../config.ts";
 import { syntaxDiffRows } from "./diff.ts";
 import type {
   ExtensionAPI,
@@ -25,7 +26,7 @@ interface View {
 export function registerDiagnosticRendering(
   pi: ExtensionAPI,
   intelligence: CodeIntelligence,
-  minSplitColumns: () => number,
+  diffDisplay: () => DriverConfig["display"],
 ) {
   const views = new Map<string, View>();
   const latest = new Map<string, string>();
@@ -107,7 +108,7 @@ export function registerDiagnosticRendering(
                         width,
                         context.cwd,
                         undefined,
-                        minSplitColumns(),
+                        diffDisplay(),
                       );
                 },
               };

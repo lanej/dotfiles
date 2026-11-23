@@ -36,7 +36,7 @@ process.env["XDG_CONFIG_HOME"] = join(root, "config");
 await mkdir(join(root, "config/pi-driver"), { recursive: true });
 await writeFile(
   join(root, "config/pi-driver/config.toml"),
-  "[display]\nmin_split_columns = 50\n",
+  '[display]\nmin_split_columns = 50\nadded_background = "#304639"\nremoved_background = "#47343f"\n',
 );
 const agentDir = join(root, "agent");
 await mkdir(agentDir);
@@ -215,6 +215,11 @@ try {
     callComponent.render(100).join("\n"),
     /Before.*After| │ /u,
   );
+  for (const width of [100, 120]) {
+    const output = callComponent.render(width).join("\n");
+    assert.ok(output.includes("\x1b[48;2;48;70;57m"));
+    assert.ok(output.includes("\x1b[48;2;71;52;63m"));
+  }
   await eventually(
     () => call(lspTool, { action: "diagnostics", path: "b.ts" }),
     /2322/u,

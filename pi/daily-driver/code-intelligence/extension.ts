@@ -12,7 +12,11 @@ import {
 import { readFile, realpath } from "node:fs/promises";
 import { Type } from "typebox";
 import { z } from "zod";
-import { defaultMinSplitColumns, loadConfig } from "../config.ts";
+import {
+  defaultMinSplitColumns,
+  loadConfig,
+  type DriverConfig,
+} from "../config.ts";
 import { CodeIntelligence, Lookup } from "./service.ts";
 
 export const lspTool = "driver_lsp";
@@ -48,11 +52,13 @@ const message = (error: unknown) =>
 
 export function registerCodeIntelligence(pi: ExtensionAPI): CodeIntelligence {
   const intelligence = new CodeIntelligence();
-  let minSplitColumns = defaultMinSplitColumns;
+  let diffDisplay: DriverConfig["display"] = {
+    min_split_columns: defaultMinSplitColumns,
+  };
   const display = registerDiagnosticRendering(
     pi,
     intelligence,
-    () => minSplitColumns,
+    () => diffDisplay,
   );
   const renameCalls = new Set<string>();
   let approvedProject: string | undefined;
@@ -117,7 +123,7 @@ export function registerCodeIntelligence(pi: ExtensionAPI): CodeIntelligence {
     await intelligence.stop();
     const config = await loadConfig();
     intelligence.enabled = config.lsp.enabled;
-    minSplitColumns = config.display.min_split_columns;
+    diffDisplay = config.display;
   });
   pi.on("session_shutdown", async () => {
     lifecycle++;
