@@ -230,8 +230,12 @@ async function launchPi(
           "--no-extensions",
           "--no-mcp",
           "--extension",
-          createRequire(join(packageRoot, "package.json")).resolve(
+          join(
+            packageRoot,
+            "node_modules",
             "pi-git-diff",
+            "src",
+            "extension.ts",
           ),
         ]
       : []),
