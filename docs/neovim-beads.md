@@ -21,7 +21,7 @@ require("beads").setup({
 })
 ```
 
-Use the project ID reported by `GET /v0/beads/context`. The client requires the configured project, Dolt server backend and necessary capabilities to match; it does not adopt a different workspace automatically. Remote HTTP requires a loopback tunnel; non-loopback services require HTTPS. Token files are read for requests and excluded from command arguments and error messages. Neovim and curl are the only editor runtime dependencies. Changing an already configured project's authority requires restarting Neovim.
+Use the project ID reported by `GET /v0/beads/context`. The client requires the configured project, Dolt server backend and necessary capabilities to match; it does not adopt a different workspace automatically. Remote HTTP requires a loopback tunnel; non-loopback services require HTTPS. Token files are read for requests and excluded from command arguments and error messages. The editor uses Neovim, curl and the pinned Nui library already installed by this configuration. Changing an already configured project's authority requires restarting Neovim.
 
 ## Navigation
 
@@ -38,11 +38,17 @@ Use the project ID reported by `GET /v0/beads/context`. The client requires the 
 
 In the explorer use `j`/`k` to move, `l` to expand, `h` to collapse or move to the parent, Tab to toggle, Enter/`o` to open, `a` to create a child, `A` to create a root, `s` to enter a status, `gr` for relationships, `r` to refresh and `q` to close the explorer. Blocker links are independent of nesting. Containment does not indicate readiness or authorize child dispatch. Orphans and cyclic containment remain inspectable with warnings.
 
-State symbols are `○` open, `●` in progress, `⊘` blocked, `◇` deferred and `✓` closed; custom states retain their names. Task state comes from Beads. There is no stock attention field shared by every controller: an optional project `attention = function(task) ... end` can return a compact label from the controller-owned metadata available in that project. Returning nil displays no signal; status and attention never substitute for runtime admission checks.
+Filled status icons identify tasks: `` open, `󰐊` in progress, `` blocked, `󰥔` deferred and `` closed. Custom states retain their names. Task state comes from Beads. There is no stock attention field shared by every controller: an optional project `attention = function(task) ... end` can return a compact label from the controller-owned metadata available in that project. Returning nil displays no signal; status and attention never substitute for runtime admission checks.
 
 ![Neovim screen cells at 120 columns](screenshots/neovim-beads/120-columns.png)
 
-[The 64-column capture](screenshots/neovim-beads/64-columns.png) exercises the same split and editable document at a narrower width. These images render cells captured from an isolated Neovim UI.
+[The 64-column capture](screenshots/neovim-beads/64-columns.png) exercises the same split and editable document at a narrower width. These images preserve RGB highlight attributes and bold Nerd Font glyphs from an isolated Neovim UI.
+
+## Appearance
+
+The sidebar uses the pinned [Nui tree component](https://github.com/MunifTanjim/nui.nvim/tree/main/lua/nui/tree) for task nodes, with file-browser conventions familiar from nvim-tree: disclosure arrows, branch guides, emphasized parents and a distinct selection. The fixed-width panel has a project summary, keyboard hints and visible loading/stale states. Long titles are clipped at character boundaries to fit the panel; open the document to read the full title and task identity.
+
+Highlights resolve through the shared dotfiles theme’s semantic roles and survive colorscheme reloads. Status and attention have separate colors. Icons use the terminal’s Nerd Font; the editor configuration uses Hack Nerd Font Mono. The document shows saved, unsaved, failed or pending-creation state beside its managed context. Word-boundary wrapping and conceal settings are restored when the window returns to a different buffer.
 
 ## Editing and explicit saves
 
@@ -62,6 +68,8 @@ Missing tasks, unavailable reads, mismatched markers/parents or intervening remo
 
 ## Development checks
 
-`make test-nvim-beads` exercises public editor commands against a controlled HTTP boundary, including lost responses and recovery in a new Neovim process. `make check-beads-lua` checks generated binding freshness after `npm ci --prefix tools/task-runtime`. Regenerate using `npm --prefix tools/task-runtime run generate:beads-lua`; keep the schema and both generated clients synchronized when updating Beads.
+`make test-nvim-beads` exercises public editor commands against a controlled HTTP boundary, including lost responses and recovery in a new Neovim process. It uses the installed Nui checkout at the lockfile revision; set `NVIM_TEST_NUI=/path/to/nui.nvim` to select another checkout of that same revision. `make check-beads-lua` checks generated binding freshness after `npm ci --prefix tools/task-runtime`. Regenerate using `npm --prefix tools/task-runtime run generate:beads-lua`; keep the schema and both generated clients synchronized when updating Beads.
 
 For native compatibility, use a [Studio source checkout](https://github.com/lanej/studio) with its pinned Bun version and locked dependencies installed, then run `make test-nvim-beads-native STUDIO_TEST_SOURCE=/absolute/path/to/studio BEADS_TEST_BD=/path/to/pinned/bd BEADS_TEST_DOLT=/path/to/pinned/dolt`. The harness imports Studio’s isolated fixtures and runtime guard directly; CI pins that public source checkout to a specific commit. The native check creates disposable task storage, verifies atomic relationships and guarded saves, and checks that editing claimed work preserves ownership while the existing runtime rejects the old accepted brief. It never targets the installed task service.
+
+`uv run --script scripts/capture-nvim-beads.py` reproduces the normal and narrow RGB captures using the same disposable HTTP fixture. Override `--nui`, `--fonts` or `--output-dir` as needed; `--fonts` expects the regular and bold Hack Nerd Font Mono files. This capture tooling is independent of editor runtime dependencies.

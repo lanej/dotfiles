@@ -1,6 +1,6 @@
 local api = require("beads.api")
 local document = require("beads.document")
-local tree = require("beads.tree")
+local ui = require("beads.ui")
 local M = {}
 local projects, active, documents = {}, nil, {}
 local open_requests = {}
@@ -39,8 +39,8 @@ end
 
 local function selected(p)
 	if p.tree_buf and vim.api.nvim_get_current_buf() == p.tree_buf then
-		local row = p.rows[vim.api.nvim_win_get_cursor(0)[1] - 1]
-		return row and row.id
+		local node = p.widget and p.widget:get_node(vim.api.nvim_win_get_cursor(0)[1])
+		return node and node.task and node.id
 	end
 	local doc = documents[vim.api.nvim_get_current_buf()]
 	return doc and doc.project == p and doc.base and doc.base.id or p.selection
@@ -50,24 +50,9 @@ local function render(p)
 	if not p.tree_buf or not vim.api.nvim_buf_is_valid(p.tree_buf) then
 		return
 	end
-	p.rows, p.parents = tree.rows(p.graph, p.expanded, p.settings.attention)
-	local lines = { "Beads · " .. p.name }
-	for _, row in ipairs(p.rows) do
-		lines[#lines + 1] = row.text
-	end
-	if #p.rows == 0 then
-		lines[#lines + 1] = "No tasks · A creates a root task"
-	end
-	vim.bo[p.tree_buf].modifiable = true
-	vim.api.nvim_buf_set_lines(p.tree_buf, 0, -1, false, lines)
-	vim.bo[p.tree_buf].modifiable = false
+	ui.render(p)
 	for _, win in ipairs(vim.fn.win_findbuf(p.tree_buf)) do
-		for index, row in ipairs(p.rows) do
-			if row.id == p.selection then
-				vim.api.nvim_win_set_cursor(win, { index + 1, 0 })
-				break
-			end
-		end
+		ui.select(p, win)
 	end
 end
 
@@ -76,16 +61,22 @@ function M.refresh(name)
 	p.selection = selected(p) or p.selection
 	p.generation = p.generation + 1
 	local generation = p.generation
+	p.loading, p.error = true, nil
+	render(p)
 	async(function()
 		return p.store:list()
 	end, function(err, graph)
 		if generation ~= p.generation then
 			return
 		end
+		p.loading = false
 		if err then
-			notify(api.message(err), vim.log.levels.ERROR)
+			p.error = api.message(err)
+			render(p)
+			notify(p.error, vim.log.levels.ERROR)
 			return
 		end
+		p.loaded = true
 		-- Read selection when applying the response: navigation during HTTP wins.
 		p.selection = selected(p) or p.selection
 		p.graph = graph
@@ -138,13 +129,31 @@ local function find_doc(p, id)
 end
 
 local function bind(doc)
+	ui.setup()
 	local identity = doc.base and doc.base.id or "unsaved draft"
 	local status = doc.base and (doc.base.status or "unknown") or "local"
 	local parent = doc.parent and " · parent " .. doc.parent or ""
+	local phase = doc.saving and "Saving…"
+		or doc.pending and "Pending creation"
+		or vim.b[doc.buf].beads_error and "Save failed"
+		or vim.bo[doc.buf].modified and "Unsaved"
+		or "Saved"
+	local phase_style = doc.pending and "BeadsAttention"
+		or vim.b[doc.buf].beads_error and "BeadsBlocked"
+		or vim.bo[doc.buf].modified and "BeadsWarning"
+		or "BeadsClosed"
 	vim.api.nvim_buf_clear_namespace(doc.buf, context_namespace, 0, -1)
 	vim.api.nvim_buf_set_extmark(doc.buf, context_namespace, 0, 0, {
-		virt_lines = { { { doc.project.name .. " / " .. identity .. " · " .. status .. parent, "Comment" } } },
-		virt_lines_above = true,
+		virt_lines = {
+			{
+				{ "  " .. phase, phase_style },
+				{
+					"  ·  " .. status:gsub("_", " ") .. "  ·  " .. doc.project.name .. " / " .. identity .. parent,
+					"BeadsMetadata",
+				},
+			},
+		},
+		virt_lines_above = false,
 		right_gravity = false,
 	})
 	for index, line in ipairs(vim.api.nvim_buf_get_lines(doc.buf, 0, -1, false)) do
@@ -152,11 +161,18 @@ local function bind(doc)
 			vim.api.nvim_buf_set_extmark(doc.buf, context_namespace, index - 1, 0, {
 				end_col = #line,
 				conceal = "",
-				virt_text = { { "## Acceptance criteria", "Title" } },
+				virt_text = { { "## Acceptance criteria", "BeadsTitle" } },
 				virt_text_pos = "overlay",
 			})
 		end
 	end
+	vim.api.nvim_buf_set_extmark(
+		doc.buf,
+		context_namespace,
+		0,
+		0,
+		{ end_col = #vim.api.nvim_buf_get_lines(doc.buf, 0, 1, false)[1], hl_group = "BeadsTitle" }
+	)
 	if not doc.base then
 		return
 	end
@@ -202,8 +218,13 @@ local function make_doc(p, fields, options)
 	vim.api.nvim_create_autocmd("BufWinEnter", {
 		buffer = buf,
 		callback = function()
-			vim.wo.conceallevel = 2
-			vim.wo.concealcursor = "nc"
+			ui.enter_document(buf)
+		end,
+	})
+	vim.api.nvim_create_autocmd("BufWinLeave", {
+		buffer = buf,
+		callback = function()
+			ui.leave_document(buf)
 		end,
 	})
 	vim.api.nvim_create_autocmd("BufWriteCmd", {
@@ -228,6 +249,7 @@ local function make_doc(p, fields, options)
 			doc.saving = true
 			vim.b[buf].beads_saving = true
 			vim.b[buf].beads_error = nil
+			bind(doc)
 			async(function()
 				local _, submitted = p.store:save(doc, parsed, lines)
 				return submitted
@@ -238,8 +260,10 @@ local function make_doc(p, fields, options)
 				end
 				vim.b[buf].beads_saving = false
 				vim.b[buf].beads_pending = doc.pending ~= nil
+				bind(doc)
 				if err then
 					vim.b[buf].beads_error = api.message(err)
+					bind(doc)
 					notify(
 						api.message(err) .. (doc.pending and "; creation retained for :BeadsRecover" or ""),
 						vim.log.levels.ERROR
@@ -429,6 +453,7 @@ function M.explorer(name)
 	local p = project(name)
 	active = p.name
 	p.edit_win = vim.api.nvim_get_current_win()
+	ui.setup()
 	if not p.tree_buf or not vim.api.nvim_buf_is_valid(p.tree_buf) then
 		p.tree_buf = vim.api.nvim_create_buf(false, true)
 		vim.api.nvim_buf_set_name(p.tree_buf, "beads-tree://" .. p.name)
@@ -490,6 +515,24 @@ function M.explorer(name)
 				end
 			end)
 		end)
+		map("?", function()
+			notify(
+				"j/k move · l/h expand/collapse · <CR> open · a child · A root · s status · gr relationships · r refresh · q close"
+			)
+		end)
+		vim.api.nvim_create_autocmd("CursorMoved", {
+			buffer = p.tree_buf,
+			callback = function()
+				ui.select(p, vim.api.nvim_get_current_win())
+			end,
+		})
+		vim.api.nvim_create_autocmd("BufWipeout", {
+			buffer = p.tree_buf,
+			once = true,
+			callback = function()
+				p.widget = nil
+			end,
+		})
 		map("q", function()
 			vim.api.nvim_win_close(0, false)
 		end)
@@ -508,8 +551,8 @@ function M.explorer(name)
 		vim.api.nvim_win_set_buf(win, p.tree_buf)
 	end
 	vim.api.nvim_set_current_win(win)
-	vim.api.nvim_win_set_width(win, math.min(48, math.max(20, math.floor(vim.o.columns * 0.35))))
-	vim.wo[win].number, vim.wo[win].relativenumber, vim.wo[win].wrap = false, false, false
+	vim.api.nvim_win_set_width(win, math.min(52, math.max(26, math.floor(vim.o.columns * 0.38))))
+	ui.window(win)
 	render(p)
 	M.refresh(p.name)
 end

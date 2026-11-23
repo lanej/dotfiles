@@ -6,6 +6,10 @@ on:
     paths: &beads-paths
       - 'nvim/lua/beads/**'
       - 'nvim/tests/beads*.lua'
+      - 'nvim/lazy-lock.json'
+      - 'nvim/lua/dotfiles-theme.lua'
+      - 'nvim/colors/dotfiles.lua'
+      - 'design-system/generated/neovim.lua'
       - 'scripts/test-nvim-beads*'
       - 'tools/task-runtime/**'
       - 'tools/beads/**'
@@ -49,7 +53,19 @@ jobs:
           echo "$RUNNER_TEMP/beads-nvim/nvim-$nvim_platform/bin" >> "$GITHUB_PATH"
       - run: npm --prefix tools/task-runtime ci --ignore-scripts
       - run: make check-beads-lua
+      - name: Read the Nui tree pin
+        id: nui
+        run: python3 -c 'import json, os; pin = json.load(open("nvim/lazy-lock.json"))["nui.nvim"]["commit"]; print("revision=" + pin, file=open(os.environ["GITHUB_OUTPUT"], "a"))'
+      - name: Check out the tree component
+        uses: actions/checkout@v5
+        with:
+          repository: MunifTanjim/nui.nvim
+          ref: ${{ steps.nui.outputs.revision }}
+          path: .beads-nui
+          persist-credentials: false
       - run: make test-nvim-beads
+        env:
+          NVIM_TEST_NUI: ${{ github.workspace }}/.beads-nui
       - name: Check out the public Studio native fixture
         uses: actions/checkout@v5
         with:

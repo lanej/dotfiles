@@ -1,28 +1,30 @@
-Beads · trial                             │# Editable task document                                                     
-· ○ Blocker · trial-blocker               │                                                                             
-▾ ○ Neovim task authoring · trial-root    │## Problem                                                                   
-  · ● Editable Markdown buffers · trial-ch│Tasks need a normal editing window.                                          
-~                                         │                                                                             
-~                                         │## Outcome                                                                   
-~                                         │Explicit saves preserve task identity.                                       
-~                                         │                                                                             
-~                                         │## Scope                                                                     
-~                                         │Browse, edit and recover safely.                                             
-~                                         │                                                                             
-~                                         │## Acceptance criteria                                                       
-~                                         │                                                                             
-~                                         │- [ ] Reuse the task buffer                                                  
-~                                         │- [ ] Preserve ownership on save                                             
-~                                         │- [ ] Keep local edits on conflicts                                          
-~                                         │~                                                                            
-~                                         │~                                                                            
-~                                         │~                                                                            
-~                                         │~                                                                            
-~                                         │~                                                                            
-~                                         │~                                                                            
-~                                         │~                                                                            
-~                                         │~                                                                            
-~                                         │~                                                                            
-~                                         │~                                                                            
-beads-tree://trial [-]  3,1            All beads://trial/trial-child.md [+]                           1,1            Bot
-                                                                                                                        
+  󰠮  TASKS                                   │# Make task authoring feel native
+  󰉋  personal                                │  Unsaved  ·  in progress  ·  personal / trial-theme
+  7 tasks  ·  1 blocked                      │
+                                             │## Problem
+   󰐊  Native task authoring                 │Tasks should feel at home in the editor.
+  ├─     Editable task documents            │
+▎ ├─   󰐊  Theme and status indica…   Review │## Outcome
+  └─     Tree and keyboard navigation       │Clear hierarchy, readable state, and safe saves.
+    󰥔  Recover an uncertain save             │
+     Studio integration                    │## Scope
+                                             │Use the shared theme and keyboard navigation.
+                                             │
+                                             │## Acceptance criteria
+                                             │
+                                             │- [x] Reuse the task buffer
+                                             │- [x] Preserve ownership on save
+                                             │- [ ] Review narrow layouts
+                                             │~
+                                             │~
+                                             │~
+                                             │~
+                                             │~
+                                             │~
+                                             │~
+                                             │~
+                                             │~
+                                             │~
+                                             │~
+  <CR> open   a child   ? help                beads://personal/trial-theme.md [+]                     1,1            All
+

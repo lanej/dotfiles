@@ -1,19 +1,16 @@
 local M = {}
-local statuses = { open = "○", in_progress = "●", blocked = "⊘", deferred = "◇", closed = "✓" }
 
-local function plain(text)
-	return tostring(text):gsub("[%c]", " ")
-end
-
-function M.rows(graph, expanded, attention)
-	local by_id, children, parents, warning, rows, seen = {}, {}, {}, {}, {}, {}
+-- Build a containment forest without treating blocker edges as children. Malformed
+-- graphs stay inspectable: cut revisited edges, retain their source relationship.
+function M.forest(graph)
+	local by_id, children, parents, warnings, seen = {}, {}, {}, {}, {}
 	for _, task in ipairs(graph.items) do
 		by_id[task.id] = task
 	end
 	for _, edge in ipairs(graph.edges) do
 		if edge.type == "parent-child" then
 			if parents[edge.issue_id] then
-				warning[edge.issue_id] = "multiple parents"
+				warnings[edge.issue_id] = "Multiple parents"
 			else
 				parents[edge.issue_id] = edge.depends_on_id
 			end
@@ -25,7 +22,7 @@ function M.rows(graph, expanded, attention)
 				children[parent] = children[parent] or {}
 				children[parent][#children[parent] + 1] = id
 			else
-				warning[id] = "parent outside project: " .. parent
+				warnings[id] = "Parent outside project: " .. parent
 			end
 		end
 	end
@@ -37,38 +34,35 @@ function M.rows(graph, expanded, attention)
 	for _, ids in pairs(children) do
 		sort(ids)
 	end
-	local function visit(root, force)
-		local stack = { { id = root, depth = 0, visible = true } }
+	local forest = {}
+	local function visit(root, cyclic)
+		local stack = { { id = root, into = forest, guides = "", depth = 0 } }
 		while #stack > 0 do
 			local entry = table.remove(stack)
 			if not seen[entry.id] then
 				seen[entry.id] = true
-				local task = by_id[entry.id]
-				local descendants = children[entry.id] or {}
-				if entry.visible then
-					local mark = #descendants == 0 and "·" or expanded[entry.id] and "▾" or "▸"
-					local signal = attention and attention(task) or nil
-					local suffix = (signal and " ! " .. plain(signal) or "")
-						.. (warning[entry.id] and " ⚠ " .. warning[entry.id] or "")
-						.. (force and entry.depth == 0 and " ⚠ cyclic containment" or "")
-					rows[#rows + 1] = {
-						id = entry.id,
-						text = string.rep("  ", math.min(entry.depth, 12))
-							.. mark
-							.. " "
-							.. (statuses[task.status] or ("[" .. plain(task.status or "unknown") .. "]"))
-							.. " "
-							.. plain(task.title)
-							.. " · "
-							.. plain(task.id)
-							.. suffix,
-					}
-				end
-				for index = #descendants, 1, -1 do
+				local node = {
+					id = entry.id,
+					task = by_id[entry.id],
+					children = {},
+					guides = entry.guides,
+					branch = entry.branch,
+					depth = entry.depth,
+					warning = warnings[entry.id] or (cyclic and entry.id == root and "Cyclic containment" or nil),
+				}
+				entry.into[#entry.into + 1] = node
+				local ids = children[entry.id] or {}
+				for index = #ids, 1, -1 do
+					local more = index < #ids
 					stack[#stack + 1] = {
-						id = descendants[index],
+						id = ids[index],
+						into = node.children,
 						depth = entry.depth + 1,
-						visible = entry.visible and expanded[entry.id] == true,
+						guides = (
+							entry.guides
+							.. (entry.branch and (entry.branch == "├─ " and "│  " or "   ") or "")
+						):sub(-21),
+						branch = more and "├─ " or "└─ ",
 					}
 				end
 			end
@@ -86,7 +80,7 @@ function M.rows(graph, expanded, attention)
 			visit(id, true)
 		end
 	end
-	return rows, parents
+	return forest, parents
 end
 
 return M

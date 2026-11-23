@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import argparse
 import tempfile
 import threading
 import time
@@ -27,7 +28,8 @@ class Boundary:
     def __init__(self):
         self.tasks = {"trial-root": task("trial-root", "Parent"),
                       "trial-child": task("trial-child", "Child"),
-                      "trial-blocker": task("trial-blocker", "Blocker")}
+                      "trial-blocker": task("trial-blocker", "Blocker"),
+                      "trial-long": task("trial-long", "A task title that expands with the pane")}
         self.tasks["trial-child"]["metadata"] = {"pi.attempt": "owner-attempt", "arbitrary": {"keep": [1, True]}}
         self.tasks["trial-child"]["assignee"] = "pi:owner-attempt"
         self.tasks["trial-child"]["status"] = "in_progress"
@@ -36,6 +38,7 @@ class Boundary:
         self.creates = 0
         self.writes = 0
         self.next_mode = None
+        self.list_fail = False
         self.unavailable = set()
         self.lock = threading.RLock()
 
@@ -69,6 +72,8 @@ class Boundary:
                             item["title"] = body.get("title", "Remote edit")
                         if "mode" in body:
                             state.next_mode = body["mode"]
+                        if "list_fail" in body:
+                            state.list_fail = body["list_fail"]
                         self.respond(dict(creates=state.creates, writes=state.writes, tasks=state.tasks, edges=state.edges))
                     elif path.endswith("/context"):
                         self.respond(dict(api_version="/v0", bd_version="1.3.4", backend="dolt", dolt_mode="server", schema_version=1, database="trial", project_id=PROJECT,
@@ -79,6 +84,9 @@ class Boundary:
                         ids = query.get("issue_id", [])
                         self.respond(dict(items=[e for e in state.edges if e["issue_id"] in ids], missing=[i for i in ids if i not in state.tasks]))
                     elif path.endswith("/issues"):
+                        if state.list_fail:
+                            self.respond(dict(code="unavailable"), 503)
+                            return
                         # Force paging so a capped first result cannot masquerade as a whole tree.
                         items = list(state.tasks.values())
                         offset = int(query.get("cursor", ["0"])[0])
@@ -147,12 +155,19 @@ class Boundary:
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--nui', type=Path, default=Path(os.environ.get('NVIM_TEST_NUI', str(Path.home() / '.local/share/nvim/lazy/nui.nvim'))))
+    args = parser.parse_args()
+    pin = json.loads((ROOT / 'nvim/lazy-lock.json').read_text())['nui.nvim']['commit']
+    observed = subprocess.check_output(['git', '-C', str(args.nui), 'rev-parse', 'HEAD'], text=True).strip()
+    if observed != pin:
+        raise SystemExit(f'Use the locked nui.nvim revision {pin}; selected {observed}')
     state = Boundary()
     with tempfile.TemporaryDirectory(prefix="nvim-beads-") as directory:
         with ThreadingHTTPServer(("127.0.0.1", 0), state.handler()) as server:
             thread = threading.Thread(target=server.serve_forever, daemon=True)
             thread.start()
-            env = {**os.environ, "BEADS_TEST_SETTINGS": json.dumps(dict(url=f"http://127.0.0.1:{server.server_port}", project_id=PROJECT, state_dir=directory))}
+            env = {**os.environ, "NVIM_TEST_NUI": str(args.nui.resolve()), "BEADS_TEST_SETTINGS": json.dumps(dict(url=f"http://127.0.0.1:{server.server_port}", project_id=PROJECT, state_dir=directory))}
             try:
                 subprocess.run(["nvim", "--headless", "-u", "NONE", "-i", "NONE", "-n", "-l", "nvim/tests/beads.lua"], cwd=ROOT, env=env, check=True, timeout=45)
                 subprocess.run(["nvim", "--headless", "-u", "NONE", "-i", "NONE", "-n", "-l", "nvim/tests/beads-restart.lua"], cwd=ROOT, env=env, check=True, timeout=30)

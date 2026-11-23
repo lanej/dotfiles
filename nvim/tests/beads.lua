@@ -1,5 +1,7 @@
 vim.opt.rtp:prepend(vim.fn.getcwd() .. "/nvim")
+vim.opt.rtp:append(assert(vim.env.NVIM_TEST_NUI, "Set NVIM_TEST_NUI to the locked nui.nvim checkout"))
 vim.o.hidden = true
+require("dotfiles-theme").setup()
 local settings = vim.json.decode(vim.env.BEADS_TEST_SETTINGS)
 local beads = require("beads")
 local messages = {}
@@ -50,9 +52,9 @@ local function tree_lines()
 	return table.concat(vim.api.nvim_buf_get_lines(tree_buf, 0, -1, false), "\n")
 end
 wait(function()
-	return tree_lines():find("trial%-root")
+	return tree_lines():find("Parent")
 end, "Tree did not load")
-assert(not tree_lines():find("trial%-child"), "Children should start collapsed")
+assert(not tree_lines():find("Child"), "Children should start collapsed")
 local function node(id)
 	vim.api.nvim_set_current_win(tree_win)
 	for index, line in ipairs(vim.api.nvim_buf_get_lines(tree_buf, 0, -1, false)) do
@@ -66,11 +68,62 @@ end
 local function key(keys)
 	vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(keys, true, false, true), "xt", false)
 end
-node("trial-root")
+node("Parent")
 key("l")
-assert(tree_lines():find("trial%-child"), "Expand must reveal child")
+assert(tree_lines():find("Child"), "Expand must reveal child")
+key("j")
+vim.cmd("doautocmd CursorMoved")
+assert(vim.b[tree_buf].beads_selection == "trial-child", "Selection did not follow the keyboard")
+key("h")
+assert(vim.b[tree_buf].beads_selection == "trial-root", "Parent navigation lost identity")
+control({ list_fail = true })
+vim.cmd.BeadsRefresh()
+wait(function()
+	return tree_lines():find("stale")
+end, "Refresh failure is invisible")
+assert(tree_lines():find("Child"), "Refresh failure discarded the retained tree")
+control({ list_fail = false })
+key("r")
+wait(function()
+	return not tree_lines():find("stale")
+end)
+-- Check the actual Nui-rendered spans and selection, rather than source color declarations.
+local colors = require("dotfiles-theme").colors()
+assert(
+	vim.api.nvim_get_hl(0, { name = "BeadsBlocked", link = false }).fg == tonumber(colors["status.error"]:sub(2), 16)
+)
+assert(vim.api.nvim_get_hl(0, { name = "BeadsProgress", link = false }).bold)
+assert(vim.wo[tree_win].cursorline and vim.wo[tree_win].winfixwidth)
+local spans =
+	vim.api.nvim_buf_get_extmarks(tree_buf, vim.api.nvim_get_namespaces()["beads-sidebar"], 0, -1, { details = true })
+local semantic
+for _, span in ipairs(spans) do
+	if span[4].hl_group == "BeadsProgress" then
+		semantic = true
+	end
+end
+assert(semantic, "Active-task icon has no semantic color")
+local initial_width = vim.api.nvim_win_get_width(tree_win)
+vim.api.nvim_win_set_width(tree_win, 26)
+vim.cmd("doautocmd WinResized")
+assert(not tree_lines():find("A task title that expands with the pane", 1, true))
+vim.api.nvim_win_set_width(tree_win, 52)
+vim.cmd("doautocmd WinResized")
+assert(
+	tree_lines():find("A task title that expands with the pane", 1, true),
+	"Enlarging the tree did not restore its titles"
+)
+vim.api.nvim_win_set_width(tree_win, initial_width)
+vim.cmd("doautocmd WinResized")
+vim.cmd.colorscheme("default")
+assert(vim.api.nvim_get_hl(0, { name = "BeadsBlocked", link = false }).fg, "Colorscheme reload removed Beads colors")
+vim.cmd.colorscheme("dotfiles")
 local child = open("trial-child")
 assert(vim.bo[child].buftype == "acwrite" and vim.bo[child].filetype == "markdown")
+assert(vim.wo.linebreak and vim.wo.breakindent, "Briefs should wrap at word boundaries")
+vim.cmd.enew()
+assert(not vim.wo.linebreak and not vim.wo.breakindent, "Task appearance leaked into an ordinary buffer")
+assert(open("trial-child") == child)
 local first_name = vim.api.nvim_buf_get_name(child)
 vim.cmd.tabnew()
 assert(open("trial-child") == child, "Task opening must reuse the buffer across tabs")
