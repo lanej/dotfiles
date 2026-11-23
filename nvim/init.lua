@@ -8,6 +8,7 @@
 
 local use_ghlite = require("dotfiles-config").enabled("features.nvim_ghlite")
 require("file-opener").setup()
+require("beads").setup(vim.g.beads or {})
 
 vim.opt.autoread = true
 vim.opt.autoindent = true

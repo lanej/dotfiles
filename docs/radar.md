@@ -141,7 +141,7 @@ Strict Protobuf compilation, lint, formatting, and compatibility checks through 
 
 ### Beads and Dolt
 
-[Beads](beads.md) provides a shared local work graph through one managed HTTP endpoint backed by a private Dolt SQL server. Native binaries are pinned and checksum-verified. Pi's local task workflow reads and claims native beads over HTTP. Octo owns GitHub delivery. Issue synchronization requires separate integration.
+[Beads](beads.md) provides a shared local work graph through one managed HTTP endpoint backed by a private Dolt SQL server. Native binaries are pinned and checksum-verified. Pi's local task workflow reads and claims native beads over HTTP. The [Neovim explorer](neovim-beads.md) edits task documents through generated native Lua bindings. Octo owns GitHub delivery. Issue synchronization requires separate integration.
 
 ### Mergiraf
 

@@ -1,0 +1,28 @@
+Beads · trial         │# Editable task document                 
+· ○ Blocker · trial-bl│                                         
+▾ ○ Neovim task author│## Problem                               
+  · ● Editable Markdow│Tasks need a normal editing window.      
+~                     │                                         
+~                     │## Outcome                               
+~                     │Explicit saves preserve task identity.   
+~                     │                                         
+~                     │## Scope                                 
+~                     │Browse, edit and recover safely.         
+~                     │                                         
+~                     │## Acceptance criteria                   
+~                     │                                         
+~                     │                                         
+~                     │- [ ] Reuse the task buffer              
+~                     │- [ ] Preserve ownership on save         
+~                     │- [ ] Keep local edits on conflicts      
+~                     │~                                        
+~                     │~                                        
+~                     │~                                        
+~                     │~                                        
+~                     │~                                        
+~                     │~                                        
+~                     │~                                        
+~                     │~                                        
+~                     │~                                        
+<-] 3,1            All <al/trial-child.md [+] 1,1            Bot
+                                                                

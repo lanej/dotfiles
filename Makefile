@@ -671,3 +671,11 @@ update-projects:
 
 test-project-update:
 	@"$(UV)" run --no-project --python ">=3.11" python "$(DOTFILES)/scripts/test-project-update.py"
+
+.PHONY: test-nvim-beads test-nvim-beads-native check-beads-lua
+test-nvim-beads:
+	@python3 "$(DOTFILES)/scripts/test-nvim-beads.py"
+check-beads-lua:
+	@npm --prefix "$(DOTFILES)/tools/task-runtime" run check:beads-lua
+test-nvim-beads-native:
+	@env BEADS_TEST_BD="$(BEADS_TEST_BD)" BEADS_TEST_DOLT="$(BEADS_TEST_DOLT)" STUDIO_TEST_SOURCE="$(STUDIO_TEST_SOURCE)" bun "$(DOTFILES)/scripts/test-nvim-beads-native.mts"

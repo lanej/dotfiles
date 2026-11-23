@@ -16,6 +16,8 @@ Enable `tools.beads = true` in the machine TOML, or include `"beads"` in its set
 
 The installed `~/.local/bin/beads-service` supports `start`, `restart`, `stop`, `status`, `config`, and `backup` from any directory. Its controller and configuration reader are copied into `~/.local/share/beads-service`, so deleting the installation source worktree does not interrupt the service. Runtime binaries are private and versioned; an existing `bd` on PATH is preserved.
 
+[The Neovim task explorer](neovim-beads.md) browses the project graph and opens editable Markdown task buffers. Explicit saves use the same HTTP authority and revision guards, independently of chat or a worker.
+
 ## Source layout
 
 [The Beads capability](../tools/beads/) groups the service controller, strict configuration reader, runtime-update adapter, and service checks. The controller uses Python’s standard library for TOML and JSON validation, native launchd property lists, inherited file-descriptor locks, atomic receipts, and bounded child-process supervision. Bootstrap remains the shell entrypoint for selected installation; source configuration and task state remain separate from the installed controller.
