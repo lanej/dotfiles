@@ -16,6 +16,7 @@ shellcheck -x \
 	"$dotfiles/scripts/install-zellij" \
 	"$dotfiles/scripts/install-treehouse" \
 	"$dotfiles/scripts/install-worktree-policy" \
+	"$dotfiles/scripts/install-pi" \
 	"$dotfiles/scripts/install-worktree-manager" \
 	"$dotfiles/scripts/install-shfmt.sh" \
 	"$dotfiles/scripts/build-worktree-policy.sh" \
@@ -41,4 +42,5 @@ shellcheck -x \
 	"$dotfiles/bin/git-worktree-policy-hook" \
 	"$dotfiles/bin/git-worktree-policy" \
 	"$dotfiles/bin/dotfiles-fzf" \
-	"$dotfiles/bin/sync-codex-mcp-servers"
+	"$dotfiles/bin/sync-codex-mcp-servers" \
+	"$dotfiles/paseo-tasks/coordinator/init.sh"

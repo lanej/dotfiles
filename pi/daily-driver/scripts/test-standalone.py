@@ -41,6 +41,16 @@ with tempfile.TemporaryDirectory(prefix="pi-driver-standalone-") as temporary:
         assert result.returncode == expected, (args, result.stdout[-4000:], result.stderr[-8000:])
         return result.stdout
     run(["git", "init", "-q"])
+    with (source / ".gitignore").open("a") as ignored:
+        ignored.write("\nlocal.env\n")
+    (source / "local.env").write_text("fixture-only-private-value\n")
+    exported = work / "second-export"
+    run(["python3", "scripts/export.py", str(exported)])
+    assert not (exported / "local.env").exists()
+    # Without Git, only the declared source manifest is copied.
+    (exported / "another-private-file").write_text("fixture-only-private-value\n")
+    run(["python3", str(exported / "scripts/export.py"), str(work / "manifest-export")])
+    assert not (work / "manifest-export/another-private-file").exists()
     run([bun, "install", "--frozen-lockfile", "--ignore-scripts"])
     run([bun, "install", "--cwd", ".typescript-quality", "--frozen-lockfile", "--ignore-scripts"])
     run([bun, "run", "typecheck"])
@@ -64,6 +74,12 @@ with tempfile.TemporaryDirectory(prefix="pi-driver-standalone-") as temporary:
     launcher = home / ".local/bin/pi-driver"
     assert json.loads(run([str(launcher), "config", "--example"])) == json.loads(source_config)
     first = launcher.resolve()
+    assert not (first.parents[1] / "local.env").exists()
+    deny("bun")
+    env["PI_DRIVER_USE_SOURCE"] = "1"
+    assert json.loads(run([str(launcher), "config", "--example"])) == json.loads(source_config)
+    env.pop("PI_DRIVER_USE_SOURCE", None)
+    (guard / "bun").unlink()
     settings = json.loads((home / "agent/settings.json").read_text())
     assert settings["packages"] == [str(first.parents[1])]
     run([bun, "scripts/lifecycle.mjs", "build"])

@@ -1,7 +1,7 @@
 import { constants } from "node:fs";
 import { access, stat } from "node:fs/promises";
 import { delimiter, isAbsolute, join } from "node:path";
-import type { DriverConfig } from "./config.ts";
+import { configPath, type DriverConfig } from "./config.ts";
 
 export type Integration = keyof DriverConfig["integrations"];
 
@@ -34,7 +34,7 @@ export async function integrationStatus(
     available: enabled && present,
     executable: resolved ?? executable,
     reason: !enabled
-      ? `Enable integrations.${name}.enabled in pi-driver/config.json to use this integration`
+      ? `Enable integrations.${name}.enabled in ${configPath()} to use this integration`
       : !present
         ? `Install ${executable} or configure integrations.${name}.executable`
         : "Available",

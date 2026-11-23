@@ -1,5 +1,7 @@
 """Copy the standalone source boundary into a new, empty directory."""
 from pathlib import Path
+import json
+from source_files import source_files, MANIFEST
 import shutil
 import sys
 
@@ -14,17 +16,13 @@ def export(destination):
     destination.mkdir(parents=True, exist_ok=True)
     if any(destination.iterdir()):
         raise ValueError("Export destination must be empty")
-    for source in ROOT.rglob("*"):
-        relative = source.relative_to(ROOT)
-        if any(part in IGNORED for part in relative.parts):
-            continue
-        if source.is_symlink():
-            raise ValueError(f"Refusing source symlink: {relative}")
-        target = destination / relative
-        if source.is_dir():
-            target.mkdir(exist_ok=True)
-        else:
-            shutil.copy2(source, target)
+    names = source_files(ROOT)
+    for name in names:
+        source = ROOT / name
+        target = destination / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, target)
+    (destination / MANIFEST).write_text(json.dumps(sorted(set([*names, MANIFEST])), indent=2) + "\n")
     print(f"Exported standalone Pi driver source to {destination}")
 
 

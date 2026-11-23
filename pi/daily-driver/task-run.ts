@@ -24,7 +24,7 @@ import { ClaimRefused, TaskBeads } from "./task-service.ts";
 import { Zellij } from "./zellij.ts";
 
 const extension = join(packageRoot, "worker-extension.ts");
-async function piExecutable(): Promise<string> {
+export async function piExecutable(): Promise<string> {
   const executable = join(packageRoot, "scripts/pi");
   await access(executable, constants.X_OK);
   return executable;

@@ -112,7 +112,12 @@ def launch(
     command = f"cd {shlex.quote(str(repository))} && {start_command}; printf '%s' $? > {shlex.quote(str(exit_file))}"
     assert any(p["id"] == launcher_pane for p in terminal.terminals()), "Owned launcher disappeared"
     terminal.send_to_pane(launcher_pane, command + "\r")
-    terminal.until("start dispatch completes", exit_file.exists)
+    try:
+        terminal.until("start dispatch completes", exit_file.exists)
+    except AssertionError as error:
+        panes = {pane["id"]: terminal.capture_pane(pane["id"], full=True)
+                 for pane in terminal.terminals()}
+        raise AssertionError(f"Worker dispatch timed out. Pane output: {panes}") from error
     assert exit_file.read_text() == "0", terminal.capture_pane(launcher_pane, full=True)
     assert any(p["id"] == launcher_pane and p["is_focused"]
                for p in terminal.terminals()), terminal.terminals()

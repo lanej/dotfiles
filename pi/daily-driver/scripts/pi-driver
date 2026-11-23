@@ -20,6 +20,11 @@ if [ "${PI_DRIVER_USE_SOURCE:-0}" != 1 ] && [ -x "$compiled" ]; then
     exec "$compiled" "$@"
 fi
 
+runtime=$package/runtime/bun
+if [ -x "$runtime" ]; then
+    exec "$runtime" "$package/cli.ts" "$@"
+fi
+
 if ! command -v bun >/dev/null 2>&1; then
     printf '%s\n' 'Install the Bun version in the driver .bun-version file.' >&2
     exit 1

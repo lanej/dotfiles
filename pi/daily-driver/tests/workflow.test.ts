@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import {
+  chmod,
+  stat,
   mkdir,
   mkdtemp,
   readFile,
@@ -227,12 +229,17 @@ await test("opt-in registration preserves local settings and is idempotent", asy
         packages: ["keep-package"],
       }),
     );
+    await chmod(join(agent, "settings.json"), 0o600);
     const install = () =>
       execute("python3", [join(root, "scripts/configure.py"), root, agent], {
         env: { ...process.env, PI_CODING_AGENT_DIR: agent },
       });
     await install();
     await install();
+    assert.equal(
+      (await stat(join(agent, "settings.json"))).mode & 0o777,
+      0o600,
+    );
     const settings = z
       .object({
         theme: z.string(),

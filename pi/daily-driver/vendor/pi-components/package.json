@@ -1,0 +1,19 @@
+{
+  "name": "@lanej/pi-components",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "files": [
+    "*.ts"
+  ],
+  "peerDependencies": {
+    "@earendil-works/pi-tui": "^1.4.0"
+  },
+  "engines": {
+    "bun": "1.4.5"
+  },
+  "packageManager": "bun@1.4.5"
+}

@@ -79,7 +79,9 @@ function toolsReady() {
   if (!existsSync(path.join(tools, 'bun.lock'))) fail('Run the tools command, then review and commit .typescript-quality/bun.lock.');
   for (const [name, version] of Object.entries(manifest.dependencies)) {
     const installed = readJSON(path.join(tools, 'node_modules', name, 'package.json')).version;
-    if (installed !== version) fail(`Quality tool ${name} must be ${version}; run the tools command.`);
+    if (installed !== version) {
+      fail(`Quality tool ${name} must be ${version}; run the tools command and review the lockfile.`);
+    }
   }
 }
 
@@ -278,10 +280,11 @@ function enforce(findings, settings) {
 async function main() {
   process.chdir(root);
   if (process.env.DOTFILES_TYPESCRIPT_QUALITY_ACTIVE === root) fail('Recursive quality command: preserve the original project gate instead of calling this runner from it.');
-  if (!modes.has(mode) || (mode !== 'fmt' && args.length)) fail('Usage: node scripts/check-typescript.mjs [all|alpha|lint|typecheck|fmt FILE...|test|audit|tools|baseline|ratchet]');
+  if (!modes.has(mode) || (mode !== 'fmt' && args.length)) fail('Usage: bun scripts/check-typescript.mjs [all|alpha|lint|typecheck|fmt FILE...|test|audit|tools|baseline|ratchet]');
   if (!process.versions.bun) fail('TypeScript quality requires Bun.');
   if (mode === 'tools') {
-    run(['bun', 'install', '--cwd', tools, '--frozen-lockfile', '--ignore-scripts']);
+    run(['bun', 'install', '--cwd', tools, '--ignore-scripts',
+      ...(existsSync(path.join(tools, 'bun.lock')) ? ['--frozen-lockfile'] : [])]);
     console.log('Review and commit .typescript-quality/bun.lock with the profile.');
     return;
   }

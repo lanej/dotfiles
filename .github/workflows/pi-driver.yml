@@ -58,3 +58,28 @@ jobs:
           manifest="$HOME/.local/share/beads-service/runtime.json"
           bun run --cwd pi/daily-driver test:beads-native -- \
             --bd "$(jq -er .bd "$manifest")" --dolt "$(jq -er .dolt "$manifest")"
+
+  lsp-native:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: pi/daily-driver/.bun-version
+      - run: bun install --cwd pi/daily-driver --frozen-lockfile --ignore-scripts
+      - name: Install the repository-pinned server for native acceptance
+        run: |
+          version=$(python3 -c 'import tomllib; print(tomllib.load(open("bootstrap/tools.toml","rb"))["tools"]["typescript-language-server"]["version"])')
+          npm --prefix "$RUNNER_TEMP/pi-lsp" install --ignore-scripts "typescript-language-server@$version"
+          echo "$RUNNER_TEMP/pi-lsp/node_modules/.bin" >> "$GITHUB_PATH"
+      - run: bun run --cwd pi/daily-driver test:lsp-native

@@ -14,6 +14,7 @@ import {
   ReasoningLevel,
 } from "../config.ts";
 import { run } from "../process.ts";
+import { piExecutable } from "../task-run.ts";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const temporary = await mkdtemp(join(tmpdir(), "pi-driver-resources-"));
@@ -67,12 +68,8 @@ await writeFile(
   }),
 );
 const pi = spawn(
-  process.execPath,
+  await piExecutable(),
   [
-    join(
-      root,
-      "node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
-    ),
     "--mode",
     "rpc",
     "--offline",

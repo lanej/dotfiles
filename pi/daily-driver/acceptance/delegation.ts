@@ -29,6 +29,8 @@ import {
 import { run } from "../process.ts";
 import { PiEvent } from "../runtime.ts";
 
+import { piExecutable } from "../task-run.ts";
+
 enum Scenario {
   Complete = "complete",
   LostAllocation = "--lost-allocation",
@@ -39,10 +41,6 @@ enum RpcCommand {
   Abort = "abort",
 }
 const root = fileURLToPath(new URL("../", import.meta.url));
-const cli = join(
-  root,
-  "node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js",
-);
 const requestSchema = z.object({
   model: z.enum(AgentRole),
   messages: z.array(z.object({ role: z.string() })),
@@ -276,9 +274,8 @@ process.exit(lose ? 1 : (result.status ?? 1));
     );
 
     const pi = spawn(
-      process.execPath,
+      await piExecutable(),
       [
-        cli,
         "--mode",
         "rpc",
         "--offline",

@@ -1,0 +1,8 @@
+[display]
+inline_diagnostics = true
+# Minimum code columns per side, excluding line numbers and the divider.
+min_split_columns = 40
+
+# Optional RGB backgrounds for changed rows or split cells.
+# added_background = "#304639"
+# removed_background = "#47343f"

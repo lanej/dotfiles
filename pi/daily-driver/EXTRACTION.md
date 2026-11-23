@@ -13,3 +13,5 @@ Cutover remains gated on standalone macOS and Linux acceptance. Only then remove
 There is no pre-extraction driver database to migrate. Existing Beads data and unrelated Pi sessions remain outside this extraction. The driver retains its normal persistent attempt and recovery records for future use.
 
 Optional integrations are disabled by default and are admitted only when configured and present. Core installation and standalone acceptance do not require Beads, Zellij, worktree manager, or Octo; use `--with-integrations` for native delegation acceptance.
+
+`vendor/pi-components` retains the current shared selector implementation from dotfiles commit 72494ce0 so the capability refactor and code intelligence remain available after extraction. Source export and installation select Git-visible files; snapshots without Git use the explicit `source-files.json` generated at export. Ignored local files are outside that boundary.

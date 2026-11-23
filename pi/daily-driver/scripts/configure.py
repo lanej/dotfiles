@@ -16,7 +16,11 @@ agent.mkdir(parents=True, exist_ok=True)
 def atomic_json(path, value):
     temporary = path.with_name(".pi-driver-" + path.name + "-" + str(os.getpid()))
     try:
-        temporary.write_text(json.dumps(value, indent=2) + "\n")
+        mode = path.stat().st_mode & 0o777 if path.exists() else 0o600
+        descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, "w") as staged:
+            os.fchmod(staged.fileno(), mode)
+            staged.write(json.dumps(value, indent=2) + "\n")
         os.replace(temporary, path)
     finally:
         temporary.unlink(missing_ok=True)

@@ -1,3 +1,4 @@
+import { lspTool, renameTool } from "./code-intelligence/extension.ts";
 import { githubLink, renderReferences } from "./github-links.ts";
 import { FooterStatus } from "./runtime.ts";
 import type {
@@ -18,8 +19,8 @@ import {
   LeadMode,
   planDigest,
 } from "./lead-plan.ts";
-import { SpecStatus } from "./lead-spec.ts";
-import { askTool, registerSocrates, specTool } from "./socrates-controls.ts";
+import { SpecStatus } from "./socrates/spec.ts";
+import { askTool, registerSocrates, specTool } from "./socrates/controls.ts";
 import { reviewPlan, showTask } from "./ui.ts";
 import { BeadChanged, owner, TaskBeads } from "./task-service.ts";
 
@@ -29,10 +30,16 @@ const inspectTools = new Set([
   "ls",
   "find",
   "grep",
+  lspTool,
   delegateTool,
   planTool,
 ]);
-const implementationTools = new Set(["write", "edit", "task_submit_result"]);
+const implementationTools = new Set([
+  "write",
+  "edit",
+  "task_submit_result",
+  renameTool,
+]);
 
 async function worktreeWritePath(cwd: string, input: unknown): Promise<string> {
   const { path } = z.object({ path: z.string().min(1) }).parse(input);

@@ -18,13 +18,8 @@ function run(argv, cwd = root, capture = false) {
   return result.stdout?.trim() ?? '';
 }
 // Source identity includes local edits and portable resources, never installed dependencies.
-function files(directory = root, relative = '') {
-  return readdirSync(directory, { withFileTypes: true }).sort((a,b) => a.name.localeCompare(b.name)).flatMap(entry => {
-    if (['.git', 'node_modules', '.aot', '__pycache__'].includes(entry.name)) return [];
-    const name = join(relative, entry.name);
-    if (entry.isSymbolicLink()) throw new Error(`Refusing source symlink: ${name}`);
-    return entry.isDirectory() ? files(join(directory, entry.name), name) : [name];
-  });
+function files() {
+  return JSON.parse(run(['python3', join(root, 'scripts/source_files.py')], root, true));
 }
 function installedFiles(directory, relative = '') {
   return readdirSync(directory, { withFileTypes: true }).sort((a,b) => a.name.localeCompare(b.name)).flatMap(entry => {
@@ -79,6 +74,7 @@ try {
       mkdirSync(dirname(join(stage, name)), { recursive: true });
       cpSync(join(root, name), join(stage, name));
     }
+    writeFileSync(join(stage, "source-files.json"), JSON.stringify([...new Set([...names, "source-files.json"])].sort()) + "\n");
     // Pin the host runtime alongside the extension so PATH cannot select Node or a different Bun.
     mkdirSync(join(stage, 'runtime'));
     cpSync(process.execPath, join(stage, 'runtime/bun'));

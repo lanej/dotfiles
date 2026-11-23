@@ -6,7 +6,11 @@ The [runtime integration plan](../pi/daily-driver/RUNTIME.md) evaluates existing
 
 ## Install
 
-Select `pi = true` under `[tools]` in the machine TOML and run `make install` to install `@earendil-works/pi-coding-agent` at version 1.4.0 or retain an already installed newer version, then configure its shared resources. Bootstrap installs Node 24 first. The Pi package is installed with npm lifecycle scripts disabled.
+Select `pi = true` under `[tools]` in the machine TOML and run `make install` to install the configured standalone Pi release and share its resources. The installer places the launcher at `~/.local/bin/pi`. If an older npm launcher appears first in your shell, open a new shell or put `~/.local/bin` first on PATH.
+
+Follow the [daily-driver setup](../pi/daily-driver/README.md#enable) to enable the Bun-based extension.
+
+If the installer reports an unmanaged launcher at `~/.local/bin/pi`, move that launcher aside before retrying.
 
 If Pi is already installed, run `make pi` to share resources. `make pi-config` removes retired Firstmate integration registrations while preserving unrelated Pi settings and saved work. These configuration targets do not download Pi. Authenticate and select a provider/model using Pi's own setup. The shared-resource synchronizer does not copy credentials or configure providers.
 
@@ -30,4 +34,4 @@ Local Pi prompts are preserved, including collisions with the `dotfiles-` names.
 
 `make test-pi-resources` exercises the real configuration target in an isolated home. CI also uses Pi 1.4.0 to discover the installed resources without making a model request. Resource discovery does not establish that a model follows every shared instruction or that Claude-specific skills work unchanged.
 
-The daily-driver package is being prepared for a standalone checkout. Its managed workflow uses the Bun version in `pi/daily-driver/.bun-version`, independently of the optional npm-installed Pi launcher above. See its [installation and extraction instructions](../pi/daily-driver/README.md). The standalone project owns installation and its `project-update` adapter; repository creation and registry registration await the destination choice.
+The daily-driver package is being prepared for a standalone checkout. Its managed workflow uses the Bun version in `pi/daily-driver/.bun-version`, independently of the standalone Pi launcher above. See its [installation and extraction instructions](../pi/daily-driver/README.md). The standalone project owns installation and its `project-update` adapter; repository creation and registry registration await the destination choice.
