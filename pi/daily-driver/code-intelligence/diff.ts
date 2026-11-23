@@ -3,6 +3,7 @@ import {
   highlightCode,
   type Theme,
 } from "@earendil-works/pi-coding-agent";
+import { defaultMinSplitColumns } from "./display-config.ts";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -27,7 +28,6 @@ interface DiffLine {
   before: string | undefined;
   after: string | undefined;
 }
-const minimumSourceWidth = 40;
 
 export function syntaxDiffRows(
   diff: string,
@@ -36,6 +36,7 @@ export function syntaxDiffRows(
   width: number,
   cwd: string,
   highlight: Highlighter = highlightCode,
+  minimumSourceWidth = defaultMinSplitColumns,
 ): string[] {
   if (width < 3) return [];
   const lines: DiffLine[] = diff.split("\n").map((line) => {

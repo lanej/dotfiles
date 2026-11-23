@@ -1,3 +1,7 @@
+import {
+  defaultMinSplitColumns,
+  loadDiffDisplayConfig,
+} from "./display-config.ts";
 import { registerDiagnosticRendering } from "./rendering.ts";
 import type { DiagnosticSnapshot } from "./diagnostics.ts";
 import { resolve } from "node:path";
@@ -48,7 +52,12 @@ const message = (error: unknown) =>
 
 export function registerCodeIntelligence(pi: ExtensionAPI): CodeIntelligence {
   const intelligence = new CodeIntelligence();
-  const display = registerDiagnosticRendering(pi, intelligence);
+  let minSplitColumns = defaultMinSplitColumns;
+  const display = registerDiagnosticRendering(
+    pi,
+    intelligence,
+    () => minSplitColumns,
+  );
   const renameCalls = new Set<string>();
   let approvedProject: string | undefined;
   let lifecycle = 0;
@@ -111,6 +120,8 @@ export function registerCodeIntelligence(pi: ExtensionAPI): CodeIntelligence {
     approvedProject = undefined;
     await intelligence.stop();
     intelligence.enabled = (await loadConfig()).lsp.enabled;
+    minSplitColumns = defaultMinSplitColumns;
+    minSplitColumns = (await loadDiffDisplayConfig()).min_split_columns;
   });
   pi.on("session_shutdown", async () => {
     lifecycle++;

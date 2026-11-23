@@ -31,6 +31,13 @@ import {
 
 initTheme("dark", false);
 const root = await realpath(await mkdtemp(join(tmpdir(), "pi-lsp-native-")));
+const previousConfigHome = process.env["XDG_CONFIG_HOME"];
+process.env["XDG_CONFIG_HOME"] = join(root, "config");
+await mkdir(join(root, "config/pi-driver"), { recursive: true });
+await writeFile(
+  join(root, "config/pi-driver/display.toml"),
+  "[diff]\nmin_split_columns = 50\n",
+);
 const agentDir = join(root, "agent");
 await mkdir(agentDir);
 const previousAgentDir = process.env["PI_CODING_AGENT_DIR"];
@@ -203,9 +210,9 @@ try {
   assert.doesNotMatch(component.render(100).join("\n"), /"lsp"|"diagnostics"/u);
   assert.match(component.render(60).join("\n"), /Diagnostics/u);
   assert.match(callComponent.render(100).join("\n"), /answer.*number/u);
-  assert.match(callComponent.render(100).join("\n"), /Before.*After/u);
+  assert.match(callComponent.render(120).join("\n"), /Before.*After/u);
   assert.doesNotMatch(
-    callComponent.render(60).join("\n"),
+    callComponent.render(100).join("\n"),
     /Before.*After| │ /u,
   );
   await eventually(
@@ -355,5 +362,7 @@ try {
   session.dispose();
   if (previousAgentDir === undefined) delete process.env["PI_CODING_AGENT_DIR"];
   else process.env["PI_CODING_AGENT_DIR"] = previousAgentDir;
+  if (previousConfigHome === undefined) delete process.env["XDG_CONFIG_HOME"];
+  else process.env["XDG_CONFIG_HOME"] = previousConfigHome;
   await rm(root, { recursive: true, force: true });
 }

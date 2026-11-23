@@ -25,6 +25,7 @@ interface View {
 export function registerDiagnosticRendering(
   pi: ExtensionAPI,
   intelligence: CodeIntelligence,
+  minSplitColumns: () => number,
 ) {
   const views = new Map<string, View>();
   const latest = new Map<string, string>();
@@ -105,6 +106,8 @@ export function registerDiagnosticRendering(
                         theme,
                         width,
                         context.cwd,
+                        undefined,
+                        minSplitColumns(),
                       );
                 },
               };
