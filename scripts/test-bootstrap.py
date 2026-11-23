@@ -58,6 +58,16 @@ printf '%s\\n' "${SSL_CERT_FILE-unset}" "${SSL_CERT_DIR-unset}"
         assert result.stdout.splitlines() == ["unset", "unset"], result.stdout
         print("PASS Linux CA discovery preserves existing and explicit trust stores")
 
+        result = run('''
+os=linux
+bun() { printf '%s\\n' "${TEST_BUN_VERSION:-1.4.5-canary}"; }
+package_semver() { return 1; }
+install_bun_from_release() { TEST_BUN_VERSION=$1; printf 'installed stable %s\\n' "$1"; }
+install_package_version bun 1.4.5
+''')
+        assert "installed stable 1.4.5" in result.stdout, result.stdout
+        print("PASS prerelease Bun does not satisfy a stable runtime minimum")
+
         npm_bin = home / "npm-bin"
         cargo_bin = home / ".cargo/bin"
         npm_bin.mkdir()

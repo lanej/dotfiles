@@ -468,6 +468,10 @@ install_glow_from_source() {
 }
 
 installed_semver() {
+	if [ "$1" = bun ]; then
+		bun_current_semver
+		return
+	fi
 	if [ "$1" = pi ]; then
 		# Only a launcher installed from the standalone release satisfies bootstrap.
 		local launcher="$HOME/.local/bin/pi" target
