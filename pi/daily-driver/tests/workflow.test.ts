@@ -14,6 +14,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { z } from "zod";
+import { Attempts } from "../attempts.ts";
 import { taskDetails, taskLabel, taskSchema, taskTree } from "../beads.ts";
 
 import { githubLink, renderReferences } from "../github-links.ts";
@@ -22,6 +23,17 @@ import { highlightSearchOutput } from "../search-renderer.ts";
 
 const execute = promisify(execFile);
 const root = fileURLToPath(new URL("../", import.meta.url));
+
+await test("a fresh worker journal has no previous attempt for a bead", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "pi-driver-journal-"));
+  const journal = new Attempts(directory);
+  try {
+    assert.equal(journal.latest("project", "bead"), null);
+  } finally {
+    journal.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 await test("task containment stays separate from blockers, including missing parents and cycles", () => {
   const rows = taskTree([

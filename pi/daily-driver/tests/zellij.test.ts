@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { createServer } from "node:net";
 import { dirname, join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { Database } from "bun:sqlite";
 import { test } from "node:test";
 import { ClientToServerMsgSchema } from "../generated/zellij/client_to_server_pb.js";
 import { Zellij } from "../zellij.ts";
@@ -43,7 +43,7 @@ await test("a lost pane launch is sent once and a replaced server is never focus
     .update(sockets)
     .digest("hex")
     .slice(0, 12);
-  const index = new DatabaseSync(join(cache, `session_index-${suffix}.sqlite`));
+  const index = new Database(join(cache, `session_index-${suffix}.sqlite`));
   index.exec(
     "CREATE TABLE sessions (id TEXT, name TEXT); INSERT INTO sessions VALUES ('one', 'test');",
   );

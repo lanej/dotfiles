@@ -5,7 +5,7 @@ import {
 import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { Database } from "bun:sqlite";
 import { z } from "zod";
 import { configSchema, driverProfileSchema, selection } from "./config.ts";
 import { deliverySchema } from "./delivery-record.ts";
@@ -75,14 +75,14 @@ export function stateDirectory(): string {
 
 /** Each transaction records one local transition; external operations run after the transaction commits. */
 export class Attempts {
-  private readonly db: DatabaseSync;
+  private readonly db: Database;
   constructor(
     readonly directory: string,
     readOnly = false,
   ) {
     if (!readOnly) mkdirSync(directory, { recursive: true, mode: 0o700 });
-    this.db = new DatabaseSync(join(directory, "attempts.sqlite"), {
-      readOnly,
+    this.db = new Database(join(directory, "attempts.sqlite"), {
+      readonly: readOnly,
     });
     this.db.exec("PRAGMA busy_timeout=5000");
     if (!readOnly)
@@ -112,7 +112,7 @@ export class Attempts {
         "SELECT record FROM attempts WHERE project=? AND bead=? ORDER BY active DESC,rowid DESC LIMIT 1",
       )
       .get(project, bead);
-    return raw === undefined ? null : decode(raw);
+    return raw === null ? null : decode(raw);
   }
   livePaneBeads(project: string, session: string): Set<string> {
     return new Set(

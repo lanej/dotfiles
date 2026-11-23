@@ -9,7 +9,7 @@ import { lstatSync } from "node:fs";
 import { createConnection } from "node:net";
 import { homedir, tmpdir } from "node:os";
 import { isAbsolute, join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { Database } from "bun:sqlite";
 import { z } from "zod";
 import { ClientToServerMsgSchema } from "./generated/zellij/client_to_server_pb.js";
 import type { ActionSchema } from "./generated/zellij/common_types_pb.js";
@@ -64,8 +64,8 @@ function sessionSocket(
     override === undefined
       ? "session_index.sqlite"
       : `session_index-${createHash("sha256").update(sockets).digest("hex").slice(0, 12)}.sqlite`;
-  const database = new DatabaseSync(join(cache, namespace, index), {
-    readOnly: true,
+  const database = new Database(join(cache, namespace, index), {
+    readonly: true,
   });
   try {
     database.exec("PRAGMA busy_timeout=100");
