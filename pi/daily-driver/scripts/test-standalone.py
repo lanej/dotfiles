@@ -12,6 +12,7 @@ from export import export
 parser = argparse.ArgumentParser()
 parser.add_argument("--with-integrations", action="store_true", help="Also exercise native worktree-backed delegation")
 args = parser.parse_args()
+command_timeout = 240 if os.environ.get("GITHUB_ACTIONS") == "true" else 90
 bun = shutil.which("bun")
 assert bun, "Install the pinned Bun before standalone acceptance"
 with tempfile.TemporaryDirectory(prefix="pi-driver-standalone-") as temporary:
@@ -37,7 +38,7 @@ with tempfile.TemporaryDirectory(prefix="pi-driver-standalone-") as temporary:
     env.pop("PI_DRIVER_CONFIG", None)
     env.pop("PI_DRIVER_STATE_DIR", None)
     def run(args, expected=0, cwd=None):
-        result = subprocess.run(args, cwd=cwd or source, env=env, text=True, capture_output=True, timeout=90)
+        result = subprocess.run(args, cwd=cwd or source, env=env, text=True, capture_output=True, timeout=command_timeout)
         assert result.returncode == expected, (args, result.stdout[-4000:], result.stderr[-8000:])
         return result.stdout
     run(["git", "init", "-q"])
