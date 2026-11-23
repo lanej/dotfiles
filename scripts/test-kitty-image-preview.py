@@ -60,6 +60,14 @@ def exercise(work):
     subprocess.run(["git", "-C", str(repo), "worktree", "add", "-q", "--detach", str(source)], check=True)
     png(repo / IMAGE, (20, 60, 240))
     png(source / IMAGE, (245, 35, 40))
+    reference = source / "src/reference.rs"
+    reference.parent.mkdir()
+    reference.write_text("fn reference_line() {}\n" * 60)
+    scratch = source / "scratch.rs"
+    scratch.write_text("original\n")
+    editor_init = work / "editor.lua"
+    editor_init.write_text("vim.opt.runtimepath:prepend(" + json.dumps(str(ROOT / "nvim")) + ")\n"
+                           "vim.opt.hidden = true\nrequire('file-opener').setup()\n")
     env = {**os.environ, "HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config"),
            "XDG_CACHE_HOME": str(home / ".cache"), "XDG_DATA_HOME": str(home / ".local/share"),
            "XDG_RUNTIME_DIR": str(work / "run"), "ZELLIJ_SOCKET_DIR": str(work / "run"),
@@ -88,6 +96,7 @@ print("Preview (docs/screenshots/plan-viewer/fixture-".rjust(width - 2))
 print("  running-overview.png).")
 print("\\033]8;;''' + URL + '''\\033\\\\release notes\\033]8;;\\033\\\\", flush=True)
 print("\\033]8;;https://sw.kovidgoyal.net/kitty/\\033\\\\Kitty documentation\\033]8;;\\033\\\\", flush=True)
+print("src/reference.rs:42:7", flush=True)
 signal.pause()
 ''')
     layout = work / "layout.kdl"
@@ -124,7 +133,7 @@ signal.pause()
         if not re.search(r"foreground\s+#4c566a", colors, re.I):
             raise AssertionError("Non-link text must use the dim Nord foreground")
         artifacts = os.environ.get("KITTY_HINT_ARTIFACTS")
-        if artifacts and fragment == "screenshots/plan-viewer":
+        if artifacts and fragment in ("screenshots/plan-viewer", "reference.rs"):
             image = ImageGrab.grab().convert("RGB")
             colors = dict((color, count) for count, color in image.getcolors(image.width * image.height))
             for color in ((236, 239, 244), (180, 142, 173), (76, 86, 106)):
@@ -134,7 +143,8 @@ signal.pause()
             destination.mkdir(parents=True, exist_ok=True)
             geometry = dict(line.split("=", 1) for line in command("xdotool", "getwindowgeometry", "--shell", xid).splitlines())
             x, y, width, height = (int(geometry[key]) for key in ("X", "Y", "WIDTH", "HEIGHT"))
-            image.crop((x, y, x + width, y + height)).save(destination / "hints.png")
+            image.crop((x, y, x + width, y + height)).save(destination / (
+                "file-hints.png" if fragment == "reference.rs" else "hints.png"))
         key(label)
 
     log = work / "kitty.log"
@@ -178,7 +188,34 @@ signal.pause()
                 raise AssertionError("Cancelling hints changed the source pane colors")
             hint("lease notes", "s")
             until("the exact hyperlink at the desktop opener", lambda: (home / "opened-url").read_text() == URL)
-            print("PASS: Cmd+Shift+U selected the wrapped PNG, displayed the correct worktree's pixels, and opened the native web link.")
+            editor_socket = work / "editor.sock"
+            editor_id = command("zellij", "--session", session, "action", "new-pane", "--direction", "right",
+                                "--cwd", str(source), "--", "nvim", "-u", str(editor_init),
+                                "--listen", str(editor_socket), str(scratch)).strip()
+            registry = work / "run" / f"lane-zellij-editors-{os.getuid()}"
+            until("the existing Neovim registration", lambda: registry.exists() and list(registry.glob("*.json")))
+            def editor(expression):
+                return command("nvim", "--server", str(editor_socket), "--remote-expr", expression).strip()
+            editor("luaeval(\"vim.api.nvim_buf_set_lines(0, 0, -1, false, {'unsaved work'}) or true\")")
+            agent_id = next(p["id"] for p in panes() if str(fixture) in (p.get("terminal_command") or ""))
+            command("zellij", "--session", session, "action", "focus-pane-id", str(agent_id))
+            hint("reference.rs", "f")
+            until("the existing editor receives focus", lambda: any(
+                f'terminal_{p["id"]}' == editor_id and p["is_focused"] for p in panes()))
+            observed = json.loads(editor('json_encode([expand("%:p"), getcurpos()[1:2]])'))
+            if observed != [str(reference), [42, 7]]:
+                raise AssertionError(f"Wrong editor target: {observed}")
+            retained = json.loads(editor('json_encode([getbufline(' + json.dumps(str(scratch)) +
+                                         ', 1), getbufvar(' + json.dumps(str(scratch)) + ', "&modified")])'))
+            if retained != [["unsaved work"], 1] or len([p for p in panes() if not p["is_plugin"]]) != 2:
+                raise AssertionError("Opening a source file lost unsaved work or created another editor")
+            artifacts = os.environ.get("KITTY_HINT_ARTIFACTS")
+            if artifacts:
+                until("the opened file is rendered", lambda: "reference_line" in remote("get-text"))
+                geometry = dict(line.split("=", 1) for line in command("xdotool", "getwindowgeometry", "--shell", xid).splitlines())
+                x, y, width, height = (int(geometry[key]) for key in ("X", "Y", "WIDTH", "HEIGHT"))
+                ImageGrab.grab().crop((x, y, x + width, y + height)).save(Path(artifacts) / "file-opened.png")
+            print("PASS: Cmd+Shift+U previews worktree images, opens web links, and reuses the right-hand Neovim at the selected source position.")
         except Exception:
             print(log.read_text()[-3200:], file=sys.stderr)
             try:

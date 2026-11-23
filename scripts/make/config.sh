@@ -143,6 +143,7 @@ case "$target" in
         fi
         mkdir -p "$setup_home/.config/zellij/layouts" "$setup_home/.config/zellij/plugins" "$setup_home/.config/zellij/themes" "$setup_home/.local/bin" "$setup_home/.local/share/zsh"
         ln -fs "$dotfiles/design-system/generated/zellij.kdl" "$setup_home/.config/zellij/themes/dotfiles.kdl"
+        ln -fs "$dotfiles/zellij/file-routes.toml" "$setup_home/.config/zellij/file-routes.toml"
         if [ "$status_available" = true ]; then
             ln -fs "$status_wasm" "$setup_home/.config/zellij/plugins/lane-status.wasm"
             ln -fs "$dotfiles/zellij/config.kdl" "$setup_home/.config/zellij/config.kdl"

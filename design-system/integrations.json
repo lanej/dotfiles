@@ -125,6 +125,17 @@
     ]
   },
   {
+    "id": "pi",
+    "owner": "Native Pi theme and task interface",
+    "mechanism": "generated JSON theme linked by the opt-in daily-driver configuration",
+    "reload": "Run make pi-driver-config once, then reload Pi; regenerate the shared theme before changing presets.",
+    "coverage": "Pi 1.4.0 loads the generated theme; task selection, details and the compact footer are checked at narrow and wide terminal sizes. The terminal retains ownership of its canvas background and opacity.",
+    "sources": [
+      "design-system/adapters/pi.json",
+      "pi/daily-driver/ui.ts"
+    ]
+  },
+  {
     "id": "external-color-owners",
     "owner": "Filetype icons, literal-color previews, other plugins and optional tools",
     "mechanism": "explicit gaps",

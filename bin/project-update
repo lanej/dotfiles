@@ -42,6 +42,8 @@ def load_projects(config):
         command = project.get("command")
         if not isinstance(command, list) or not command or not all(isinstance(x, str) and x for x in command):
             raise ValueError(f"{name}: command must be a nonempty argv array")
+        if not isinstance(project.get("pull_sources", False), bool):
+            raise ValueError(f"{name}: pull_sources must be a boolean")
         project["path"] = Path(project["path"].replace("{dotfiles}", str(ROOT))).expanduser().resolve()
         project["command"] = [x.replace("{dotfiles}", str(ROOT)).replace("{python}", sys.executable) for x in command]
         if "remote" in project and (not isinstance(project["remote"], str) or not project["remote"] or project["remote"].startswith("-")):
@@ -154,6 +156,8 @@ def main():
                         if key not in pulled:
                             pull(path, project)
                             pulled.add(key)
+                        if project.get("pull_sources", False):
+                            run([*project["command"], "pull"], path)
                     else:
                         run([*project["command"], step], path)
                     row["completed"].append(step)

@@ -17,7 +17,7 @@ Tool and technology decisions, organized by ring.
 
 ### Neovim
 
-[Neovim](neovim-pr-reviews.md): my editor for code navigation, editing, diagnostics, and pull request review. FzfLua provides fuzzy finding inside the editor.
+[Neovim](neovim-pr-reviews.md): my editor for code navigation, editing, diagnostics, and pull request review. FzfLua provides fuzzy finding inside the editor; Octo is the default review UI, with ghlite available through a machine feature for review threads and pending feedback in ordinary source buffers.
 
 ### Git
 
@@ -107,9 +107,13 @@ Tiling window manager via the macOS Accessibility API. Manages all windows at th
 
 Required correctness lint in the reusable [TypeScript profile](typescript-style.md), alongside typed ESLint and Prettier. Biome findings cannot be added to retrofit baselines.
 
+### shfmt
+
+[shfmt](https://github.com/mvdan/sh) formats the Git worktree runtime and its bootstrap/lint entrypoints. The catalog pin is shared by explicit installation and the shell CI check; `make shell-format` applies formatting and `make shell-format-check` checks it. Adoption expands through an explicit file list without reformatting unrelated shell features.
+
 ### worktree manager
 
-[worktree](worktree-manager.md) creates identifiable repository-local agent checkouts, tracks full ownership and protects active tasks. Finishing protection and explicit safe pruning replace reusable Treehouse allocation for new agent work.
+[worktree](worktree-manager.md) creates identifiable repository-local agent checkouts, tracks full ownership and protects active tasks. Finishing protection and explicit safe pruning replace reusable Treehouse allocation for new agent work. Project updates select the latest stable Git release and compile the lifecycle-hook runtime locally from a shallow upstream clone with checked-in patches; no custom Git release is required.
 
 ### Source-code application stack
 
@@ -123,6 +127,10 @@ The [project tool-choice policy](../ai/skills/source-code-lifecycle/references/t
 
 Strict Protobuf compilation, lint, formatting, and compatibility checks through the reusable [source-code profile](repository-bootstrap.md#protobuf-correctness-profile), with a small native Buf check plugin rejecting string fields ending in `_json`.
 
+### Ogen
+
+[Ogen](https://ogen.dev/) is the preferred Go client generator for OpenAPI-described JSON APIs in the shared [Go guidance](../ai/skills/go/references/common.md#api-client-generation). Generate from authoritative specifications, pin generator versions, and preserve established project tools unless a migration is authorized.
+
 ### Project-scoped engineering guidance
 
 [Source-code profiles](repository-bootstrap.md#optional-project-capabilities) own PR review and merge assessment, optional data-pipeline architecture, and optional UI acceptance. User-level guidance retains authorization, tool operation, and personal feedback. Viewrule installation does not impose application design policy or gates; project profiles preserve their selected lifecycle, authority, adoption, and existing conventions.
@@ -130,6 +138,10 @@ Strict Protobuf compilation, lint, formatting, and compatibility checks through 
 ***
 
 ## Trial
+
+### Beads and Dolt
+
+[Beads](beads.md) provides a shared local work graph through one managed HTTP endpoint backed by a private Dolt SQL server. Native binaries are pinned and checksum-verified. Pi's local task workflow reads and claims native beads over HTTP. Octo owns GitHub delivery. Issue synchronization requires separate integration.
 
 ### Mergiraf
 
@@ -161,7 +173,7 @@ Strict Protobuf compilation, lint, formatting, and compatibility checks through 
 
 ### Pi
 
-[Pi](pi.md): a composable agent runtime under assessment. It can reuse the existing shared skills, Builder guidance, and role instructions. Assess supervision, review results, and status reporting before starting a trial.
+[Pi](pi.md): a composable agent runtime under assessment, with shared skills and role instructions. Its opt-in [daily driver](../pi/daily-driver/README.md) runs one ready bead in a managed worktree and interactive Zellij pane, records verification and supports independent CLI inspection. The [runtime plan](../pi/daily-driver/RUNTIME.md) covers agent delegation, Octo delivery and archival.
 
 ### AeroSpace
 

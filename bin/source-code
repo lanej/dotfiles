@@ -8,6 +8,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import posixpath
 import re
 import shutil
 import subprocess
@@ -57,6 +58,7 @@ class Manifest(TypedDict, total=False):
     protobuf_profile: bool
     go_rollout: str
     go_legacy: str | None
+    octo_config_sha256: str
 
 
 class Registry(TypedDict):
@@ -223,8 +225,22 @@ MATURITY_SKILLS = (
     "typescript",
     "python",
     "protobuf",
-    "source-code-lifecycle",
 )
+SHARED_GUIDANCE = {
+    "code-comments": "common.md",
+    "testing": "principles.md",
+    **dict.fromkeys(("go", "typescript", "python", "protobuf", "rust"), "common.md"),
+}
+SKILL_TEMPLATE_BLOCKS = {
+    **dict.fromkeys(SHARED_GUIDANCE, ("shared-guidance",)),
+    "source-code-lifecycle": ("project-policy",),
+    "go": ("verification", "shared-guidance"),
+    "typescript": ("verification", "shared-guidance"),
+    "python": ("verification", "shared-guidance"),
+    "protobuf": ("verification", "shared-guidance"),
+    "octo-manager": ("automation",),
+}
+CONFIGURED_SKILLS = set(SKILL_TEMPLATE_BLOCKS)
 KINDS = ("service", "library", "tool")
 AUTHORITIES = ("owned", "shared", "upstream")
 ADOPTIONS = ("hold", "new", "backfill")
@@ -395,6 +411,11 @@ def read_state(root: Path) -> tuple[Manifest, Snapshot | None]:
         source = state.get("skill_source")
         if not isinstance(source, str) or not Path(source).is_absolute():
             raise ValueError("invalid canonical skill source")
+    if "octo_config_sha256" in state and (
+        not isinstance(state["octo_config_sha256"], str)
+        or not re.fullmatch(r"[a-f0-9]{64}", state["octo_config_sha256"])
+    ):
+        raise ValueError("invalid Octo configuration fingerprint")
     if "go_rollout" in state and state["go_rollout"] not in ("strict", "ratchet"):
         raise ValueError("invalid manifest Go rollout")
     if "go_legacy" in state and state["go_legacy"] is not None and not isinstance(state["go_legacy"], str):
@@ -458,11 +479,20 @@ def read_state(root: Path) -> tuple[Manifest, Snapshot | None]:
                                 )
                             )
                         )
+                        or path == ".agents/skills/source-code-lifecycle"
+                        and entry.get("target")
+                        == str(
+                            Path(state["skill_source"])
+                            / ".maturity-profiles"
+                            / state.get("stage", "beta")
+                            / "source-code-lifecycle"
+                        )
                         or path == ".agents/skills/testing"
                         and entry.get("target")
                         == str(
                             Path(state["skill_source"]) / ".testing-profiles" / state.get("stage", "beta") / "testing"
                         )
+                        or canonical_package_link(path, entry.get("target"), Path(state["skill_source"]))
                         or path == VERSIONS
                         and entry.get("target") == str(Path(state["skill_source"]) / "source-code-versions.json")
                     )
@@ -752,8 +782,8 @@ def project_guidance(policy: Policy) -> str:
     rows = "\n".join(
         f"| {name} | {'canonical' if linked else version} |" for name, version in sorted(policy["skills"].items())
     )
-    lifecycle = (
-        "Read the installed `.agents/skills/source-code-lifecycle/SKILL.md` first, then "
+    project_policy = (
+        "Read the installed project policy at `.agents/skills/source-code-lifecycle/SKILL.md` first, then "
         if "source-code-lifecycle" in policy["skills"]
         else "Then "
     )
@@ -765,7 +795,7 @@ def project_guidance(policy: Policy) -> str:
     )
     kind = policy.get("kind")
     kind_guidance = (
-        f"Project kind: **{kind}**. Read the installed `.agents/skills/source-code-lifecycle/references/kinds.md` for kind-specific obligations, scaled by the selected lifecycle stage. Kind selects usage guidance, not architecture or additional generated test commands.\n\n"
+        f"Project kind: **{kind}**. Kind selects usage guidance, not architecture or additional generated test commands.\n\n"
         if kind
         else ""
     )
@@ -773,28 +803,25 @@ def project_guidance(policy: Policy) -> str:
     if policy.get("authority") is not None or policy.get("adoption") is not None:
         tooling = (
             f"Authority: **{policy.get('authority', 'unspecified')}**. Tool adoption: **{policy.get('adoption', 'unspecified')}**. "
-            "Authority and adoption are independent of lifecycle stage and project kind. "
-            "Shared/upstream changes require agreement under project governance; backfill requires an explicitly scoped migration task.\n\n"
+            "Preserve authored project requirements and the task's authority.\n\n"
         )
-        if "source-code-lifecycle" in policy["skills"]:
-            tooling += "Read the installed `.agents/skills/source-code-lifecycle/references/tool-choices.md` before choosing application tools or API protocols.\n\n"
     return (
         "<!-- Generated by source-code from resolved configuration; regenerate with setup or upgrade. -->\n"
         "# Source-code project guidance\n\n"
-        f"Policy version: **{policy['policy_version']}**. Schema version: **{policy['schema_version']}**. Lifecycle stage: **{policy['stage']}**.\n\n"
+        f"Policy version: **{policy['policy_version']}**. Schema version: **{policy['schema_version']}**.\n\n"
         + kind_guidance
         + tooling
         + "Paths in this policy are relative to the repository root. Before applying this policy, read the repository's `AGENTS.md` if it exists. Preserve its requirements and all more-specific repository instructions. This override adds project policy; it does not waive existing gates.\n\n"
         + (
-            "Project stage and selections are in `.source-code.json`. Skills follow the canonical source immediately; read `.agents/source-code-versions.json` for live versions. Versions recorded in project metadata describe setup time, not pins. Canonical edits affect every linked repository. Run setup on each checkout to recreate local skill links; keep the canonical checkout available.\n\n"
+            "Shared references follow the canonical source immediately; configured entrypoints are rendered at setup. Run setup or upgrade after source or configuration changes to refresh them. Read `.agents/source-code-versions.json` for live versions; recorded versions describe setup time, not pins. Keep the canonical checkout available.\n\n"
             if linked
-            else "The authoritative pins and stage are in `.source-code.json`; this file is their generated summary.\n\n"
+            else "This summary lists the installed skill pins.\n\n"
         )
         + "| Skill | Version |\n| --- | --- |\n"
         + rows
         + "\n\n"
-        + lifecycle
-        + "load the installed skills relevant to the task. Preserve existing repository instructions and required gates. A stage or version pin does not establish readiness.\n\n"
+        + project_policy
+        + "load the installed skills relevant to the task. Preserve existing repository instructions and required gates.\n\n"
         "Use `source-code validate` to check packages and pins. Use `source-code upgrade --dry-run` to review available updates before applying them. "
         + gate_guidance
         + "\n\n"
@@ -878,6 +905,27 @@ def artifact_owner(path: str) -> str | None:
     return None
 
 
+def canonical_package_link(path: str, target: object, source: Path) -> bool:
+    parts = Path(path).parts
+    if len(parts) < 4 or parts[:2] != (".agents", "skills") or parts[2] not in CONFIGURED_SKILLS:
+        return False
+    if not isinstance(target, str):
+        return False
+    try:
+        relative = Path(target).relative_to(source)
+    except ValueError:
+        return False
+    if not relative.parts or ".." in relative.parts:
+        return False
+    return bool(
+        relative.parts[0] == parts[2]
+        or len(relative.parts) > 3
+        and relative.parts[0] == ".maturity-profiles"
+        and relative.parts[1] in STAGES
+        and relative.parts[2] == parts[2]
+    )
+
+
 def selected_skill_directory(source: Path, name: str, stage: str) -> Path:
     if name in MATURITY_SKILLS:
         return source / ".maturity-profiles" / stage / name
@@ -904,6 +952,13 @@ def package(
             raise ValueError(f"unsupported package path: {destination}")
         if source.is_symlink() or not source.is_file():
             raise ValueError(f"missing or linked package source: {source}")
+        if (
+            skill_source is not None
+            and not replacements
+            and canonical_package_link(destination, str(source), skill_source)
+        ):
+            files[destination] = {"kind": "link", "target": str(source)}
+            return
         data = source.read_bytes()
         for old, new in replacements:
             data = data.replace(old.encode(), new.encode())
@@ -913,7 +968,13 @@ def package(
     for skill in skills:
         directory = (skill_source or SOURCE / "ai/skills") / skill
         selected = selected_skill_directory(skill_source or SOURCE / "ai/skills", skill, stage)
-        if skill_source is not None:
+        entrypoint = selected / "SKILL.md"
+        if entrypoint.is_symlink() or not entrypoint.is_file():
+            raise ValueError(f"missing or linked skill entrypoint: {entrypoint}")
+        render_skill_template(
+            entrypoint.read_text(), dict.fromkeys(SKILL_TEMPLATE_BLOCKS.get(skill, ()), ""), str(entrypoint)
+        )
+        if skill_source is not None and skill not in CONFIGURED_SKILLS:
             directory = selected
             if directory.is_symlink() or not (directory / "SKILL.md").is_file():
                 raise ValueError(f"missing or linked canonical skill: {directory}")
@@ -966,7 +1027,7 @@ def package(
                     ("~/.local/share/software-standards/builder/SKILL.md", "../SKILL.md"),
                     ("~/.local/share/software-standards/builder/references/", ""),
                 ]
-            if skill == "octo-manager":
+            if skill == "octo-manager" and relative == Path("SKILL.md"):
                 replacements = [("../../../docs/octo-pr-submission.md", "references/submission.md")]
             if skill == "pull-request":
                 replacements = [
@@ -1042,6 +1103,230 @@ def template_conflicts(root: Path) -> list[str]:
                 ) and path != root / ".github/pull_request_template.md":
                     found.append(str(path.relative_to(root)))
     return found
+
+
+def validate_octo_issues(config: object) -> None:
+    """An invalid issues section also invalidates Octo's repository merge policy."""
+    booleans = {
+        "auto_implement",
+        "auto_publish",
+        "proceed_under_assumptions",
+        "auto_follow_ups",
+        "clarification_timeout_disabled",
+    }
+    integers = {"clarification_timeout_ms": (0, 604800000), "max_concurrency": (1, 10)}
+    if not isinstance(config, dict) or set(config) - booleans - integers.keys() - {"profiles"}:
+        raise ValueError("invalid Octo issues configuration")
+    for key in booleans & config.keys():
+        if type(config[key]) is not bool:
+            raise ValueError(f"Octo issues.{key} must be a boolean")
+    for key, (minimum, maximum) in integers.items():
+        if key in config and (type(config[key]) is not int or not minimum <= config[key] <= maximum):
+            raise ValueError(f"Octo issues.{key} must be an integer from {minimum} to {maximum}")
+    profiles = config.get("profiles")
+    if not isinstance(profiles, dict) or set(profiles) != {"investigation", "implementation", "verification"}:
+        raise ValueError("Octo issues.profiles requires investigation, implementation, and verification")
+    for role, profile in profiles.items():
+        if not isinstance(profile, dict) or set(profile) - {"harness", "model", "instructions", "timeout_ms"}:
+            raise ValueError(f"invalid Octo issues.profiles.{role}")
+        for field in ("harness", "model"):
+            if not isinstance(profile.get(field), str) or not profile[field]:
+                raise ValueError(f"Octo issues.profiles.{role}.{field} must be a nonempty string")
+        instruction = profile.get("instructions", "")
+        if not isinstance(instruction, str) or len(instruction.encode("utf-16-le")) > 8000:
+            raise ValueError(f"invalid Octo issues.profiles.{role}.instructions")
+        timeout = profile.get("timeout_ms", 1000)
+        if type(timeout) is not int or not 1000 <= timeout <= 86400000:
+            raise ValueError(f"Octo issues.profiles.{role}.timeout_ms must be an integer from 1000 to 86400000")
+
+
+def render_skill_template(template: str, blocks: Mapping[str, str], source: str) -> str:
+    """Replace each named placeholder with its resolved project guidance."""
+    marker = re.compile(r"<!--\s*/?source-code:")
+    pattern = re.compile(r"^<!-- source-code:([a-z-]+) -->$", re.MULTILINE)
+    seen = set()
+    for match in pattern.finditer(template):
+        name = match[1]
+        if name not in blocks or name in seen:
+            raise ValueError(f"invalid or duplicate skill template placeholder {name}: {source}")
+        seen.add(name)
+    if seen != blocks.keys() or marker.search(pattern.sub("", template)):
+        raise ValueError(
+            f"missing or malformed skill template placeholder: {source}; expected {', '.join(sorted(blocks))}"
+        )
+    return pattern.sub(lambda match: blocks[match[1]].strip(), template)
+
+
+def inline_skill_reference(text: str) -> str:
+    """Move a references/ fragment into SKILL.md without changing its resource targets."""
+
+    def rebase(match: re.Match[str]) -> str:
+        target = match[1]
+        if re.match(r"(?:[a-zA-Z][a-zA-Z0-9+.-]*:|/|#)", target):
+            return match[0]
+        return "](" + posixpath.normpath("references/" + target)
+
+    text = re.sub(r"\]\(([^\s)]+)", rebase, text.strip())
+    return re.sub(r"^(#{1,5}) ", r"#\1 ", text, flags=re.MULTILINE)
+
+
+def configure_skill_packages(
+    root: Path,
+    resolved: PolicySelection,
+    state: Manifest,
+    files: dict[str, Snapshot],
+    payloads: dict[str, bytes],
+) -> Snapshot | None:
+    """Resolve project choices before exposing skills to either agent host."""
+    source = Path(resolved["skill_source"]) if resolved["skill_storage"] == "linked" else SOURCE / "ai/skills"
+    rendered: set[str] = set()
+
+    def reference(skill: str, variant: str) -> str:
+        origin = source / skill / "references" / variant
+        if origin.is_symlink() or not origin.is_file():
+            raise ValueError(f"missing or linked policy source: {origin}")
+        return inline_skill_reference(origin.read_text())
+
+    def render(skill: str, blocks: Mapping[str, str]) -> None:
+        if skill not in SKILL_TEMPLATE_BLOCKS or blocks.keys() != set(SKILL_TEMPLATE_BLOCKS[skill]):
+            raise ValueError(f"skill renderer does not match its declared placeholders: {skill}")
+        destination = f".agents/skills/{skill}/SKILL.md"
+        template = (
+            payloads[destination].decode()
+            if destination in payloads
+            else Path(files[destination]["target"]).read_text()
+        )
+        data = render_skill_template(template, blocks, destination).encode()
+        files[destination] = file_entry(data)
+        payloads[destination] = data
+        rendered.add(skill)
+
+    def finish(snapshot: Snapshot | None = None) -> Snapshot | None:
+        missing = (resolved["skills"] & CONFIGURED_SKILLS) - rendered
+        if missing:
+            raise ValueError("configured skills have no renderer: " + ", ".join(sorted(missing)))
+        return snapshot
+
+    def omit(skill: str, names: Iterable[str]) -> None:
+        for name in names:
+            destination = f".agents/skills/{skill}/references/{name}"
+            files.pop(destination, None)
+            payloads.pop(destination, None)
+
+    for skill, fragment in SHARED_GUIDANCE.items():
+        if skill in resolved["skills"] and SKILL_TEMPLATE_BLOCKS[skill] == ("shared-guidance",):
+            render(skill, {"shared-guidance": reference(skill, fragment)})
+            omit(skill, [fragment])
+
+    if "source-code-lifecycle" in resolved["skills"]:
+        skill = "source-code-lifecycle"
+        refs = source / skill / "references"
+        policies = [reference(skill, f"kind-{resolved['kind'] or 'unspecified'}.md")]
+        for field in ("authority", "adoption"):
+            value = resolved[field]
+            if value is None:
+                continue
+            policies.append(reference(skill, f"{field}-{value}.md"))
+        render(skill, {"project-policy": "\n\n".join(policies)})
+        omit(
+            skill,
+            (path.name for path in refs.glob("*.md") if path.name.startswith(("authority-", "adoption-", "kind-"))),
+        )
+        if resolved["adoption"] == "hold":
+            omit(skill, ["tool-catalog.md"])
+
+    for language in ("go", "typescript", "python", "protobuf"):
+        if language not in resolved["skills"]:
+            continue
+        active = (
+            resolved[language + "_profile"]
+            or {
+                "go": "scripts/check-go.sh",
+                "typescript": "scripts/check-typescript.mjs",
+                "python": "scripts/check-python.py",
+                "protobuf": "scripts/check-protobuf.py",
+            }[language]
+            in state["files"]
+        )
+        verification = [reference(language, "profile-installed.md" if active else "profile-uninstalled.md")]
+        if active and language in {"go", "typescript"}:
+            setting = f".{language}-quality.json"
+            settings = (
+                json.loads(payloads[setting]) if setting in payloads else json.loads((root / setting).read_text())
+            )
+            rollout = settings.get("rollout")
+            if rollout not in {"strict", "ratchet"}:
+                raise ValueError(f"invalid {language} rollout for installed guidance")
+            verification.append(reference(language, f"rollout-{rollout}.md"))
+        shared = SHARED_GUIDANCE[language]
+        render(language, {"verification": "\n\n".join(verification), "shared-guidance": reference(language, shared)})
+        omit(
+            language,
+            [
+                shared,
+                "profile-installed.md",
+                "profile-uninstalled.md",
+                "rollout-strict.md",
+                "rollout-ratchet.md",
+            ],
+        )
+
+    if "octo-manager" not in resolved["skills"]:
+        return finish()
+    snapshot = inspect(root, "octo-manager.toml")
+    if snapshot is not None and snapshot["kind"] != "file":
+        raise ValueError("preserving linked or non-file octo-manager.toml")
+    data = (
+        (root / "octo-manager.toml").read_bytes()
+        if snapshot
+        else (source / "octo-manager/assets/octo-manager.toml").read_bytes()
+    )
+    if snapshot is not None and digest(data) != snapshot["sha256"]:
+        raise ValueError("Octo configuration changed while preparing guidance; retry")
+    if len(data) > 65536:
+        raise ValueError("Octo policy exceeds 64 KiB")
+    config = tomllib.loads(data.decode())
+    if type(config.get("schema_version")) is not int or config["schema_version"] != 1:
+        raise ValueError("octo-manager.toml requires schema_version = 1")
+    unknown = set(config) - {"schema_version", "issues", "merging", "notifications"}
+    if unknown:
+        raise ValueError("unknown Octo configuration keys: " + ", ".join(sorted(unknown)))
+    if "issues" in config:
+        validate_octo_issues(config["issues"])
+    merging = config.get("merging", {})
+    if not isinstance(merging, dict) or set(merging) - {"auto_merge"}:
+        raise ValueError("invalid Octo merging configuration")
+    mode = merging.get("auto_merge", False)
+    if type(mode) is not bool and mode != "project_stage":
+        raise ValueError("invalid Octo auto_merge policy")
+    enabled = mode if type(mode) is bool else resolved["stage"] in {"research", "alpha"}
+    automation = reference("octo-manager", "auto-merge-enabled.md" if enabled else "auto-merge-disabled.md")
+    notifications = config.get("notifications", {})
+    if not isinstance(notifications, dict) or set(notifications) - {"instructions"}:
+        raise ValueError("invalid Octo notification configuration")
+    instructions = notifications.get("instructions", {})
+    if not isinstance(instructions, dict) or not all(isinstance(value, str) for value in instructions.values()):
+        raise ValueError("invalid Octo notification instructions")
+    defaults = json.loads((source / "octo-manager/assets/notification-defaults.json").read_text())
+    if not set(instructions) <= defaults.keys():
+        raise ValueError("unknown Octo notification instruction state")
+    followup = "## Configured notification follow-up\n\nUse the section matching the current notification state. Preserve installed project guidance and existing task authority; delivery and acknowledgment do not establish owner assessment or resolution.\n"
+    for name, instruction in {**defaults, **instructions}.items():
+        if len(instruction.encode()) > 1000:
+            raise ValueError("Octo notification instruction exceeds 1000 UTF-8 bytes")
+        followup += f"\n### {name}\n\n{instruction or 'No default follow-up instruction is enabled for this state.'}\n"
+    followup += "\nFor a state without a configured instruction, inspect the current action evidence and report the missing follow-up; do not invent instructions.\n"
+    evidence = reference("octo-manager", "automation.md")
+    render("octo-manager", {"automation": automation + "\n\n" + followup + "\n\n" + evidence})
+    omit(
+        "octo-manager",
+        [
+            "auto-merge-enabled.md",
+            "auto-merge-disabled.md",
+            "automation.md",
+        ],
+    )
+    return finish(snapshot)
 
 
 def go_adoption(root: Path, state: Manifest, rollout: str | None) -> tuple[str, str | None]:
@@ -1509,6 +1794,20 @@ def resolve_policy(root: Path, args: Arguments, state: Manifest) -> ResolvedPoli
     skills = complete_skills(
         skills, bool(args.stage) and args.stage != state.get("stage"), kind if kind != state.get("kind") else None
     )
+    if any(
+        value != state.get(name)
+        for name, value in (
+            ("stage", args.stage or state.get("stage", "beta")),
+            ("kind", kind),
+            ("authority", authority),
+            ("adoption", adoption),
+        )
+    ):
+        skills.update(recorded_skills(state) & CONFIGURED_SKILLS)
+    if "octo-manager" in recorded_skills(state):
+        octo = inspect(root, "octo-manager.toml")
+        if octo is None or octo.get("sha256") != state.get("octo_config_sha256"):
+            skills.add("octo-manager")
     if storage != state.get("skill_storage", "copied"):
         skills |= recorded_skills(state)
     if not skills <= set(SKILLS):
@@ -1612,18 +1911,22 @@ def resolve_policy(root: Path, args: Arguments, state: Manifest) -> ResolvedPoli
     }
 
 
-def storage_migration(root: Path, state: Manifest, storage: str) -> set[str]:
+def storage_migration(root: Path, state: Manifest, storage: str, desired: Mapping[str, Snapshot]) -> set[str]:
     """Remove only unchanged owned artifacts; never follow a linked directory."""
     changing_storage = storage != state.get("skill_storage", "copied")
     names = recorded_skill_names(state)
     if not changing_storage:
-        names &= RENAMED_SKILLS.keys()
+        names &= RENAMED_SKILLS.keys() | {
+            name
+            for name in CONFIGURED_SKILLS
+            if f".agents/skills/{name}" in state["files"] and f".agents/skills/{name}/SKILL.md" in desired
+        }
     removals: set[str] = set()
     for name in names:
         relative = f".agents/skills/{name}"
         directory = root / relative
         removals.update(path for path in state["files"] if path.startswith(relative + "/"))
-        if state.get("skill_storage") == "linked":
+        if relative in state["files"] and state["files"][relative]["kind"] == "link":
             actual = inspect(root, relative)
             if actual is not None and actual != state["files"].get(relative):
                 raise ValueError(f"preserving changed skill link: {relative}")
@@ -1648,6 +1951,16 @@ def storage_migration(root: Path, state: Manifest, storage: str) -> set[str]:
                 raise ValueError(f"preserving changed skill link: {alias}")
             if alias in state["files"]:
                 removals.add(alias)
+    for path, expected in state["files"].items():
+        parts = Path(path).parts
+        if len(parts) < 4 or parts[:2] != (".agents", "skills") or parts[2] not in CONFIGURED_SKILLS:
+            continue
+        if f".agents/skills/{parts[2]}/SKILL.md" not in desired or path in removals:
+            continue
+        if path not in desired:
+            if inspect(root, path) != expected:
+                raise ValueError(f"preserving customized policy content: {path}")
+            removals.add(path)
     if changing_storage and VERSIONS in state["files"]:
         if inspect(root, VERSIONS) != state["files"][VERSIONS]:
             raise ValueError(f"preserving customized registry: {VERSIONS}")
@@ -1857,7 +2170,7 @@ def install(args: Arguments) -> None:
             desired[path] = file_entry(data)
             payloads[path] = data
         if "claude" in agents:
-            data = b"# Source-code project policy\n\nRead `AGENTS.override.md` in the repository root and follow its selected project skills and lifecycle stage. Preserve existing repository instructions and gates.\n"
+            data = b"# Source-code project policy\n\nRead `AGENTS.override.md` in the repository root and follow its selected project skills. Preserve existing repository instructions and gates.\n"
             desired[HOST_RULE] = file_entry(data)
             payloads[HOST_RULE] = data
     ts_rollout: str | None = None
@@ -1885,11 +2198,14 @@ def install(args: Arguments) -> None:
         desired["octo-manager.toml"] = file_entry(data)
         payloads["octo-manager.toml"] = data
 
-    removals = storage_migration(root, state, storage)
+    octo_snapshot = configure_skill_packages(root, resolved, state, desired, payloads)
+    removals = storage_migration(root, state, storage, desired)
     managed = {path: entry for path, entry in state["files"].items() if path not in removals}
     if legacy:
         managed.pop(legacy, None)
     changes, snapshots, conflicts, skipped = [], dict(ts_snapshots), [], []
+    if "octo-manager" in skills:
+        snapshots["octo-manager.toml"] = octo_snapshot
     if legacy_snapshot:
         snapshots[legacy_snapshot[0]] = legacy_snapshot[1]
     for relative, expected in sorted(desired.items()):
@@ -1900,7 +2216,7 @@ def install(args: Arguments) -> None:
         )
         if not any(relative.startswith(path + "/") for path in removals):
             if relative not in removals:
-                snapshots[relative] = inspect(root, relative)
+                snapshots.setdefault(relative, inspect(root, relative))
         if relative == "octo-manager.toml":
             managed.pop(relative, None)
             if actual is None:
@@ -1925,6 +2241,7 @@ def install(args: Arguments) -> None:
                 if (
                     old_pins.get(owner) != pins.get(owner)
                     or policy_changed
+                    or owner in CONFIGURED_SKILLS
                     or owner in MATURITY_SKILLS
                     and state.get("stage") != stage
                 ):
@@ -1988,10 +2305,14 @@ def install(args: Arguments) -> None:
         if "octo-manager.toml" in tracked:
             paths.discard("octo-manager.toml")
             visible_paths.discard("octo-manager.toml")
-        if ((paths if mode == "local" else local_paths) | set(removals)) & tracked:
+        hidden_paths = paths if mode == "local" else local_paths
+        if mode == "local" or storage == "linked":
+            hidden_paths = hidden_paths | removals
+        hidden_tracked = hidden_paths & tracked
+        if hidden_tracked:
             raise ValueError(
                 "local mode cannot hide tracked files: "
-                + ", ".join(sorted(((paths if mode == "local" else local_paths) | set(removals)) & tracked))
+                + ", ".join(sorted(hidden_tracked))
                 + "; keep tracked mode or explicitly remove them from the index first"
             )
     generated_config: bytes | None = None
@@ -2085,6 +2406,12 @@ def install(args: Arguments) -> None:
         new_state["python_profile"] = python_profile
     if args.protobuf is not None or protobuf_profile or "protobuf_profile" in state:
         new_state["protobuf_profile"] = protobuf_profile
+    if "octo-manager" in skills:
+        new_state["octo_config_sha256"] = (
+            octo_snapshot["sha256"] if octo_snapshot else digest(payloads["octo-manager.toml"])
+        )
+    elif "octo_config_sha256" in state:
+        new_state["octo_config_sha256"] = state["octo_config_sha256"]
     state_data = (json.dumps(new_state, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode()
     state_changed = state_before != file_entry(state_data)
 
@@ -2160,7 +2487,7 @@ def install(args: Arguments) -> None:
     if (exclude.read_text() if exclude.exists() else "") != old_exclude:
         raise ValueError("Git exclusions changed during planning; retry after reviewing")
 
-    if storage_migration(root, state, storage) != removals:
+    if storage_migration(root, state, storage, desired) != removals:
         raise ValueError("managed skills changed during migration planning")
     for relative in sorted(removals, key=lambda value: len(Path(value).parts), reverse=True):
         destination = root / relative
@@ -2326,6 +2653,10 @@ def validate_project(args: Arguments) -> int:
         state, snapshot = read_state(root)
         if snapshot is not None:
             warnings.extend(configuration_drift(args, state, root))
+            if "octo-manager" in recorded_skills(state):
+                octo = inspect(root, "octo-manager.toml")
+                if octo is None or octo.get("sha256") != state.get("octo_config_sha256"):
+                    warnings.append("Octo configuration differs from installed guidance; run setup or upgrade")
         if snapshot is None:
             warnings.append("no installation manifest; only skill structure was checked")
         else:
@@ -2591,6 +2922,7 @@ def explain_policy(args: Arguments) -> int:
         python_configuration(root, args, desired, payloads)
     if resolved["protobuf_profile"]:
         protobuf_configuration(root, desired, payloads)
+    configure_skill_packages(root, resolved, state, desired, payloads)
     installed_pins = installed["skill_versions"] if installed is not None else {}
     pins = {
         name: versions["skills"][name] if name in resolved["skills"] else installed_pins.get(name)
@@ -2760,7 +3092,7 @@ def main() -> None:
     )
     detection_parser.add_argument("--repo", type=Path, default=Path.cwd())
     detection_parser.add_argument("--json", action="store_true")
-    add_install_arguments(parser)
+    add_install_arguments(parser, require_policy=True)
     add_install_arguments(upgrade_parser)
     upgrade_parser.add_argument(
         "--strict", action="store_true", help="reject best-practice warnings in the upgrade source"
@@ -2807,7 +3139,9 @@ def main() -> None:
         command.exit(1, f"source-code {args.command}: {error}\n{suffix}")
 
 
-def add_install_arguments(parser: argparse.ArgumentParser, inspection: bool = False) -> None:
+def add_install_arguments(
+    parser: argparse.ArgumentParser, inspection: bool = False, require_policy: bool = False
+) -> None:
     parser.add_argument("--repo", type=Path, default=Path.cwd(), help="repository path (default: current directory)")
     parser.add_argument(
         "--config",
@@ -2914,12 +3248,14 @@ def add_install_arguments(parser: argparse.ArgumentParser, inspection: bool = Fa
     parser.add_argument(
         "--authority",
         choices=AUTHORITIES,
-        help="project authority (required on setup/upgrade unless configured or saved)",
+        required=require_policy,
+        help="project authority (required on every setup; upgrade uses configured or saved selection)",
     )
     parser.add_argument(
         "--adoption",
         choices=ADOPTIONS,
-        help="tool adoption (required on setup/upgrade unless configured or saved); backfill requires a scoped migration task",
+        required=require_policy,
+        help="tool adoption (required on every setup; upgrade uses configured or saved selection); backfill requires a scoped migration task",
     )
     parser.add_argument(
         "--stage", choices=STAGES, help="lifecycle assurance level (default: previous stage, else beta/full checks)"

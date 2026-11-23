@@ -1,10 +1,45 @@
 name: Worktree manager integration
 on:
   pull_request:
-    paths: ['scripts/install-worktree-manager', 'scripts/test-worktree-manager.py', 'bin/git-worktree-policy', 'worktree-manager/**', 'config/sets/worktrees.toml', 'bootstrap/tools.toml', 'bootstrap.sh', 'scripts/dotfiles-config.py', 'scripts/make/config.sh', 'Makefile', '.github/workflows/worktree-manager.yml']
+    paths:
+      - 'scripts/build-git-worktree-hooks.sh'
+      - 'scripts/pull-git-worktree-source.sh'
+      - 'scripts/lib/git-worktree-runtime.sh'
+      - 'scripts/extract-git-runtime.sh'
+      - 'scripts/install-git-worktree-hooks.sh'
+      - 'patches/git-worktree-hooks/**'
+      - 'scripts/install-worktree-manager'
+      - 'scripts/test-worktree-manager.py'
+      - 'bin/git-worktree-policy'
+      - 'worktree-manager/**'
+      - 'config/sets/worktrees.toml'
+      - 'bootstrap/tools.toml'
+      - 'bootstrap.sh'
+      - 'scripts/dotfiles-config.py'
+      - 'scripts/make/config.sh'
+      - 'Makefile'
+      - '.github/workflows/worktree-manager.yml'
   push:
-    branches: [master]
-    paths: ['scripts/install-worktree-manager', 'scripts/test-worktree-manager.py', 'bin/git-worktree-policy', 'worktree-manager/**', 'config/sets/worktrees.toml', 'bootstrap/tools.toml', 'bootstrap.sh', 'scripts/dotfiles-config.py', 'scripts/make/config.sh', 'Makefile', '.github/workflows/worktree-manager.yml']
+    branches:
+      - master
+    paths:
+      - 'scripts/build-git-worktree-hooks.sh'
+      - 'scripts/pull-git-worktree-source.sh'
+      - 'scripts/lib/git-worktree-runtime.sh'
+      - 'scripts/extract-git-runtime.sh'
+      - 'scripts/install-git-worktree-hooks.sh'
+      - 'patches/git-worktree-hooks/**'
+      - 'scripts/install-worktree-manager'
+      - 'scripts/test-worktree-manager.py'
+      - 'bin/git-worktree-policy'
+      - 'worktree-manager/**'
+      - 'config/sets/worktrees.toml'
+      - 'bootstrap/tools.toml'
+      - 'bootstrap.sh'
+      - 'scripts/dotfiles-config.py'
+      - 'scripts/make/config.sh'
+      - 'Makefile'
+      - '.github/workflows/worktree-manager.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -13,17 +48,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, macos-15]
+        os:
+          - ubuntu-22.04
+          - macos-15
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install Linux activity inspection
+      - name: Install Linux build and activity dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y lsof
+        run: sudo apt-get update && sudo apt-get install -y lsof build-essential libcurl4-openssl-dev libexpat1-dev zlib1g-dev libarchive-tools
       - name: Download pinned worktree package
         run: |
           version=$(python3 -c 'import tomllib; print(tomllib.load(open("bootstrap/tools.toml","rb"))["tools"]["worktree-manager"]["version"])')
@@ -34,7 +71,7 @@ jobs:
           path=Path(sys.argv[1])
           path.with_name(path.name+'.sha256').write_text(hashlib.sha256(path.read_bytes()).hexdigest()+'  '+path.name+'\n')
           PY
-      - name: Download the existing patched Git runtime
-        run: python3 scripts/install-git-worktree-hooks.py --home "$RUNNER_TEMP/git"
+      - name: Compile patched Git from a shallow upstream clone
+        run: bash scripts/install-git-worktree-hooks.sh --home "$RUNNER_TEMP/git"
       - name: Verify opt-in behavior
         run: python3 scripts/test-worktree-manager.py --binary "$RUNNER_TEMP/manager/.local/bin/worktree" --git "$RUNNER_TEMP/git/.local/bin/git"

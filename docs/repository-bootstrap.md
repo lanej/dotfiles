@@ -1,10 +1,10 @@
 # Source-code setup
 
-Use `source-code setup` to bring the shared Builder, architecture, and pull-request guidance into a new or existing Git repository. New installations link selected skills to the canonical `ai/skills/` packages in the command's source checkout. Canonical edits become available immediately in every repository linked to that checkout. Use `--skill-storage copied` for portable, independently pinned packages instead. It preserves existing shared instructions and installs a project override that routes to the selected policy. It does not install software, modify global agent settings, stage files, or publish changes.
+Use `source-code setup` to bring the shared Builder, architecture, and pull-request guidance into a new or existing Git repository. New installations use linked canonical `ai/skills/` sources, with configuration-dependent packages assembled for the project. Canonical links follow source edits; setup or upgrade refreshes generated and adapted files. Use `--skill-storage copied` for portable, independently pinned packages instead. It preserves existing shared instructions and installs a project override that routes to the selected policy. It does not install software, modify global agent settings, stage files, or publish changes.
 
 The command needs Python 3.11+ and Git 2.31+ on macOS or Linux. Run `~/.files/bin/source-code setup` directly, or use `source-code setup` after `make source-code-config` has linked the commands into `~/.local/bin`.
 
-`repo-bootstrap` remains a compatibility alias for `source-code setup`, accepting its existing flags. Existing `.agents/repo-bootstrap.json` manifests, exclusion markers, and backup paths retain their names so either command can safely update an existing installation.
+`repo-bootstrap` remains a compatibility alias for `source-code setup` and also requires `--authority` and `--adoption` on every invocation. Existing `.agents/repo-bootstrap.json` manifests, exclusion markers, and backup paths retain their names so either command can safely update an existing installation.
 
 ## Bootstrap a new repository
 
@@ -30,7 +30,7 @@ New installations default to **shadow mode**: configuration, generated checks, d
 
 Linked worktrees are supported. Git shares `info/exclude` between worktrees: the same exact paths are excluded in sibling worktrees too. The installer does not untrack anything or change Git configuration. Worktrees requiring different tracking policies should not mix local and tracked installations at the same paths.
 
-Existing `AGENTS.md`, `CLAUDE.md`, `.gitignore`, unrelated skills, and project PR templates are retained. The generated `AGENTS.override.md` is a small router: it directs the agent to read the authored `AGENTS.md` first, when present, then the generated `.agents/source-code.md`. That policy renders the resolved configuration: lifecycle stage, project kind, selected skills and resolved versions, and selected language gates. Change authored configuration and rerun setup or upgrade to regenerate it; validation checks both the router and generated policy against installed state. Codex loads the override instead of the same-directory `AGENTS.md`; this first-read instruction preserves the shared context. Claude installations add `.claude/rules/source-code.md` to route to the same override. Existing overrides and rules retain normal conflict protection. Start a new session or reload the client's skill catalog after installation.
+Existing `AGENTS.md`, `CLAUDE.md`, `.gitignore`, unrelated skills, and project PR templates are retained. The generated `AGENTS.override.md` is a small router: it directs the agent to read the authored `AGENTS.md` first, when present, then the generated `.agents/source-code.md`. That policy renders the resolved configuration: project kind, selected skills and resolved versions, and selected language gates. The stage remains in installation metadata for inspection and command selection. Change authored configuration and rerun setup or upgrade to regenerate it; validation checks both the router and generated policy against installed state. Codex loads the override instead of the same-directory `AGENTS.md`; this first-read instruction preserves the shared context. Claude installations add `.claude/rules/source-code.md` to route to the same override. Existing overrides and rules retain normal conflict protection. Start a new session or reload the client's skill catalog after installation.
 
 ## Installed content
 
@@ -44,7 +44,7 @@ New default profiles include the project-only `pull-request` skill, which owns w
 | `.agents/skills/octo-manager/` | Optional repository-only Octo integration |
 | `.agents/skills/pull-request/` | PR drafting entrypoint, shared/GitHub writer instructions, and their writing references |
 | `.agents/skills/testing/` | Stage-specific verification and retained-behavior guidance |
-| `.agents/skills/source-code-lifecycle/` | Versioned lifecycle contract and command plans |
+| `.agents/skills/source-code-lifecycle/` | Resolved project policy and runner data |
 | `.source-code.json` | Schema version, policy version, stage, and installed languages |
 | `AGENTS.override.md` | Generated router to authored project instructions and generated policy |
 | `.agents/source-code.md` | Generated lifecycle, kind, pinned skills, and language gate instructions |
@@ -68,17 +68,21 @@ Choose a subset or template independently:
 source-code setup --repo ~/src/app --authority owned --adoption new --skills architecture --agents codex --pr-template none
 
 # Keep an existing team PR template while sharing the skills.
-source-code setup --repo ~/src/app --mode tracked --pr-template none
+source-code setup --repo ~/src/app --authority owned --adoption new --mode tracked --pr-template none
 
 # Keep a private drafting template alongside an existing GitHub template.
-source-code setup --repo ~/src/app --mode tracked --pr-template local
+source-code setup --repo ~/src/app --authority owned --adoption new --mode tracked --pr-template local
 ```
 
 `--skills` accepts the names listed by `source-code setup --help`, comma-separated. The core includes Builder, architecture, data/interface planning, Git/PR workflow, CLI construction, testing, lifecycle, and shared comments. Language guidance covers Go, TypeScript, JavaScript, Python, Rust, and Protobuf; `gh-pr-stack`, `github-actions`, `just`, `data-pipeline`, `ui-acceptance`, and `ui-review` are available explicitly. These are curated project skills, selected independently of workstation skills. Language detection selects matching guidance; root Go modules retain their existing automatic check-profile behavior.
 
 ## Current-stage project guidance
 
-Source-code selects separate entrypoints for testing, lifecycle, comments, Go, Rust, TypeScript, Python, and Protobuf at the configured maturity. Linked profiles point each selected skill to its current-stage package under `ai/skills/.maturity-profiles/`; copied profiles materialize only the selected entrypoint, shared references, and required tool assets. Neither installed form exposes other-stage entrypoints as project skill guidance. Shared architectural rules and tool mechanics remain common; the full lifecycle comparison is an administration reference for comparing or changing maturity. Changing `--stage` and applying setup or upgrade switches the entrypoint; a dry run previews it first. Shared principles cover minimum effective testing, useful CLI failure diagnostics, and verification boundaries without prescribing another maturity's coverage.
+Source-code selects separate entrypoints for testing, comments, Go, Rust, TypeScript, Python, and Protobuf at the configured maturity. Configuration-dependent entrypoints are rendered from the selected source under `ai/skills/.maturity-profiles/`; other linked skills retain their directory links. Copied profiles materialize the selected guidance, shared references, and required tool assets. Neither installed form exposes other-stage entrypoints as project skill guidance. The installed project policy uses a shared template for the selected kind, authority, and adoption. Shared architectural rules and tool mechanics remain common; the full lifecycle comparison is an administration reference for comparing or changing maturity. Changing `--stage` and applying setup or upgrade switches the entrypoint; a dry run previews it first. Shared principles cover minimum effective testing, useful CLI failure diagnostics, and verification boundaries without prescribing another maturity's coverage.
+
+Source-code setup writes resolved verification commands and enforcement directly into each configured `SKILL.md`. The lifecycle entrypoint contains the selected kind, authority, and adoption policies; Octo's entrypoint contains its merge default and configured notification follow-up. These are regular managed files in both storage modes. Template fragments and unselected policy variants are omitted from the installed package. Shared technical references remain available for detailed explanations and conditional procedures, with canonical file links in linked installations and portable files in copied installations. Current per-PR overrides and notification states remain runtime evidence. Comment depth uses the selected lifecycle entrypoint, with the library caller perspective scoped to library public APIs.
+
+Rerun setup or upgrade after source or configuration changes to refresh rendered entrypoints; authored settings and local customizations retain their existing protection. See [Project skill rendering](source-code-skills.md) for the package inventory, source-to-output example, template contract, and maintainer workflow.
 
 ## Ship a scoped change safely
 
@@ -92,11 +96,11 @@ The Git guidance includes the `ship` skill in new project setups. Existing insta
 
 ## Canonical skill storage
 
-`--skill-storage linked` is the default for new installations. Each selected `.agents/skills/<name>` links directly to the corresponding canonical source directory; Claude aliases reach the same directory. There is no per-project skill copy or shared generated cache. Keep that source checkout at a stable location. Repositories linked to different source checkouts follow those checkouts independently; updating one source does not update another.
+`--skill-storage linked` is the default for new installations. Skills without per-project configuration use directory symlinks under `.agents/skills/`. Configuration-dependent packages use real directories containing rendered `SKILL.md` files and canonical links for shared technical resources. Claude aliases reach those same packages. Keep the source checkout at a stable location. Repositories linked to different source checkouts follow those checkouts independently; updating one source does not update another.
 
-Canonical skill contents and their release versions follow the source immediately. `validate` and `explain` resolve current versions from the linked registry rather than treating setup-time observations as pins. The override lists selected skills without freezing their versions. Project stage, policy version, generated checks, and check dependencies remain project configuration: review and apply their changes with setup or upgrade. A canonical policy-version change requires reconciliation with each project's installed runtime; live skill links do not silently migrate generated checks.
+Linked canonical files and their release versions follow the source immediately. Rerun setup or upgrade to refresh package selection and generated or adapted files after source or configuration changes. `validate` and `explain` resolve current versions from the linked registry rather than treating setup-time observations as pins. The override lists selected skills without freezing their versions. Project stage, policy version, generated checks, and check dependencies remain project configuration: review and apply their changes with setup or upgrade. A canonical policy-version change requires reconciliation with each project's installed runtime; live skill links do not silently migrate generated checks.
 
-Existing copied installations retain copied storage. Preview `source-code setup --skill-storage linked --dry-run` to migrate explicitly. Migration preserves customized or unmanaged package content, rejects tracked artifacts that would need removal, and only replaces unchanged installer-owned files. The command never untracks files. Remove copied packages from the index separately if their removal is intended. The reverse `--skill-storage copied` materializes portable packages without writing through the links. CLI overrides do not rewrite authored TOML; set `skill_storage = "copied"` there to retain that selection.
+Existing copied installations retain copied storage. Configuration updates can remove unchanged managed policy fragments, including tracked copied references, while preserving customized or unmanaged content. Preview `source-code setup --authority AUTHORITY --adoption ADOPTION --skill-storage linked --dry-run` to migrate storage explicitly. Migration to linked storage rejects tracked artifacts that would be hidden or replaced with local links; remove them from the index separately if intended. The command never untracks files. The reverse `--skill-storage copied` materializes portable packages without writing through the links. CLI overrides do not rewrite authored TOML; set `skill_storage = "copied"` there to retain that selection.
 
 ## CLI construction
 
@@ -180,7 +184,7 @@ The `workstation` set selects `tools.source-code`, whose setup target links `sou
 ```sh
 source-code detect --repo ~/src/project --json
 source-code setup --repo ~/src/project --authority owned --adoption new --stage alpha --mode shadow
-source-code setup --repo ~/src/project --no-detect-languages
+source-code setup --repo ~/src/project --authority owned --adoption new --no-detect-languages
 ```
 
 Basic detection uses manifests and source-file extensions for Go, TypeScript, JavaScript, Python, Rust, and Protobuf, including nested projects. Git supplies tracked and unignored files; pre-Git directories use a pruned directory walk that skips dependency/build directories. Installed managed files do not classify their own implementation language as application code. Results include a small set of evidence paths and are read-only. Detection is heuristic, not an exhaustive language census; select additional skills explicitly when needed.
@@ -202,13 +206,13 @@ The installed Git profile owns [review and merge assessment](../ai/skills/git/re
 
 ## Authority and tool adoption
 
-Declare `authority = "owned" | "shared" | "upstream"` and `adoption = "hold" | "new" | "backfill"` in authored TOML, or pass `--authority` and `--adoption`. These selections follow CLI → TOML → saved-state precedence and are independent of lifecycle stage and project kind. Setup and upgrade require both when no configured or saved value exists; inspection can show unset values without writes. Existing installations remain usable, and validation reports missing legacy selections. Public/open-source visibility does not establish authority.
+Every `source-code setup` invocation requires `--authority owned|shared|upstream` and `--adoption hold|new|backfill`, including `--dry-run` and repeated setup when authored TOML or saved state contains these choices. Missing flags produce a usage error before configuration loading or installation. Upgrade resolves these choices from CLI → TOML → saved state and requires explicit flags when neither configured nor saved values exist. These selections are independent of lifecycle stage and project kind; explain can show unset values without writes. Existing installations remain usable, and validation reports missing legacy selections. Public/open-source visibility does not establish authority.
 
 Owned projects choose their stack; shared projects require project agreement, and upstream contributions follow maintainer conventions. Hold preserves the existing stack. New applies the required catalog to new independent surfaces while retaining established implementations. Backfill also records migration direction, but migration execution requires an explicitly agreed task scope. Shared/upstream adoption settings do not themselves grant authority; record the relevant project agreement before changing conventions. Shadow installation does not count as agreement.
 
-Read the portable [application tool-choice policy](../ai/skills/source-code-lifecycle/references/tool-choices.md) for the canonical catalog, boundary rules, and exception format. It requires Commander for TypeScript/JavaScript CLIs, Cobra plus lanej/charmed for Go command structure and terminal UI, and Connect for new application APIs we control when adoption selects the catalog. External integrations use the provider's protocol; protocol-specific edges retain the protocol appropriate to their contract. The catalog also covers Python/Rust CLIs, web UI, validation, logging, configuration, and tests. Install only tools the capability needs.
+Read the [application tool catalog](../ai/skills/source-code-lifecycle/references/tool-catalog.md) for tool choices, boundary rules, and the exception format. It requires Commander for TypeScript/JavaScript CLIs, Cobra plus lanej/charmed for Go command structure and terminal UI, and Connect for new application APIs we control when adoption selects the catalog. External integrations use the provider's protocol; protocol-specific edges retain the protocol appropriate to their contract. The catalog also covers Python/Rust CLIs, web UI, validation, logging, configuration, and tests. Install only tools the capability needs.
 
-The lifecycle package carries the catalog into portable tracked and shadow installations. Relevant language, architecture, and construction skills route to it. This release imposes binding agent implementation/review guidance; validation checks policy structure, not application dependency compliance. An [automated tool-choice gate](https://github.com/lanej/dotfiles/issues/323) is a separate follow-up.
+The lifecycle package installs the catalog when adoption is `new` or `backfill`; `hold` omits it. Relevant language, architecture, and construction skills route through the selected authority and adoption guidance. This release imposes binding agent implementation/review guidance; validation checks policy structure, not application dependency compliance. An [automated tool-choice gate](https://github.com/lanej/dotfiles/issues/323) is a separate follow-up.
 
 ## Lifecycle stages
 
@@ -216,8 +220,8 @@ Source-code engineering skills are project-only; the `source-code` management sk
 
 ```sh
 source-code setup --repo ~/src/experiment --authority owned --adoption new --go --stage research --mode shadow --pr-template none
-source-code setup --repo ~/src/experiment --stage alpha --dry-run
-source-code setup --repo ~/src/experiment --stage alpha
+source-code setup --repo ~/src/experiment --authority owned --adoption new --stage alpha --dry-run
+source-code setup --repo ~/src/experiment --authority owned --adoption new --stage alpha
 python3 scripts/check-source-code.py go
 ```
 
@@ -232,7 +236,7 @@ python3 scripts/check-source-code.py go
 
 Beta is the default and preserves the former full generated checks. Reruns retain the selected stage. A stage-change preview shows old and new command plans; application uses the existing conflict and backup safeguards. A modified lifecycle policy cannot be silently skipped while other files adopt a different stage. Early-stage transitions reject incompatible older language runners retained by `--no-go` or `--no-typescript`; update that runner or keep full checks. Stage selection and strict-versus-ratchet adoption remain independent.
 
-The stage selects both agent guidance and the generated CI gate. It does not waive other required repository checks, secrets handling, or protections against irreversible effects. Production's additional evidence is reviewed separately; the generic runner cannot certify it. See the [lifecycle contract](../ai/skills/source-code-lifecycle/references/lifecycle.md) for the complete stage expectations.
+The stage selects both agent guidance and the generated CI gate. It does not waive other required repository checks, secrets handling, or protections against irreversible effects. Production's additional evidence is reviewed separately; the generic runner cannot certify it. See the [lifecycle contract](../ai/skills/source-code/references/lifecycle.md) for the complete stage expectations.
 
 ## Comment policies
 
@@ -313,7 +317,7 @@ Structural defects, missing files, unexpected links, and inconsistent pins or gu
 
 - `--conflict skip` updates independent files and reports preserved local edits. Skipped files are not marked as successfully updated.
 - `--conflict replace` explicitly replaces conflicting regular files after saving their original contents under Git's `repo-bootstrap/backups/replace-*` directory. The command prints the backup location. It never replaces symlinks or directories; reconcile those manually.
-- Selected skills and templates are **additive**. Selecting fewer skills, `--agents codex`, or `--pr-template none` does not uninstall earlier files. Files removed from an upstream package are also retained. Remove unwanted files deliberately after reviewing repository dependencies.
+- Selected skills and templates are **additive**. Selecting fewer skills, `--agents codex`, or `--pr-template none` does not uninstall earlier packages. Configuration-dependent packages remove obsolete managed policy fragments only when unchanged; other files removed from an upstream package are retained. Remove unwanted files deliberately after reviewing repository dependencies.
 
 To make a local install shareable, use `--mode tracked` and review the new Git status. Linked skills and local ownership metadata remain excluded. For copied installations, the installer’s exclusion block is removed; unrelated ignore rules are preserved and still checked. Changing tracked content to local mode requires first deciding, separately, whether it should be removed from the Git index. No automatic untracking occurs.
 
@@ -330,7 +334,7 @@ The single acceptance workflow exercises the real command: bootstrap and clone a
 
 ## Protobuf correctness profile
 
-Setup and upgrades automatically select the Protobuf profile for detected project `.proto` files or Buf workspace files, including nested directories. Explicitly select it with `source-code setup --protobuf` or `[checks.protobuf] enabled = true`; save an opt-out with `--no-protobuf` or `enabled = false`. Disabling language detection prevents automatic selection. The portable [profile guide](../ai/skills/protobuf/references/correctness.md) describes the pinned Buf tools, strict lint, check-only formatting, explicit compatibility baseline, and a native Buf check plugin rejecting `string *_json` fields. Project Buf workspace, dependency, and code-generation configuration is preserved.
+Setup and upgrades automatically select the Protobuf profile for detected project `.proto` files or Buf workspace files, including nested directories. Explicitly select it with `source-code setup --authority owned --adoption new --protobuf` or `[checks.protobuf] enabled = true`; save an opt-out with `--no-protobuf` or `enabled = false`. Disabling language detection prevents automatic selection. The portable [profile guide](../ai/skills/protobuf/references/correctness.md) describes the pinned Buf tools, strict lint, check-only formatting, explicit compatibility baseline, and a native Buf check plugin rejecting `string *_json` fields. Project Buf workspace, dependency, and code-generation configuration is preserved.
 
 Run `python3 scripts/check-protobuf.py tools` explicitly, then `python3 scripts/check-source-code.py protobuf`. Configure a real compatibility baseline through `PROTOBUF_AGAINST` or `.protobuf-quality.json` for beta/production; alpha adds lint/format to research's compile and JSON string field checks. The generated CI uses the official Buf Action for CLI setup and the PR base or previous push SHA for compatibility. Go builds the small native plugin from its pinned SDK module. The custom rule checks only `string` fields ending in `_json`; it does not ban generic payload names or dynamic types, and cannot prove arbitrary application code never serializes JSON into an innocently named string. `--no-protobuf` retains installed checks. Setup previews, validation, upgrades, tracked installs, and shadow installs use the same profile contract as the other languages.
 

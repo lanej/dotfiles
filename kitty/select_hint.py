@@ -1,4 +1,4 @@
-"""Keep Kitty's native hint picker and open image selections on their Zellij host."""
+"""Select hyperlinks and file references, opening files on their Zellij host."""
 import base64
 import json
 import os
@@ -13,13 +13,19 @@ from kitty.fast_data_types import add_timer, remove_timer
 
 EXT = r"\.(?:png|jpe?g|webp|gif|bmp|tiff?|avif|ico|svg|heic|jxl)"
 IMAGE_END = re.compile(EXT + "$", re.I)
-POSSIBLE_IMAGE = re.compile(EXT + r"|file:|\.[a-z]{0,3}[ \t]*(?:[\r\n│┃]|$)", re.I)
 TOKEN = r"""[^\s<>"'`()\[\]{},;│┃]+"""
+QUOTED_POSITION = r"(?::[1-9][0-9]*(?::[1-9][0-9]*)?:?)?"
 PATH = re.compile(
-    rf"""(?P<quote>["'`])(?P<quoted>[^\n"'`]+?{EXT})(?P=quote)"""
-    rf"""|\((?P<parenthesized>[^()\n]+?{EXT})\)"""
-    rf"""|(?P<bare>{TOKEN}?{EXT})(?=\.(?!\w)|$|[\s,;:!?'"`)\]}}>│┃])""", re.I)
-READY = re.compile(r"dotfiles-hints://([0-9a-f]{32})" + r"/(\d+)" * 6)
+    rf'"(?P<double_quoted>[^"\n]+)"{QUOTED_POSITION}'
+    rf"|'(?P<single_quoted>[^'\n]+)'{QUOTED_POSITION}"
+    rf"|`(?P<backtick_quoted>[^`\n]+)`{QUOTED_POSITION}"
+    rf"""|(?P<bare>{TOKEN})""")
+POSITION = re.compile(r"^(.*?):([1-9][0-9]*)(?::([1-9][0-9]*))?$")
+FRAGMENT = re.compile(r"(?:L)?([1-9][0-9]*)(?:C([1-9][0-9]*))?(?:-(?:L)?[1-9][0-9]*)?$")
+BASENAME = re.compile(r"^[^/]+\.[a-zA-Z0-9][a-zA-Z0-9_.-]*$")
+DOTFILE = re.compile(r"^\.[a-zA-Z0-9_][\w.-]*$")
+PLAIN_NAMES = {"Makefile", "Dockerfile", "Containerfile", "README", "LICENSE", "COPYING", "Justfile", "Gemfile", "Rakefile"}
+READY = re.compile(r"dotfiles-hints(?:-v2)?://([0-9a-f]{32})" + r"/(\d+)" * 6)
 BUILDING = "dotfiles-hints-building"
 FAILED = "dotfiles-hints-error"
 REQUEST = b"\x1b[24;7~"  # Ctrl+Alt+F12, a single Zellij action on this connection
@@ -53,17 +59,49 @@ def capture(screen):
     return rows
 
 
-def file_image(url):
-    if not url.startswith("file:"):
+def file_target(value):
+    """Parse links or printed references without treating web URLs as local files."""
+    if value.startswith("file:"):
+        try:
+            url = urlsplit(value)
+            path = unquote(url.path)
+            if not path.startswith("/") or any(ord(char) < 32 for char in path):
+                return None
+            target = {"path": path, "host": url.hostname or ""}
+            if url.fragment:
+                position = FRAGMENT.fullmatch(url.fragment)
+                if not position:
+                    return None
+                target["line"] = int(position[1])
+                if position[2]:
+                    target["column"] = int(position[2])
+            return target
+        except ValueError:
+            return None
+    if "://" in value or value.startswith(("mailto:", "dotfiles-")):
         return None
-    try:
-        target = urlsplit(url)
-        path = unquote(target.path)
-        if path.startswith("/") and IMAGE_END.search(path):
-            return {"path": path, "host": target.hostname or ""}
-    except ValueError:
-        pass
-    return None
+    value = value.rstrip(".,;!?")
+    target = {}
+    position = POSITION.fullmatch(value.removesuffix(":"))
+    if position:
+        value = position[1]
+        target["line"] = int(position[2])
+        if position[3]:
+            target["column"] = int(position[3])
+    if not value or any(ord(char) < 32 for char in value):
+        return None
+    if not ("/" in value or BASENAME.fullmatch(value) or DOTFILE.fullmatch(value) or value in PLAIN_NAMES):
+        return None
+    target["path"] = value
+    return target
+
+
+def has_file_hints(rows):
+    destinations = {url for row in rows for _, url in row if url}
+    if any(file_target(url) for url in destinations):
+        return True
+    text = "\n".join("".join(char if not url else " " for char, url in row) for row in rows)
+    return any(file_target(match[match.lastgroup]) for match in PATH.finditer(text))
 
 
 def pane_text(rows, rect):
@@ -90,16 +128,17 @@ def pane_text(rows, rect):
         join_next = (bool(last_word) and len(raw) - len(content) <= 4
                      and ("/" in last_word or last_word.endswith(("-", "_", ".")))
                      and not IMAGE_END.search(last_word)
+                     and not POSITION.fullmatch(last_word.removesuffix(":"))
                      and last_word[-1] not in ")]}\"'`,;")
     return "".join(chars), positions
 
 
-def picker_input(rows, rect, ticket):
+def picker_input(rows, rect, ticket, files=True):
     left, top, width, height = rect
     choices, marks, tokens = {}, {}, {}
 
     def mark(image):
-        key = (image["path"], image.get("host", ""))
+        key = (image["path"], image.get("host", ""), image.get("line"), image.get("column"))
         if key not in tokens:
             token = f"dotfiles-image:{ticket}/{len(tokens)}"
             choices[token] = image
@@ -111,8 +150,10 @@ def picker_input(rows, rect, ticket):
         group = match.lastgroup
         start, end = match.span(group)
         path = text[start:end]
-        image = file_image(path) if "://" in path else {"path": path}
-        if not image:
+        if group != "bare":
+            path += text[end + 1:match.end()]
+        image = file_target(path)
+        if not image or (not files and not IMAGE_END.search(image["path"])):
             continue
         token = mark(image)
         # Hint the first visible fragment once, even if the full path wraps.
@@ -129,8 +170,8 @@ def picker_input(rows, rect, ticket):
             if not char:
                 continue
             if url and top <= y < top + height and left <= x < left + width:
-                image = file_image(url)
-                if image:
+                image = file_target(url)
+                if image and (files or IMAGE_END.search(image["path"])):
                     url = mark(image)
             url = marks.get((x, y), url)
             if url != previous:
@@ -175,10 +216,10 @@ def handle_result(args, answer, target_window_id, boss):
         return
 
     original = window.as_text(as_ansi=True, add_wrap_markers=True)
-    if not POSSIBLE_IMAGE.search(original):
+    rows = capture(window.screen)
+    if not has_file_hints(rows):
         show_hints(boss, window)
         return
-    rows = capture(window.screen)
     previous_marker = at_cursor(window)
     window.write_to_child(REQUEST)
     started = time.monotonic()
@@ -208,7 +249,7 @@ def handle_result(args, answer, target_window_id, boss):
         # Guest Zellij coordinates can start inside an outer terminal pane.
         cursor = window.screen.cursor
         rect = (max(0, left + cursor.x - receiver_x), max(0, top + cursor.y - receiver_y), width, height)
-        display, choices = picker_input(rows, rect, ticket)
+        display, choices = picker_input(rows, rect, ticket, files=marker.startswith("dotfiles-hints-v2://"))
         window.write_to_child(b"!")
 
         def selected(data, window_id, current_boss):
@@ -220,7 +261,7 @@ def handle_result(args, answer, target_window_id, boss):
                 payload = base64.urlsafe_b64encode(json.dumps(image).encode()).rstrip(b"=") if image else b""
                 window.write_to_child(ticket.encode() + payload + b".")
             elif image:
-                current_boss.show_error("Image preview", "The source pane changed. Select the image again.")
+                current_boss.show_error("Open file", "The source pane changed. Select the file again.")
             if target and image is None:
                 open_native_hint([], data, window_id, current_boss)
 

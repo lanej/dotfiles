@@ -5,7 +5,7 @@ description: Use when writing or reviewing documentation comments for a library 
 
 # Library code comments
 
-Read the [shared comment guidance](../code-comments/SKILL.md), then apply the library caller perspective in its [canonical standard](../code-comments/references/standard.md#library-caller-perspective).
+Read the installed [code comment guidance](../code-comments/SKILL.md) for the configured lifecycle depth, then apply the library caller perspective below. The shared comment format does not add another stage’s documentation obligations. Read the [canonical standard](../code-comments/references/standard.md#library-caller-perspective) only when resolving a convention detail or changing the policy.
 
 Use this policy for library public APIs within the scope selected by project instructions or the current task. For mixed repositories, honor directory-specific scope; installation alone does not classify every directory as a library. Preserve repository and language documentation requirements.
 

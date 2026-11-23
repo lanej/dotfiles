@@ -83,3 +83,9 @@ For a commit fixing a fault found after implementation, record the earliest tier
 found a corrected fault with a `Detected-By:` trailer. Valid values are `V0`, `V1`, `V2`,
 `V3a`, `V3b`, `V4`, and `user`. Use `user` when a person identified the specific defect,
 not when a general request prompted an automated check that found it.
+
+## Bash formatting
+
+The catalog pins shfmt. Run `bash scripts/install-shfmt.sh` to install that version through the existing bootstrap adapter, then use `make shell-format` to apply formatting and `make shell-format-check` to check it. Both use tab indentation, indented switch cases and binary operators at the start of continued lines. `make lint` and the shell workflow include the check; configuration targets never install the formatter implicitly.
+
+Formatting currently covers the Git worktree runtime scripts, their touched bootstrap/lint entrypoints and the formatter entrypoints. The explicit adoption list lives in `scripts/make/shell-format.sh`; extend it when adopting another shell feature. For a focused operation, pass `--check` or `--write` and explicit paths to that script after the dotfiles root argument. Untouched shell features retain their existing formatting until adopted.

@@ -6,6 +6,7 @@ import fcntl
 import hashlib
 import os
 import shutil
+import shlex
 from pathlib import Path
 import subprocess
 import sys
@@ -229,6 +230,134 @@ class LifecycleTests(unittest.TestCase):
                 arguments = json.loads(log.read_text().splitlines()[-1])
                 self.assertEqual(arguments, ["-C", str(ROOT.resolve()), *targets])
 
+    def test_beads_stages_then_restarts_only_matching_artifacts(self):
+        scripts = self.checkout / "tools/beads"
+        scripts.mkdir(parents=True)
+        adapter = scripts / "project-update.py"
+        shutil.copyfile(ROOT / "tools/beads/project-update.py", adapter)
+        (scripts / "beads_config.py").write_text("# Fixture config reader\n")
+        catalog = self.checkout / "bootstrap/tools.toml"
+        catalog.parent.mkdir()
+        catalog.write_text('[tools.beads]\nversion="1.3.4"\ndolt_version="2.7.4"\n')
+        profile = self.checkout / "config/beads/trial.toml"
+        profile.parent.mkdir(parents=True)
+        profile.write_text('profile="trial"\n')
+        controller = scripts / "beads-service.py"
+        controller.write_text('''import fcntl, json, shutil, sys
+from pathlib import Path
+home=Path.home()
+share=home/'.local/share/beads-service'
+action=sys.argv[1]
+if action in ('install','restart'):
+    assert '--install-lock-fd' in sys.argv
+    with (share/'install.lock').open('a') as contender:
+        try:
+            fcntl.flock(contender,fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            pass
+        else:
+            raise AssertionError('The parent deployment lock must remain held')
+if action=='install':
+    assert '--no-start' in sys.argv
+    share.mkdir(parents=True,exist_ok=True)
+    shutil.copyfile(__file__,share/'beads-service.py')
+    shutil.copyfile(Path(__file__).with_name('beads_config.py'),share/'beads_config.py')
+    binaries={}
+    for name in ('bd','dolt'):
+        binary=share/name
+        binary.write_text(name+' fixture artifact')
+        binaries[name]=str(binary)
+    (share/'runtime.json').write_text(json.dumps(binaries))
+elif action=='restart':
+    with (home/'beads-restarts').open('a') as output: output.write('restart\\n')
+elif action=='status':
+    print(json.dumps({'ready':True}))
+''')
+        self.git(self.checkout, "add", ".")
+        self.git(self.checkout, "commit", "-m", "Beads adapter fixture")
+        revision = self.git(self.checkout, "rev-parse", "HEAD")
+        self.config.write_text(f'[projects.beads]\npath={json.dumps(str(self.checkout))}\n'
+                               f'command={json.dumps([sys.executable, str(adapter)])}\n')
+        persistent = self.base / ".local/state/beads-service/workspace/valuable"
+        persistent.parent.mkdir(parents=True)
+        persistent.write_text("retained task data")
+        local_config = self.base / ".config/beads-service/config.toml"
+        local_config.parent.mkdir(parents=True)
+        local_config.write_text("# retained operator settings\n")
+        self.invoke("restart", "beads", code=1)
+        self.invoke("build", "beads")
+        self.assertFalse((self.base / "beads-restarts").exists())
+        status = self.invoke("status", "beads")[0]["runtime"]
+        self.assertEqual(status["installed_revision"], revision)
+        self.assertIsNone(status["running_revision"])
+        self.invoke("restart", "beads")
+        self.git(self.checkout, "commit", "--allow-empty", "-m", "Unrelated source revision")
+        self.assertEqual(self.invoke("status", "beads")[0]["runtime"]["installed_revision"], revision)
+        profile.write_text(profile.read_text() + "# local configuration edit\n")
+        self.invoke("restart", "beads", code=1)
+        self.invoke("build", "beads")
+        status = self.invoke("status", "beads")[0]["runtime"]
+        self.assertIsNone(status["installed_revision"])
+        self.assertTrue(status["installed_source_dirty"])
+        self.invoke("restart", "beads")
+        installed_helper = self.base / ".local/share/beads-service/beads_config.py"
+        installed_helper.write_text("modified outside staging\n")
+        self.assertIsNone(self.invoke("status", "beads")[0]["runtime"]["installed_versions"])
+        self.invoke("restart", "beads", code=1)
+        self.assertEqual((self.base / "beads-restarts").read_text(), "restart\nrestart\n")
+        self.assertEqual(persistent.read_text(), "retained task data")
+        self.assertEqual(local_config.read_text(), "# retained operator settings\n")
+
+    def test_worktree_manager_pulls_sources_then_builds_and_activates(self):
+        scripts = self.checkout / "scripts"
+        scripts.mkdir()
+        adapter = scripts / "worktree-manager-update.sh"
+        shutil.copyfile(ROOT / "scripts/worktree-manager-update.sh", adapter)
+        catalog = self.checkout / "bootstrap/tools.toml"
+        catalog.parent.mkdir()
+        library = scripts / "lib/git-worktree-runtime.sh"
+        library.parent.mkdir()
+        shutil.copyfile(ROOT / "scripts/lib/git-worktree-runtime.sh", library)
+        catalog.write_text('[tools.worktree-manager]\nversion="0.2.0"\n'
+                           '[tools.git-worktree-hooks]\nversion="2.57.0"\nruntime_version="2.57.0.worktree-hooks.1"\n')
+        self.git(self.source, "tag", "v2.57.0")
+        (scripts / "pull-git-worktree-source.sh").write_text(
+            'cache="$XDG_CACHE_HOME/dotfiles/git-worktree-hooks"\nmkdir -p "$cache"\n'
+            f'printf \'%s\\n\' {shlex.quote(str(self.source))} > "$cache/selected-source"\n'
+            'touch "$HOME/pulled-git"\n')
+        (scripts / "install-git-worktree-hooks.sh").write_text('''#!/bin/sh
+set -eu
+[ -f "$HOME/pulled-git" ]
+mkdir -p "$HOME/.local/bin"
+printf '#!/bin/sh\\necho "git version 2.57.0.worktree-hooks.1"\\n' > "$HOME/.local/bin/git"
+chmod +x "$HOME/.local/bin/git"
+''')
+        (scripts / "install-worktree-manager").write_text('''#!/bin/sh
+set -eu
+[ "$1" = 0.2.0 ]
+[ -x "$HOME/.local/bin/git" ]
+printf '#!/bin/sh\\necho "worktree 0.2.0"\\n' > "$HOME/.local/bin/worktree"
+chmod +x "$HOME/.local/bin/worktree"
+''')
+        (self.checkout / "Makefile").write_text("git:\n\t@touch configured\n")
+        self.git(self.checkout, "add", ".")
+        self.git(self.checkout, "commit", "-m", "Worktree adapter fixture")
+        self.git(self.checkout, "push")
+        self.config.write_text(f'[projects.worktree-manager]\npath={json.dumps(str(self.checkout))}\n'
+                               f'command={json.dumps(["bash", str(adapter)])}\npull_sources=true\n')
+        self.invoke("restart", "worktree-manager", code=1)
+        self.invoke("build", "worktree-manager", code=1)
+        self.invoke("update", "worktree-manager")
+        self.assertTrue((self.checkout / "configured").is_file())
+        status = self.invoke("status", "worktree-manager")[0]["runtime"]
+        self.assertEqual(status["installed_versions"]["git"], "git version 2.57.0.worktree-hooks.1")
+        self.assertEqual(status["installed_versions"]["worktree"], "worktree 0.2.0")
+        self.assertIsNone(status["running_revision"])
+        (scripts / "pull-git-worktree-source.sh").write_text('exit 9\n')
+        (self.checkout / "configured").unlink()
+        self.invoke("update", "worktree-manager", code=1)
+        self.assertFalse((self.checkout / "configured").exists())
+
     def test_zellij_restart_preserves_live_sessions(self):
         binary = self.base / ".local/bin/zellij"
         binary.parent.mkdir(parents=True)
@@ -264,12 +393,12 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(result.returncode, 3, result.stderr)
         self.assertIn("manualCommand", result.stdout)
 
-    def test_registered_scope_includes_both_approval_projects(self):
+    def test_registered_scope_includes_beads_and_both_approval_projects(self):
         result = subprocess.run([sys.executable, str(COMMAND), "update", "--all", "--dry-run"],
                                 env=self.env, text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual({row["project"] for row in json.loads(result.stdout)},
-                         {"octo-manager", "zellij", "bedrock-router", "intent", "keylease"})
+                         {"octo-manager", "zellij", "beads", "bedrock-router", "intent", "keylease", "worktree-manager"})
 
     def test_dotfiles_install_clones_and_preserves_both_tools(self):
         for project, directory in (("intent", "intent"), ("keylease", "1password-agent")):

@@ -9,8 +9,19 @@ on:
       - 'scripts/build-zellij-helpers.sh'
       - 'scripts/make/config.sh'
       - 'scripts/test-kitty-image-preview.py'
+      - 'scripts/test-kitty-last-url.py'
+      - 'scripts/test-zellij-file-hints.py'
+      - 'scripts/test-zellij.py'
+      - 'nvim/lua/file-opener.lua'
+      - 'nvim/init.lua'
+      - 'zellij/file-routes.toml'
       - 'zellij/config*.kdl'
       - 'zellij/cli/src/image_hints.rs'
+      - 'zellij/cli/src/file_routes.rs'
+      - 'zellij/cli/src/editor.rs'
+      - 'zellij/cli/src/context.rs'
+      - 'zellij/cli/src/command.rs'
+      - 'zellij/cli/src/titles.rs'
       - 'zellij/cli/src/main.rs'
       - 'zellij/cli/src/session.rs'
       - 'zellij/cli/src/util.rs'
@@ -38,10 +49,14 @@ jobs:
           curl --fail --location --retry 3 https://github.com/zellij-org/zellij/releases/download/v0.46.0/zellij-x86_64-unknown-linux-musl.tar.gz | tar -xz -C "$RUNNER_TEMP/zellij"
           echo "$RUNNER_TEMP/kitty/bin" >> "$GITHUB_PATH"
           echo "$RUNNER_TEMP/zellij" >> "$GITHUB_PATH"
+          curl --fail --location --retry 3 https://github.com/neovim/neovim/releases/download/v0.12.5/nvim-linux-x86_64.tar.gz | tar -xz -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/nvim-linux-x86_64/bin" >> "$GITHUB_PATH"
           sudo apt-get update -qq
-          sudo apt-get install -y xvfb xauth xdotool libgl1-mesa-dri libxcb-xkb1 libxkbcommon-x11-0 libxcursor1
+          sudo apt-get install -y xvfb xauth xdotool libgl1-mesa-dri libxcb-xkb1 libxkbcommon-x11-0 libxcursor1 fzf file
           python -m pip install Pillow
       - run: make zellij-helpers
+      - run: make test-kitty-last-url
+      - run: python scripts/test-zellij-file-hints.py
       - name: Select a wrapped image in Kitty and inspect its Zellij pane
         run: xvfb-run -a -s "-screen 0 1280x900x24" env LIBGL_ALWAYS_SOFTWARE=1 KITTY_HINT_ARTIFACTS="$RUNNER_TEMP/kitty-hint-artifacts" python scripts/test-kitty-image-preview.py
       - name: Preserve rendered hint preview

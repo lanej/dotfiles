@@ -26,7 +26,7 @@ id = "kitty.select-hyperlink"
 app = "kitty"
 chord = "cmd+shift+u"
 action = "kitten select_hint.py"
-description = "Select a hyperlink or preview an image from the current Zellij pane."
+description = "Select a hyperlink or open a file from the current Zellij pane."
 
 [[binding]]
 id = "skhd.focus-kitty"
@@ -389,8 +389,8 @@ description = "Close the window with confirmation using Ctrl and Shift."
 id = "kitty.close-tab"
 app = "kitty"
 chord = "cmd+w"
-action = "close_tab"
-description = "Close the current tab."
+action = "kitten close_tab_with_confirmation.py"
+description = "Close the current tab with confirmation (defaults to No)."
 
 [[binding]]
 id = "kitty.shift-enter"

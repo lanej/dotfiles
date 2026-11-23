@@ -6,6 +6,9 @@
 -- |___|_| \_|___| |_(_)_|\__,_|\__,_|
 --
 
+local use_ghlite = require("dotfiles-config").enabled("features.nvim_ghlite")
+require("file-opener").setup()
+
 vim.opt.autoread = true
 vim.opt.autoindent = true
 vim.opt.backspace = { "indent", "eol", "start" }
@@ -1596,6 +1599,7 @@ require("lazy").setup({
 	},
 	{
 		"pwntester/octo.nvim",
+		enabled = not use_ghlite,
 		dependencies = {
 			"nvim-lua/plenary.nvim",
 			"ibhagwan/fzf-lua",
@@ -1623,6 +1627,64 @@ require("lazy").setup({
 					},
 				},
 			})
+			require("pr-reviews").setup()
+		end,
+	},
+	{
+		"daliusd/ghlite.nvim",
+		enabled = use_ghlite,
+		dependencies = {
+			"lewis6991/async.nvim",
+			"ibhagwan/fzf-lua",
+		},
+		cmd = {
+			"PRReviews",
+			"PRReviewsAll",
+			"PRReviewCurrent",
+			"PRReviewCheckout",
+			"PRReviewCleanup",
+			"GHLitePRSelect",
+			"GHLitePRView",
+			"GHLitePRLoadComments",
+			"GHLitePRAddComment",
+			"GHLitePRStartReview",
+			"GHLitePRSubmitReview",
+			"GHLitePRApprove",
+			"GHLitePRRequestChanges",
+			"GHLitePRList",
+			"GHLitePRCheckout",
+			"GHLitePRMerge",
+			"GHLitePRDiscardReview",
+			"GHLitePRDiff",
+			"GHLitePRDiffview",
+			"GHLitePRAddPRComment",
+			"GHLitePRResolveComment",
+			"GHLitePRUnresolveComment",
+			"GHLitePRToggleFileViewed",
+			"GHLitePRUpdateComment",
+			"GHLitePROpenComment",
+			"GHLitePRDeleteComment",
+			"GHLitePRExportComments",
+			"GHLiteCommitView",
+		},
+		keys = {
+			{
+				"<leader>gP",
+				function()
+					require("pr-reviews").review_current()
+				end,
+				desc = "Review current PR inline",
+			},
+			{
+				"<leader>gR",
+				function()
+					require("pr-reviews").pick()
+				end,
+				desc = "PR review requests",
+			},
+		},
+		config = function()
+			require("pr-review-ghlite").setup()
 			require("pr-reviews").setup()
 		end,
 	},

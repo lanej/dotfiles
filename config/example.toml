@@ -1,6 +1,10 @@
 # Git, the native OS baseline, shell, and terminal tools are defaults. Add optional bundles.
 sets = ["workstation", "easypost"]
 
+# Opt into PR reviews in ordinary Neovim source buffers.
+[features]
+nvim_ghlite = true
+
 # Individual properties override the bundles.
 [tools]
 mermaid = true

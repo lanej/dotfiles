@@ -1,8 +1,8 @@
 # Git worktree lifecycle hooks
 
-This development patch series adds worktree lifecycle notifications and a veto hook to Git 2.56.0. The interface is local and may change as upstream review progresses. Platform packages are published in a versioned dotfiles release; no separate Git fork repository is required. The runtime reports `git version 2.56.0.worktree-hooks.1` and is built separately; building and downloading its package never replaces the machine's original Git.
+This development patch series adds worktree lifecycle notifications and a veto hook to Git 2.56.0. The interface is local and may change as upstream review progresses. Fresh installation starts from the catalog tag; project updates select the latest stable upstream Git release and compile it locally with the checked-in patches. No custom Git release is required. The runtime reports `<upstream-version>.worktree-hooks.1` and is built separately; building its runtime never replaces the machine's original Git.
 
-`0001-post-worktree.patch` follows [GitGitGadget PR #2442](https://github.com/git/git/pull/2442), pinned to revision `e5855a14919a6ccc7ba0af7e2aa765245f91fccc`. `0002-pre-worktree.patch` adds the local veto interface and its upstream-style regression tests. Git's `worktree` command is built into the main executable, so the package contains the complete runtime, including Git helpers, templates, Perl support and HTTPS transport, rather than a replacement subcommand. Documentation generation, translations, Tcl/Tk tools and Rust components are omitted.
+`0001-post-worktree.patch` follows [GitGitGadget PR #2442](https://github.com/git/git/pull/2442), pinned to revision `e5855a14919a6ccc7ba0af7e2aa765245f91fccc`. `0002-pre-worktree.patch` adds the local veto interface and its upstream-style regression tests. `0003-prune-test-paths.patch` anchors duplicate-worktree test substitutions so a build parent containing `w2` cannot redirect the fixture. Git's `worktree` command is built into the main executable, so the package contains the complete runtime, including Git helpers, templates, Perl support and HTTPS transport, rather than a replacement subcommand. Documentation generation, translations, Tcl/Tk tools and Rust components are omitted.
 
 ## Install through dotfiles
 
@@ -15,9 +15,9 @@ rehash
 git --version
 ```
 
-On a fresh installation, the installer downloads the pinned platform archive and checksum from the [versioned package release](https://github.com/lanej/dotfiles/releases/tag/git-worktree-hooks-2.56.0.1). It verifies the checksum, safely extracts the complete runtime into `~/.local/opt/git-worktree-hooks/2.56.0.worktree-hooks.1`, checks its version, relocation, and HTTPS helper compatibility, and atomically activates `~/.local/bin/git` through a launcher that preserves runtime relocation. Later installations validate and reuse that runtime without downloading or compiling Git again. An existing user-managed Git executable or symlink is retained with an error. System Git remains available at its original path.
+On a fresh installation, the installer shallow clones `https://github.com/git/git.git` at the catalog's `v2.56.0` tag, applies the checked-in patches, compiles Git and runs the upstream worktree and hook suites. It stages and validates the complete runtime, then atomically activates `~/.local/bin/git` through a launcher that preserves runtime relocation. System Git remains at its original path. An existing user-managed Git executable or symlink is retained with an error.
 
-Packages cover Apple Silicon and Intel macOS, and ARM64 and x86_64 Linux. Rocky Linux, RHEL, AlmaLinux, CentOS and Oracle Linux version 8 machines select separate `linux-el8` packages built on Rocky Linux 8 with its glibc and transport libraries. Other Linux machines select the existing Ubuntu 22.04 packages. These packages require compatible system libraries; they are not universal static binaries. macOS packages target macOS 15 and later compatible systems. Runtime library dependencies are recorded in `share/doc/git-worktree-hooks/libraries.txt`; macOS builds reject dependencies on Homebrew or MacPorts library paths. An unavailable or incompatible package fails clearly rather than silently selecting another Git.
+Locally built runtimes live under `~/.local/opt/git-worktree-hooks/<runtime-version>-<source-fingerprint>`. The fingerprint covers the selected Git version and commit, builder, runtime helpers and patches; unchanged inputs reuse the installed runtime without cloning or compiling again. Changed inputs build into a new directory before activation, retaining the previous runtime. Builds use the local C toolchain and system libraries, including on Enterprise Linux 8; there is no published-platform-package dependency. Dotfiles installation provisions the build dependencies; direct installation and project updates require them already installed.
 
 To keep standard Git on a machine, add this to its existing `[tools]` table:
 
@@ -36,23 +36,33 @@ For an offline or custom package, keep the `.tar.gz` archive and adjacent `.tar.
 DOTFILES_GIT_WORKTREE_HOOKS_ARCHIVE=/absolute/path/to/package.tar.gz make install
 ```
 
-For a focused installation without the rest of the selected tools, run `python3 scripts/install-git-worktree-hooks.py`, optionally with `--archive /absolute/path/to/package.tar.gz`, followed by `make shell`.
+For a focused installation without the rest of the selected tools, run `bash scripts/install-git-worktree-hooks.sh`, optionally with `--archive /absolute/path/to/package.tar.gz`, followed by `make shell`.
 
-## Build and publish packages
-
-The build script requires Python 3.11+, a C toolchain, Make, Git, Perl, curl, tar with xz support, and development libraries for zlib, libcurl and expat. macOS uses its command line developer tools and SDK libraries. On Ubuntu, install `build-essential libcurl4-openssl-dev libexpat1-dev zlib1g-dev`. The script downloads the canonical kernel.org Git 2.56.0 archive and checks its pinned SHA256 before applying the checked-in patches.
+## Update and build locally
 
 ```sh
-scripts/build-git-worktree-hooks.sh /tmp/git-hook-packages
+project-update pull worktree-manager
+project-update build worktree-manager
+project-update restart worktree-manager
+# Or run all three steps:
+project-update update worktree-manager
 ```
 
-The script runs the upstream worktree and hook suites, stages a runtime, exercises the installed runtime from its temporary location, then writes a platform archive and checksum. Set `JOBS=8` to change the default four parallel build jobs. Source, build and test directories are removed on completion or failure. An existing output archive is retained rather than overwritten.
+The project entry pulls dotfiles' default branch, discovers the highest numeric `vMAJOR.MINOR.PATCH` tag from the upstream Git repository, and shallow clones it into a shared source cache. Release candidates are excluded. Build compiles that selected source with the checked-in patches, installs Git and the pinned worktree manager, then applies Git configuration. Build requires a preceding source pull and does not query a newer release implicitly. Both commands load their installed runtime on their next invocation; no service restart is required. The manager itself still uses its checksum-verified release executable.
 
-The build script and installer share the package naming rule: Enterprise Linux 8 builds produce `git-2.56.0-worktree-hooks-linux-el8-<architecture>.tar.gz`, and other platforms keep their existing names. On Rocky Linux, the library build prerequisites are `libcurl-devel expat-devel zlib-devel`. You can still supply a custom native archive through `DOTFILES_GIT_WORKTREE_HOOKS_ARCHIVE`; existing archives with the generic Linux name remain accepted on Enterprise Linux 8. Later ordinary `make install` runs reuse an installed compatible runtime without downloading another package.
+The Git builder requires Python 3.11+, a C toolchain, Make, Git, Perl, tar, development libraries for zlib, libcurl and expat, and `bsdtar` for staged extraction. macOS uses its command line developer tools and SDK libraries. On Ubuntu, install `build-essential libcurl4-openssl-dev libexpat1-dev zlib1g-dev libarchive-tools`; on Rocky Linux, install `gcc make perl libcurl-devel expat-devel zlib-devel bsdtar`.
 
-The [build workflow](../.github/workflows/git-worktree-hooks.yml) builds and tests macOS and Ubuntu packages plus both Enterprise Linux 8 architectures in Rocky Linux 8 containers. Publish the additional `linux-el8` archives and checksums alongside the existing assets in the pinned release before deploying the installer change. Existing installed runtimes remain reusable. To upgrade Git itself, build the new catalog and patches, publish the tested archives and checksums in a versioned GitHub release, and pin that release's URL and runtime version in `bootstrap/tools.toml` before enabling the upgrade for fresh installations. Published package assets should be retained unchanged; use a new runtime version and release for changed builds. The workflow does not publish releases automatically.
+For a standalone build of the catalog baseline without activation, run:
 
-The installer keeps sibling `libexec`, `share`, and library directories together: runtime relocation depends on that layout. The package records the exact source URL, checksum, build options and applied patch checksums alongside copies of the patches in `share/doc/git-worktree-hooks/`.
+```sh
+scripts/build-git-worktree-hooks.sh /tmp/git-hook-build
+```
+
+Pass `--source /path/to/shallow-checkout` to build another stable tag without network access. Project pulls record their selected checkout in `${XDG_CACHE_HOME:-~/.cache}/dotfiles/git-worktree-hooks/selected-source`; later builds and ordinary installs reuse that source. A fresh machine without a selected source uses the catalog tag. Failed release discovery leaves the previous selection unchanged.
+
+The Bash installer and CLI detector run external commands directly. Python remains for TOML parsing. The Bash extractor verifies an isolated archive snapshot, uses libarchive’s `bsdtar` protections, and rejects paths, links and special files that could escape staging. macOS supplies `bsdtar`; the selected Linux dependency installs it through the native package manager. The builder runs the upstream worktree and hook suites, stages a runtime and exercises relocation plus veto and notification behavior. Its archive and checksum are local staging artifacts, also accepted by the installer's `--archive` option; publishing them is unnecessary. Set `JOBS=8` to change the default four parallel build jobs. Temporary source, build and test directories are removed on completion or failure. Existing output archives are retained rather than overwritten.
+
+The [build workflow](../.github/workflows/git-worktree-hooks.yml) checks macOS, Ubuntu and Enterprise Linux 8 builds from the catalog baseline. A project update advances Git independently of that baseline. If the local patches no longer apply to the latest stable release, the update fails before activation; adjust the patches and rerun it. The installed runtime retains its sibling helpers and templates plus the exact upstream tag, commit and patch checksums in `share/doc/git-worktree-hooks/`.
 
 ## Hook contract
 

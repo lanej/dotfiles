@@ -2,12 +2,10 @@
 use crate::util::{flag, native, nonce, number, origin_id, pane_id, session, snapshot, text};
 use anyhow::{ensure, Context, Result};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
-use serde::Deserialize;
 use serde_json::Value;
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::os::fd::{AsFd, AsRawFd};
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::path::Path;
 
 struct RawInput(libc::termios);
 
@@ -37,43 +35,6 @@ impl Drop for RawInput {
     }
 }
 
-#[derive(Deserialize)]
-struct Image {
-    path: String,
-    #[serde(default)]
-    host: String,
-}
-
-fn resolve(image: &Image, cwd: &Path) -> Result<PathBuf> {
-    if !image.host.is_empty() && !image.host.eq_ignore_ascii_case("localhost") {
-        let output = Command::new("hostname").output()?;
-        let host = std::str::from_utf8(&output.stdout)?.trim();
-        ensure!(
-            output.status.success()
-                && (host.eq_ignore_ascii_case(&image.host)
-                    || host
-                        .split('.')
-                        .next()
-                        .is_some_and(|short| short.eq_ignore_ascii_case(&image.host))),
-            "The file link belongs to a different host"
-        );
-    }
-    ensure!(
-        !image.path.chars().any(char::is_control),
-        "Invalid image filename"
-    );
-    let path = match image.path.strip_prefix("~/") {
-        Some(rest) => crate::util::home()?.join(rest),
-        None => cwd.join(&image.path),
-    };
-    ensure!(
-        path.is_file(),
-        "Image does not exist in this worktree: {}",
-        path.display()
-    );
-    Ok(path)
-}
-
 fn terminal(panes: &[Value], id: u64) -> Result<&Value> {
     panes
         .iter()
@@ -83,6 +44,7 @@ fn terminal(panes: &[Value], id: u64) -> Result<&Value> {
 
 pub fn run() -> Result<()> {
     let session = session()?;
+    let server = crate::context::Session::resolve(&session)?;
     let origin = origin_id()?;
     let panes = snapshot(&session, "panes")?;
     let pane = terminal(&panes, origin)?;
@@ -112,7 +74,7 @@ pub fn run() -> Result<()> {
     );
     let ticket = nonce()?;
     let marker = format!(
-        "dotfiles-hints://{ticket}/{}/{}/{}/{}/{}/{}",
+        "dotfiles-hints-v2://{ticket}/{}/{}/{}/{}/{}/{}",
         number(pane, "pane_content_x")?,
         number(pane, "pane_content_y")?,
         number(pane, "pane_content_columns")?,
@@ -122,7 +84,7 @@ pub fn run() -> Result<()> {
     );
     let raw = RawInput::enter()?;
     // The cursor stays over this link. Kitty checks it before writing to the receiver.
-    print!("\x1b[H\x1b]8;;{marker}\x1b\\Choose a link or image\x1b]8;;\x1b\\\r");
+    print!("\x1b[H\x1b]8;;{marker}\x1b\\Choose a link or file\x1b]8;;\x1b\\\r");
     io::stdout().flush()?;
     // Consume exactly one byte before poll, even if the reply is already in the tty.
     let mut tty = std::fs::File::from(io::stdin().as_fd().try_clone_to_owned()?);
@@ -164,73 +126,37 @@ pub fn run() -> Result<()> {
     if reply.is_empty() {
         return Ok(());
     }
-    if let Err(error) = open(&session, origin, pane, cwd, reply) {
+    if let Err(error) = server
+        .validate(&session)
+        .and_then(|()| open(&session, origin, pane, cwd, reply))
+    {
         // A failed tiled split may have hidden this receiver. Bring its message back.
         let _ = native(
             &session,
             &["action", "focus-pane-id", &pane_id()?.to_string()],
         );
-        eprintln!("Image preview: {error:#}\nPress Enter to close.");
+        eprintln!("\x1b[2J\x1b[HOpen file: {error:#}\nPress Enter to close.");
         let _ = input.read_line(&mut String::new());
     }
     Ok(())
 }
 
 fn open(session: &str, origin: u64, pane: &Value, cwd: &Path, reply: &str) -> Result<()> {
-    let image: Image = serde_json::from_slice(&URL_SAFE_NO_PAD.decode(reply)?)?;
-    let path = resolve(&image, cwd)?;
+    let target: crate::file_routes::Target =
+        serde_json::from_slice(&URL_SAFE_NO_PAD.decode(reply)?)?;
     let panes = snapshot(session, "panes")?;
     let current = terminal(&panes, origin)?;
     ensure!(
         current["tab_id"] == pane["tab_id"] && current["pane_cwd"] == pane["pane_cwd"],
         "The source pane moved or changed directories"
     );
-    ensure!(
-        crate::util::exists("kitten"),
-        "Install kitten on the host running this Zellij session"
-    );
-    let mut command = Command::new("zellij");
-    command
-        .env("ZELLIJ_PANE_ID", origin.to_string())
-        .arg(format!("--session={session}"))
-        .args(["action", "new-pane", "--near-current-pane"]);
-    if flag(pane, "is_floating") {
-        command.arg("--floating");
-    } else {
-        // Zellij rejects a directed split while the floating receiver is visible.
-        native(
-            session,
-            &[
-                "action",
-                "hide-floating-panes",
-                "--tab-id",
-                &number(pane, "tab_id")?.to_string(),
-            ],
-        )?;
-        command.args(["--direction", "right"]);
-    }
-    let result = command
-        .args(["--close-on-exit", "--cwd"])
-        .arg(cwd)
-        .arg("--name")
-        .arg(path.file_name().context("Missing image filename")?)
-        .args(["--", "zellij-helper", "image-view"])
-        .arg(&path)
-        .output()?;
-    ensure!(
-        result.status.success(),
-        "Could not open image pane: {}",
-        String::from_utf8_lossy(&result.stderr).trim()
-    );
-    let viewer = std::str::from_utf8(&result.stdout)?.trim();
-    native(session, &["action", "focus-pane-id", viewer])?;
-    Ok(())
+    crate::file_routes::open(session, origin, pane, cwd, target)
 }
 
 pub fn view(path: &str) -> Result<()> {
     // Keep the pane's normal line discipline. Enter works even when the mux
     // and icat negotiate different extended-keyboard modes for the hold prompt.
-    let result = Command::new("kitten")
+    let result = std::process::Command::new("kitten")
         .args(["icat", "--fit=both", "--transfer-mode=stream", "--", path])
         .status()?;
     if !result.success() {

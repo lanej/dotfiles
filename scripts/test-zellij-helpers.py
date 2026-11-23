@@ -48,7 +48,7 @@ class Launcher(unittest.TestCase):
             (self.repo / folder).mkdir(parents=True)
         shutil.copy2(ROOT / "bin/zellij-image-hints", self.repo / "bin/zellij-image-hints")
         shutil.copy2(ROOT / "scripts/build-zellij-helpers.sh", self.repo / "scripts/build-zellij-helpers.sh")
-        for filename in ("zellij/Cargo.toml", "zellij/Cargo.lock",
+        for filename in ("zellij/Cargo.toml", "zellij/Cargo.lock", "zellij/file-routes.toml",
                          "zellij/cli/Cargo.toml", "zellij/protocol/Cargo.toml",
                          "zellij/cli/src/main.rs", "zellij/protocol/src/lib.rs"):
             (self.repo / filename).write_text("fixture input\n")
@@ -182,6 +182,20 @@ target.chmod(0o755)
         shutil.copyfile(ROOT / "zellij/target/release/lane-zellij", self.candidate)
         self.env.update(BUILD_DELAY=".3", ZELLIJ_SESSION_NAME="fixture",
                         ZELLIJ_ORIGIN_PANE_ID="terminal_1", ZELLIJ_PANE_ID="2")
+        context = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="hint-context-", dir="/tmp"))).resolve()
+        runtime = context / "run"
+        namespace = runtime / "contract_version_1"
+        namespace.mkdir(parents=True)
+        self.env.update(HOME=str(context), XDG_CACHE_HOME=str(context / "cache"), ZELLIJ_SOCKET_DIR=str(runtime))
+        cache = (context / "Library/Caches/org.Zellij-Contributors.Zellij" if sys.platform == "darwin"
+                 else context / "cache/zellij") / "contract_version_1"
+        cache.mkdir(parents=True)
+        index = cache / f"session_index-{hashlib.sha256(str(namespace).encode()).hexdigest()[:12]}.sqlite"
+        with sqlite3.connect(index) as connection:
+            connection.execute("CREATE TABLE sessions (name TEXT, id TEXT)")
+            connection.execute("INSERT INTO sessions VALUES ('fixture', 'native')")
+        listener = self.enterContext(socket.socket(socket.AF_UNIX))
+        listener.bind(str(namespace / "native"))
         fixture_panes = [pane(1, pane_cwd=str(self.work_path), pane_content_x=0,
                               pane_content_y=1, pane_content_rows=20),
                          pane(2, pane_content_x=12, pane_content_y=4)]
@@ -193,7 +207,7 @@ target.chmod(0o755)
         with self.terminal_launcher() as (process, master, output, receive):
             receive(rb"\x1b\[H\x1b\]8;;dotfiles-hints-building\x1b\\")
             self.assertNotIn(b"fixture build output", output)
-            ready = receive(rb"dotfiles-hints://([0-9a-f]{32})/0/1/58/20/12/4")
+            ready = receive(rb"dotfiles-hints-v2://([0-9a-f]{32})/0/1/58/20/12/4")
             self.assertNotIn(b"fixture build output", output)
             os.write(master, b"!" + ready[1] + b".")
             self.assertEqual(process.wait(timeout=5), 0)

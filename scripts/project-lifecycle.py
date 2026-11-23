@@ -14,9 +14,9 @@ import tempfile
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def run(args, capture=False):
+def run(args, capture=False, **kwargs):
     result = subprocess.run(args, check=True, text=True,
-                            stdout=subprocess.PIPE if capture else None)
+                            stdout=subprocess.PIPE if capture else None, **kwargs)
     return result.stdout.strip() if capture else ""
 
 
@@ -68,7 +68,6 @@ def same_binary(first, second):
 def binary_digest(path):
     with path.open("rb") as binary:
         return hashlib.file_digest(binary, "sha256").hexdigest()
-
 
 
 def approval_cli(project, action):

@@ -6,6 +6,8 @@ mod clipboard;
 mod command;
 mod config;
 mod context;
+mod editor;
+mod file_routes;
 mod image_hints;
 mod ipc;
 mod navigation;
@@ -53,6 +55,10 @@ fn run(args: &[String]) -> Result<()> {
             "clipboard" => clipboard::main(rest)?,
             "image-hints" if rest.is_empty() => image_hints::run()?,
             "image-view" if rest.len() == 1 => image_hints::view(&rest[0])?,
+            "editor-register" | "editor-unregister" if rest.len() == 2 => {
+                editor::register(&rest[0], &rest[1], command == "editor-unregister")?;
+            }
+            "file-run" => file_routes::run_program(rest)?,
             "context" if rest == ["provider"] => println!("{}", context::provider()?),
             "context" if rest == ["socket"] => println!("{}", context::socket()?),
             "context" if rest == ["title-context"] => println!("{}", auto_title::context()?),
@@ -92,6 +98,7 @@ fn main() {
         );
         let interactive = match args.first().map(String::as_str) {
             Some("popup" | "shutdown") => true,
+            Some("file-run") => true,
             Some("picker") => args.get(1).is_some_and(|arg| !arg.starts_with("--preview")),
             Some("notify") => args.get(1).is_some_and(|arg| arg == "history"),
             _ => false,

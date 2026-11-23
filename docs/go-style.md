@@ -113,7 +113,7 @@ New repositories use whole-project strict checks. Existing repositories default 
 Start with committed Go source, including any source needed to analyze the project. YAML and JSON golangci-lint v2 configurations can be merged; migrate v1 first. TOML configurations require explicit conversion. Config merging needs PyYAML; the installer can use the workstation’s `uv` to cache a pinned parser when it is absent.
 
 ```sh
-source-code setup --repo ~/src/service --go-retrofit --pr-template none
+source-code setup --repo ~/src/service --authority shared --adoption hold --go-retrofit --pr-template none
 cd ~/src/service
 bash scripts/check-go.sh baseline
 bash scripts/check-go.sh

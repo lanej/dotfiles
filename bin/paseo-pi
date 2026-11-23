@@ -8,4 +8,14 @@ if [[ -z ${AWS_BEARER_TOKEN_BEDROCK:-} && -r "$HOME/.config/bedrock/env" ]]; the
 fi
 # WHY: Rebuild stale transformed source so worker startup uses the extensions deployed by this rollout.
 export JITI_REBUILD_FS_CACHE=1
+if [[ ${PASEO_TASK_ROLE:-} == worker ]]; then
+    # Paseo sets the worker binding when it opens the session. Pi loads this guard even with an empty user profile.
+    task_package="$(dirname "$(realpath "${BASH_SOURCE[0]}")")/../paseo-tasks"
+    guard="$task_package/pi/turn-owner.ts"
+    if [[ ! -x "$task_package/node_modules/.bin/pi" || ! -r "$guard" ]]; then
+        printf 'Managed workers need the pinned Pi runtime and ownership extension. Run npm --prefix "%s" ci --ignore-scripts in the deployed checkout.\n' "$task_package" >&2
+        exit 1
+    fi
+    exec "$task_package/node_modules/.bin/pi" --extension "$guard" "$@"
+fi
 exec pi "$@"

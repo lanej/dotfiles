@@ -1,10 +1,10 @@
 ---
 name: protobuf
-description: "Use when creating, modifying, reviewing, or validating Protobuf schemas. Apply schema correctness guidance and the selected lifecycle checks; preserve repository-specific requirements. Select only the configured maturity guidance."
+description: "Use when creating, modifying, reviewing, or validating Protobuf schemas. Apply schema correctness guidance and the selected lifecycle checks; preserve repository-specific requirements."
 ---
 
-# Select the current protobuf guidance
+# protobuf source package
 
-Read the project's `.source-code.json` to identify its configured stage. Load exactly `../.maturity-profiles/<stage>/protobuf/SKILL.md`, relative to this canonical skill directory. Do not load other maturity files. Without a configured stage, preserve existing repository requirements and use the shared technical guidance without assuming a maturity.
+This canonical package is an input to `source-code setup` and `source-code upgrade`. Those commands install the configured project entrypoint at `.agents/skills/protobuf/SKILL.md`. Use that installed entrypoint for project work.
 
-New source-code installations link directly to the selected entrypoint. This selector preserves existing linked installations until setup or upgrade switches their discovery link. Read [shared guidance](references/common.md) when needed; the selected entrypoint controls maturity-specific expectations.
+This package is project-only and excluded from global skill synchronization.

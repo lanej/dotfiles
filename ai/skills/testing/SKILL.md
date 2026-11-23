@@ -1,10 +1,10 @@
 ---
 name: testing
-description: Use when resolving current-maturity testing guidance in a legacy source-code installation or maintaining the canonical testing package.
+description: Use when maintaining or installing the canonical testing guidance for source-code projects.
 ---
 
-# Select the current testing guidance
+# testing source package
 
-Read the project's `.source-code.json` to identify its configured stage. Load exactly `../.maturity-profiles/<stage>/testing/SKILL.md`, relative to this canonical testing directory, and follow that file for project work. Do not load the other maturity files. Without a configured stage, preserve the repository's requirements and resolve the missing project policy rather than assuming a maturity.
+This canonical package is an input to `source-code setup` and `source-code upgrade`. Those commands install the configured project entrypoint at `.agents/skills/testing/SKILL.md`. Use that installed entrypoint for project work.
 
-New source-code installations link directly to the selected entrypoint. This selector preserves existing linked installations until setup or upgrade switches their discovery link. Change maturity through setup or upgrade. Skill versions, project maturity, and observed verification remain separate facts.
+This package is project-only and excluded from global skill synchronization.
