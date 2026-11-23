@@ -112,7 +112,10 @@ def main():
                                 '  [[ -z "$TITLE_PROOF" ]] || touch "$TITLE_PROOF"\n'
                                 '}\nadd-zsh-hook precmd _title_test_prompt_done\n'
                                 '_title_test_buffer() { print -r -- "$BUFFER" >| "$HOME/buffer"; }\n'
-                                'zle -N _title_test_buffer\nbindkey \'^X^T\' _title_test_buffer\n')
+                                'zle -N _title_test_buffer\nbindkey \'^X^T\' _title_test_buffer\n'
+                                # The installed Ctrl-K navigates panes, so fixture setup clears explicitly.
+                                '_title_test_clear_buffer() { BUFFER=; CURSOR=0; }\n'
+                                'zle -N _title_test_clear_buffer\nbindkey \'^X^K\' _title_test_clear_buffer\n')
         # Directory history and picker selection are simulated. The installed key binding, zz,
         # shell cd hooks and native tab names are exercised end to end.
         tools = home / ".local/bin"
@@ -190,7 +193,7 @@ fi
             terminal.until("Ctrl-B retains unfinished input", lambda: buffer.exists() and buffer.read_text().strip() == pending)
             assert not marker.exists(), "Ctrl-B executed unfinished input"
             proof.unlink()
-            terminal.send(b"\x01\x0bexport TITLE_CANCEL=1\r")
+            terminal.send(b"\x18\x0bexport TITLE_CANCEL=1\r")
             terminal.until("cancellation fixture reaches the prompt", proof.exists)
             buffer.unlink()
             terminal.send(pending.encode() + b"\x02")
@@ -199,7 +202,7 @@ fi
             terminal.until("cancel retains unfinished input", lambda: buffer.exists() and buffer.read_text().strip() == pending)
             assert not marker.exists(), "Cancellation executed unfinished input"
             proof.unlink()
-            terminal.send(b"\x01\x0bunset TITLE_CANCEL\r")
+            terminal.send(b"\x18\x0bunset TITLE_CANCEL\r")
             terminal.until("cancellation fixture is cleared", proof.exists)
             # Arm the command at the original prompt. Its cd runs only after the
             # new split has focus, independently of ZLE startup and resize timing.
