@@ -1,12 +1,14 @@
+import { syntaxDiffRows } from "../code-intelligence/diff.ts";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { ThemeColor } from "@earendil-works/pi-coding-agent";
+import type { ThemeBg, ThemeColor } from "@earendil-works/pi-coding-agent";
 import { visibleWidth } from "@earendil-works/pi-tui";
 import {
   diagnosticRows,
   type DiagnosticSnapshot,
 } from "../code-intelligence/diagnostics.ts";
 const plain = {
+  bg: (_tone: ThemeBg, value: string) => value,
   fg: (_tone: ThemeColor, value: string) => value,
   bold: (value: string) => value,
 };
@@ -72,4 +74,52 @@ await test("inline diagnostics distinguish pending and reported results, wrap, a
   ).join("\n");
   assert.match(empty, /no errors or warnings reported/u);
   assert.doesNotMatch(empty, /project clean/u);
+});
+
+await test("edit diffs switch between aligned split and unified layouts without losing changes", () => {
+  const diff = [
+    ' 6 const label = "漢字😀";',
+    "-7 const retries = 3;",
+    "-8 const removed = true;",
+    '+7 const retries = "three";',
+    " 9 finish();",
+    "+10 added();",
+  ].join("\n");
+  const highlight = (text: string) => text.split("\n");
+  for (const width of [60, 92, 93, 100, 140]) {
+    const rows = syntaxDiffRows(
+      diff,
+      "retry.ts",
+      plain,
+      width,
+      "/project",
+      highlight,
+    );
+    const text = rows.join("\n");
+    assert.ok(
+      rows.every((row) => visibleWidth(row) <= width),
+      `overflow at ${String(width)}`,
+    );
+    assert.match(text, /removed = true/u);
+    assert.match(text, /added\(\)/u);
+    assert.match(text, /漢字😀/u);
+    assert.match(text, /retries = 3/u);
+    assert.match(text, /retries = "three"/u);
+    assert.equal(text.includes(" │ "), width >= 93);
+    if (width >= 93) {
+      assert.match(text, /Before.*After/u);
+      assert.match(text, /9 finish\(\).*│.*8 finish\(\)/u);
+    }
+  }
+  const long = `-1 const value = "${"漢字😀".repeat(25)}";\n+1 const value = "short";`;
+  const wrapped = syntaxDiffRows(
+    long,
+    "retry.ts",
+    plain,
+    100,
+    "/project",
+    highlight,
+  );
+  assert.ok(wrapped.every((row) => visibleWidth(row) <= 100));
+  assert.match(wrapped.join("\n"), /short/u);
 });

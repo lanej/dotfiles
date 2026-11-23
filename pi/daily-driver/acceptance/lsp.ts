@@ -164,7 +164,7 @@ try {
   const written = lastOutcome;
   const native = session.getToolDefinition("edit");
   const rendered = session.extensionRunner.resolveToolRenderers(
-    "write",
+    "edit",
     () => native,
   );
   assert.ok(rendered?.renderResult !== undefined);
@@ -203,6 +203,11 @@ try {
   assert.doesNotMatch(component.render(100).join("\n"), /"lsp"|"diagnostics"/u);
   assert.match(component.render(60).join("\n"), /Diagnostics/u);
   assert.match(callComponent.render(100).join("\n"), /answer.*number/u);
+  assert.match(callComponent.render(100).join("\n"), /Before.*After/u);
+  assert.doesNotMatch(
+    callComponent.render(60).join("\n"),
+    /Before.*After| │ /u,
+  );
   await eventually(
     () => call(lspTool, { action: "diagnostics", path: "b.ts" }),
     /2322/u,

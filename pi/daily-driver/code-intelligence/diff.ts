@@ -16,22 +16,39 @@ import {
 const clean = (text: string) =>
   text.replaceAll("\t", "   ").replace(/\p{Cc}/gu, " ");
 type Highlighter = (text: string, language: string) => string[];
+type DiffTheme = Pick<Theme, "fg" | "bg" | "bold">;
+interface DiffLine {
+  raw: string;
+  prefix: string | undefined;
+  number: string;
+  beforeNumber: string;
+  afterNumber: string;
+  code: string;
+  before: string | undefined;
+  after: string | undefined;
+}
+const minimumSourceWidth = 40;
+
 export function syntaxDiffRows(
   diff: string,
   path: string,
-  theme: Theme,
+  theme: DiffTheme,
   width: number,
   cwd: string,
   highlight: Highlighter = highlightCode,
 ): string[] {
   if (width < 3) return [];
-  const lines = diff.split("\n").map((line) => {
+  const lines: DiffLine[] = diff.split("\n").map((line) => {
     const match = /^([+\- ])(\s*\d+) (.*)$/u.exec(line);
     return {
       raw: line,
       prefix: match?.[1],
-      number: match?.[2],
+      number: match?.[2]?.trim() ?? "",
+      beforeNumber: "",
+      afterNumber: "",
       code: clean(match?.[3] ?? ""),
+      before: undefined,
+      after: undefined,
     };
   });
   const language = getLanguageFromPath(path);
@@ -47,22 +64,111 @@ export function syntaxDiffRows(
     updated = paint(true);
   let before = 0,
     after = 0;
-  const body = lines.flatMap((line) => {
-    const previous = line.prefix === "+" ? undefined : old[before++];
-    const current = line.prefix === "-" ? undefined : updated[after++];
-    if (line.prefix === undefined)
-      return [theme.fg("toolDiffContext", clean(line.raw))];
-    const tone =
-      line.prefix === "+"
-        ? "toolDiffAdded"
-        : line.prefix === "-"
-          ? "toolDiffRemoved"
-          : "toolDiffContext";
-    return [
-      `${theme.fg(tone, `${line.prefix}${line.number ?? ""} `)}${line.prefix === "-" ? (previous ?? line.code) : (current ?? line.code)}`,
-    ];
-  });
+  let delta = 0;
+  for (const line of lines) {
+    line.beforeNumber = line.prefix === "+" ? "" : line.number;
+    line.afterNumber =
+      line.prefix === " "
+        ? String(Number(line.number) + delta)
+        : line.prefix === "+"
+          ? line.number
+          : "";
+    if (line.prefix === "+") delta++;
+    else if (line.prefix === "-") delta--;
+    line.before = line.prefix === "+" ? undefined : old[before++];
+    line.after = line.prefix === "-" ? undefined : updated[after++];
+  }
   const inner = Math.max(1, width - 2);
+  const digits = lines.reduce(
+    (digits, line) =>
+      Math.max(digits, line.beforeNumber.length, line.afterNumber.length),
+    1,
+  );
+  const leftWidth = Math.floor((inner - 3) / 2);
+  const rightWidth = inner - 3 - leftWidth;
+  const gutter = digits + 2;
+  const split = leftWidth - gutter >= minimumSourceWidth;
+  const pad = (text: string, columns: number) =>
+    text + " ".repeat(Math.max(0, columns - visibleWidth(text)));
+  const tone = (line: DiffLine) =>
+    line.prefix === "+"
+      ? "toolDiffAdded"
+      : line.prefix === "-"
+        ? "toolDiffRemoved"
+        : "toolDiffContext";
+  const cell = (
+    line: DiffLine | undefined,
+    side: "before" | "after",
+    columns: number,
+  ): string[] => {
+    if (line === undefined) return [" ".repeat(columns)];
+    if (line.prefix === undefined)
+      return wrapTextWithAnsi(
+        theme.fg("toolDiffContext", clean(line.raw)),
+        columns,
+      ).map((row) => pad(row, columns));
+    const code = side === "before" ? line.before : line.after;
+    return wrapTextWithAnsi(code ?? line.code, columns - gutter).map(
+      (row, index) => {
+        const number = side === "before" ? line.beforeNumber : line.afterNumber;
+        const label =
+          index === 0
+            ? `${line.prefix ?? " "}${number.padStart(digits)} `
+            : " ".repeat(gutter);
+        return pad(theme.fg(tone(line), label) + row, columns);
+      },
+    );
+  };
+  const paired = (
+    left: DiffLine | undefined,
+    right: DiffLine | undefined,
+  ): string[] => {
+    const oldRows = cell(left, "before", leftWidth),
+      newRows = cell(right, "after", rightWidth);
+    return Array.from(
+      { length: Math.max(oldRows.length, newRows.length) },
+      (_unused, row) =>
+        (oldRows[row] ?? " ".repeat(leftWidth)) +
+        theme.fg("dim", " │ ") +
+        (newRows[row] ?? " ".repeat(rightWidth)),
+    );
+  };
+  const body: string[] = [];
+  if (split) {
+    body.push(
+      pad(theme.fg("muted", "Before"), leftWidth) +
+        theme.fg("dim", " │ ") +
+        theme.fg("muted", "After"),
+    );
+    let index = 0;
+    while (index < lines.length) {
+      const line = lines[index];
+      if (line?.prefix === "-" || line?.prefix === "+") {
+        const removed: DiffLine[] = [],
+          added: DiffLine[] = [];
+        while (lines[index]?.prefix === "-") {
+          const value = lines[index++];
+          if (value !== undefined) removed.push(value);
+        }
+        while (lines[index]?.prefix === "+") {
+          const value = lines[index++];
+          if (value !== undefined) added.push(value);
+        }
+        for (let row = 0; row < Math.max(removed.length, added.length); row++)
+          body.push(...paired(removed[row], added[row]));
+      } else {
+        body.push(...paired(line, line));
+        index++;
+      }
+    }
+  } else {
+    for (const line of lines)
+      body.push(
+        line.prefix === undefined
+          ? theme.fg("toolDiffContext", clean(line.raw))
+          : `${theme.fg(tone(line), `${line.prefix}${line.number.padStart(digits)} `)}${line.prefix === "-" ? (line.before ?? line.code) : (line.after ?? line.code)}`,
+      );
+  }
   const rawPath = path.startsWith("~/")
     ? resolve(homedir(), path.slice(2))
     : resolve(cwd, path);
