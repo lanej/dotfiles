@@ -62,6 +62,7 @@ export const configSchema = z
           .int()
           .positive()
           .default(defaultMinSplitColumns),
+        inline_diagnostics: z.boolean().default(true),
         added_background: z
           .string()
           .regex(/^#[0-9a-f]{6}$/iu)
@@ -71,7 +72,10 @@ export const configSchema = z
           .regex(/^#[0-9a-f]{6}$/iu)
           .optional(),
       })
-      .default({ min_split_columns: defaultMinSplitColumns }),
+      .default({
+        min_split_columns: defaultMinSplitColumns,
+        inline_diagnostics: true,
+      }),
     lsp: z
       .object({ enabled: z.boolean().default(true) })
       .strict()
@@ -187,7 +191,10 @@ const roles = (provider: string, prefix: string) => ({
 });
 
 export const exampleConfig = {
-  display: { min_split_columns: defaultMinSplitColumns },
+  display: {
+    min_split_columns: defaultMinSplitColumns,
+    inline_diagnostics: true,
+  },
   lsp: { enabled: true },
   delegation: { enabled: false },
   idleCompaction: { enabled: true, idleMs: 300_000, minimumContextPercent: 60 },

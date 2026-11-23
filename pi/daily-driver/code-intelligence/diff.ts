@@ -4,7 +4,12 @@ import {
   type Theme,
 } from "@earendil-works/pi-coding-agent";
 import { defaultMinSplitColumns, type DriverConfig } from "../config.ts";
-import { diagnosticGlyph, type DiagnosticSnapshot } from "./diagnostics.ts";
+import {
+  diagnosticGlyph,
+  diagnosticMessageRows,
+  groupDiagnostics,
+  type DiagnosticSnapshot,
+} from "./diagnostics.ts";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -30,19 +35,7 @@ interface DiffLine {
   after: string | undefined;
 }
 
-export function syntaxDiffRows(
-  diff: string,
-  path: string,
-  theme: DiffTheme,
-  width: number,
-  cwd: string,
-  highlight: Highlighter = highlightCode,
-  display: DriverConfig["display"] = {
-    min_split_columns: defaultMinSplitColumns,
-  },
-  diagnostics: DiagnosticSnapshot["diagnostics"] = [],
-): string[] {
-  if (width < 3) return [];
+function parseDiffLines(diff: string): DiffLine[] {
   const lines: DiffLine[] = diff.split("\n").map((line) => {
     const match = /^([+\- ])(\s*\d+) (.*)$/u.exec(line);
     return {
@@ -56,6 +49,65 @@ export function syntaxDiffRows(
       after: undefined,
     };
   });
+  let delta = 0;
+  for (const line of lines) {
+    line.beforeNumber = line.prefix === "+" ? "" : line.number;
+    line.afterNumber =
+      line.prefix === " "
+        ? String(Number(line.number) + delta)
+        : line.prefix === "+"
+          ? line.number
+          : "";
+    if (line.prefix === "+") delta++;
+    else if (line.prefix === "-") delta--;
+  }
+  return lines;
+}
+
+function placeDiagnostics(
+  lines: DiffLine[],
+  diagnostics: DiagnosticSnapshot["diagnostics"],
+) {
+  const visibleLines = new Set(
+    lines.map((line) => Number(line.afterNumber)).filter((line) => line > 0),
+  );
+  const placements = [];
+  for (const group of groupDiagnostics(diagnostics)) {
+    const line = Math.min(
+      ...[...group.lines].filter((line) => visibleLines.has(line)),
+    );
+    if (Number.isFinite(line)) placements.push({ line: String(line), group });
+    if (placements.length === 2) break;
+  }
+  return placements;
+}
+
+export function inlineDiagnosticKeys(
+  diff: string,
+  diagnostics: DiagnosticSnapshot["diagnostics"],
+) {
+  return new Set(
+    placeDiagnostics(parseDiffLines(diff), diagnostics).map(
+      ({ group }) => group.key,
+    ),
+  );
+}
+
+export function syntaxDiffRows(
+  diff: string,
+  path: string,
+  theme: DiffTheme,
+  width: number,
+  cwd: string,
+  highlight: Highlighter = highlightCode,
+  display: DriverConfig["display"] = {
+    min_split_columns: defaultMinSplitColumns,
+    inline_diagnostics: true,
+  },
+  diagnostics: DiagnosticSnapshot["diagnostics"] = [],
+): string[] {
+  if (width < 3) return [];
+  const lines = parseDiffLines(diff);
   const language = getLanguageFromPath(path);
   const paint = (added: boolean) => {
     const source = lines
@@ -69,22 +121,12 @@ export function syntaxDiffRows(
     updated = paint(true);
   let before = 0,
     after = 0;
-  let delta = 0;
   for (const line of lines) {
-    line.beforeNumber = line.prefix === "+" ? "" : line.number;
-    line.afterNumber =
-      line.prefix === " "
-        ? String(Number(line.number) + delta)
-        : line.prefix === "+"
-          ? line.number
-          : "";
-    if (line.prefix === "+") delta++;
-    else if (line.prefix === "-") delta--;
     line.before = line.prefix === "+" ? undefined : old[before++];
     line.after = line.prefix === "-" ? undefined : updated[after++];
   }
   const severityByLine = new Map<string, "error" | "warning">();
-  for (const issue of diagnostics) {
+  for (const issue of display.inline_diagnostics ? diagnostics : []) {
     const number = String(issue.line);
     if (severityByLine.get(number) !== "error")
       severityByLine.set(number, issue.severity);
@@ -96,7 +138,7 @@ export function syntaxDiffRows(
       side === "after" ? severityByLine.get(line.afterNumber) : undefined;
     return severity === undefined
       ? "  "
-      : theme.fg(severity, diagnosticGlyph(severity)) + " ";
+      : theme.fg(severity, `${diagnosticGlyph(severity)} `);
   };
   const inner = Math.max(1, width - 2);
   const digits = lines.reduce(
@@ -180,6 +222,13 @@ export function syntaxDiffRows(
         (newRows[row] ?? " ".repeat(rightWidth)),
     );
   };
+  const placements = display.inline_diagnostics
+    ? placeDiagnostics(lines, diagnostics)
+    : [];
+  const annotations = (line: DiffLine | undefined) =>
+    placements
+      .filter((placement) => placement.line === line?.afterNumber)
+      .flatMap(({ group }) => diagnosticMessageRows(group, theme, inner, true));
   const body: string[] = [];
   if (split) {
     body.push(
@@ -202,9 +251,12 @@ export function syntaxDiffRows(
           if (value !== undefined) added.push(value);
         }
         for (let row = 0; row < Math.max(removed.length, added.length); row++)
-          body.push(...paired(removed[row], added[row]));
+          body.push(
+            ...paired(removed[row], added[row]),
+            ...annotations(added[row]),
+          );
       } else {
-        body.push(...paired(line, line));
+        body.push(...paired(line, line), ...annotations(line));
         index++;
       }
     }
@@ -216,6 +268,7 @@ export function syntaxDiffRows(
           : `${theme.fg(tone(line), `${line.prefix}${line.number.padStart(digits)} `)}${marker(line, line.prefix === "-" ? "before" : "after")}${line.prefix === "-" ? (line.before ?? line.code) : (line.after ?? line.code)}`;
       for (const row of wrapTextWithAnsi(text, inner))
         body.push(background(line, pad(row, inner)));
+      body.push(...annotations(line));
     }
   }
   const rawPath = path.startsWith("~/")

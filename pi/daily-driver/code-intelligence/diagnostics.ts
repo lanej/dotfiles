@@ -57,11 +57,81 @@ export function diagnosticGlyph(severity: "error" | "warning") {
   return severity === "error" ? "×" : "⚠";
 }
 const clean = (text: string) => text.replace(/\p{Cc}/gu, " ");
+function diagnosticKey(item: DiagnosticSnapshot["diagnostics"][number]) {
+  return JSON.stringify([item.severity, item.message]);
+}
+
+export function groupDiagnostics(
+  diagnostics: DiagnosticSnapshot["diagnostics"],
+) {
+  const groups = new Map<
+    string,
+    {
+      severity: "error" | "warning";
+      text: string;
+      locations: Set<string>;
+      lines: Set<number>;
+      key: string;
+    }
+  >();
+  for (const item of diagnostics) {
+    const key = diagnosticKey(item);
+    const position = `${String(item.line)}:${String(item.column)}`;
+    const group = groups.get(key);
+    if (group === undefined) {
+      groups.set(key, {
+        severity: item.severity,
+        text: clean(item.message),
+        key,
+        locations: new Set([position]),
+        lines: new Set([item.line]),
+      });
+    } else {
+      group.locations.add(position);
+      group.lines.add(item.line);
+    }
+  }
+  return [...groups.values()].sort(
+    (a, b) =>
+      Number(a.severity === "warning") - Number(b.severity === "warning"),
+  );
+}
+
+export function diagnosticMessageRows(
+  group: ReturnType<typeof groupDiagnostics>[number],
+  theme: Pick<Theme, "fg" | "bold">,
+  width: number,
+  expanded: boolean,
+): string[] {
+  const wrap = (text: string) => wrapTextWithAnsi(text, Math.max(1, width));
+  const { severity, text, locations } = group;
+  const positions = [...locations];
+  const shown = expanded ? positions : positions.slice(0, 3);
+  const remaining = positions.length - shown.length;
+  const glyph = theme.fg(severity, theme.bold(diagnosticGlyph(severity)));
+  const metadata = `${glyph} ${theme.fg("muted", shown.join(", ") + (remaining > 0 ? ` +${String(remaining)}` : ""))}`;
+  const gutter = visibleWidth(metadata) + 2;
+  // Keep enough room for the message before placing it beside its metadata.
+  if (width - gutter < 40) {
+    const indent = width > 2 ? "  " : "";
+    return [
+      ...wrap(metadata),
+      ...wrapTextWithAnsi(text, Math.max(1, width - indent.length)).map(
+        (row) => indent + row,
+      ),
+    ];
+  }
+  return wrapTextWithAnsi(text, width - gutter).map(
+    (row, index) => (index === 0 ? `${metadata}  ` : " ".repeat(gutter)) + row,
+  );
+}
+
 export function diagnosticRows(
   value: DiagnosticSnapshot,
   theme: Pick<Theme, "fg" | "bold">,
   width: number,
   expanded: boolean,
+  inlineKeys?: ReadonlySet<string>,
 ): string[] {
   const wrap = (text: string) => wrapTextWithAnsi(text, Math.max(1, width));
   if (value.state !== "received")
@@ -83,53 +153,19 @@ export function diagnosticRows(
     value.total === 0
       ? "Diagnostics · no errors or warnings reported"
       : `Diagnostics · ${count(errors, "error")} · ${count(warnings, "warning")}${value.truncated === true ? " shown" : ""}`;
-  const groups = new Map<
-    string,
-    { severity: "error" | "warning"; text: string; locations: Set<string> }
-  >();
-  for (const item of value.diagnostics) {
-    const key = JSON.stringify([item.severity, item.message]);
-    const position = `${String(item.line)}:${String(item.column)}`;
-    const group = groups.get(key);
-    if (group === undefined) {
-      groups.set(key, {
-        severity: item.severity,
-        text: clean(item.message),
-        locations: new Set([position]),
-      });
-    } else {
-      group.locations.add(position);
-    }
-  }
-  const items = [...groups.values()].sort(
-    (a, b) =>
-      Number(a.severity === "warning") - Number(b.severity === "warning"),
+  const items = groupDiagnostics(value.diagnostics).filter(
+    (item) => inlineKeys?.has(item.key) !== true,
   );
   const visible = expanded ? items : items.slice(0, 2);
   return [
-    ...wrap(theme.fg("muted", theme.bold(heading))),
-    ...visible.flatMap(({ severity, text, locations }) => {
-      const positions = [...locations];
-      const shown = expanded ? positions : positions.slice(0, 3);
-      const remaining = positions.length - shown.length;
-      const glyph = theme.fg(severity, theme.bold(diagnosticGlyph(severity)));
-      const metadata = `${glyph} ${theme.fg("muted", shown.join(", ") + (remaining > 0 ? ` +${String(remaining)}` : ""))}`;
-      const gutter = visibleWidth(metadata) + 2;
-      // Keep enough room for the message before placing it beside its metadata.
-      if (width - gutter < 40) {
-        const indent = width > 2 ? "  " : "";
-        return [
-          ...wrap(metadata),
-          ...wrapTextWithAnsi(text, Math.max(1, width - indent.length)).map(
-            (row) => indent + row,
-          ),
-        ];
-      }
-      return wrapTextWithAnsi(text, width - gutter).map(
-        (row, index) =>
-          (index === 0 ? `${metadata}  ` : " ".repeat(gutter)) + row,
-      );
-    }),
+    ...(items.length > 0 ||
+    (inlineKeys?.size ?? 0) === 0 ||
+    value.truncated === true
+      ? wrap(theme.fg("muted", theme.bold(heading)))
+      : []),
+    ...visible.flatMap((group) =>
+      diagnosticMessageRows(group, theme, width, expanded),
+    ),
     ...(items.length > visible.length
       ? wrap(
           theme.fg(

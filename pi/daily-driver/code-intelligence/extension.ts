@@ -54,6 +54,7 @@ export function registerCodeIntelligence(pi: ExtensionAPI): CodeIntelligence {
   const intelligence = new CodeIntelligence();
   let diffDisplay: DriverConfig["display"] = {
     min_split_columns: defaultMinSplitColumns,
+    inline_diagnostics: true,
   };
   const display = registerDiagnosticRendering(
     pi,

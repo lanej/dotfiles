@@ -204,11 +204,11 @@ try {
     renderContext,
   );
   await eventually(
-    () => Promise.resolve(component.render(100).join("\n")),
+    () => Promise.resolve(callComponent.render(100).join("\n")),
     /Type 'string' is not assignable/u,
   );
   assert.doesNotMatch(component.render(100).join("\n"), /"lsp"|"diagnostics"/u);
-  assert.match(component.render(60).join("\n"), /Diagnostics/u);
+  assert.doesNotMatch(component.render(60).join("\n"), /not assignable/u);
   assert.match(callComponent.render(100).join("\n"), /answer.*number/u);
   for (const width of [100, 120]) {
     assert.ok(
@@ -220,7 +220,7 @@ try {
   assert.ok(
     !callComponent
       .render(100)
-      .some((row) => row.includes("×") && row.includes("string")),
+      .some((row) => row.includes("×") && row.includes("answer: string")),
   );
   assert.match(callComponent.render(120).join("\n"), /Before.*After/u);
   assert.doesNotMatch(
@@ -357,6 +357,10 @@ try {
       },
     },
   );
+  await writeFile(
+    join(root, "config/pi-driver/config.toml"),
+    "[display]\ninline_diagnostics = false\n",
+  );
   await session.extensionRunner.emit({
     type: "session_start",
     reason: "reload",
@@ -368,6 +372,10 @@ try {
     renderContext,
   );
   assert.match(restored.render(100).join("\n"), /Retained late diagnostic/u);
+  assert.doesNotMatch(
+    callComponent.render(100).join("\n"),
+    /×|Retained late diagnostic/u,
+  );
   console.log(
     "Native Pi + TypeScript LSP: definitions, references, edit diagnostics, semantic rename and compiler verification passed.",
   );

@@ -1,5 +1,5 @@
 import type { DriverConfig } from "../config.ts";
-import { syntaxDiffRows } from "./diff.ts";
+import { inlineDiagnosticKeys, syntaxDiffRows } from "./diff.ts";
 import type {
   ExtensionAPI,
   ExtensionContext,
@@ -158,15 +158,24 @@ export function registerDiagnosticRendering(
             original.invalidate();
           },
           render(width) {
+            const edit = diffs.get(context.toolCallId);
+            const inlineKeys =
+              renderCall !== undefined &&
+              edit !== undefined &&
+              width >= 3 &&
+              diffDisplay().inline_diagnostics
+                ? inlineDiagnosticKeys(edit.diff, current.snapshot.diagnostics)
+                : undefined;
+            const diagnostics = diagnosticRows(
+              current.snapshot,
+              theme,
+              width,
+              options.expanded,
+              inlineKeys,
+            );
             return [
               ...original.render(width),
-              "",
-              ...diagnosticRows(
-                current.snapshot,
-                theme,
-                width,
-                options.expanded,
-              ),
+              ...(diagnostics.length === 0 ? [] : ["", ...diagnostics]),
             ];
           },
         };
