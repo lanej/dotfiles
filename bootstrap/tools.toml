@@ -316,7 +316,6 @@ setup = ["firstmate-retire"]
 installer = "package"
 package = "pi"
 version = "1.4.0"
-requires = ["node"]
 setup = ["pi-config"]
 
 [tools.paseo]

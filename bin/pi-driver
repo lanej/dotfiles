@@ -20,9 +20,12 @@ if [ "${PI_DRIVER_USE_SOURCE:-0}" != 1 ] && [ -x "$compiled" ]; then
     exec "$compiled" "$@"
 fi
 
-loader=$package/node_modules/tsx/dist/loader.mjs
-if [ ! -f "$loader" ]; then
-    printf '%s\n' 'Pi driver dependencies are missing. Run npm --prefix ~/.files/pi/daily-driver ci --ignore-scripts.' >&2
+if ! command -v bun >/dev/null 2>&1; then
+    printf '%s\n' 'Bun is required to run the Pi driver from source.' >&2
     exit 1
 fi
-exec node --import "$loader" "$package/cli.ts" "$@"
+if [ ! -f "$package/node_modules/commander/package.json" ]; then
+    printf '%s\n' "Run bun install --frozen-lockfile --ignore-scripts in $package first." >&2
+    exit 1
+fi
+exec bun "$package/cli.ts" "$@"

@@ -5,7 +5,7 @@ import {
 import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { Database } from "bun:sqlite";
 import { z } from "zod";
 import { configSchema, driverProfileSchema, selection } from "./config.ts";
 import { deliverySchema } from "./delivery-record.ts";
@@ -75,19 +75,20 @@ export function stateDirectory(): string {
 
 /** Each transaction records one local transition; external operations run after the transaction commits. */
 export class Attempts {
-  private readonly db: DatabaseSync;
+  private readonly db: Database;
   constructor(
     readonly directory: string,
     readOnly = false,
   ) {
     if (!readOnly) mkdirSync(directory, { recursive: true, mode: 0o700 });
-    this.db = new DatabaseSync(join(directory, "attempts.sqlite"), {
-      readOnly,
-    });
-    this.db.exec("PRAGMA busy_timeout=5000");
+    this.db = new Database(
+      join(directory, "attempts.sqlite"),
+      readOnly ? { readonly: true } : { readwrite: true, create: true },
+    );
+    this.db.run("PRAGMA busy_timeout=5000");
     if (!readOnly)
       this.db
-        .exec(`CREATE TABLE IF NOT EXISTS attempts (id TEXT PRIMARY KEY, project TEXT NOT NULL, bead TEXT NOT NULL, active INTEGER NOT NULL, record TEXT NOT NULL);
+        .run(`CREATE TABLE IF NOT EXISTS attempts (id TEXT PRIMARY KEY, project TEXT NOT NULL, bead TEXT NOT NULL, active INTEGER NOT NULL, record TEXT NOT NULL);
       CREATE UNIQUE INDEX IF NOT EXISTS active_attempt ON attempts(project,bead) WHERE active=1;`);
   }
   close(): void {
@@ -112,7 +113,7 @@ export class Attempts {
         "SELECT record FROM attempts WHERE project=? AND bead=? ORDER BY active DESC,rowid DESC LIMIT 1",
       )
       .get(project, bead);
-    return raw === undefined ? null : decode(raw);
+    return raw === null ? null : decode(raw);
   }
   livePaneBeads(project: string, session: string): Set<string> {
     return new Set(
@@ -142,10 +143,10 @@ export class Attempts {
         attempt.bead.id,
         JSON.stringify(attempt),
       );
-    return Number(result.changes) === 1;
+    return result.changes === 1;
   }
   change(id: string, update: (record: Attempt) => void): Attempt {
-    this.db.exec("BEGIN IMMEDIATE");
+    this.db.run("BEGIN IMMEDIATE");
     try {
       const current = this.get(id);
       update(current);
@@ -156,10 +157,10 @@ export class Attempts {
       this.db
         .prepare("UPDATE attempts SET record=?,active=? WHERE id=?")
         .run(JSON.stringify(current), Number(active), id);
-      this.db.exec("COMMIT");
+      this.db.run("COMMIT");
       return current;
     } catch (cause) {
-      this.db.exec("ROLLBACK");
+      this.db.run("ROLLBACK");
       throw cause;
     }
   }

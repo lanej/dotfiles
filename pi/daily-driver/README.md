@@ -22,14 +22,16 @@ The selector returns an item index or cancellation. Socrates owns the typed-answ
 
 ## Enable
 
+Install [standalone Pi](../../docs/pi.md#install) and put it first on PATH before configuring or opening the daily driver.
+
 ```sh
-npm --prefix ~/.files/pi/daily-driver ci --ignore-scripts
+bun install --cwd ~/.files/pi/daily-driver --frozen-lockfile --ignore-scripts
 make pi-driver-config
 ```
 
 The configuration target registers this local Pi package, selects the generated `dotfiles` theme, and enables quiet startup. Providers, models, credentials, and unrelated packages are preserved. It performs no download, authentication, task claim, or service startup. It respects `PI_CODING_AGENT_DIR`. Start or reload Pi to discover `/cd`, `/tasks`, `/driver-profile`, and `/driver-status`. The repository's normal bin configuration exposes `pi-driver`; it can also be invoked directly from `~/.files/bin/pi-driver`.
 
-Run `make pi-driver-aot` after installing the package's locked npm dependencies and the Bun version in [`.bun-version`](.bun-version). The same `pi-driver` launcher then uses the compiled CLI for every command. Rebuild after updating the checkout. Set `PI_DRIVER_USE_SOURCE=1` to run the source CLI for a comparison or rollback. A checkout without a build runs from source. The managed worker still starts native Pi and loads its extension from the installed package.
+Run `make pi-driver-aot` after installing the package's locked Bun dependencies and the Bun version in [`.bun-version`](.bun-version). The same `pi-driver` launcher then uses the compiled CLI for every command. Rebuild after updating the checkout. Set `PI_DRIVER_USE_SOURCE=1` to run the source CLI for a comparison or rollback. A checkout without a build runs from source. The managed worker starts standalone Pi and loads its extension from the installed package.
 
 The theme comes from the shared semantic adapter, with Nord selected by the current design-system preset. The terminal retains its canvas and opacity settings. The task tree opens as a right-side overlay with colored status glyphs. Enter opens task details with the state written out. Right focuses a task’s live managed Pi pane in the same Zellij session when the action is shown. Task selection and details omit keyboard instructions and policy boilerplate. The footer shows the current directory using [shortpath](../../tools/shortpath/README.md) when it is on PATH. Colored glyphs mark the lead mode and reasoning level alongside the bead ID and model. The same row fits Git changes, the Octo-tracked PR, context usage, and estimated session cost as space allows. GPT model IDs show a provider glyph, version, and variant glyph for Sol, Luna, Terra, and Astra. Secondary fields collapse as the pane narrows, and other extensions retain their status lines. Startup hints, resource listings, zero-usage counters, and the permanent compaction-policy line are hidden. Bash tool cards highlight shell syntax in command lines. Code from Pi’s grep tool and supported `rg` and `sed` shell tool calls uses the active syntax theme. Pi’s output folding and truncation remain available. Actionable errors remain visible.
 
@@ -100,14 +102,14 @@ After Octo confirms the merge, exit the lead and settle its child beads. Run `pi
 ## Checks
 
 ```sh
-npm --prefix pi/daily-driver run quality:tools
+bun run --cwd pi/daily-driver quality:tools
 make test-pi-driver
-npm --prefix pi/daily-driver run test:beads-native -- --bd /absolute/path/to/bd --dolt /absolute/path/to/dolt
+bun run --cwd pi/daily-driver test:beads-native --bd /absolute/path/to/bd --dolt /absolute/path/to/dolt
 ```
 
-The tools command explicitly installs the pinned quality dependencies. `make test-pi-driver` runs the repository's complete strict TypeScript profile for this package: compiler checks, typed ESLint, Biome, Prettier, workflow tests and dependency audit, followed by loading the configured package and generated theme through the actual pinned Pi runtime without a provider request. All package TypeScript sources, including tests and acceptance scripts, are covered without a baseline or exclusions. Run `npm --prefix pi/daily-driver run typecheck` or `run lint` for focused checks; `run format -- FILE.ts` requires explicit package-relative paths.
+The tools command explicitly installs the pinned quality dependencies. `make test-pi-driver` runs the repository's complete strict TypeScript profile for this package: compiler checks, typed ESLint, Biome, Prettier, workflow tests and dependency audit, followed by loading the configured package and generated theme through the actual pinned Pi runtime without a provider request. All package TypeScript sources, including tests and acceptance scripts, are covered without a baseline or exclusions. Run `bun run --cwd pi/daily-driver typecheck` or `run lint` for focused checks; `run format -- FILE.ts` requires explicit package-relative paths.
 
-The package retains the canonical compiler and typed lint rules under `.typescript-quality/`. Declaration checking stays enabled. Bundler resolution matches Pi's native TypeScript loader and the CLI's tsx loader. The Biome profile retains the previous recommended lint rules alongside the canonical correctness rules; only its stylistic `useLiteralKeys` rule is disabled because strict `noPropertyAccessFromIndexSignature` requires bracket access. Runtime modes, events, session/message kinds, navigation keys, profiles, roles, reasoning levels, task states and relationships use enums. External data is validated before enum-specific decisions; custom provider IDs, task states and relationship types remain representable.
+The package retains the canonical compiler and typed lint rules under `.typescript-quality/`. Declaration checking stays enabled. Bundler resolution matches Pi's native TypeScript loader and the CLI's Bun loader. The Biome profile retains the previous recommended lint rules alongside the canonical correctness rules; only its stylistic `useLiteralKeys` rule is disabled because strict `noPropertyAccessFromIndexSignature` requires bracket access. Runtime modes, events, session/message kinds, navigation keys, profiles, roles, reasoning levels, task states and relationships use enums. External data is validated before enum-specific decisions; custom provider IDs, task states and relationship types remain representable.
 
 The native Beads probe uses a disposable service to race claims, edit the accepted fields using native Beads tools and verify that a stale closing PATCH is refused. The [interactive acceptance fixture](acceptance/local-run.md) runs real Pi, Zellij, the worktree manager and Beads with a loopback model. It checks same-pane steering and refocus, tool-driven completion, failed verification, edited scope and independent inspection after Pi exits.
 
@@ -131,4 +133,4 @@ The driver loads the pinned tintinweb runner through a small adapter. The config
 
 Run `/archives` to search and preview archived lead sessions alongside existing Session Snap archives. The default database is `~/.pi/agent/session-archive.db`. Set `archives.database` to an absolute alternate path when needed. The picker shows up to the latest 1,000 archived sessions and opens a local, bounded preview. It opens the database read-only and does not modify transcript history.
 
-Verify real delegation with `npm --prefix pi/daily-driver run test:delegation-native` and an installed native worktree manager. The terminal acceptance script also exercises archive search and preview at 60 and 100 columns.
+Verify real delegation with `bun run --cwd pi/daily-driver test:delegation-native` and an installed native worktree manager. The terminal acceptance script also exercises archive search and preview at 60 and 100 columns.

@@ -455,6 +455,14 @@ install_glow_from_source() {
 }
 
 installed_semver() {
+	if [ "$1" = pi ]; then
+		# Only a launcher installed from the standalone release satisfies bootstrap.
+		local launcher="$HOME/.local/bin/pi" target
+		target=$(readlink "$launcher") || return 1
+		case "$target" in "$HOME"/.local/share/pi-standalone/*/pi/pi) ;; *) return 1 ;; esac
+		"$launcher" --version 2>/dev/null | parse_semver | head -n1
+		return
+	fi
 	explicit_current_semver "$1" || current_heuristic_semver "$1" || go_binary_semver "$1"
 }
 
@@ -776,9 +784,13 @@ install_claude-code_from_release() (
 	bash "$claude_stage" "$1" || exit 1
 )
 
+pi_package_semver() {
+	# The package-manager name does not identify the upstream standalone release.
+	return 1
+}
+
 install_pi_from_release() {
-	install_package_version node 24 || return 1
-	npm install -g --ignore-scripts "@earendil-works/pi-coding-agent@$1"
+	sh "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-pi" "$1"
 }
 
 install_stylua_from_release() {

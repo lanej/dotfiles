@@ -1,8 +1,8 @@
 # Local worker acceptance
 
-Build with `npm run build:aot` first to exercise the compiled driver through the same `bin/pi-driver` entry point. In a checkout with a build, `PI_DRIVER_USE_SOURCE=1` selects the source path.
+Build with `bun run build:aot` first to exercise the compiled driver through the same `bin/pi-driver` entry point. In a checkout with a build, `PI_DRIVER_USE_SOURCE=1` selects the source path.
 
-From `pi/daily-driver`, run `node --import tsx acceptance/local-run.ts` after installing package dependencies and the native `zellij` and `worktree` commands. The harness reads pinned Beads and Dolt binaries from `~/.local/share/beads-service/runtime.json`; set both `PI_DRIVER_NATIVE_BD` and `PI_DRIVER_NATIVE_DOLT` to use explicit binaries instead. `PI_DRIVER_NATIVE_PYTHON` selects the Python interpreter when `python3` is unsuitable.
+From `pi/daily-driver`, run `bun acceptance/local-run.ts` after installing package dependencies and the native `zellij` and `worktree` commands. The harness reads pinned Beads and Dolt binaries from `~/.local/share/beads-service/runtime.json`; set both `PI_DRIVER_NATIVE_BD` and `PI_DRIVER_NATIVE_DOLT` to use explicit binaries instead. `PI_DRIVER_NATIVE_PYTHON` selects the Python interpreter when `python3` is unsuitable.
 
 The fixture creates its own Dolt server, Beads HTTP service, Git repository, managed worktrees, Pi agent directory, journal and Zellij session. It makes Paseo unavailable and guards against driver subprocess calls to either Paseo or Zellij. Zellij itself runs as the native terminal under test. The driver uses the Unix socket for pane launch, discovery, and focus. It preserves existing services and terminal sessions. A deterministic loopback OpenAI-compatible provider lets the real interactive Pi acknowledge the accepted bead context and subsequent guidance in the same worker pane. The successful case invokes the real `task_submit_result` tool; failure cases use the native `/task-submit` command. This exercises native Pi input, extension dispatch, tool execution and SDK streaming; it does not assess an external model's reasoning or credentials.
 
@@ -10,7 +10,7 @@ The direct-worker cases exercise successful verification and confirmed closure, 
 
 Set `PI_DRIVER_ACCEPTANCE_OUTPUT` to a task-owned directory to retain each run in its own subdirectory containing `report.json`, per-case native pane text, raw terminal ANSI and the actual loopback provider requests. Without that setting all fixture artifacts are disposable; the JSON report is printed to standard output. Provider requests contain the fixture's prompts and accepted task context, so use only disposable task data.
 
-`npm run generate:zellij` regenerates the TypeScript bindings from the runtime installer’s Zellij revision. `npm run check:zellij` checks for drift. Set `ZELLIJ_PROTO_CHECKOUT` to a local Zellij Git checkout containing that revision to run either command without fetching schemas.
+`bun run generate:zellij` regenerates the TypeScript bindings from the runtime installer’s Zellij revision. `bun run check:zellij` checks for drift. Set `ZELLIJ_PROTO_CHECKOUT` to a local Zellij Git checkout containing that revision to run either command without fetching schemas.
 
 The lead case drafts an optional child graph, opens the terminal diff viewer, and waits for the operator’s approval before creating child beads. Local verification of the lead retains the parent’s in-progress state. Set `PI_DRIVER_ACCEPTANCE_CASE=lead-plan` to run this case independently.
 

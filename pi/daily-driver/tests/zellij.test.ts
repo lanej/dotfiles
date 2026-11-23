@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { createServer } from "node:net";
-import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { dirname, join } from "node:path";
+import { Database } from "bun:sqlite";
 import { test } from "node:test";
 import { ClientToServerMsgSchema } from "../generated/zellij/client_to_server_pb.js";
 import { Zellij } from "../zellij.ts";
@@ -25,8 +25,6 @@ await test("a lost pane launch is sent once and a replaced server is never focus
   await mkdir(cache, { recursive: true });
   await mkdir(sockets);
   const environment = {
-    HOME: root,
-    XDG_CACHE_HOME: root,
     ZELLIJ_SOCKET_DIR: root,
     ZELLIJ_PANE_ID: "terminal_0",
   };
@@ -45,8 +43,8 @@ await test("a lost pane launch is sent once and a replaced server is never focus
     .update(sockets)
     .digest("hex")
     .slice(0, 12);
-  const index = new DatabaseSync(join(cache, `session_index-${suffix}.sqlite`));
-  index.exec(
+  const index = new Database(join(cache, `session_index-${suffix}.sqlite`));
+  index.run(
     "CREATE TABLE sessions (id TEXT, name TEXT); INSERT INTO sessions VALUES ('one', 'test');",
   );
   index.close();
@@ -78,7 +76,7 @@ await test("a lost pane launch is sent once and a replaced server is never focus
   });
   let zellij: Zellij;
   try {
-    zellij = new Zellij("test");
+    zellij = new Zellij("test", dirname(cache));
     await assert.rejects(
       zellij.launch(3, "trial", "/tmp", ["pi"]),
       /outcome may be unknown/u,

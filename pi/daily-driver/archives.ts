@@ -112,7 +112,7 @@ export function registerArchives(pi: ExtensionAPI): void {
       const path =
         config.archives.database ??
         join(homedir(), ".pi/agent/session-archive.db");
-      const { DatabaseSync } = await import("node:sqlite");
+      const { Database } = await import("bun:sqlite");
       const { gunzipSync } = await import("node:zlib");
       let query = argument;
       try {
@@ -152,7 +152,7 @@ export function registerArchives(pi: ExtensionAPI): void {
               throw error;
             })) !== undefined
           ) {
-            const db = new DatabaseSync(path, { readOnly: true });
+            const db = new Database(path, { readonly: true });
             try {
               rows.push(
                 ...z
@@ -184,7 +184,7 @@ export function registerArchives(pi: ExtensionAPI): void {
                 throw new Error("Archive exceeds preview size");
               transcript = await readFile(file, "utf8");
             } else {
-              const archive = new DatabaseSync(path, { readOnly: true });
+              const archive = new Database(path, { readonly: true });
               try {
                 const raw = z
                   .object({ jsonl_gzip: z.instanceof(Uint8Array) })

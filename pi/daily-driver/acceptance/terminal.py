@@ -90,7 +90,7 @@ elif 'show' in sys.argv: print(json.dumps([{'id':sys.argv[-1],'title':'Idle comp
     for columns, rows in [(100, 26), (60, 20)]:
         master, slave = os.openpty()
         fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", rows, columns, 0, 0))
-        process = subprocess.Popen(["node", str(root / "node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js"), "--offline", "--no-mcp", "--model", "fixture/tiny"], env=env, cwd=project, stdin=slave, stdout=slave, stderr=slave)
+        process = subprocess.Popen(["pi", "--offline", "--no-mcp", "--model", "fixture/tiny"], env=env, cwd=project, stdin=slave, stdout=slave, stderr=slave)
         os.close(slave)
         screen = pyte.Screen(columns, rows)
         stream = pyte.Stream(screen)

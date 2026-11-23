@@ -9,7 +9,7 @@ import { lstatSync } from "node:fs";
 import { createConnection } from "node:net";
 import { homedir, tmpdir } from "node:os";
 import { isAbsolute, join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { Database } from "bun:sqlite";
 import { z } from "zod";
 import { ClientToServerMsgSchema } from "./generated/zellij/client_to_server_pb.js";
 import type { ActionSchema } from "./generated/zellij/common_types_pb.js";
@@ -33,7 +33,11 @@ function absolute(value: string | undefined): string | undefined {
   return value !== undefined && isAbsolute(value) ? value : undefined;
 }
 
-function sessionSocket(session: string, uid: number): string {
+function sessionSocket(
+  session: string,
+  uid: number,
+  cacheDirectory?: string,
+): string {
   const override = process.env["ZELLIJ_SOCKET_DIR"];
   if (override !== undefined && !isAbsolute(override))
     throw new Error("Zellij socket directory must be absolute");
@@ -48,21 +52,23 @@ function sessionSocket(session: string, uid: number): string {
         : join(runtime, "zellij")),
     namespace,
   );
-  const cache = linux
-    ? join(
-        absolute(process.env["XDG_CACHE_HOME"]) ?? join(homedir(), ".cache"),
-        "zellij",
-      )
-    : join(homedir(), "Library", "Caches", "org.Zellij-Contributors.Zellij");
+  const cache =
+    cacheDirectory ??
+    (linux
+      ? join(
+          absolute(process.env["XDG_CACHE_HOME"]) ?? join(homedir(), ".cache"),
+          "zellij",
+        )
+      : join(homedir(), "Library", "Caches", "org.Zellij-Contributors.Zellij"));
   const index =
     override === undefined
       ? "session_index.sqlite"
       : `session_index-${createHash("sha256").update(sockets).digest("hex").slice(0, 12)}.sqlite`;
-  const database = new DatabaseSync(join(cache, namespace, index), {
-    readOnly: true,
+  const database = new Database(join(cache, namespace, index), {
+    readonly: true,
   });
   try {
-    database.exec("PRAGMA busy_timeout=100");
+    database.run("PRAGMA busy_timeout=100");
     const { id } = z
       .object({ id: z.string().regex(/^(?!\.{1,2}$)[^/\0]+$/u) })
       .parse(
@@ -105,11 +111,14 @@ export class Zellij {
   private readonly path: string;
   private readonly terminal: number | undefined;
 
-  constructor(private readonly session: string) {
+  constructor(
+    private readonly session: string,
+    private readonly cacheDirectory?: string,
+  ) {
     const uid = process.getuid?.();
     if (uid === undefined) throw new Error("Zellij requires a Unix user ID");
     this.uid = uid;
-    this.path = sessionSocket(session, uid);
+    this.path = sessionSocket(session, uid, this.cacheDirectory);
     this.identity = socketIdentity(this.path, uid);
     const terminal = /^(?:terminal_)?(\d+)$/u.exec(
       process.env["ZELLIJ_PANE_ID"] ?? "",
@@ -119,7 +128,8 @@ export class Zellij {
 
   private validate(): void {
     if (
-      sessionSocket(this.session, this.uid) !== this.path ||
+      sessionSocket(this.session, this.uid, this.cacheDirectory) !==
+        this.path ||
       socketIdentity(this.path, this.uid) !== this.identity
     )
       throw new Error("Zellij session now belongs to a different server");
