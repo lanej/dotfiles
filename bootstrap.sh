@@ -1418,6 +1418,7 @@ run_configured_hooks() {
 			directory-picker) make -C "$configuration_root" directory-picker || return 1 ;;
 			github-auth) setup_gh_auth || return 1 ;;
 			bedrock-credentials) setup_bedrock_credentials || return 1 ;;
+			bedrock-router) make -C "$configuration_root" bedrock-router UV="$(command -v uv)" || return 1 ;;
 			agent-status-broker) make -C "$HOME/.files" agent-status-broker || return 1 ;;
 			kitty-terminfo) setup_kitty_terminfo || return 1 ;;
 			neovim) setup_neovim || return 1 ;;

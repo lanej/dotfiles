@@ -113,7 +113,7 @@ entries:
     ring: adopt
     icon: codex.svg
     rationale: |-
-      Coding agent used with shared skills, role instructions, and repository guidance. Source-code setup installs repository-only publication guidance for projects that select Octo; the caller writes descriptions and [Octo validates format and publishes through pending receipts](octo-pr-submission.md), with daemon-backed tracking opt-in. Global Git and PR skills remain tool-neutral. Shared specification, writing, learning-capture, and handoff workflows use portable skill packages and the repository-owned [skill-authoring workflow](skill-maintenance.md).
+      Coding agent used with shared skills, role instructions, and repository guidance. Selected Bedrock installation activates the standalone router through its native installer and verifies service health while preserving healthy running services. Source-code setup installs repository-only publication guidance for projects that select Octo; the caller writes descriptions and [Octo validates format and publishes through pending receipts](octo-pr-submission.md), with daemon-backed tracking opt-in. Global Git and PR skills remain tool-neutral. Shared specification, writing, learning-capture, and handoff workflows use portable skill packages and the repository-owned [skill-authoring workflow](skill-maintenance.md).
   - id: fzf
     name: fzf
     ring: adopt
@@ -159,7 +159,7 @@ entries:
     ring: adopt
     icon: zellij.png
     rationale: |-
-      [Zellij](zellij.md): my adopted terminal multiplexer with tmux-style bindings and a compact layout in Kitty. Bootstrap installs version 0.45.1 or newer; `zj main` attaches to or creates a named session. Tmux remains available for existing agent-status integrations.
+      [Zellij](zellij.md): my adopted terminal multiplexer with tmux-style bindings and a compact layout in Kitty. Bootstrap installs version 0.45.1 or newer; `zj main` attaches to or creates a named session. Routine project updates defer Zellij builds and session replacement; automatic restoration remains disabled. Tmux remains available for existing agent-status integrations.
   - id: paseo
     name: Paseo
     ring: trial

@@ -23,9 +23,11 @@ These targets clone missing sources into `~/src/intent` and `~/src/1password-age
 
 Use `project-update pull intent` and `project-update pull keylease` to advance clean default-branch checkouts, then `project-update build intent` and `project-update build keylease` to install them. See [project updates](project-updates.md).
 
-## SSH transport status
+## Existing profiles and SSH setup
 
-Automatic approval for ordinary SSH sessions is pending production integration of the [stable remote socket design and executable proof](https://github.com/lanej/intent/tree/main/experiments/stable-socket). The design uses dedicated SSH connections and a remote broker that owns a stable approval socket. It does not require connection multiplexing. The proof is merged, but installation does not enable it and `make intent-ssh` fails without changing configuration until a supported production integration is available.
+Project updates discover existing Intent profiles and paired remote brokers through owner-native lifecycle controls. They stage verified platform binaries, bind native broker ownership and pairing IDs, and preserve stable sockets, routing IDs, and existing SSH connections. Unknown legacy brokers, mismatched pairings, or unreachable targets remain explicitly incomplete. See [project updates](project-updates.md) for activation and recovery.
+
+Installation does not configure automatic approval for ordinary SSH sessions. The [stable remote socket design and executable proof](https://github.com/lanej/intent/tree/main/experiments/stable-socket) uses dedicated SSH connections and a broker-owned stable socket without requiring connection multiplexing. `make intent-ssh` remains a guarded setup target that fails without changing configuration; existing explicitly configured profiles are separate from automatic workstation setup.
 
 The proof demonstrates route handover, caller cancellation and transport loss without replay using a disposable real SSH server and synthetic native decisions. Human Touch ID, Apple Watch and password interaction remains unverified. Its README contains the explicit experimental commands and limits; do not treat it as automatic workstation setup.
 

@@ -2,10 +2,10 @@ name: SSH agent reconnect
 
 on:
   pull_request:
-    paths: ['bin/zellij-helper', 'zellij/cli/src/agent.rs', 'zellij/cli/src/session.rs', 'zellij/cli/src/util.rs', 'zellij/cli/src/command.rs', 'zellij/cli/src/main.rs', 'zellij/cli/Cargo.toml', 'zellij/Cargo.toml', 'zellij/Cargo.lock', 'bin/zellij-agent', 'bin/zellij-attach', 'bin/zellij-popup', 'bin/fix-ssh', 'sh/ssh-rc', 'bin/git-ssh', 'scripts/install-zellij', 'scripts/make/zellij-config.py', 'scripts/test-zellij-agent-update.py', 'scripts/test-zellij.py', '.github/workflows/zellij-agent.yml']
+    paths: ['bin/zellij-helper', 'zellij/cli/src/agent.rs', 'zellij/cli/src/session.rs', 'zellij/cli/src/util.rs', 'zellij/cli/src/command.rs', 'zellij/cli/src/main.rs', 'zellij/cli/Cargo.toml', 'zellij/Cargo.toml', 'zellij/Cargo.lock', 'bin/zellij-agent', 'bin/zellij-attach', 'bin/zellij-popup', 'bin/fix-ssh', 'sh/ssh-rc', 'bin/git-ssh', 'scripts/install-zellij', 'scripts/build-zellij-activation.py', 'scripts/zellij-artifacts.py', 'scripts/make/zellij-config.py', 'scripts/test-zellij-agent-update.py', 'scripts/test-zellij.py', '.github/workflows/zellij-agent.yml']
   push:
     branches: [master]
-    paths: ['bin/zellij-helper', 'zellij/cli/src/agent.rs', 'zellij/cli/src/session.rs', 'zellij/cli/src/util.rs', 'zellij/cli/src/command.rs', 'zellij/cli/src/main.rs', 'zellij/cli/Cargo.toml', 'zellij/Cargo.toml', 'zellij/Cargo.lock', 'bin/zellij-agent', 'bin/zellij-attach', 'bin/zellij-popup', 'bin/fix-ssh', 'sh/ssh-rc', 'bin/git-ssh', 'scripts/install-zellij', 'scripts/make/zellij-config.py', 'scripts/test-zellij-agent-update.py', 'scripts/test-zellij.py', '.github/workflows/zellij-agent.yml']
+    paths: ['bin/zellij-helper', 'zellij/cli/src/agent.rs', 'zellij/cli/src/session.rs', 'zellij/cli/src/util.rs', 'zellij/cli/src/command.rs', 'zellij/cli/src/main.rs', 'zellij/cli/Cargo.toml', 'zellij/Cargo.toml', 'zellij/Cargo.lock', 'bin/zellij-agent', 'bin/zellij-attach', 'bin/zellij-popup', 'bin/fix-ssh', 'sh/ssh-rc', 'bin/git-ssh', 'scripts/install-zellij', 'scripts/build-zellij-activation.py', 'scripts/zellij-artifacts.py', 'scripts/make/zellij-config.py', 'scripts/test-zellij-agent-update.py', 'scripts/test-zellij.py', '.github/workflows/zellij-agent.yml']
 
 permissions:
   contents: read
@@ -29,16 +29,27 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - name: Restore pinned executable
+      - name: Restore curated runtime installation
         uses: actions/cache/restore@v4
         id: executable_cache
         with:
-          path: ~/.local/bin/zellij
-          key: zellij-executable-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/install-zellij') }}
+          path: &runtime-installation |
+            ~/.local/bin/zellij
+            ~/.local/lib/zellij/runtimes
+            ~/.local/.dotfiles-zellij-install
+          key: zellij-immutable-installation-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/install-zellij', 'scripts/build-zellij-activation.py', 'scripts/zellij-artifacts.py') }}
+      - name: Verify cached immutable runtime
+        id: executable_ready
+        run: |
+          if [ -x "$HOME/.local/bin/zellij" ] && python3 scripts/zellij-artifacts.py runtime-selected; then
+            echo "usable=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "usable=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Restore native Zellij build
         uses: actions/cache/restore@v4
         id: zellij_cache
-        if: steps.executable_cache.outputs.cache-hit != 'true'
+        if: steps.executable_ready.outputs.usable != 'true'
         with:
           path: |
             ~/.cargo/registry
@@ -47,33 +58,33 @@ jobs:
           key: zellij-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/install-zellij') }}
           restore-keys: zellij-${{ runner.os }}-${{ runner.arch }}-
       - name: Install native build tools on Linux
-        if: runner.os == 'Linux' && steps.executable_cache.outputs.cache-hit != 'true'
+        if: runner.os == 'Linux' && steps.executable_ready.outputs.usable != 'true'
         run: sudo apt-get update && sudo apt-get install -y build-essential cmake pkg-config libssl-dev
       - name: Install native build tools on macOS
-        if: runner.os == 'macOS' && steps.executable_cache.outputs.cache-hit != 'true'
+        if: runner.os == 'macOS' && steps.executable_ready.outputs.usable != 'true'
         run: brew install cmake pkg-config openssl@3
       - name: Install existing pinned Zellij runtime
         id: zellij_install
         env:
-          CACHED_BINARY: ${{ steps.executable_cache.outputs.cache-hit }}
+          CACHED_BINARY: ${{ steps.executable_ready.outputs.usable }}
         run: |
           if [ "$CACHED_BINARY" != true ]; then bash scripts/install-zellij; fi
           "$HOME/.local/bin/zellij" --version
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Save native Zellij build
         uses: actions/cache/save@v4
-        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' && steps.executable_cache.outputs.cache-hit != 'true' && steps.zellij_cache.outputs.cache-hit != 'true' }}
+        if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' && steps.executable_ready.outputs.usable != 'true' && steps.zellij_cache.outputs.cache-hit != 'true' }}
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             ~/.cache/dotfiles/zellij
           key: ${{ steps.zellij_cache.outputs.cache-primary-key }}
-      - name: Save pinned executable
+      - name: Save curated runtime installation
         uses: actions/cache/save@v4
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' && steps.executable_cache.outputs.cache-hit != 'true' }}
         with:
-          path: ~/.local/bin/zellij
+          path: *runtime-installation
           key: ${{ steps.executable_cache.outputs.cache-primary-key }}
       - run: make zellij-helpers
       - name: Verify native SSH agent reconnects

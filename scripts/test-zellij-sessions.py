@@ -516,7 +516,7 @@ def ancestor_navigation_workflow(binary):
             'default_shell "/bin/sh"\ndefault_mode "locked"\n'
             'nested_session_handling "descend"\nsession_serialization false\n'
             'show_startup_tips false\nshow_release_notes false\n'
-            'attention { idle_rule "watched"; }\n'
+            'attention { idle_rule "watched"; startup_card "never"; }\n'
             'keybinds clear-defaults=true {\n'
             '  locked {\n    bind "Ctrl f" { SwitchToMode "Tmux"; }\n  }\n'
             '  tmux {\n'

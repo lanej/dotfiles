@@ -15,10 +15,12 @@ import tempfile
 import time
 import tomllib
 import unittest
+import uuid
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from beads_lifecycle import loaded_binary_identity
 SCRIPT = Path(__file__).resolve().with_name("beads-service.py")
 spec = importlib.util.spec_from_file_location("beads_service", SCRIPT)
 service = importlib.util.module_from_spec(spec)
@@ -192,6 +194,41 @@ class SharedService(unittest.TestCase):
         restarted.terminate()
         self.assertEqual(restarted.wait(timeout=20), 0)
         self.assert_children_stopped()
+
+    def test_native_checkpoint_refuses_mutable_owner_without_stopping_children(self):
+        owner = self.start()
+        self.ready()
+        inventory = self.cli("inventory")
+        self.assertEqual(inventory.returncode, 0, inventory.stderr)
+        target = json.loads(inventory.stdout)["targets"][0]
+        self.assertIsNone(target["running_identity"])
+        self.environment["PROJECT_UPDATE_RUN_ID"] = str(uuid.uuid4())
+        self.environment["PROJECT_UPDATE_EXPECTED_PROCESS"] = json.dumps(target["process"])
+        refused = self.cli("checkpoint")
+        self.assertEqual(refused.returncode, 3, refused.stderr)
+        value = json.loads(refused.stdout)["targets"][0]
+        self.assertEqual(value["checkpoint"]["state"], "refused")
+        self.assertEqual(value["process"], target["process"])
+        self.assertIsNone(owner.poll())
+        self.assertTrue(self.ready()["ready"])
+
+    def test_loaded_child_identity_rejects_replaced_executable_path(self):
+        binary = self.home / "immutable-sleep"
+        source = self.home / "native-child.c"
+        source.write_text("#include <unistd.h>\nint main(void) { sleep(30); return 0; }\n")
+        subprocess.run(["cc", str(source), "-o", str(binary)], check=True, capture_output=True)
+        binary.chmod(0o500)
+        child = subprocess.Popen([str(binary), "30"])
+        self.processes.append(child)
+        self.assertEqual(loaded_binary_identity(child.pid, binary),
+                         hashlib.sha256(binary.read_bytes()).hexdigest())
+        replacement = self.home / "replacement"
+        replacement.write_bytes(b"replaced installed artifact")
+        replacement.chmod(0o500)
+        replacement.replace(binary)
+        with self.assertRaisesRegex(ValueError, "image differs|vnode differs"):
+            loaded_binary_identity(child.pid, binary)
+        self.assertIsNone(child.poll())
 
     def test_failed_http_child_stops_database(self):
         owner = self.start()

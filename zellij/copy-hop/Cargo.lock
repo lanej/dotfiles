@@ -550,6 +550,8 @@ dependencies = [
 name = "dotfiles-copy-hop"
 version = "0.1.0"
 dependencies = [
+ "lane-zellij-protocol",
+ "serde_json",
  "zellij-tile",
 ]
 
@@ -1103,6 +1105,14 @@ checksum = "07293a4e297ac234359b510362495713f75ea345d5307140414f20c69ffeb087"
 dependencies = [
  "bitflags",
  "libc",
+]
+
+[[package]]
+name = "lane-zellij-protocol"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

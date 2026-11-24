@@ -4,6 +4,7 @@
 import fcntl
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -25,7 +26,8 @@ def binary_digest(path):
 
 
 def beads_source():
-    files = ("tools/beads/project-update.py", "tools/beads/beads-service.py", "tools/beads/beads_config.py", "config/beads/trial.toml", "bootstrap/tools.toml")
+    files = ("tools/beads/project-update.py", "tools/beads/beads-service.py", "tools/beads/beads_config.py",
+             "tools/beads/beads_lifecycle.py", "config/beads/trial.toml", "bootstrap/tools.toml")
     hashes = {name: binary_digest(ROOT / name) for name in files}
     revision = run(["git", "-C", str(ROOT), "rev-parse", "HEAD"], capture=True)
     dirty = bool(run(["git", "-C", str(ROOT), "status", "--porcelain", "--untracked-files=all", "--", *files], capture=True))
@@ -37,13 +39,13 @@ def beads_artifacts(home):
     share = home / ".local/share/beads-service"
     manifest = share / "runtime.json"
     binaries = json.loads(manifest.read_text())
-    paths = [share / "beads-service.py", share / "beads_config.py", manifest,
+    paths = [share / "beads-service.py", share / "beads_config.py", share / "beads_lifecycle.py", manifest,
              Path(binaries["bd"]), Path(binaries["dolt"])]
     return {str(path): binary_digest(path) for path in paths}
 
 
 def beads(action):
-    if action == "status":
+    if action in ("status", "inventory", "checkpoint", "verify", "restore"):
         return beads_locked(action)
     if action not in ("build", "restart"):
         raise ValueError("Beads supports build, restart and status; clean is not configured")
@@ -70,6 +72,27 @@ def beads_locked(action, lock_fd=None):
             verified = beads_artifacts(home) == record["artifacts"]
         except (OSError, ValueError, KeyError):
             pass
+    if action in ("inventory", "checkpoint", "verify", "restore"):
+        target = {"target": "local", "expected_identity": None, "running_identity": None,
+                  "ready": False, "process": None, "sessions": [],
+                  "reason": "beads-native-checkpoint-control-unavailable"}
+        if verified:
+            from beads_lifecycle import artifact_identity
+            target["expected_identity"] = artifact_identity(home)
+        if installed.is_file():
+            result = subprocess.run([sys.executable, str(installed), action], text=True, capture_output=True)
+            try:
+                value = json.loads(result.stdout)
+                if value.get("schema_version") == 1 and isinstance(value.get("targets"), list):
+                    if not verified:
+                        for native_target in value["targets"]:
+                            native_target.update(expected_identity=None, reason="beads-staged-artifacts-changed")
+                    print(json.dumps(value))
+                    return 0 if action == "inventory" else result.returncode if verified else 3
+            except (ValueError, AttributeError):
+                pass
+        print(json.dumps({"schema_version": 1, "targets": [target]}))
+        return 0 if action == "inventory" else 3
     if action == "status":
         service = None
         if installed.is_file():
@@ -94,7 +117,7 @@ def beads_locked(action, lock_fd=None):
              "--install-lock-fd", str(lock_fd)], pass_fds=(lock_fd,))
         if beads_source() != source:
             raise ValueError("Beads source changed during staging; inspect the installation before retrying")
-        for name in ("beads-service.py", "beads_config.py"):
+        for name in ("beads-service.py", "beads_config.py", "beads_lifecycle.py"):
             if binary_digest(ROOT / "tools/beads" / name) != binary_digest(share / name):
                 raise ValueError("Installed Beads controller differs from the selected source")
         catalog = tomllib.loads((ROOT / "bootstrap/tools.toml").read_text())["tools"]["beads"]
@@ -113,10 +136,34 @@ def beads_locked(action, lock_fd=None):
         return 0
     if not verified or record["source"]["fingerprint"] != source["fingerprint"]:
         raise ValueError("Build this Beads source before restarting; staged artifacts must remain unchanged")
-    run([sys.executable, str(installed), "restart", "--install-lock-fd", str(lock_fd)], pass_fds=(lock_fd,))
+    operation = os.environ.get("PROJECT_UPDATE_OPERATION_DIR")
+    if not operation:
+        return beads_locked("verify")
+    frozen = json.loads((Path(operation) / "beads-inventory.json").read_text())["targets"][0]
+    expected = frozen.get("process")
+    os.environ["PROJECT_UPDATE_EXPECTED_PROCESS"] = json.dumps(expected)
+    from beads_lifecycle import inspect
+    current = inspect(home, "inventory")["targets"][0]
+    if (current["process"] != expected
+            or current.get("checkpoint", {}).get("state") != "confirmed"
+            or current["checkpoint"].get("run_id") != os.environ.get("PROJECT_UPDATE_RUN_ID")):
+        print(json.dumps({"schema_version": 1, "targets": [{**current, "reason": "beads-checkpoint-binding-differs"}]}))
+        return 3
+    result = subprocess.run([sys.executable, str(installed), "restart", "--install-lock-fd", str(lock_fd)],
+                            text=True, capture_output=True, pass_fds=(lock_fd,))
+    if result.returncode:
+        try:
+            observed = inspect(home, "inventory")["targets"][0]
+        except (OSError, ValueError, KeyError):
+            observed = {"target": "local", "expected_identity": current["expected_identity"],
+                        "running_identity": None, "ready": False, "process": None, "sessions": []}
+        observed.update(reason=result.stderr.strip()[-1200:] or "native-beads-restart-unverified",
+                        replacement_outcome="unverified; do not repeat replacement")
+        print(json.dumps({"schema_version": 1, "targets": [observed]}))
+        return 3 if result.returncode == 3 else 1
     if beads_artifacts(home) != record["artifacts"]:
         raise ValueError("Beads installation changed during restart; running revision is unknown")
-    return 0
+    return beads_locked("verify")
 
 
 

@@ -3,10 +3,10 @@ name: Zellij launcher
 on:
   workflow_dispatch:
   pull_request:
-    paths: ['bin/zellij-helper', 'zellij/cli/src/agent.rs', 'zellij/cli/src/session.rs', 'zellij/cli/src/util.rs', 'zellij/cli/src/command.rs', 'zellij/cli/src/main.rs', 'zellij/cli/Cargo.toml', 'zellij/Cargo.toml', 'zellij/Cargo.lock', 'bin/zellij-attach', 'bin/zellij-agent', 'sh/alias', 'sh/functions', 'sh/profile', 'bash/bashrc', 'bash/bashprofile', 'zsh/zshenv', 'zsh/zshrc', 'zsh/zlogin', 'scripts/test-zellij-attach.py', 'scripts/test-ssh-agent.py', 'bin/fix-ssh', 'sh/ssh-rc', 'bin/git-ssh', '.github/workflows/zellij-attach.yml']
+    paths: ['bin/zellij-helper', 'zellij/cli/src/agent.rs', 'zellij/cli/src/session.rs', 'zellij/cli/src/util.rs', 'zellij/cli/src/command.rs', 'zellij/cli/src/main.rs', 'zellij/cli/tests/session_activation.rs', 'zellij/cli/Cargo.toml', 'zellij/Cargo.toml', 'zellij/Cargo.lock', 'bin/zellij-attach', 'bin/zellij-agent', 'sh/alias', 'sh/functions', 'sh/profile', 'bash/bashrc', 'bash/bashprofile', 'zsh/zshenv', 'zsh/zshrc', 'zsh/zlogin', 'scripts/test-zellij-attach.py', 'scripts/test-ssh-agent.py', 'bin/fix-ssh', 'sh/ssh-rc', 'bin/git-ssh', '.github/workflows/zellij-attach.yml']
   push:
     branches: [master]
-    paths: ['bin/zellij-helper', 'zellij/cli/src/agent.rs', 'zellij/cli/src/session.rs', 'zellij/cli/src/util.rs', 'zellij/cli/src/command.rs', 'zellij/cli/src/main.rs', 'zellij/cli/Cargo.toml', 'zellij/Cargo.toml', 'zellij/Cargo.lock', 'bin/zellij-attach', 'bin/zellij-agent', 'sh/alias', 'sh/functions', 'sh/profile', 'bash/bashrc', 'bash/bashprofile', 'zsh/zshenv', 'zsh/zshrc', 'zsh/zlogin', 'scripts/test-zellij-attach.py', 'scripts/test-ssh-agent.py', 'bin/fix-ssh', 'sh/ssh-rc', 'bin/git-ssh', '.github/workflows/zellij-attach.yml']
+    paths: ['bin/zellij-helper', 'zellij/cli/src/agent.rs', 'zellij/cli/src/session.rs', 'zellij/cli/src/util.rs', 'zellij/cli/src/command.rs', 'zellij/cli/src/main.rs', 'zellij/cli/tests/session_activation.rs', 'zellij/cli/Cargo.toml', 'zellij/Cargo.toml', 'zellij/Cargo.lock', 'bin/zellij-attach', 'bin/zellij-agent', 'sh/alias', 'sh/functions', 'sh/profile', 'bash/bashrc', 'bash/bashprofile', 'zsh/zshenv', 'zsh/zshrc', 'zsh/zlogin', 'scripts/test-zellij-attach.py', 'scripts/test-ssh-agent.py', 'bin/fix-ssh', 'sh/ssh-rc', 'bin/git-ssh', '.github/workflows/zellij-attach.yml']
 
 permissions:
   contents: read
@@ -22,3 +22,4 @@ jobs:
           python-version: '3.11'
       - run: sudo apt-get update && sudo apt-get install -y zsh
       - run: make test-zellij-attach test-ssh-agent
+      - run: cargo test --locked --manifest-path zellij/Cargo.toml -p lane-zellij --test session_activation

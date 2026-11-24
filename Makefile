@@ -439,6 +439,10 @@ export BEDROCK_TOKEN_FILE
 bedrock-credentials:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/setup-bedrock-credentials.py"
 
+.PHONY: bedrock-router
+bedrock-router:
+	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/install-bedrock-router.py"
+
 test-bootstrap-nvim:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-bootstrap-nvim.py"
 

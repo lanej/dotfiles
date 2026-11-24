@@ -23,6 +23,30 @@ def main():
             (home / ("." + name)).symlink_to(ROOT / "zsh" / name)
         env = {"HOME": str(home), "ZDOTDIR": str(home), "PATH": str(executables),
                "TERM": "dumb", "LC_ALL": "C", "TMPDIR": str(temporary)}
+        remote_home = temporary / "remote-home"
+        remote_bin = remote_home / ".local/bin"
+        remote_bin.mkdir(parents=True)
+        (remote_home / ".zshenv").symlink_to(ROOT / "zsh/zshenv")
+        remote_intent = remote_bin / "intent"
+        remote_intent.write_text(
+            '#!/bin/sh\nprintf "%s\\n" "$*" "$INTENT_APPROVAL_SOCKET"\n')
+        remote_intent.chmod(0o755)
+        approval_environment = remote_home / ".intent-approval/environment"
+        approval_environment.parent.mkdir()
+        approval_environment.write_text(
+            'export INTENT_APPROVAL_SOCKET="$HOME/.intent-approval/approval.sock"\n')
+        remote = subprocess.run(
+            [shutil.which("zsh"), "-d", "-c",
+             'intent lifecycle inventory --directory "$HOME/.intent-approval"'],
+            cwd=remote_home,
+            env={**env, "HOME": str(remote_home), "ZDOTDIR": str(remote_home),
+                 "PATH": "/usr/bin:/bin", "SSH_CONNECTION": "fixture"},
+            capture_output=True, text=True, timeout=15)
+        assert remote.returncode == 0, remote.stderr
+        assert remote.stdout.splitlines() == [
+            f"lifecycle inventory --directory {remote_home}/.intent-approval",
+            f"{remote_home}/.intent-approval/approval.sock"], remote
+        assert remote.stderr == "", remote
         shell = [shutil.which("zsh"), "-d", "-i", "-l", "-c"]
         probe = '''
 [[ -n $PS1 ]] || exit 10
@@ -107,7 +131,8 @@ zzz
         assert enabled.returncode == 0, enabled.stderr
         assert enabled.stdout == "READY\n" and enabled.stderr == "", enabled
         assert (home / ".zsh/cache/fzf-init.zsh").is_file()
-        print("PASS: partial zsh setup starts silently; installed fzf activates its widgets; "
+        print("PASS: noninteractive remote Zsh resolves installed Intent and its approval endpoint; "
+              "partial zsh setup starts silently; installed fzf activates its widgets; "
               "Ctrl-B updates automatic tmux titles after Vim and preserves manual names and cancellation "
               "(controlled tmux and ZLE boundaries).")
 

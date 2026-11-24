@@ -2,6 +2,7 @@ mod theme;
 mod bar;
 use theme::{foreground, background};
 use lane_zellij_protocol::{ReloadRequest, ReloadAck, ReadinessRequest, ReadinessReply,
+    ActivationImageRequest, ActivationImageReply, ACTIVATION_IMAGE,
     StatusView, MAX_CONFIG_BYTES, READINESS};
 use std::collections::BTreeMap;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
@@ -232,6 +233,36 @@ impl ZellijPlugin for State {
     }
 
     fn pipe(&mut self, message: PipeMessage) -> bool {
+        if message.name == ACTIVATION_IMAGE {
+            if let PipeSource::Cli(pipe) = &message.source {
+                if let Some(payload) = message.payload.as_deref().filter(|text| text.len() <= 1024)
+                {
+                    if let Ok(request) = serde_json::from_str::<ActivationImageRequest>(payload) {
+                        let ids = get_plugin_ids();
+                        if request.schema_version == 1
+                            && request.plugin_id == ids.plugin_id
+                            && !request.request.is_empty()
+                            && request.request.len() <= 128
+                        {
+                            let reply = ActivationImageReply {
+                                schema_version: 1,
+                                request: request.request,
+                                plugin_id: ids.plugin_id,
+                                client_id: ids.client_id as u32,
+                                image_id: option_env!("ZELLIJ_ACTIVATION_IMAGE_ID")
+                                    .unwrap_or("unmanaged")
+                                    .into(),
+                                ready: self.allowed,
+                            };
+                            if let Ok(reply) = serde_json::to_string(&reply) {
+                                cli_pipe_output(pipe, &(reply + "\n"));
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
+        }
         if self.clipboard_receiver && self.allowed && message.name == READINESS {
             if let PipeSource::Cli(pipe) = &message.source {
                 if let Some(payload) = message.payload.as_deref().filter(|text| text.len() <= 1024) {

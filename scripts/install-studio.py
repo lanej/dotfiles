@@ -40,7 +40,7 @@ def validate_source(source):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", nargs="?", default="install", choices=("install", "build", "status", "restart"))
+    parser.add_argument("action", nargs="?", default="install", choices=("install", "build", "status", "inventory", "checkpoint", "restart", "restore", "verify"))
     args = parser.parse_args()
     if args.action == "install":
         checkout()

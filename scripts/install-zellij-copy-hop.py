@@ -4,9 +4,7 @@
 import fcntl
 import os
 from pathlib import Path
-import shutil
 import subprocess
-import tempfile
 
 
 def main():
@@ -19,18 +17,12 @@ def main():
     subprocess.run(["rustup", "toolchain", "install", toolchain, "--profile", "minimal"],
                    check=True)
     subprocess.run(["rustup", "target", "add", "--toolchain", toolchain, target], check=True)
-    environment = {**os.environ, "CARGO_TARGET_DIR": str(cache / "target")}
     with (cache / "install.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        subprocess.run(["rustup", "run", toolchain, "cargo", "build", "--locked", "--release",
-                        "--target", target, "--manifest-path", str(source / "Cargo.toml")],
-                       env=environment, check=True)
         destination = home / ".local/share/zellij/plugins/copy-hop.wasm"
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory(prefix=".copy-hop-", dir=destination.parent) as directory:
-            staged = Path(directory) / destination.name
-            shutil.copyfile(cache / "target" / target / "release/dotfiles-copy-hop.wasm", staged)
-            os.replace(staged, destination)
+        subprocess.run(["python3", str(Path(__file__).with_name("zellij-artifacts.py")),
+                        "plugin", "dotfiles-copy-hop", str(source), str(cache / "target"),
+                        str(destination)], check=True)
     print(f"Installed Zellij copy-hop: {destination}")
 
 
