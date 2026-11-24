@@ -7,7 +7,8 @@ _dotfiles_fix_ssh() {
     [ -x "$HOME/.local/bin/zellij-agent" ] || return 0
     # sshd invokes ~/.ssh/rc through the user's shell. Preserve its original
     # input before noninteractive shell startup selects the stable path.
-    if [ -z "${DOTFILES_SSH_INCOMING_SOCK+x}" ]; then
+    if [ -z "${ZELLIJ:-}${TMUX:-}" ] &&
+        [ "${SSH_AUTH_SOCK:-}" != "$HOME/.ssh/dotfiles-agent/forwarded.sock" ]; then
         export DOTFILES_SSH_INCOMING_SOCK="${SSH_AUTH_SOCK:-}"
     fi
     _dotfiles_ssh_value=$("$HOME/.local/bin/zellij-agent" init) || return
