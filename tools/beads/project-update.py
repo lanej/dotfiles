@@ -6,6 +6,8 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import platform
+import re
 import subprocess
 import sys
 import tempfile
@@ -121,8 +123,16 @@ def beads_locked(action, lock_fd=None):
             if binary_digest(ROOT / "tools/beads" / name) != binary_digest(share / name):
                 raise ValueError("Installed Beads controller differs from the selected source")
         catalog = tomllib.loads((ROOT / "bootstrap/tools.toml").read_text())["tools"]["beads"]
-        record = {"source": source, "artifacts": beads_artifacts(home),
-                  "versions": {"beads": catalog["version"], "dolt": catalog["dolt_version"]}}
+        versions = {"beads": catalog["version"], "dolt": catalog["dolt_version"]}
+        if platform.system() == "Darwin":
+            binaries = json.loads((share / "runtime.json").read_text())
+            for name, key in (("bd", "beads"), ("dolt", "dolt")):
+                output = run([binaries[name], "version"], capture=True)
+                match = re.search(rf"\b{name} version v?(\d+\.\d+\.\d+)(?=\s|$)", output)
+                if match is None:
+                    raise ValueError(f"Cannot record staged Homebrew {name} version: {output!r}")
+                versions[key] = match[1]
+        record = {"source": source, "artifacts": beads_artifacts(home), "versions": versions}
         temporary = None
         try:
             with tempfile.NamedTemporaryFile("w", dir=share, prefix=".project-update-", delete=False) as output:

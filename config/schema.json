@@ -346,7 +346,7 @@
         },
         "beads": {
           "type": "boolean",
-          "description": "Opt-in shared Beads HTTP endpoint with a private Dolt SQL server; Octo owns dispatch."
+          "description": "Opt-in shared Beads HTTP endpoint with a private Dolt SQL server; macOS requires preinstalled Homebrew beads and dolt; Octo owns dispatch."
         },
         "treehouse": {
           "type": "boolean",

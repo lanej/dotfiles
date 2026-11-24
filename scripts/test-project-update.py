@@ -744,9 +744,12 @@ if action=='install':
     shutil.copyfile(Path(__file__).with_name('beads_config.py'),share/'beads_config.py')
     shutil.copyfile(Path(__file__).with_name('beads_lifecycle.py'),share/'beads_lifecycle.py')
     binaries={}
-    for name in ('bd','dolt'):
+    for name, version in (('bd','9.8.7'),('dolt','8.7.6')):
         binary=share/name
-        binary.write_text(name+' fixture artifact')
+        binary.write_text('#!'+sys.executable+'\\nimport sys\\n'
+                          'assert sys.argv[1:] == ["version"]\\n'
+                          'print('+repr(name+' version '+version)+')\\n')
+        binary.chmod(0o755)
         binaries[name]=str(binary)
     (share/'runtime.json').write_text(json.dumps(binaries))
 elif action=='restart':
@@ -784,6 +787,12 @@ elif action in ('inventory','checkpoint','verify','restore'):
         status = self.invoke("status", "beads")[0]["runtime"]
         self.assertEqual(status["installed_revision"], revision)
         self.assertIsNone(status["running_revision"])
+        # Darwin receipts report staged native versions, not the catalog pins.
+        expected_versions = ({"beads": "9.8.7", "dolt": "8.7.6"} if sys.platform == "darwin"
+                             else {"beads": "1.3.4", "dolt": "2.7.4"})
+        receipt = json.loads((self.base / ".local/share/beads-service/project-update.json").read_text())
+        self.assertEqual(receipt["versions"], expected_versions)
+        self.assertEqual(status["installed_versions"], expected_versions)
         self.invoke("restart", "beads")
         self.git(self.checkout, "commit", "--allow-empty", "-m", "Unrelated source revision")
         self.assertEqual(self.invoke("status", "beads")[0]["runtime"]["installed_revision"], revision)
