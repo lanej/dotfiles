@@ -242,6 +242,34 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     canonical.write_bytes(original)
     registry_path.write_bytes(registry_bytes)
 
+    # Upgrading through another CLI checkout retains a legacy canonical source.
+    other_source = workspace / "other canonical checkout"
+    (other_source / "bin").mkdir(parents=True)
+    shutil.copy2(cli, other_source / "bin/source-code")
+    for name in ("ai", "docs", "scripts"):
+        (other_source / name).symlink_to(source / name, target_is_directory=True)
+    moved_cli_project = workspace / "retained canonical source"
+    run([str(other_source / "bin/source-code"), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(moved_cli_project), "--init", "--no-go", "--no-detect-languages", "--pr-template", "none"])
+    saved_source = str(other_source / "ai/skills")
+    config_path = moved_cli_project / "source-code.toml"
+    previous = tomllib.loads(config_path.read_text())["installed"]
+    previous["skill_source"] = saved_source
+    previous["files"] = {}
+    ledger = moved_cli_project / ".agents/repo-bootstrap.json"
+    ledger.write_text(json.dumps(previous))
+    config_path.write_text("schema_version = 1\n")
+    before = tree(moved_cli_project)
+    run([str(cli), "upgrade", "--repo", str(moved_cli_project), "--dry-run"])
+    assert tree(moved_cli_project) == before
+    run([str(cli), "upgrade", "--repo", str(moved_cli_project)])
+    assert tomllib.loads(config_path.read_text())["installed"]["skill_source"] == saved_source
+    assert os.readlink(moved_cli_project / ".agents/skills/builder") == saved_source + "/builder"
+    assert not ledger.exists()
+    run([str(other_source / "bin/source-code"), "upgrade", "--repo", str(moved_cli_project)])
+    assert tomllib.loads(config_path.read_text())["installed"]["skill_source"] == saved_source
+    run([str(cli), "validate", "--repo", str(moved_cli_project), "--strict"])
+    assert "already current" in run([str(cli), "upgrade", "--repo", str(moved_cli_project)])
+
     # Normal detection must not mistake generated runtimes in a clone for app code.
     detected_project = workspace / "linked default detection"
     run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(detected_project), "--init", "--mode", "tracked", "--pr-template", "none"])

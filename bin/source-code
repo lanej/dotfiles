@@ -2373,6 +2373,11 @@ def install(args: Arguments) -> None:
         "version": 1,
         "mode": mode,
         "skill_storage": storage,
+        **(
+            {"skill_source": str(skill_source)}
+            if skill_source is not None and ("skill_source" in state or skill_source != SOURCE / "ai/skills")
+            else {}
+        ),
         "go_profile": go_profile,
     }
     if skills:
