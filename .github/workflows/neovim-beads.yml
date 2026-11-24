@@ -15,7 +15,6 @@ on:
       - 'tools/task-runtime/**'
       - 'tools/beads/**'
       - 'config/beads/**'
-      - 'bootstrap/tools.toml'
       - '.github/workflows/neovim-beads.yml'
   push:
     branches: [master]
@@ -93,7 +92,10 @@ jobs:
           bun-version-file: .beads-native-studio/.bun-version
       - run: bun install --frozen-lockfile --ignore-scripts
         working-directory: .beads-native-studio
-      - name: Stage pinned native test binaries without starting the service
+      - name: Install macOS native fixture inputs
+        if: runner.os == 'macOS'
+        run: brew install beads dolt
+      - name: Stage native test binaries without starting the service
         shell: bash
         run: |
           python3 tools/beads/beads-service.py install --home "$RUNNER_TEMP/beads-home" --no-start

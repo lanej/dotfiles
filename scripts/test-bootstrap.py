@@ -526,6 +526,8 @@ def main():
         shutil.copyfile(root / "Makefile", checkout / "Makefile")
         shutil.copytree(root / "config", checkout / "config")
         shutil.copytree(root / "bootstrap", checkout / "bootstrap")
+        (checkout / "tools/beads").mkdir(parents=True)
+        shutil.copyfile(root / "tools/beads/tool.toml", checkout / "tools/beads/tool.toml")
         (checkout / "scripts").mkdir()
         shutil.copyfile(root / "scripts/install-pi", checkout / "scripts/install-pi")
         shutil.copyfile(root / "scripts/dotfiles-config.py", checkout / "scripts/dotfiles-config.py")

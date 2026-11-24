@@ -715,8 +715,7 @@ def inspect(home, action):
     target['expected_identity']=artifact_identity(home)
     return {'schema_version':1,'targets':[target]}
 ''')
-        catalog = self.checkout / "bootstrap/tools.toml"
-        catalog.parent.mkdir()
+        catalog = scripts / "tool.toml"
         catalog.write_text('[tools.beads]\nversion="1.3.4"\ndolt_version="2.7.4"\n')
         profile = self.checkout / "config/beads/trial.toml"
         profile.parent.mkdir(parents=True)
@@ -744,9 +743,12 @@ if action=='install':
     shutil.copyfile(Path(__file__).with_name('beads_config.py'),share/'beads_config.py')
     shutil.copyfile(Path(__file__).with_name('beads_lifecycle.py'),share/'beads_lifecycle.py')
     binaries={}
-    for name in ('bd','dolt'):
+    for name, version in (('bd','9.8.7'),('dolt','8.7.6')):
         binary=share/name
-        binary.write_text(name+' fixture artifact')
+        binary.write_text('#!'+sys.executable+'\\nimport sys\\n'
+                          'assert sys.argv[1:] == ["version"]\\n'
+                          'print('+repr(name+' version '+version)+')\\n')
+        binary.chmod(0o755)
         binaries[name]=str(binary)
     (share/'runtime.json').write_text(json.dumps(binaries))
 elif action=='restart':
@@ -784,9 +786,35 @@ elif action in ('inventory','checkpoint','verify','restore'):
         status = self.invoke("status", "beads")[0]["runtime"]
         self.assertEqual(status["installed_revision"], revision)
         self.assertIsNone(status["running_revision"])
+        # Darwin receipts report staged native versions, not the catalog pins.
+        expected_versions = ({"beads": "9.8.7", "dolt": "8.7.6"} if sys.platform == "darwin"
+                             else {"beads": "1.3.4", "dolt": "2.7.4"})
+        receipt = json.loads((self.base / ".local/share/beads-service/project-update.json").read_text())
+        self.assertEqual(receipt["versions"], expected_versions)
+        self.assertEqual(status["installed_versions"], expected_versions)
         self.invoke("restart", "beads")
         self.git(self.checkout, "commit", "--allow-empty", "-m", "Unrelated source revision")
         self.assertEqual(self.invoke("status", "beads")[0]["runtime"]["installed_revision"], revision)
+        # Unrelated legacy pins are not Beads artifacts; its local recipe is.
+        legacy = self.checkout / "bootstrap/tools.toml"
+        legacy.parent.mkdir()
+        legacy.write_text('[tools.fzf]\nversion="0.99.0"\n')
+        before = json.loads((self.base / ".local/share/beads-service/project-update.json").read_text())
+        self.invoke("restart", "beads")
+        after = json.loads((self.base / ".local/share/beads-service/project-update.json").read_text())
+        self.assertEqual(after, before, "Unrelated catalog edit invalidated Beads staging")
+        current = subprocess.check_output([sys.executable, "-c",
+            "import json,runpy,sys; print(json.dumps(runpy.run_path(sys.argv[1])['beads_source']()))", str(adapter)],
+            env=self.env, text=True)
+        self.assertEqual(json.loads(current)["fingerprint"], before["source"]["fingerprint"],
+                         "Legacy catalog participates in Beads source identity")
+        catalog.write_text(catalog.read_text() + "# changed Beads recipe\n")
+        rejected = subprocess.run([sys.executable, str(adapter), "restart"], env=self.env, text=True, capture_output=True)
+        self.assertNotEqual(rejected.returncode, 0, rejected.stdout + rejected.stderr)
+        self.assertIn("Build this Beads source before restarting", rejected.stdout + rejected.stderr)
+        self.invoke("build", "beads")
+        changed = json.loads((self.base / ".local/share/beads-service/project-update.json").read_text())
+        self.assertNotEqual(changed["source"]["fingerprint"], before["source"]["fingerprint"])
         profile.write_text(profile.read_text() + "# local configuration edit\n")
         self.invoke("restart", "beads")  # the selected installation is already running
         controller.write_text(controller.read_text() + "# updated controller image\n")

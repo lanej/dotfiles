@@ -344,10 +344,6 @@
           "type": "boolean",
           "description": "Opt-in Octo service with Codex session, PR tracking and receipt hooks on macOS and Linux."
         },
-        "beads": {
-          "type": "boolean",
-          "description": "Opt-in shared Beads HTTP endpoint with a private Dolt SQL server; Octo owns dispatch."
-        },
         "treehouse": {
           "type": "boolean",
           "description": "Enable the treehouse bootstrap recipe."
@@ -411,6 +407,10 @@
         "keylease": {
           "type": "boolean",
           "description": "Install the Keylease credential broker; preserve active brokers and leases."
+        },
+        "beads": {
+          "type": "boolean",
+          "description": "Opt-in shared Beads HTTP endpoint with a private Dolt SQL server; macOS requires preinstalled Homebrew beads and dolt; Octo owns dispatch."
         }
       }
     }

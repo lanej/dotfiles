@@ -94,6 +94,31 @@ def main():
         schema = json.loads(run(*command, "--format", "schema").stdout)
         assert json.loads((ROOT / "config/schema.json").read_text()) == schema, "Regenerate config/schema.json from the runtime definitions."
         assert (ROOT / "config/targets.mk").read_text() == run(*command, "--format", "make-targets").stdout, "Regenerate config/targets.mk from the native sets and tool catalog."
+        # The editor and installer see the same capability-local recipe.
+        recipe = tomllib.loads((ROOT / "tools/beads/tool.toml").read_text())["tools"]["beads"]
+        assert "beads" not in tomllib.loads((ROOT / "bootstrap/tools.toml").read_text())["tools"]
+        assert schema["properties"]["tools"]["properties"]["beads"]["description"] == recipe["description"]
+        chosen = home / "beads.toml"
+        chosen.write_text('[tools]\nbeads = true\n')
+        for host in ("macos", "linux"):
+            selected = json.loads(run(*command, "--config", str(chosen), "--platform", host, "--format", "json").stdout)
+            planned = next(tool for tool in selected["tools"] if tool["name"] == "beads")
+            assert planned == {"name": "beads", **recipe}, planned
+            names = [tool["name"] for tool in selected["tools"]]
+            assert names.index("git") < names.index("beads") and names.index("gh") < names.index("beads")
+        chosen.unlink()
+        # A capability cannot silently shadow a legacy recipe during composition.
+        with tempfile.TemporaryDirectory(prefix="tool-catalog-conflict-") as directory:
+            fixture = Path(directory)
+            for name in ("scripts/dotfiles-config.py", "scripts/runtime_requirements.py", "tools/beads/tool.toml"):
+                destination = fixture / name
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes((ROOT / name).read_bytes())
+            (fixture / "bootstrap").mkdir()
+            (fixture / "bootstrap/tools.toml").write_text('[tools.beads]\nversion="0.0.0"\n')
+            rejected = run(sys.executable, str(fixture / "scripts/dotfiles-config.py"), "--format", "schema", check=False)
+            assert rejected.returncode != 0 and "duplicate tool 'beads'" in rejected.stderr, rejected.stderr
+            assert "tools/beads/tool.toml" in rejected.stderr and "bootstrap/tools.toml" in rejected.stderr
         platform_set = "macos" if sys.platform == "darwin" else "linux"
         native_tools = {"git", "git-worktree-hooks", "worktree-policy", "build"} | ({"yabai", "skhd"} if platform_set == "macos" else {"x11", "polybar", "bspwm", "bsdtar"})
         disabled_native = "yabai" if platform_set == "macos" else "polybar"
@@ -331,7 +356,7 @@ else:
         config.write_text('[tools]\nmergiraf = true\nrust = false\n')
         blocked = run(*command, check=False)
         assert blocked.returncode != 0 and "requires tools.rust" in blocked.stderr
-        tools = tomllib.loads((ROOT / "bootstrap/tools.toml").read_text())["tools"]
+        tools = schema["properties"]["tools"]["properties"]
         config.write_text("[tools]\n" + "".join(
             f"{name} = {'true' if name in ('stylua', 'node') else 'false'}\n" for name in tools
         ))
