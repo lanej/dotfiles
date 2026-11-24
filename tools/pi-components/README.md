@@ -30,7 +30,7 @@ Use `j`/`k` to move, `;` to enter visible letter hints, `l` to inspect details, 
 
 ## Conditions and activity
 
-`conditionStatus` renders one supplied assessment: `Unknown`, `Satisfied`, `Open`, or `NotApplicable`. A `stale` assessment displays **Recheck** and remains available as previous evidence. `conditionCounts` returns literal counts with stale observations excluded from current states; `conditionSummary` renders those counts without a percentage or an inferred readiness decision. Empty input explicitly means no conditions were supplied.
+`conditionStatus` renders one supplied assessment: `○ Open`, `◐ Partial`, `● Satisfied`, `○ Not assessed` (muted), or `− Not applicable`. `Partial` is an explicit categorical judgment. The component never calculates it from evidence length or a fraction. A `stale` assessment displays **Recheck** and remains available as previous evidence. `conditionCounts` returns literal counts with stale observations excluded from current states; `conditionSummary` renders those counts without a percentage or an inferred readiness decision. Empty input explicitly means no conditions were supplied. `conditionMark` returns the same semantic mark for use in another composition.
 
 `activityIndicator` renders `Idle`, `Working`, `Waiting`, or `Paused` separately from those observations. The caller supplies a label, optional detail, and optional `focusId` identifying the current subject. Activity never changes an assessment, selection, or authorization. A supplied animation `frame` animates only `Working`; omitted frames and `reducedMotion: true` preserve a static mark and textual state. `ascii: true` selects an explicit glyph fallback. Components own no clocks.
 
@@ -72,6 +72,30 @@ Wide panels pair the conditions list with evidence for the selected condition. `
 Run the independent dark-theme recovery example with `bun tools/pi-components/examples/conditions.ts`; add `--still` for reduced motion, `--ascii` for the fallback, or `--render` for a static native rendering. The example owns the animation timer and clears it when closed.
 
 ![Native conditions panel with a selected backup assessment and a separate active recovery-owner property](docs/conditions.png)
+
+## Parallel status columns
+
+![Expanded native dock comparing recovery checks and recovery work above an unfinished editor draft](docs/status-board.png)
+
+`renderStatusDock` renders one or two `StatusColumn` snapshots as plain terminal lines. Mount it in the host's widget area to keep the editor available. The dock is passive: it has no input handler, modal overlay, timer, or selection. Minimized output uses at most three rows by default; expanded output shows priority rows with an eight-row cap. Pass a smaller `maxRows` for a short terminal. At narrow widths both column phases appear before secondary detail. The caller supplies column titles, phase marks, literal colored counts, ordered groups and evidence. Neither the dock nor inspector infers completion or links across columns.
+
+```ts
+const dock = {
+  invalidate() {},
+  render(width: number) {
+    return renderStatusDock({ columns, theme, width, expanded });
+  },
+};
+tui.addChild(dock);
+tui.addChild(editor);
+tui.setFocus(editor);
+```
+
+Use `createStatusBoard` for explicit inspection of the same snapshots. Wide terminals show both columns, each with its own groups and remembered selection. Narrow terminals keep both phase headings and show the selected column's rows. `Tab`/`Shift+Tab`, `h`/`l`, or arrows switch columns; `j`/`k` select a row; Enter inspects the full evidence. Specify `initialColumnId` to open the relevant side directly. Escape returns from evidence, then closes the inspector. `?` shows the key guide. Its height is a maximum; short content leaves space available to the host.
+
+Give foldable groups stable IDs and set `collapsed: true` to start folded or `false` to start open. Enter on the group heading toggles it. Groups without a `collapsed` value remain expanded. Set `showStatusLabels: false` when the group name already gives every row's state; rows retain their colored glyphs. The optional column `focusId` marks current work independently of the operator's selection. `setColumns` validates and copies replacements, retaining local folds and selections by ID. The host owns all effects and keyboard shortcuts used to open or toggle these surfaces.
+
+Run `bun tools/pi-components/examples/status-board.ts` for a native, interactive two-column recovery rehearsal. Type in the editor, press Alt+s to expand or minimize the dock, and Ctrl+o to inspect the checks and implementation work. `--render` prints a static dock; add `--expanded`, `--inspect`, or `--narrow` to inspect dimensions without a TTY.
 
 ## Checks
 

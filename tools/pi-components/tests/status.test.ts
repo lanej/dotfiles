@@ -6,6 +6,7 @@ import {
   ConditionState,
   activityIndicator,
   conditionCounts,
+  conditionMark,
   conditionStatus,
   conditionSummary,
   createConditionsPanel,
@@ -53,12 +54,19 @@ const checks: Condition[] = [
     state: ConditionState.NotApplicable,
     summary: "No billable resources in this operation.",
   },
+  {
+    id: "timing",
+    label: "Restore budget",
+    state: ConditionState.Partial,
+    summary: "Warm restore measured; cold restore still unknown.",
+  },
 ];
 
 test("property observations and activity remain independent, including stale and unknown observations", () => {
   assert.deepEqual(conditionCounts(checks), {
-    total: 5,
+    total: 6,
     satisfied: 1,
+    partial: 1,
     open: 1,
     unknown: 1,
     notApplicable: 1,
@@ -66,10 +74,13 @@ test("property observations and activity remain independent, including stale and
   });
   assert.match(
     conditionSummary(checks),
-    /1 satisfied.*1 open.*1 not assessed.*1 to recheck.*1 not applicable/u,
+    /1 satisfied.*1 partial.*1 open.*1 not assessed.*1 to recheck.*1 not applicable/u,
   );
   assert.equal(conditionSummary([]), "No conditions supplied");
   assert.equal(conditionCounts([]).satisfied, 0);
+  assert.equal(conditionMark({ state: ConditionState.Open }).glyph, "○");
+  assert.equal(conditionMark({ state: ConditionState.Partial }).glyph, "◐");
+  assert.equal(conditionMark({ state: ConditionState.Satisfied }).glyph, "●");
   const open = checks[1];
   const stale = checks[3];
   assert.ok(open !== undefined && stale !== undefined);

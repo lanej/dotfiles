@@ -3,6 +3,7 @@ import { selectorText } from "./text.ts";
 export enum ConditionState {
   Unknown = "unknown",
   Satisfied = "satisfied",
+  Partial = "partial",
   Open = "open",
   NotApplicable = "not-applicable",
 }
@@ -47,6 +48,8 @@ export interface StatusPresentation {
   readonly frame?: number | undefined;
   readonly reducedMotion?: boolean | undefined;
   readonly ascii?: boolean | undefined;
+  /** Use the supplied activity label without repeating the generic state word. */
+  readonly compact?: boolean | undefined;
 }
 
 interface Appearance {
@@ -64,15 +67,21 @@ const conditionAppearance = {
     tone: "muted",
   },
   [ConditionState.Satisfied]: {
-    glyph: "✓",
+    glyph: "●",
     ascii: "+",
     label: "Satisfied",
     tone: "success",
   },
   [ConditionState.Open]: {
-    glyph: "◇",
+    glyph: "○",
     ascii: "!",
     label: "Open",
+    tone: "warning",
+  },
+  [ConditionState.Partial]: {
+    glyph: "◐",
+    ascii: "~",
+    label: "Partial",
     tone: "warning",
   },
   [ConditionState.NotApplicable]: {
@@ -129,13 +138,17 @@ export function conditionStatus(
   theme: StatusTheme,
   presentation: StatusPresentation = {},
 ): string {
-  const appearance =
-    condition.stale === true
+  return renderStatusMark(conditionMark(condition), theme, presentation);
+}
+
+export function conditionMark(
+  condition: Pick<Condition, "state" | "stale">,
+): StatusMark {
+  return {
+    ...(condition.stale === true
       ? staleAppearance
-      : conditionAppearance[condition.state];
-  return theme[appearance.tone](
-    `${presentation.ascii === true ? appearance.ascii : appearance.glyph} ${appearance.label}`,
-  );
+      : conditionAppearance[condition.state]),
+  };
 }
 
 export function activityIndicator(
@@ -158,13 +171,58 @@ export function activityIndicator(
   const label = statusText(activity.label);
   const separator = presentation.ascii === true ? " - " : " · ";
   return theme[appearance.tone](
-    `${glyph} ${appearance.label}${label.length === 0 ? "" : separator + label}`,
+    presentation.compact === true && label.length > 0
+      ? `${glyph} ${label}`
+      : `${glyph} ${appearance.label}${label.length === 0 ? "" : separator + label}`,
   );
+}
+
+export type StatusTone = "muted" | "accent" | "success" | "warning" | "error";
+
+export interface StatusMark {
+  readonly label: string;
+  readonly glyph: string;
+  readonly ascii?: string | undefined;
+  readonly tone: StatusTone;
+}
+
+export interface StatusCount {
+  readonly label: string;
+  readonly value: number;
+  readonly tone: StatusTone;
+}
+
+export function renderStatusMark(
+  mark: StatusMark,
+  theme: StatusTheme,
+  presentation: StatusPresentation = {},
+): string {
+  const glyph = statusText(
+    presentation.ascii === true ? (mark.ascii ?? "*") : mark.glyph,
+  );
+  return theme[mark.tone](`${glyph} ${statusText(mark.label)}`.trim());
+}
+
+export function renderStatusCounts(
+  counts: readonly StatusCount[],
+  theme: StatusTheme,
+  presentation: StatusPresentation = {},
+): string {
+  return counts
+    .map((count) => {
+      if (!Number.isSafeInteger(count.value) || count.value < 0)
+        throw new RangeError("Status counts must be nonnegative safe integers");
+      return theme[count.tone](
+        `${theme.bold(String(count.value))} ${statusText(count.label)}`,
+      );
+    })
+    .join(theme.muted(presentation.ascii === true ? " - " : " · "));
 }
 
 export interface ConditionCounts {
   total: number;
   satisfied: number;
+  partial: number;
   open: number;
   unknown: number;
   notApplicable: number;
@@ -177,6 +235,7 @@ export function conditionCounts(
   const counts: ConditionCounts = {
     total: conditions.length,
     satisfied: 0,
+    partial: 0,
     open: 0,
     unknown: 0,
     notApplicable: 0,
@@ -193,6 +252,9 @@ export function conditionCounts(
         break;
       case ConditionState.Open:
         counts.open++;
+        break;
+      case ConditionState.Partial:
+        counts.partial++;
         break;
       case ConditionState.Unknown:
         counts.unknown++;
@@ -213,6 +275,7 @@ export function conditionSummary(
   if (counts.total === 0) return "No conditions supplied";
   return [
     `${String(counts.satisfied)} satisfied`,
+    counts.partial === 0 ? "" : `${String(counts.partial)} partial`,
     counts.open === 0 ? "" : `${String(counts.open)} open`,
     counts.unknown === 0 ? "" : `${String(counts.unknown)} not assessed`,
     counts.stale === 0 ? "" : `${String(counts.stale)} to recheck`,
