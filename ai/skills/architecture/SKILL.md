@@ -5,7 +5,7 @@ description: Use when designing or reviewing software architecture, deciding whe
 
 # Pragmatic Hexagonal Architecture
 
-Use a **functional core** for domain decisions and an **imperative shell** to gather facts and execute effects. Keep the **canonical model thin** and introduce **ports and adapters selectively**, where callers need substitution or isolation.
+**Separate policy from mechanism.** Identify the rule that decides what should happen and the operations that supply its facts and carry out its decision. A **functional core** and an **imperative shell** make that split explicit. Keep the **canonical model thin** and introduce **ports and adapters selectively**, where callers need substitution or isolation.
 
 Read [the canonical PHA standard](../builder/references/standard.md) when designing or reviewing a capability. Its required properties (PHA-P01–PHA-P06) define what the software must preserve. Its architectural defaults (PHA-A01–PHA-A06) guide how to achieve those properties.
 
@@ -13,7 +13,7 @@ Read [the canonical PHA standard](../builder/references/standard.md) when design
 
 Trace one use of the changed capability. Which decisions does it own, what facts do they need, and what can the caller conclude after an effect is attempted?
 
-- **Functional core and imperative shell (PHA-A01, PHA-A02).** Supply the facts a rule needs so it can be exercised on its own. For example, the shell fetches quotes and reads the clock. The core selects an eligible offer from those values. The shell submits the selection and preserves an unknown outcome if confirmation times out.
+- **Functional core and imperative shell (PHA-A01, PHA-A02).** The shell fetches quotes and reads the clock. Given those values, the core selects the cheapest eligible, unexpired quote. If quotes must now remain valid for another 30 seconds, only the eligibility rule changes. The shell submits the selection and preserves an unknown outcome if confirmation times out.
 - **Thin canonical model (PHA-A03).** Give application-owned concepts a shared meaning. Preserve provider distinctions and provenance when they affect a decision or its explanation. Provider types can stay local where the application owns no shared concept.
 - **Selective ports and adapters (PHA-A04).** When a caller needs an interchangeable operation or meaningful isolation, define the operation in the caller’s terms. Its adapter translates between that contract and the external system. Check how a failure travels back through it. A direct SDK call in the shell can be sufficient. The ability to insert a test double alone does not justify a port.
 - **Capability locality (PHA-A05).** Place a rule where its owner can revise it without disturbing unrelated behavior. A small utility may need only a transformation and its caller. Share a rule when multiple callers depend on the same invariant.
