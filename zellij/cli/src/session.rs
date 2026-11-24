@@ -173,6 +173,7 @@ pub fn attach(args: &[String]) -> Result<()> {
     let args = if args.is_empty() { &defaults } else { args };
     let mut command = attach_command();
     command.args(["attach", "--create"]).args(args);
+    command.env_remove("DOTFILES_SSH_INCOMING_SOCK");
     if let Some(path) = crate::agent::select()? {
         command.env("SSH_AUTH_SOCK", path);
     }
@@ -261,6 +262,7 @@ pub fn popup() -> Result<()> {
         .context("The installed tmux layout is missing; run make zellij")?;
     let layout=layout+"\n// Scratch processes survive detaching, but are never resurrected after exit.\nsession_serialization false\nkeybinds {\n    tmux {\n        bind \"P\" \"d\" \"D\" { SwitchToMode \"Locked\"; Detach; }\n    }\n}\n";
     let mut command = attach_command();
+    command.env_remove("DOTFILES_SSH_INCOMING_SOCK");
     if let Some(path) = crate::agent::select()? {
         command.env("SSH_AUTH_SOCK", path);
     }
