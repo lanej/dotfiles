@@ -1,0 +1,34 @@
+name: Pi components
+
+on:
+  pull_request:
+    paths:
+      - 'tools/pi-components/**'
+      - '.github/workflows/pi-components.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'tools/pi-components/**'
+      - '.github/workflows/pi-components.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: tools/pi-components
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read the Bun minimum
+        id: runtime
+        run: python3 -c 'import json; print("bun=" + json.load(open("package.json"))["engines"]["bun"].removeprefix(">="))' >> "$GITHUB_OUTPUT"
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ steps.runtime.outputs.bun }}
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - run: bun install --cwd .typescript-quality --frozen-lockfile --ignore-scripts
+      - run: bun run check
