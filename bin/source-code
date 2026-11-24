@@ -489,6 +489,9 @@ def installed_paths(state: Installation) -> set[str]:
     ):
         if state.get(language + "_profile"):
             paths.update(files)
+    if state.get("go_profile") and state.get("go_legacy"):
+        paths.discard(".golangci.yml")
+        paths.add(GO_STRICT)
     if state.get("agents") == "both":
         paths.add(HOST_RULE)
         paths.update(f".claude/skills/{name}" for name in state.get("skills", []))
@@ -1972,7 +1975,12 @@ def storage_migration(root: Path, state: Installation, storage: str, desired: Ma
             if not reference.is_file():
                 continue
             relative = f"{prefix}/references/{reference.relative_to(source / name / 'references').as_posix()}"
-            if relative not in desired and inspect(root, relative) is not None:
+            if relative not in desired:
+                actual = inspect(root, relative)
+                if actual is None:
+                    continue
+                if actual["kind"] == "link" and actual["target"] != str(reference):
+                    raise ValueError(f"preserving redirected policy reference: {relative}")
                 removals.add(relative)
     registry = inspect(root, VERSIONS)
     if registry is not None and desired.get(VERSIONS, {}).get("kind") != registry["kind"]:

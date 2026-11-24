@@ -174,6 +174,21 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     run([str(cli), "upgrade", "--repo", str(defaults)])
     assert tomllib.loads(config_path.read_text())["installed"] == recorded
     run([str(cli), "validate", "--repo", str(defaults), "--strict"])
+    # Inactive references still reject links redirected to authored project files.
+    catalog = defaults / ".agents/skills/source-code-lifecycle/references/tool-catalog.md"
+    original_target = os.readlink(catalog)
+    authored_policy = defaults / "authored-policy.md"
+    authored_policy.write_text("Keep this project policy.\n")
+    catalog.unlink()
+    catalog.symlink_to(authored_policy)
+    before = tree(defaults)
+    for flags in (("--dry-run",), ()):
+        output = run([str(cli), "setup", "--authority", "owned", "--adoption", "hold", "--repo", str(defaults), *flags], expected=1)
+        assert "redirected policy reference" in output, output
+        assert tree(defaults) == before
+    catalog.unlink()
+    catalog.symlink_to(original_target)
+    authored_policy.unlink()
     default_clone = workspace / "default shadow clone"
     git(workspace, "clone", "--quiet", str(defaults), str(default_clone))
     assert not (default_clone / ".agents").exists()
@@ -1359,6 +1374,19 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     assert (go_project / ".claude/skills/go").resolve() == go_project / ".agents/skills/go"
     assert (go_project / ".claude/skills/library-code-comments/SKILL.md").is_file()
     assert (go_project / ".agents/skills/code-comments/references/standard.md").is_file()
+    run([str(cli), "validate", "--repo", str(go_project), "--strict"])
+    strict_config = go_project / ".golangci.strict.json"
+    strict_bytes = strict_config.read_bytes()
+    strict_config.unlink()
+    output = run([str(cli), "validate", "--repo", str(go_project)], expected=1)
+    assert "missing installed artifact: .golangci.strict.json" in output, output
+    strict_config.write_bytes(strict_bytes + b"\n")
+    owned_install(go_project, "--skills", "go")
+    assert strict_config.read_bytes() == strict_bytes
+    backups = list((go_project / ".git/repo-bootstrap/backups").glob("replace-*/.golangci.strict.json"))
+    assert any(path.read_bytes() == strict_bytes + b"\n" for path in backups)
+    assert alternate.read_text() == original_go_policy
+    run([str(cli), "validate", "--repo", str(go_project), "--strict"])
     # Remember explicit adoption even before a new project has its module file.
     (go_project / "go.mod").unlink()
     owned_install(go_project, "--skills", "go")
