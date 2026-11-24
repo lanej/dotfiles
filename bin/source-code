@@ -2348,7 +2348,7 @@ def install(args: Arguments) -> None:
             paths.discard(STATE)
             visible_paths.discard(STATE)
         hidden_tracked = {
-            path for path in tracked if path in hidden_paths or any(path.startswith(item + "/") for item in removals)
+            path for path in tracked if any(path == item or path.startswith(item + "/") for item in hidden_paths)
         }
         if hidden_tracked:
             raise ValueError(
