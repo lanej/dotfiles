@@ -2,7 +2,7 @@
 
 The optional `beads` tool runs one Beads HTTP endpoint and one private Dolt SQL server under the native user service manager. Its trial profile selects the workspace, ports, expected Dolt branch, and private history remote. Dispatch remains with the explicitly selected controller. Installing the endpoint does not enroll or migrate tasks, synchronize GitHub issues, or replace Octo's issue lifecycle; its Beads adapter is a separate integration.
 
-Enable `tools.beads = true` in the machine TOML, or include `"beads"` in its sets. `make plan` shows the selection; `make install` installs the catalog-pinned, checksum-verified native binaries and starts the service. Default configuration commands do not install software or start it. Explicit `python3 tools/beads/beads-service.py install` from dotfiles installs and starts only this capability.
+Enable `tools.beads = true` in the machine TOML, or include `"beads"` in its sets. `make plan` shows the selection; `make install` resolves preinstalled Homebrew binaries on macOS, or installs catalog-pinned, checksum-verified private binaries on Linux, and starts the service. Default configuration commands do not install software or start it. Explicit `python3 tools/beads/beads-service.py install` from dotfiles installs and starts only this capability.
 
 | Command | Purpose |
 | --- | --- |
@@ -14,13 +14,27 @@ Enable `tools.beads = true` in the machine TOML, or include `"beads"` in its set
 | `beads-service backup` | Explicitly checkpoint and push the entire shared task history to the configured private GitHub repository. |
 | `python3 tools/beads/test-beads-service.py` | Exercise ownership, readiness, failure cleanup and workspace protection with controlled native processes. |
 
-The installed `~/.local/bin/beads-service` supports `start`, `restart`, `stop`, `status`, `config`, and `backup` from any directory. Its controller and configuration reader are copied into `~/.local/share/beads-service`, so deleting the installation source worktree does not interrupt the service. Runtime binaries are private and versioned; an existing `bd` on PATH is preserved.
+The installed `~/.local/bin/beads-service` supports `start`, `restart`, `stop`, `status`, `config`, and `backup` from any directory. Its controller and configuration reader are copied into `~/.local/share/beads-service`, so deleting the installation source worktree does not interrupt the service. Linux runtime binaries are private and versioned. macOS resolves `bd` and `dolt` through Homebrew formula prefixes, not an arbitrary `bd` on PATH. Neither platform replaces a user's CLI.
 
 [The Neovim task explorer](neovim-beads.md) browses the project graph and opens editable Markdown task buffers. Explicit saves use the same HTTP authority and revision guards, independently of chat or a worker.
 
 ## Source layout
 
 [The Beads capability](../tools/beads/) groups the service controller, strict configuration reader, runtime-update adapter, and service checks. The controller uses Python’s standard library for TOML and JSON validation, native launchd property lists, inherited file-descriptor locks, atomic receipts, and bounded child-process supervision. Bootstrap remains the shell entrypoint for selected installation; source configuration and task state remain separate from the installed controller.
+
+## macOS installation and compatibility
+
+Install the Homebrew `beads` and `dolt` formulae explicitly before selecting this service. The installer never runs `brew install`, `brew upgrade`, or private runtime downloads on macOS. It discovers `brew` on PATH, falling back to `/opt/homebrew/bin/brew` or `/usr/local/bin/brew`, queries each formula's prefix, and records absolute resolved Cellar executable paths. This works without Homebrew on launchd's PATH and keeps a later `opt` symlink change from silently selecting another runtime. Do not remove the selected Cellar versions with Homebrew cleanup while they are installed or running.
+
+Preflight runs only version and help commands in a disposable directory, with isolated HOME, XDG configuration/data/state/cache directories and Dolt root, and bounded timeouts. Ambient Beads/Dolt overrides are removed; Homebrew auto-update and analytics and Dolt update checks are disabled for these probes. It requires stable Beads >=1.3.4, <2.0.0 and Dolt >=2.7.4, <3.0.0, plus the server, initialization, SQL, history and loopback-binding CLI flags used by the controller. The Beads version floor and `serve --addr` contract select the versioned HTTP API; help checks alone cannot establish its real HTTP behavior or task-data compatibility. Formula binaries must be executable and read-only, as required by the existing native child-identity guard; the installer does not chmod Homebrew files. Missing formulae, writable binaries, unsupported versions, failed probes or absent capabilities abort before changing installed controller links, runtime manifest, launchd definition, configuration or task data. Diagnostics identify the failing tool/contract and ask for explicit Homebrew repair before retrying.
+
+To stage without starting or restarting anything:
+
+```sh
+python3 tools/beads/beads-service.py install --no-start
+```
+
+This still installs the controller and service definition; it is not a dry run. For an existing service prefer `project-update build beads` so artifact receipts and guarded activation remain coordinated. Preflight does not contact the existing endpoint or open a database, migrate it, or initialize a workspace.
 
 ## Runtime updates
 
@@ -35,7 +49,13 @@ project-update restart beads
 project-update update beads
 ```
 
-The project source is dotfiles, which owns the compatible Beads/Dolt pins. Pulling does not choose an independent upstream latest or change the private task-data repository. Build installs the selected artifacts with `--no-start`, preserving a running service; restart requires a matching staged source fingerprint and unchanged artifact hashes. Local configuration and task storage remain intact. `status` separates verified installed identity from observed service readiness and an unknown running revision. Initial explicit `python3 tools/beads/beads-service.py install` remains available; direct installs can invalidate the updater's installed-identity receipt until staged again. The optional browser UI and manual history checkpoints are separate from runtime updates.
+The project source is dotfiles, which owns Linux pins and macOS compatibility floors. Pulling does not upgrade Homebrew or change the private task-data repository. On macOS, upgrade formulae explicitly under a maintenance plan, retain the old Cellar versions, then build to resolve and preflight the new pair. Build installs the selected artifacts with `--no-start`, preserving a running service, and records the actual Homebrew versions; restart requires a matching staged source fingerprint and unchanged artifact hashes. Local configuration and task storage remain intact. `status` separates verified installed identity from observed service readiness and an unknown running revision. Initial explicit `python3 tools/beads/beads-service.py install` remains available; direct installs can invalidate the updater's installed-identity receipt until staged again. The optional browser UI and manual history checkpoints are separate from runtime updates.
+
+### Rollback and delivery gates
+
+Keep the prior controller release, runtime manifest, updater receipt and selected binaries before staging an upgrade; do not delete the old private runtime when moving macOS to Homebrew. Rollback is an explicit maintenance operation: restore/reselect the previously accepted controller/runtime pair, then restage it and use guarded activation. An old Homebrew pair must remain available through its formula prefixes to be reselected by this installer. Do not hand-edit an active release's manifest, repoint a running owner's binaries, bypass checkpoint refusal, or overwrite the database with an older copy. If old executables are unavailable or data has changed incompatibly, stop and plan recovery from a separately verified backup rather than attempting an automatic downgrade. Installing an older binary does not undo database changes.
+
+`python3 tools/beads/test-beads-service.py HomebrewRuntime` is socket-free and protects resolver, preflight failures, staging and Linux provisioning decisions with controlled command responses. It is not native compatibility evidence. Before merging this runtime change, independent review must assess the exact candidate, and separate external gates must demonstrate native startup/readiness/restart, Studio guarded operations, and restored-copy task-data compatibility with the selected Homebrew pair. These gates remain held until actually observed; do not run them against the live service as part of isolated verification. The dispatch lead rechecks overlapping open PRs before publication.
 
 ## Trial profile
 
@@ -60,7 +80,7 @@ url = "git+https://github.com/lanej/beads-tasks.git"
 mode = "manual"
 ```
 
-Unknown fields, invalid identifiers or ports, and unsupported scheduling modes are errors. `mode = "manual"` means a history push occurs only through an explicit command; there is no timer. The runtime versions and checksums remain pinned in `bootstrap/tools.toml`. The browser UI is a separate optional trial process; its network listener and hostname do not expose the Beads API or SQL listener.
+Unknown fields, invalid identifiers or ports, and unsupported scheduling modes are errors. `mode = "manual"` means a history push occurs only through an explicit command; there is no timer. `bootstrap/tools.toml` retains Linux runtime pins and checksums; those versions are macOS compatibility floors within the same major release. The browser UI is a separate optional trial process; its network listener and hostname do not expose the Beads API or SQL listener.
 
 ## Endpoint and storage
 

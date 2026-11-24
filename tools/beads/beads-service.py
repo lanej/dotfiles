@@ -138,6 +138,87 @@ def probe(home):
             "history": {"mode": config["history"]["mode"], **history}}
 
 
+def homebrew_runtime(catalog):
+    """Resolve immutable Cellar paths and preflight without touching the workspace.
+
+    Help probes check the CLI contract for the versioned HTTP server; they do not
+    establish native readiness or restored-database compatibility.
+    """
+    brew = shutil.which("brew")
+    if brew is None:
+        brew = next((str(path) for path in (Path("/opt/homebrew/bin/brew"), Path("/usr/local/bin/brew"))
+                     if path.is_file() and os.access(path, os.X_OK)), None)
+    advice = "Install/repair Homebrew beads and dolt explicitly, then retry staging; current service preserved"
+    if brew is None:
+        raise ValueError(f"Homebrew not found. {advice}")
+    try:
+        brew = str(Path(brew).resolve(strict=True))
+    except OSError as error:
+        raise ValueError(f"Homebrew executable unavailable: {brew}. {advice}") from error
+    binaries = {}
+    # Keep help/version commands away from user config and task data, even when
+    # an upstream command decides to inspect its working directory.
+    with tempfile.TemporaryDirectory(prefix="beads-preflight-") as temporary:
+        env = {key: value for key, value in os.environ.items()
+               if not key.startswith(("BEADS_", "BD_", "DOLT_"))}
+        env.update(HOME=temporary, XDG_CONFIG_HOME=temporary, XDG_DATA_HOME=temporary,
+                   XDG_STATE_HOME=temporary, XDG_CACHE_HOME=temporary, DOLT_ROOT_PATH=temporary,
+                   DOLT_CLI_NO_UPDATE_CHECK="1", HOMEBREW_NO_AUTO_UPDATE="1",
+                   HOMEBREW_NO_ANALYTICS="1")
+
+        def check(argv):
+            try:
+                # Prefix/version/help stdout is a machine response, not a log.
+                return run(argv, cwd=temporary, env=env, timeout=15, stderr=subprocess.PIPE)
+            except (OSError, subprocess.SubprocessError) as error:
+                detail = (f"{error}; stdout={getattr(error, 'stdout', None)!r}; "
+                          f"stderr={getattr(error, 'stderr', None)!r}")
+                raise ValueError(f"Homebrew preflight failed: {shlex.join(map(str, argv))}: {detail}. {advice}") from error
+
+        for name, formula, minimum in (("bd", "beads", catalog["version"]),
+                                        ("dolt", "dolt", catalog["dolt_version"])):
+            prefix = Path(check([brew, "--prefix", formula]))
+            try:
+                if not prefix.is_absolute():
+                    raise ValueError("formula prefix is not absolute")
+                prefix = prefix.resolve(strict=True)
+                binary = (prefix / "bin" / name).resolve(strict=True)
+                if not binary.is_relative_to(prefix) or not binary.is_file() or not os.access(binary, os.X_OK):
+                    raise ValueError("formula executable is missing or outside its prefix")
+                if binary.stat().st_mode & 0o222:
+                    raise ValueError("formula executable must be read-only for guarded activation; repair its Homebrew installation")
+            except (OSError, ValueError) as error:
+                raise ValueError(f"Homebrew {formula}: {error}. {advice}") from error
+            output = check([binary, "version"])
+            match = re.search(rf"\b{name} version v?(\d+\.\d+\.\d+)(?=\s|$)", output)
+            floor = tuple(map(int, minimum.split(".")))
+            version = tuple(map(int, match[1].split("."))) if match else None
+            if version is None or version < floor or version[0] != floor[0]:
+                raise ValueError(f"Homebrew {name} version {output!r}; require stable >={minimum}, "
+                                 f"<{floor[0] + 1}.0.0. {advice}")
+            binaries[name] = str(binary)
+
+        contracts = (
+            ("bd", (), ("--sandbox", "--readonly", "--json", "--directory")),
+            ("bd", ("serve",), ("--addr",)),
+            ("bd", ("init",), ("--server", "--external", "--server-host", "--server-port",
+                                    "--database", "--prefix", "--skip-agents", "--skip-hooks", "--non-interactive")),
+            ("bd", ("sql",), ("--json",)),
+            ("bd", ("dolt", "remote", "list"), ("--json",)),
+            ("bd", ("dolt", "commit"), ("--message",)),
+            ("bd", ("dolt", "push"), ("--remote", "--no-adopt")),
+            ("dolt", ("sql-server",), ("--host", "--port", "--data-dir")),
+        )
+        for name, command, flags in contracts:
+            output = check([binaries[name], *command, "--help"])
+            missing = [flag for flag in flags
+                       if not re.search(r"(?<![\w-])" + re.escape(flag) + r"(?![\w-])", output)]
+            if missing:
+                raise ValueError(f"Homebrew {name} {' '.join(command)} lacks required capabilities: "
+                                 f"{', '.join(missing)}. {advice}")
+    return binaries
+
+
 def install(home, *, start=True):
     share, state, config_path = paths(home)
     target = {"Darwin": "darwin", "Linux": "linux"}.get(platform.system())
@@ -145,16 +226,16 @@ def install(home, *, start=True):
     if target is None or arch is None:
         raise ValueError("Beads service supports macOS and Linux on arm64 and amd64")
     catalog = tomllib.loads((ROOT / "bootstrap/tools.toml").read_text())["tools"]["beads"]
+    binaries = homebrew_runtime(catalog) if target == "darwin" else {}
     for directory in (share, state, config_path.parent):
         directory.mkdir(parents=True, mode=0o700, exist_ok=True)
     seed(home, ROOT / "config/beads/trial.toml")
     settings(home)
-    binaries = {}
-    for name, repo, version, asset in (
+    for name, repo, version, asset in (() if target == "darwin" else (
         ("bd", "gastownhall/beads", catalog["version"],
          f"beads_{catalog['version']}_{target}_{arch}.tar.gz"),
         ("dolt", "dolthub/dolt", catalog["dolt_version"], f"dolt-{target}-{arch}.tar.gz"),
-    ):
+    )):
         directory = share / "runtime" / f"{name}-{version}-{target}-{arch}"
         directory.mkdir(parents=True, exist_ok=True)
         binary = directory / name
