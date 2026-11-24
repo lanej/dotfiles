@@ -453,6 +453,88 @@ if action == 'verify' and (not target['ready'] or target['running_identity'] != 
         self.assertEqual(current["target_results"][0]["completed"], ["checkpoint", "restore", "verify"])
         self.assertEqual([json.loads(line)[0] for line in self.log.read_text().splitlines()].count("restart"), 1)
 
+    def stateless_approval_consumer(self, project="keylease"):
+        installed = self.base / ".local/bin" / project
+        installed.parent.mkdir(parents=True)
+        calls = self.base / "approval-native-calls.jsonl"
+        owner = self.base / "approval-owner"
+        installed.write_text(f"""#!{sys.executable}
+import hashlib,json,pathlib,sys
+binary=pathlib.Path(__file__)
+with pathlib.Path({str(calls)!r}).open('a') as log:
+    log.write(json.dumps(sys.argv[1:])+'\\n')
+action=sys.argv[-1]
+if action=='artifact':
+    print(json.dumps({{'expected_identity':'build:idle-'+binary.name,'sha256':hashlib.sha256(binary.read_bytes()).hexdigest()}}))
+elif action=='backends':
+    print(json.dumps(['mock'] if pathlib.Path({str(owner)!r}).exists() else []))
+elif action=='profiles':
+    print('[]')
+elif action=='inventory':
+    print(json.dumps({{'schema_version':1,'targets':[{{
+        'target':'broker:mock','expected_identity':'build:idle-keylease',
+        'running_identity':'build:idle-keylease','ready':True,'sessions':[],
+        'process':{{'pid':12345,'start_identity':'new-owner','native_id':'broker-id','owner_verified':True}}
+    }}]}}))
+else:
+    raise SystemExit('unexpected native lifecycle effect')
+""")
+        installed.chmod(0o755)
+        source = self.base / f"idle-{project}-source"
+        source.mkdir()
+        with self.config.open("a") as output:
+            output.write(f'\n[projects.{project}]\npath={json.dumps(str(source))}\n'
+                         f'command={json.dumps([sys.executable, str(ADAPTER), project])}\n'
+                         'lifecycle="consumer"\ndepends_on=["fixture"]\n')
+        return source, calls, owner
+
+    def test_stateless_approval_consumer_recovers_without_a_process_binding(self):
+        self.assert_stateless_approval_recovery("keylease")
+
+    def test_stateless_intent_consumer_recovers_without_a_process_binding(self):
+        self.assert_stateless_approval_recovery("intent")
+
+    def assert_stateless_approval_recovery(self, project):
+        source, calls, _ = self.stateless_approval_consumer(project)
+        rows = self.invoke("restart", "fixture")
+        idle = next(row for row in rows if row["project"] == project)
+        self.assertEqual(idle["target_results"][0]["completed"], ["checkpoint", "restore", "verify"])
+        self.assertEqual(idle["phase"], "verified")
+        operation = Path(idle["recovery_path"])
+        observations = [json.loads(path.read_text()) for path in (operation / "evidence").iterdir()]
+        checkpoint = next(value["response"]["targets"][0]["checkpoint"] for value in observations
+                          if value.get("project") == project and value.get("action") == "checkpoint"
+                          and value.get("state") == "observed")
+        self.assertEqual(checkpoint, {"state": "confirmed", "run_id": idle["run_id"]})
+        env = {**self.env, "PROJECT_UPDATE_OPERATION_DIR": str(operation),
+               "PROJECT_UPDATE_RUN_ID": idle["run_id"], "PROJECT_UPDATE_TARGET": f"{project}-cli"}
+        env.pop("PROJECT_UPDATE_EXPECTED_PROCESS", None)
+        env.pop("PROJECT_UPDATE_RECOVER_ORIGINAL", None)
+        restored = subprocess.run([sys.executable, str(ADAPTER), project, "restore"],
+                                  cwd=source, env=env, text=True, capture_output=True)
+        self.assertEqual(restored.returncode, 0, restored.stdout + restored.stderr)
+        target = json.loads(restored.stdout)["targets"][0]
+        self.assertIsNone(target["process"])
+        self.assertNotIn("checkpoint", target)
+        self.assertEqual([json.loads(line)[0] for line in self.log.read_text().splitlines()].count("restart"), 1)
+        self.assertTrue(all(json.loads(line)[-1] in ("artifact", "backends", "profiles")
+                            for line in calls.read_text().splitlines()))
+
+    def test_stateless_approval_recovery_refuses_an_owner_appearing_after_checkpoint(self):
+        _, calls, owner = self.stateless_approval_consumer()
+        hook = self.base / "hook.py"
+        hook.write_text(hook.read_text().replace(
+            "if action=='restart': runtime.write_text(expected)",
+            f"if action=='restart': runtime.write_text(expected);pathlib.Path({str(owner)!r}).touch()"))
+        rows = self.invoke("restart", "fixture", code=3)
+        idle = next(row for row in rows if row["project"] == "keylease")
+        self.assertIn("stateless-approval-target-is-no-longer-idle", idle["reason"])
+        self.assertTrue(owner.exists())
+        self.assertEqual(idle["outcome"], "incomplete")
+        self.assertNotIn("verify", idle["target_results"][0]["completed"])
+        self.assertTrue(all(json.loads(line)[-1] in ("artifact", "backends", "inventory")
+                            for line in calls.read_text().splitlines()))
+
     def test_terminal_owns_current_application_restore_and_final_process_binding(self):
         helper = self.base / "terminal-fixture.py"
         helper.write_text('''import hashlib,json,os,pathlib,sys

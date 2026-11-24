@@ -226,8 +226,6 @@ def guard_arguments(target):
 
 
 def native_target(target, action, *, selected=False, input_file=None):
-    if target.get("kind") == "stateless-cli":
-        return 0, target
     if PROJECT == "keylease":
         arguments = [str(BINARY), "--backend", target["backend"], "lifecycle", action]
         host = None
@@ -331,6 +329,19 @@ def main():
     if (not recovering_original and local["expected_identity"] != target["expected_identity"]
             and target.get("activation_kind") != "remote"):
         raise ValueError("selected-local-native-image-changed")
+    if target.get("kind") == "stateless-cli":
+        current = inventory_intent(local) if PROJECT == "intent" else inventory_keylease(local)
+        matched = [value for value in current if value["target"] == target["target"]]
+        if (len(matched) != 1 or matched[0].get("kind") != "stateless-cli"
+                or matched[0].get("process") is not None or matched[0].get("sessions") != []):
+            raise ValueError("stateless-approval-target-is-no-longer-idle")
+        actual = matched[0]
+        if actual["expected_identity"] != target["expected_identity"]:
+            raise ValueError("selected-local-native-image-changed")
+        if ACTION == "checkpoint":
+            actual["checkpoint"] = {"state": "confirmed", "run_id": os.environ["PROJECT_UPDATE_RUN_ID"]}
+        print(json.dumps({"schema_version": 1, "targets": [actual]}))
+        return 0 if complete(actual) else 3
     if ACTION == "restart" and target.get("activation_kind") == "remote":
         target = deploy_remote(target)
     if ACTION == "restore" and os.environ.get("PROJECT_UPDATE_RECOVER_ORIGINAL") != "1":
