@@ -225,7 +225,7 @@ def install(home, *, start=True):
     arch = {"arm64": "arm64", "aarch64": "arm64", "x86_64": "amd64"}.get(platform.machine())
     if target is None or arch is None:
         raise ValueError("Beads service supports macOS and Linux on arm64 and amd64")
-    catalog = tomllib.loads((ROOT / "bootstrap/tools.toml").read_text())["tools"]["beads"]
+    catalog = tomllib.loads((ROOT / "tools/beads/tool.toml").read_text())["tools"]["beads"]
     binaries = homebrew_runtime(catalog) if target == "darwin" else {}
     for directory in (share, state, config_path.parent):
         directory.mkdir(parents=True, mode=0o700, exist_ok=True)

@@ -715,8 +715,7 @@ def inspect(home, action):
     target['expected_identity']=artifact_identity(home)
     return {'schema_version':1,'targets':[target]}
 ''')
-        catalog = self.checkout / "bootstrap/tools.toml"
-        catalog.parent.mkdir()
+        catalog = scripts / "tool.toml"
         catalog.write_text('[tools.beads]\nversion="1.3.4"\ndolt_version="2.7.4"\n')
         profile = self.checkout / "config/beads/trial.toml"
         profile.parent.mkdir(parents=True)
@@ -796,6 +795,26 @@ elif action in ('inventory','checkpoint','verify','restore'):
         self.invoke("restart", "beads")
         self.git(self.checkout, "commit", "--allow-empty", "-m", "Unrelated source revision")
         self.assertEqual(self.invoke("status", "beads")[0]["runtime"]["installed_revision"], revision)
+        # Unrelated legacy pins are not Beads artifacts; its local recipe is.
+        legacy = self.checkout / "bootstrap/tools.toml"
+        legacy.parent.mkdir()
+        legacy.write_text('[tools.fzf]\nversion="0.99.0"\n')
+        before = json.loads((self.base / ".local/share/beads-service/project-update.json").read_text())
+        self.invoke("restart", "beads")
+        after = json.loads((self.base / ".local/share/beads-service/project-update.json").read_text())
+        self.assertEqual(after, before, "Unrelated catalog edit invalidated Beads staging")
+        current = subprocess.check_output([sys.executable, "-c",
+            "import json,runpy,sys; print(json.dumps(runpy.run_path(sys.argv[1])['beads_source']()))", str(adapter)],
+            env=self.env, text=True)
+        self.assertEqual(json.loads(current)["fingerprint"], before["source"]["fingerprint"],
+                         "Legacy catalog participates in Beads source identity")
+        catalog.write_text(catalog.read_text() + "# changed Beads recipe\n")
+        rejected = subprocess.run([sys.executable, str(adapter), "restart"], env=self.env, text=True, capture_output=True)
+        self.assertNotEqual(rejected.returncode, 0, rejected.stdout + rejected.stderr)
+        self.assertIn("Build this Beads source before restarting", rejected.stdout + rejected.stderr)
+        self.invoke("build", "beads")
+        changed = json.loads((self.base / ".local/share/beads-service/project-update.json").read_text())
+        self.assertNotEqual(changed["source"]["fingerprint"], before["source"]["fingerprint"])
         profile.write_text(profile.read_text() + "# local configuration edit\n")
         self.invoke("restart", "beads")  # the selected installation is already running
         controller.write_text(controller.read_text() + "# updated controller image\n")

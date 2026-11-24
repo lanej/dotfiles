@@ -20,7 +20,7 @@ The installed `~/.local/bin/beads-service` supports `start`, `restart`, `stop`, 
 
 ## Source layout
 
-[The Beads capability](../tools/beads/) groups the service controller, strict configuration reader, runtime-update adapter, and service checks. The controller uses Python’s standard library for TOML and JSON validation, native launchd property lists, inherited file-descriptor locks, atomic receipts, and bounded child-process supervision. Bootstrap remains the shell entrypoint for selected installation; source configuration and task state remain separate from the installed controller.
+[The Beads capability](../tools/beads/) groups the service controller, strict configuration reader, runtime-update adapter, and service checks. The controller uses Python’s standard library for TOML and JSON validation, native launchd property lists, inherited file-descriptor locks, atomic receipts, and bounded child-process supervision. The capability-local `tool.toml` is composed with the legacy catalog by the configuration resolver; Beads staging fingerprints only its own recipe and source inputs. Bootstrap remains the shell entrypoint for selected installation; source configuration and task state remain separate from the installed controller.
 
 ## macOS installation and compatibility
 
@@ -55,6 +55,8 @@ The project source is dotfiles, which owns Linux pins and macOS compatibility fl
 
 Keep the prior controller release, runtime manifest, updater receipt and selected binaries before staging an upgrade; do not delete the old private runtime when moving macOS to Homebrew. Rollback is an explicit maintenance operation: restore/reselect the previously accepted controller/runtime pair, then restage it and use guarded activation. An old Homebrew pair must remain available through its formula prefixes to be reselected by this installer. Do not hand-edit an active release's manifest, repoint a running owner's binaries, bypass checkpoint refusal, or overwrite the database with an older copy. If old executables are unavailable or data has changed incompatibly, stop and plan recovery from a separately verified backup rather than attempting an automatic downgrade. Installing an older binary does not undo database changes.
 
+`node --test scripts/test-beads-inputs.mjs` checks the actual workflow path filters using the locked task-runtime validation dependencies. The Beads recipe selects service, editor, integration and composed-configuration checks; the worktree-manager integration also consumes it through full Make configuration resolution. Independent Git hooks, worktree policy, treehouse and directory-picker inputs stay in the legacy catalog. Changing a shared resolver or workflow still selects its actual consumers. The test runs the real Make configuration entrypoint in a disposable checkout, rejects a missing recipe, includes removed-input counterexamples, and treats unsupported filter syntax conservatively.
+
 `python3 tools/beads/test-beads-service.py HomebrewRuntime` is socket-free and protects resolver, preflight failures, staging and Linux provisioning decisions with controlled command responses. It is not native compatibility evidence. Before merging this runtime change, independent review must assess the exact candidate, and separate external gates must demonstrate native startup/readiness/restart, Studio guarded operations, and restored-copy task-data compatibility with the selected Homebrew pair. These gates remain held until actually observed; do not run them against the live service as part of isolated verification. The dispatch lead rechecks overlapping open PRs before publication.
 
 ## Trial profile
@@ -80,7 +82,7 @@ url = "git+https://github.com/lanej/beads-tasks.git"
 mode = "manual"
 ```
 
-Unknown fields, invalid identifiers or ports, and unsupported scheduling modes are errors. `mode = "manual"` means a history push occurs only through an explicit command; there is no timer. `bootstrap/tools.toml` retains Linux runtime pins and checksums; those versions are macOS compatibility floors within the same major release. The browser UI is a separate optional trial process; its network listener and hostname do not expose the Beads API or SQL listener.
+Unknown fields, invalid identifiers or ports, and unsupported scheduling modes are errors. `mode = "manual"` means a history push occurs only through an explicit command; there is no timer. `tools/beads/tool.toml` owns the Beads recipe, Linux runtime pins and checksums; those versions are macOS compatibility floors within the same major release. The browser UI is a separate optional trial process; its network listener and hostname do not expose the Beads API or SQL listener.
 
 ## Endpoint and storage
 

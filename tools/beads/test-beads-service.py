@@ -106,7 +106,7 @@ class HomebrewRuntime(unittest.TestCase):
         self.home = self.root / "home"
         self.home.mkdir()
         self.share, self.state, _ = service.paths(self.home)
-        self.catalog = tomllib.loads((ROOT / "bootstrap/tools.toml").read_text())["tools"]["beads"]
+        self.catalog = tomllib.loads((ROOT / "tools/beads/tool.toml").read_text())["tools"]["beads"]
         self.brew = self.root / "brew"
         self.brew.touch()
         self.binaries = {}
@@ -572,7 +572,7 @@ class SharedService(unittest.TestCase):
 
     @unittest.skipUnless(service.platform.system() == "Linux", "Private runtimes are Linux-only; see HomebrewRuntime")
     def test_install_can_stage_without_starting_any_process(self):
-        catalog = tomllib.loads((ROOT / "bootstrap/tools.toml").read_text())["tools"]["beads"]
+        catalog = tomllib.loads((ROOT / "tools/beads/tool.toml").read_text())["tools"]["beads"]
         target = {"Darwin": "darwin", "Linux": "linux"}[service.platform.system()]
         arch = {"arm64": "arm64", "aarch64": "arm64", "x86_64": "amd64"}[service.platform.machine()]
         for name, version in (("bd", catalog["version"]), ("dolt", catalog["dolt_version"])):

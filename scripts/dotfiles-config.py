@@ -43,7 +43,24 @@ SETTINGS = {
 }
 SET_NAME = re.compile(r"[a-z0-9][a-z0-9_-]*")
 TOOL_FILE = ROOT / "bootstrap/tools.toml"
-TOOLS = tomllib.loads(TOOL_FILE.read_text())["tools"]
+# Capability recipes stay beside their consumers; all other tools remain legacy.
+TOOL_FILES = (TOOL_FILE, ROOT / "tools/beads/tool.toml")
+
+
+def load_tools():
+    tools, sources = {}, {}
+    for source in TOOL_FILES:
+        recipes = tomllib.loads(source.read_text())["tools"]
+        if source != TOOL_FILE and set(recipes) != {"beads"}:
+            raise ValueError(f"{source}: expected only the Beads recipe")
+        for name, recipe in recipes.items():
+            if name in tools:
+                raise ValueError(f"{source}: duplicate tool {name!r}; already defined in {sources[name]}")
+            tools[name], sources[name] = recipe, source
+    return tools, sources
+
+
+TOOLS, TOOL_SOURCES = load_tools()
 INSTALLERS = {"studio", "approval-cli", "beads", "package", "system", "config", "build", "rust", "go", "zellij", "font", "git-worktree-hooks", "worktree-policy", "worktree-manager", "treehouse", "firstmate", "macos-window-tool", "npm", "octo-manager"}
 HOOKS = {"directory-picker", "github-auth", "bedrock-credentials", "bedrock-router", "agent-status-broker", "kitty-terminfo", "neovim", "atuin-sync", "sql-formatters", "zellij-status", "zellij-copy-hop"}
 for tool, recipe in TOOLS.items():
@@ -71,22 +88,22 @@ def tool_plan(values, origins, specified, host, requirements=None):
         if recipe.get("platform", host) != host:
             raise ValueError(f"tools.{name} requires {recipe['platform']}; this host is {host}")
         if recipe.get("installer", "package") not in INSTALLERS:
-            raise ValueError(f"{TOOL_FILE}: unknown installer for {name}")
+            raise ValueError(f"{TOOL_SOURCES[name]}: unknown installer for {name}")
         package = recipe.get("package", name)
         version = recipe.get("version", "-")
         package_pattern = r"(?:@[a-z0-9_.-]+/)?[a-z0-9_.-]+" if recipe.get("installer") == "npm" else SET_NAME.pattern
         if not isinstance(package, str) or not re.fullmatch(package_pattern, package):
-            raise ValueError(f"{TOOL_FILE}: invalid package name for {name}")
+            raise ValueError(f"{TOOL_SOURCES[name]}: invalid package name for {name}")
         if not isinstance(version, str) or (version != "-" and not re.fullmatch(r"[0-9]+(?:\.[0-9]+){0,2}", version)):
-            raise ValueError(f"{TOOL_FILE}: invalid version for {name}")
+            raise ValueError(f"{TOOL_SOURCES[name]}: invalid version for {name}")
         if recipe.get("installer", "package") in {"package", "rust", "go", "npm"} and version == "-":
-            raise ValueError(f"{TOOL_FILE}: missing version for {name}")
+            raise ValueError(f"{TOOL_SOURCES[name]}: missing version for {name}")
         for target in recipe.get("setup", []):
             if not isinstance(target, str) or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]*", target):
-                raise ValueError(f"{TOOL_FILE}: invalid setup target for {name}")
+                raise ValueError(f"{TOOL_SOURCES[name]}: invalid setup target for {name}")
         for phase in ("prepare", "post"):
             if any(hook not in HOOKS for hook in recipe.get(phase, [])):
-                raise ValueError(f"{TOOL_FILE}: unknown {phase} hook for {name}")
+                raise ValueError(f"{TOOL_SOURCES[name]}: unknown {phase} hook for {name}")
         visiting.append(name)
         dependencies = [*recipe.get("requires", []), *recipe.get(f"requires_{host}", [])]
         if name == "zellij" and values["zellij.source"] == "release":
