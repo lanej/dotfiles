@@ -19,9 +19,11 @@ package.loaded["beads.store"] = {
 		local name = settings.test_name
 		return {
 			scope = name,
-			client = { verify = function()
-				calls.verify = calls.verify + 1
-			end },
+			client = {
+				verify = function()
+					calls.verify = calls.verify + 1
+				end,
+			},
 			list = function()
 				calls.list = calls.list + 1
 				return vim.deepcopy(graphs[name])
@@ -34,7 +36,7 @@ package.loaded["beads.store"] = {
 	end,
 }
 local readfile = vim.fn.readfile
-vim.fn.readfile = function(...)
+vim.fn.readfile = function()
 	calls.tokens = calls.tokens + 1
 	error("Unexpected file/token read")
 end
