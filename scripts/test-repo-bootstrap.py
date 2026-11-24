@@ -371,22 +371,30 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     assert tomllib.loads((migration / "source-code.toml").read_text())["installed"]["skill_storage"] == "copied"
 
     # Retired skill selections migrate without retaining duplicate entrypoints.
-    for old_name, new_name in (("pr-writer", "pull-request"), ("pr-merge", "ship")):
-        retired = workspace / ("retired " + old_name)
+    for old_name, new_name, mode in (("pr-writer", "pull-request", "local"), ("pr-merge", "ship", "local"), ("pr-writer", "pull-request", "tracked")):
+        retired = workspace / ("retired " + old_name + " " + mode)
         retired.mkdir()
         git(retired, "init", "--quiet")
         entrypoint = retired / ".agents/skills" / old_name / "SKILL.md"
         entrypoint.parent.mkdir(parents=True)
         entrypoint.write_text("---\nname: " + old_name + "\ndescription: Use when handling the old pull request workflow.\n---\nOld guidance.\n")
         relative = entrypoint.relative_to(retired).as_posix()
-        state = {"version": 1, "mode": "local", "skills": [old_name],
+        state = {"version": 1, "mode": mode, "skills": [old_name],
                  "skill_versions": {old_name: "1.0.0"}, "files": {relative:
                  {"kind": "file", "sha256": hashlib.sha256(entrypoint.read_bytes()).hexdigest(), "executable": False}}}
         (retired / ".agents/repo-bootstrap.json").write_text(json.dumps(state))
         extra = entrypoint.parent / "local-notes.txt"
         extra.write_text("Keep my notes.\n")
+        if mode == "tracked":
+            git(retired, "add", "-f", relative)
+            before = tree(retired)
+            run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(retired), "--skills", "just", "--no-detect-languages", "--dry-run"])
+            assert tree(retired) == before
         run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(retired), "--skills", "just", "--no-detect-languages"])
         assert not entrypoint.parent.exists()
+        if mode == "tracked":
+            assert git(retired, "ls-files", "--", relative) == relative
+            assert git(retired, "diff", "--name-status", "--", relative).startswith("D")
         assert (retired / ".agents/skills" / new_name / "SKILL.md").is_file()
         backups = list((retired / ".git/repo-bootstrap/backups").glob(f"package-*/.agents/skills/{old_name}/local-notes.txt"))
         assert backups and backups[0].read_text() == "Keep my notes.\n"
