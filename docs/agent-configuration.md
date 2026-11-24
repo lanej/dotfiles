@@ -4,7 +4,7 @@ Dotfiles owns the shared workstation instructions in `codex/` and `claude/`, ski
 
 New entries under `ai/{agents,skills}/` and `claude/commands/` are ignored by default so local experiments stay local. Deliberately version a repository-owned entry with `git add -f PATH`; tracked files remain tracked. Anthropic-published skills remain external; see [the external skill policy](../ai/skills/ANTHROPIC-SKILLS.md).
 
-Read [the skill-maintenance policy](skill-maintenance.md) before changing instruction sources. Run the affected checks and review the staged diff before committing. Use [the setup requirements](setup-requirements.md) and [the configuration guide](../README.md#configuration-sets) when changing configuration or installation.
+Read [the skill-maintenance policy](skill-maintenance.md) before changing instruction sources. Run the affected checks and review the staged diff before committing. Use [the setup requirements](setup-requirements.md) and [the configuration guide](configuration.md) when changing configuration or installation.
 
 ## Workstation installation
 
