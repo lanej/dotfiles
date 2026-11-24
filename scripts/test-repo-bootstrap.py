@@ -2,6 +2,7 @@
 """One acceptance workflow: share a bootstrap, then retrofit and upgrade locally."""
 
 import json
+import tomllib
 import importlib.util
 import importlib.machinery
 import sys
@@ -82,6 +83,26 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     sys.modules[loader.name] = module
     loader.exec_module(module)
 
+    intent_states = {}
+
+    def write_intent(path, text):
+        if path.exists():
+            try:
+                installed = tomllib.loads(path.read_text()).get("installed")
+                if installed is not None:
+                    intent_states[path] = installed
+            except tomllib.TOMLDecodeError:
+                pass
+        try:
+            if "installed" in tomllib.loads(text):
+                path.write_text(text)
+                return
+        except tomllib.TOMLDecodeError:
+            pass
+        state = intent_states.get(path)
+        path.write_text(text + module.state_toml("", state).decode() if state is not None else text)
+
+
     # Audit actual source entrypoints, including stages not selected by a fixture.
     assert module.SKILL_TEMPLATE_BLOCKS.keys() <= set(module.SKILLS)
     assert all(module.SKILL_TEMPLATE_BLOCKS.values())
@@ -138,6 +159,20 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     git(defaults, "add", ".")
     assert git(defaults, "ls-files").splitlines() == ["README.md"]
     assert "already current" in run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(defaults)])
+    run([str(cli), "validate", "--repo", str(defaults), "--strict"])
+    config_path = defaults / "source-code.toml"
+    config_text = config_path.read_text()
+    recorded = tomllib.loads(config_text)["installed"]
+    assert "files" not in recorded and "source_revision" not in recorded
+    assert "sha256" not in config_text and not (defaults / ".agents/repo-bootstrap.json").exists()
+    # TOML permits quoted table names and spaces; upgrades preserve authored intent.
+    quoted = config_text.replace("[installed]", '[ "installed" ]').replace("[installed.skill_versions]", '["installed".skill_versions]')
+    config_path.write_text(quoted)
+    before = tree(defaults)
+    run([str(cli), "upgrade", "--repo", str(defaults), "--dry-run"])
+    assert tree(defaults) == before
+    run([str(cli), "upgrade", "--repo", str(defaults)])
+    assert tomllib.loads(config_path.read_text())["installed"] == recorded
     run([str(cli), "validate", "--repo", str(defaults), "--strict"])
     default_clone = workspace / "default shadow clone"
     git(workspace, "clone", "--quiet", str(defaults), str(default_clone))
@@ -236,23 +271,41 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     (gate_clone / "scripts/check-go.sh").write_text("printf 'fresh-clone-gate:%s\\n' \"$1\"\n")
     assert "fresh-clone-gate:all" in run(gate)
 
+    guarded = workspace / "guarded migration"
+    run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(guarded), "--init", "--skill-storage", "copied", "--no-detect-languages", "--pr-template", "none"])
+    outside = workspace / "external skills"
+    shutil.move(str(guarded / ".agents/skills"), outside)
+    (guarded / ".agents/skills").symlink_to(outside, target_is_directory=True)
+    before = tree(outside)
+    output = run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(guarded), "--skill-storage", "linked"], expected=1)
+    assert "linked parent" in output and tree(outside) == before
+
+    # Legacy language opt-outs retained runtimes in the old ledger.
+    legacy_config = gate_project / "source-code.toml"
+    legacy_recorded = tomllib.loads(legacy_config.read_text())["installed"]
+    legacy_recorded["go_profile"] = False
+    legacy_recorded["files"] = {"scripts/check-go.sh": {"kind": "file", "sha256": "unused"}}
+    legacy_ledger = gate_project / ".agents/repo-bootstrap.json"
+    legacy_ledger.write_text(json.dumps(legacy_recorded))
+    legacy_config.write_text("schema_version = 1\n")
+    before = tree(gate_project)
+    run([str(cli), "upgrade", "--repo", str(gate_project), "--no-go", "--dry-run"])
+    assert tree(gate_project) == before and legacy_ledger.exists()
+    run([str(cli), "upgrade", "--repo", str(gate_project), "--no-go"])
+    assert not legacy_ledger.exists()
+    assert tomllib.loads(legacy_config.read_text())["installed"]["go_profile"]
+    assert "go" in json.loads((gate_project / ".source-code.json").read_text())["languages"]
+    run([str(cli), "validate", "--repo", str(gate_project), "--strict"])
+
     # Copied installs remain portable and migrate only unchanged, untracked content.
     migration = workspace / "storage migration"
     run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(migration), "--init", "--mode", "shadow", "--skill-storage", "copied", "--no-detect-languages", "--pr-template", "none"])
     assert "Skill storage: copied" in run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(migration), "--dry-run"])
     extra = migration / ".agents/skills/builder/private-notes.txt"
     extra.write_text("Keep these local notes.\n")
-    before = tree(migration)
-    assert "unmanaged skill content" in run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(migration), "--skill-storage", "linked"], expected=1)
-    assert tree(migration) == before
-    extra.unlink()
     installed_builder = migration / ".agents/skills/builder/SKILL.md"
     installed_bytes = installed_builder.read_bytes()
     installed_builder.write_bytes(installed_bytes + b"\nLocal customization.\n")
-    before = tree(migration)
-    run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(migration), "--skill-storage", "linked"], expected=1)
-    assert tree(migration) == before
-    installed_builder.write_bytes(installed_bytes)
     git(migration, "add", "-f", ".agents/skills/builder/SKILL.md")
     before = tree(migration)
     assert "tracked files" in run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(migration), "--skill-storage", "linked"], expected=1)
@@ -263,13 +316,16 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     assert tree(migration) == before
     run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(migration), "--skill-storage", "linked"])
     assert (migration / ".agents/skills/builder").is_symlink()
+    package_backups = list((migration / ".git/repo-bootstrap/backups").glob("package-*/.agents/skills/builder"))
+    assert any((path / "private-notes.txt").read_text() == "Keep these local notes.\n" for path in package_backups)
+    assert any((path / "SKILL.md").read_bytes() == installed_bytes + b"\nLocal customization.\n" for path in package_backups)
     run([str(cli), "validate", "--repo", str(migration), "--strict"])
     source_before = tree(source / "ai/skills")
     run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(migration), "--skill-storage", "copied"])
     assert not (migration / ".agents/skills/builder").is_symlink()
     assert tree(source / "ai/skills") == source_before, "copy migration changed canonical packages"
     # The authored configuration remains linked; CLI override does not rewrite it.
-    assert 'skill_storage = "linked"' in (migration / "source-code.toml").read_text()
+    assert tomllib.loads((migration / "source-code.toml").read_text())["installed"]["skill_storage"] == "copied"
 
     # Retired skill selections migrate without retaining duplicate entrypoints.
     for old_name, new_name in (("pr-writer", "pull-request"), ("pr-merge", "ship")):
@@ -286,14 +342,12 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         (retired / ".agents/repo-bootstrap.json").write_text(json.dumps(state))
         extra = entrypoint.parent / "local-notes.txt"
         extra.write_text("Keep my notes.\n")
-        before = tree(retired)
-        run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(retired), "--no-detect-languages"], expected=1)
-        assert tree(retired) == before
-        extra.unlink()
         run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(retired), "--skills", "just", "--no-detect-languages"])
         assert not entrypoint.parent.exists()
         assert (retired / ".agents/skills" / new_name / "SKILL.md").is_file()
-        assert not (retired / ".claude/skills" / old_name).exists()
+        backups = list((retired / ".git/repo-bootstrap/backups").glob(f"package-*/.agents/skills/{old_name}/local-notes.txt"))
+        assert backups and backups[0].read_text() == "Keep my notes.\n"
+        assert not (retired / ".agents/repo-bootstrap.json").exists()
         run([str(cli), "validate", "--repo", str(retired), "--strict"])
 
     # Selected project skills expose only their current-maturity entrypoints.
@@ -302,7 +356,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         staged_testing = workspace / ("stage selected guidance " + storage)
         staged_testing.mkdir()
         git(staged_testing, "init", "--quiet")
-        (staged_testing / "source-code.toml").write_text('schema_version = 1\nauthority = "owned"\nadoption = "new"\nmode = "shadow"\nskill_storage = "' + storage + '"\nskills = ' + json.dumps([*maturity_skills, "octo-manager"]) + '\ndetect_languages = false\npr_template = "none"\n')
+        write_intent((staged_testing / "source-code.toml"), 'schema_version = 1\nauthority = "owned"\nadoption = "new"\nmode = "shadow"\nskill_storage = "' + storage + '"\nskills = ' + json.dumps([*maturity_skills, "octo-manager"]) + '\ndetect_languages = false\npr_template = "none"\n')
         shared_policy = None
         for stage in ("research", "alpha", "beta", "production", "research"):
             command = [str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(staged_testing), "--stage", stage]
@@ -363,8 +417,6 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
             run([str(cli), "validate", "--repo", str(staged_testing), "--strict"])
         if storage == "linked":
             # Previous linked installs have whole-directory links for these two skills.
-            manifest = staged_testing / ".agents/repo-bootstrap.json"
-            state = json.loads(manifest.read_text())
             migrated = ("code-comments", "testing", "rust", "source-code-lifecycle", "octo-manager")
             for name in migrated:
                 relative = f".agents/skills/{name}"
@@ -372,9 +424,6 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
                 shutil.rmtree(skill)
                 origin = source / ("ai/skills" if name == "octo-manager" else "ai/skills/.maturity-profiles/research") / name
                 skill.symlink_to(origin, target_is_directory=True)
-                state["files"] = {path: entry for path, entry in state["files"].items() if not path.startswith(relative + "/")}
-                state["files"][relative] = {"kind": "link", "target": str(origin)}
-            manifest.write_text(json.dumps(state))
             run([str(cli), "upgrade", "--repo", str(staged_testing)])
             for name in migrated:
                 assert not (staged_testing / ".agents/skills" / name).is_symlink()
@@ -407,7 +456,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
                     + ''.join(f'[issues.profiles.{name}]\nharness = "codex"\nmodel = "configured"\n'
                               for name in ("investigation", "implementation", "verification"))
                     + '[merging]\nauto_merge = false\n[notifications.instructions]\nmerged = "Report the deployment handoff."\nready = ""\n')
-        config.write_text(authored)
+        write_intent(config, authored)
         before = tree(staged_testing)
         command = [str(cli), "setup", "--authority", "owned", "--adoption", "new", "--repo", str(staged_testing), "--skills", "just"]
         run([*command, "--dry-run"])
@@ -421,7 +470,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         assert "### ready\n\nNo default follow-up instruction is enabled for this state." in followup
         assert "### checks_failed" in followup  # Unoverridden states retain Octo's defaults.
         assert "Inspect reconciliation evidence before retrying an uncertain operation." in followup, followup
-        config.write_text(authored.replace("false", "true"))
+        write_intent(config, authored.replace("false", "true"))
         run([*command, "--stage", "beta"])
         followup = rendered_skill(staged_testing, "octo-manager")
         assert "Automatic merging enabled" in followup and "Automatic merging disabled" not in followup, followup
@@ -430,12 +479,12 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
             config.read_text().replace("schema_version = 1", "schema_version = 1\nunknown = true"),
             config.read_text().replace("max_concurrency = 2", "max_concurrency = 0"),
         ):
-            config.write_text(malformed)
+            write_intent(config, malformed)
             before = tree(staged_testing)
             output = run(command, expected=1)
             assert "Octo" in output, output
             assert tree(staged_testing) == before, output
-        config.write_text(authored.replace("false", "true"))
+        write_intent(config, authored.replace("false", "true"))
         run([*command, "--stage", "research"])
         # Missing selected policy sources must fail before changing installed guidance.
         canonical = source / "ai/skills/source-code-lifecycle/references/authority-owned.md"
@@ -477,7 +526,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     assert "skill" in run([str(cli), "--help"])
     invalid_context = workspace / "discovery-only"
     invalid_context.mkdir()
-    (invalid_context / "source-code.toml").write_text("not valid TOML [[[\n")
+    write_intent((invalid_context / "source-code.toml"), "not valid TOML [[[\n")
     reject_incomplete_setup(invalid_context)
     before = tree(invalid_context)
     run([str(cli), "skill"], cwd=invalid_context)
@@ -502,7 +551,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     inspection = workspace / "inspection without Git"
     inspection.mkdir()
     intent = inspection / "source-code.toml"
-    intent.write_text('schema_version = 1\nstage = "alpha"\nauthority = "owned"\nadoption = "new"\nkind = "library"\nmode = "shadow"\npr_template = "none"\n[checks.go]\nenabled = false\n[checks.typescript]\nenabled = false\n')
+    write_intent(intent, 'schema_version = 1\nstage = "alpha"\nauthority = "owned"\nadoption = "new"\nkind = "library"\nmode = "shadow"\npr_template = "none"\n[checks.go]\nenabled = false\n[checks.typescript]\nenabled = false\n')
     before = tree(inspection)
     source_scripts_before = tree(source / "scripts")
     explained = json.loads(run([str(cli), "explain", "--skill-storage", "copied", "--repo", str(inspection), "--json"]))
@@ -528,10 +577,10 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     human = run([str(cli), "explain", "--skill-storage", "copied", "--repo", str(inspection)])
     assert "Recorded installation" in human and "Skills retained" in human
     assert tree(inspection) == before, "explain changed an installed project or Git metadata"
-    intent.write_text('schema_version = 1\nstage = "research"\n')
+    write_intent(intent, 'schema_version = 1\nstage = "research"\n')
     drift = json.loads(run([str(cli), "explain", "--skill-storage", "copied", "--repo", str(inspection), "--json"]))
     assert any(item["field"] == "stage" and item["installed"] == "alpha" for item in drift["differences"])
-    intent.write_text('schema_version = true\n')
+    write_intent(intent, 'schema_version = true\n')
     before = tree(inspection)
     invalid = subprocess.run([str(cli), "explain", "--skill-storage", "copied", "--repo", str(inspection), "--json"], text=True, capture_output=True)
     assert invalid.returncode == 1 and not invalid.stdout and "Traceback" not in invalid.stderr
@@ -593,8 +642,8 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         assert config.read_bytes() == authored
         state = json.loads((target / ".source-code.json").read_text())
         assert state["stage"] == "beta"
-        manifest = json.loads((target / ".agents/repo-bootstrap.json").read_text())
-        assert "octo-manager.toml" not in manifest["files"]
+        manifest = tomllib.loads((target / "source-code.toml").read_text())["installed"]
+        assert "files" not in manifest and "octo_config_sha256" not in manifest
         if mode == "shadow":
             assert "octo-manager.toml" in git(target, "check-ignore", "octo-manager.toml")
             git(target, "add", "-f", "octo-manager.toml")
@@ -642,14 +691,14 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
             catalog = refs / "tool-catalog.md"
             original = catalog.read_bytes()
             catalog.write_bytes(original + b"\nKeep this project-specific choice.\n")
-            before = tree(authority_project)
-            output = install(authority_project, "--authority", "shared", "--adoption", "hold", expected=1)
-            assert "preserving customized policy content" in output, output
-            assert tree(authority_project) == before, "policy transition overwrote local edits"
-            catalog.write_bytes(original)
+            custom_catalog = catalog.read_bytes()
+            install(authority_project, "--authority", "shared", "--adoption", "hold")
+            assert not catalog.exists()
+            backups = list((authority_project / ".git/repo-bootstrap/backups").glob("package-*/.agents/skills/source-code-lifecycle/references/tool-catalog.md"))
+            assert any(path.read_bytes() == custom_catalog for path in backups)
     reject_incomplete_setup(authority_project)
     authored_authority = authority_project / "source-code.toml"
-    authored_authority.write_text('schema_version = 1\nauthority = "shared"\nadoption = "hold"\n')
+    write_intent(authored_authority, 'schema_version = 1\nauthority = "shared"\nadoption = "hold"\n')
     reject_incomplete_setup(authority_project)
     before = tree(authority_project)
     view = json.loads(run([str(cli), "explain", "--repo", str(authority_project), "--json"]))
@@ -661,24 +710,24 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     assert override["origins"]["adoption"]["source"] == "cli"
     assert tree(authority_project) == before
     install(authority_project, "--authority", "shared", "--adoption", "hold")
-    assert authored_authority.read_text() == 'schema_version = 1\nauthority = "shared"\nadoption = "hold"\n'
+    assert authored_authority.read_text().startswith('schema_version = 1\nauthority = "shared"\nadoption = "hold"\n')
     for key in ("authority", "adoption"):
-        authored_authority.write_text(f'schema_version = 1\n{key} = "unknown"\n')
+        write_intent(authored_authority, f'schema_version = 1\n{key} = "unknown"\n')
         before = tree(authority_project)
         assert "invalid configuration " + key in owned_install(authority_project, expected=1)
         assert tree(authority_project) == before
-    authored_authority.unlink()
+    write_intent(authored_authority, "schema_version = 1\n")
     # A legacy policy remains inspectable and runnable until an explicit upgrade.
     legacy_policy_path = authority_project / ".source-code.json"
-    legacy_manifest_path = authority_project / ".agents/repo-bootstrap.json"
+    legacy_manifest_path = authority_project / "source-code.toml"
     legacy_pins_path = authority_project / ".agents/source-code-versions.json"
     legacy_plans_path = authority_project / ".agents/skills/source-code-lifecycle/references/stages.json"
     for path in (legacy_policy_path, legacy_manifest_path, legacy_pins_path, legacy_plans_path):
-        legacy = json.loads(path.read_text())
+        legacy = tomllib.loads(path.read_text())["installed"] if path == legacy_manifest_path else json.loads(path.read_text())
         legacy.pop("authority", None)
         legacy.pop("adoption", None)
         legacy["policy_version"] = "1.0.0"
-        path.write_text(json.dumps(legacy))
+        path.write_bytes(module.state_toml("schema_version = 1\n", legacy)) if path == legacy_manifest_path else path.write_text(json.dumps(legacy))
     before = tree(authority_project)
     view = json.loads(run([str(cli), "explain", "--repo", str(authority_project), "--json"]))
     assert view["installed"]["authority"] is None and view["installed"]["adoption"] is None
@@ -695,29 +744,30 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
                    'stage = "research"\nauthority = "owned"\nadoption = "new"\nmode = "shadow"\nskills = ["pull-request"]\n'
                    'agents = "codex"\npr_template = "none"\ndetect_languages = false\n'
                    '[checks.go]\nenabled = false\n[checks.typescript]\nenabled = false\n')
-    config.write_text(config_text)
+    write_intent(config, config_text)
     reject_incomplete_setup(configured)
     assert "TOML configuration only" in run([str(cli), "validate", "--repo", str(configured)])
-    config.write_text(config_text.replace('stage = "research"', 'stage = "research"\npolicy_version = "99.0.0"'))
+    write_intent(config, config_text.replace('stage = "research"', 'stage = "research"\npolicy_version = "99.0.0"'))
     before = tree(configured)
     run([str(cli), "validate", "--repo", str(configured)], expected=1)
     assert tree(configured) == before, "unsupported config-only policy validation wrote files"
-    config.write_text(config_text)
+    write_intent(config, config_text)
     before = tree(configured)
     preview = owned_install(configured, "--dry-run")
     assert "Effective configuration" in preview and '"enabled": false' in preview
     assert tree(configured) == before, "TOML preview wrote files"
     owned_install(configured)
-    assert config.read_text() == config_text
+    assert config.read_text().startswith(config_text)
     config_policy = json.loads((configured / ".source-code.json").read_text())
     assert config_policy["stage"] == "research" and config_policy["languages"] == []
     assert not (configured / "scripts/check-go.sh").exists()
     assert git(configured, "check-ignore", "source-code.toml") == "source-code.toml"
-    state = json.loads((configured / ".agents/repo-bootstrap.json").read_text())
-    assert str(config) not in json.dumps(state) and "source-code.toml" not in state["files"]
+    state = tomllib.loads(config.read_text())["installed"]
+    assert str(config) not in json.dumps(state) and "files" not in state
+    assert "sha256" not in config.read_text() and not (configured / ".agents/repo-bootstrap.json").exists()
     assert "already current" in owned_install(configured)
     owned_install(configured, "--stage", "alpha")
-    assert config.read_text() == config_text
+    assert config.read_text().startswith(config_text)
     assert json.loads((configured / ".source-code.json").read_text())["stage"] == "alpha"
     assert "configuration stage differs" in run([str(cli), "validate", "--repo", str(configured), "--strict"], expected=1)
     run([str(cli), "upgrade", "--repo", str(configured)])
@@ -727,44 +777,46 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
                     'schema_version = 1\ndetect_languages = "false"\n', 'schema_version = 1\n[checks.go]\nenabled = 0\n',
                     'schema_version = 1\n[checks.typescript]\nenabled = false\nprojects = ["tsconfig.json"]\n',
                     'schema_version = 1\n[checks.go]\nunknown = true\n', 'schema_version = 1\nstage = [\n']:
-        config.write_text(invalid)
+        write_intent(config, invalid)
         before = tree(configured)
         owned_install(configured, expected=1)
         run([str(cli), "validate", "--repo", str(configured)], expected=1)
         assert tree(configured) == before, "invalid configuration changed installation"
-    config.write_text(config_text.replace('stage = "research"', 'stage = "research"\npolicy_version = "99.0.0"'))
+    write_intent(config, config_text.replace('stage = "research"', 'stage = "research"\npolicy_version = "99.0.0"'))
     before = tree(configured)
     owned_install(configured, "--dry-run", expected=1)
     run([str(cli), "validate", "--repo", str(configured)], expected=1)
     overridden_pin = owned_install(configured, "--policy-version", "1.1.0", "--dry-run")
     assert '"policy_version": "1.1.0"' in overridden_pin
     assert tree(configured) == before, "CLI policy override changed authored configuration"
-    config.write_text(config_text.replace('[checks.go]\nenabled = false', '[checks.go]\nenabled = true\nrollout = "strict"'))
+    write_intent(config, config_text.replace('[checks.go]\nenabled = false', '[checks.go]\nenabled = true\nrollout = "strict"'))
     before = tree(configured)
     override = owned_install(configured, "--no-go", "--dry-run")
     assert not json.loads(next(line.split(": ", 1)[1] for line in override.splitlines() if "Effective configuration:" in line))["checks"]["go"]["selected"]
     assert tree(configured) == before, "CLI override preview changed authored TOML"
     run([str(cli), "validate", "--skills-dir", str(source / "ai/skills/pull-request"),
          "--config", str(config)], expected=1)
-    config.write_text(config_text.replace('stage = "research"', 'stage = "beta"'))
+    write_intent(config, config_text.replace('stage = "research"', 'stage = "beta"'))
     local_guide = configured / ".agents/skills/pull-request/SKILL.md"
     local_guide.write_text(local_guide.read_text() + "\nLocal customization.\n")
-    before = tree(configured)
-    assert "preserving existing" in run([str(cli), "upgrade", "--repo", str(configured)], expected=1)
-    assert tree(configured) == before, "TOML upgrade overwrote customization"
+    customized = local_guide.read_bytes()
+    run([str(cli), "upgrade", "--repo", str(configured)])
+    assert local_guide.read_bytes() != customized
+    backups = list((configured / ".git/repo-bootstrap/backups").glob("replace-*/.agents/skills/pull-request/SKILL.md"))
+    assert any(path.read_bytes() == customized for path in backups)
 
     alternate = workspace / "alternate project"
     alternate.mkdir()
     git(alternate, "init", "--quiet")
     private_config = alternate / "private settings.toml"
-    private_config.write_text(config_text)
+    write_intent(private_config, config_text)
     # Explicit relative paths resolve from the invocation directory, not --repo.
     relative_config = str(private_config.relative_to(workspace))
     run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--skill-storage", "copied", "--repo", str(alternate), "--config", relative_config], cwd=workspace)
     assert git(alternate, "check-ignore", private_config.name) == private_config.name
     run([str(cli), "validate", "--repo", str(alternate), "--config", relative_config, "--strict"], cwd=workspace)
     run([str(cli), "upgrade", "--repo", str(alternate), "--config", relative_config], cwd=workspace)
-    private_config.write_text(config_text.replace('mode = "shadow"', 'mode = "tracked"'))
+    write_intent(private_config, config_text.replace('mode = "shadow"', 'mode = "tracked"'))
     run([str(cli), "setup", "--authority", "owned", "--adoption", "new", "--skill-storage", "copied", "--repo", str(alternate), "--config", relative_config], cwd=workspace)
     assert not run(["git", "-C", str(alternate), "check-ignore", "--no-index", private_config.name], expected=1)
     before = tree(alternate)
@@ -803,7 +855,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     (profile_intent / "package.json").write_text('{"name":"intent","scripts":{"test":"echo ok"}}\n')
     (profile_intent / "tsconfig.json").write_text('{"compilerOptions":{"strict":true}}\n')
     owned_install(profile_intent, "--stage", "research", "--no-go", "--no-typescript", "--no-detect-languages", "--pr-template", "none")
-    (profile_intent / "source-code.toml").write_text('schema_version = 1\n[checks.go]\nrollout = "strict"\n[checks.typescript]\nprojects = ["tsconfig.json"]\n')
+    write_intent((profile_intent / "source-code.toml"), 'schema_version = 1\n[checks.go]\nrollout = "strict"\n[checks.typescript]\nprojects = ["tsconfig.json"]\n')
     setup_preview = owned_install(profile_intent, "--dry-run")
     upgrade_preview = run([str(cli), "upgrade", "--repo", str(profile_intent), "--dry-run"])
     for preview in (setup_preview, upgrade_preview):
@@ -815,7 +867,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     assert "# typescript: research" in guide and "python3 scripts/check-source-code.py typescript" in guide, guide
     run([str(cli), "validate", "--repo", str(profile_intent), "--strict"])
     original_intent = (profile_intent / "source-code.toml").read_text()
-    (profile_intent / "source-code.toml").write_text('schema_version = 1\n[checks.go]\nrollout = "ratchet"\n[checks.typescript]\nprojects = ["ignored.json"]\n')
+    write_intent((profile_intent / "source-code.toml"), 'schema_version = 1\n[checks.go]\nrollout = "ratchet"\n[checks.typescript]\nprojects = ["ignored.json"]\n')
     before = tree(profile_intent)
     retained = json.loads(run([str(cli), "explain", "--skill-storage", "copied", "--repo", str(profile_intent), "--no-go", "--no-typescript", "--json"]))
     assert retained["desired"]["checks"]["go"]["action"] == "retain"
@@ -825,21 +877,21 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     assert retained["desired"]["checks"]["typescript"]["projects"] == ["tsconfig.json"]
     assert retained["origins"]["checks.typescript.projects"]["source"] == "saved"
     assert tree(profile_intent) == before
-    (profile_intent / "source-code.toml").write_text(original_intent)
+    write_intent((profile_intent / "source-code.toml"), original_intent)
 
     portable_config = workspace / "tracked configuration"
     portable_config.mkdir()
     git(portable_config, "init", "--quiet")
     tracked_config = portable_config / "source-code.toml"
-    tracked_config.write_text(config_text)
+    write_intent(tracked_config, config_text)
     git(portable_config, "add", "source-code.toml")
     git(portable_config, "commit", "-qm", "Track authored policy")
     owned_install(portable_config)
     # A tracked authored policy must not be hidden even with a shadow installation.
     assert not run(["git", "-C", str(portable_config), "check-ignore", "--no-index", "source-code.toml"], expected=1)
-    assert tracked_config.read_text() == config_text
+    assert tracked_config.read_text().startswith(config_text)
     # Share a tracked installation and prove the file works from a different checkout.
-    tracked_config.write_text(config_text.replace('mode = "shadow"', 'mode = "tracked"'))
+    write_intent(tracked_config, config_text.replace('mode = "shadow"', 'mode = "tracked"'))
     owned_install(portable_config)
     git(portable_config, "add", ".")
     git(portable_config, "commit", "-qm", "Share project profile")
@@ -860,7 +912,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     owned_install(python_project, "--stage", "alpha", "--pr-template", "none")
     assert "python" in json.loads((python_project / ".source-code.json").read_text())["skills"]
     assert not (python_project / "scripts/check-python.py").exists(), "detection installed Python checks implicitly"
-    (python_project / "source-code.toml").write_text('schema_version = 1\nstage = "beta"\n[checks.python]\nenabled = true\npaths = ["app.py"]\n')
+    write_intent((python_project / "source-code.toml"), 'schema_version = 1\nstage = "beta"\n[checks.python]\nenabled = true\npaths = ["app.py"]\n')
     before = tree(python_project)
     inspected = json.loads(run([str(cli), "explain", "--skill-storage", "copied", "--repo", str(python_project), "--json"]))
     assert inspected["desired"]["checks"]["python"]["selected"]
@@ -895,7 +947,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     assert (proto_project / "scripts/check-protobuf.py").is_file()
     assert json.loads((proto_project / ".source-code.json").read_text())["languages"] == ["protobuf"]
     intent = proto_project / "source-code.toml"
-    intent.write_text('schema_version = 1\n[checks.protobuf]\nenabled = true\n')
+    write_intent(intent, 'schema_version = 1\n[checks.protobuf]\nenabled = true\n')
     before = tree(proto_project)
     inspected = json.loads(run([str(cli), "explain", "--repo", str(proto_project), "--json"]))
     assert inspected["desired"]["checks"]["protobuf"]["action"] == "update"
@@ -1000,19 +1052,19 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     kind_text = ('schema_version = 1\nstage = "alpha"\nkind = "library"\n'
                  'detect_languages = false\npr_template = "none"\n'
                  '[checks.go]\nenabled = false\n[checks.typescript]\nenabled = false\n')
-    kind_config.write_text(kind_text)
+    write_intent(kind_config, kind_text)
     owned_install(kind_target)
-    assert kind_config.read_text() == kind_text
+    assert kind_config.read_text().startswith(kind_text)
     owned_install(kind_target, "--kind", "tool")
     assert json.loads((kind_target / ".source-code.json").read_text())["kind"] == "tool"
     assert "configuration kind differs" in run([str(cli), "validate", "--repo", str(kind_target), "--strict"], expected=1)
     run([str(cli), "upgrade", "--repo", str(kind_target)])
     assert json.loads((kind_target / ".source-code.json").read_text())["kind"] == "library"
-    kind_config.write_text(kind_text.replace('kind = "library"\n', ''))
+    write_intent(kind_config, kind_text.replace('kind = "library"\n', ''))
     run([str(cli), "upgrade", "--repo", str(kind_target)])
     assert json.loads((kind_target / ".source-code.json").read_text())["kind"] == "library"
     for bad in ('true', '"application"'):
-        kind_config.write_text(kind_text.replace('kind = "library"', 'kind = ' + bad))
+        write_intent(kind_config, kind_text.replace('kind = "library"', 'kind = ' + bad))
         before = tree(kind_target)
         owned_install(kind_target, expected=1)
         run([str(cli), "validate", "--repo", str(kind_target)], expected=1)
@@ -1127,20 +1179,18 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     run([str(cli), "validate", "--repo", str(library), "--strict"])
     assert "already current" in run([str(cli), "upgrade", "--repo", str(library)])
     saved_override = override.read_bytes()
-    override.write_bytes(saved_override + b"\nPersonal local instructions.\n")
-    before = tree(library)
-    run([str(cli), "upgrade", "--repo", str(library)], expected=1)
-    run([str(cli), "upgrade", "--repo", str(library), "--conflict", "skip"], expected=1)
-    assert tree(library) == before, "conflicting override partially upgraded the project"
-    override.write_bytes(saved_override)
+    custom_override = saved_override + b"\nPersonal local instructions.\n"
+    override.write_bytes(custom_override)
+    run([str(cli), "upgrade", "--repo", str(library)])
+    assert override.read_bytes() == saved_override
+    backups = list((library / ".git/repo-bootstrap/backups").glob("replace-*/AGENTS.override.md"))
+    assert any(path.read_bytes() == custom_override for path in backups)
     generated = library / ".agents/source-code.md"
     saved_generated = generated.read_bytes()
     generated.write_bytes(saved_generated + b"\nLocally edited generated policy.\n")
-    before = tree(library)
     run([str(cli), "validate", "--repo", str(library)], expected=1)
-    run([str(cli), "upgrade", "--repo", str(library), "--conflict", "skip"], expected=1)
-    assert tree(library) == before, "customized generated policy was overwritten"
-    generated.write_bytes(saved_generated)
+    run([str(cli), "upgrade", "--repo", str(library)])
+    assert generated.read_bytes() == saved_generated
     registry.write_bytes(registry_bytes)
 
     detected = workspace / "detected project"
@@ -1227,20 +1277,16 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     local_builder = builder.read_bytes()
     upstream = source / "ai/skills/builder/references/construction.md"
     upstream.write_text(upstream.read_text() + "\nUpdated construction clarification.\n")
-    before = tree(worktree)
-    assert "preserving existing or locally modified" in owned_install(worktree, expected=1)
-    assert tree(worktree) == before
-    owned_install(worktree, "--conflict", "skip")
-    assert builder.read_bytes() == local_builder
+    owned_install(worktree)
+    assert builder.read_bytes() != local_builder
     assert (worktree / ".agents/skills/builder/references/construction.md").read_bytes() == upstream.read_bytes()
-    owned_install(worktree, "--conflict", "replace")
     backups = list((existing / ".git/repo-bootstrap/backups").glob("replace-*/.agents/skills/builder/SKILL.md"))
-    assert len(backups) == 1 and backups[0].read_bytes() == local_builder
+    assert any(path.read_bytes() == local_builder for path in backups)
     assert "already current" in owned_install(worktree)
     assert not git(worktree, "status", "--porcelain", "--untracked-files=all")
 
     # Local exclusions must really win; negation must fail before new writes.
-    (worktree / ".gitignore").write_text("!/.agents/repo-bootstrap.json\n")
+    (worktree / ".gitignore").write_text("!/source-code.toml\n")
     before = tree(worktree)
     assert "prevent local exclusion" in owned_install(worktree, expected=1)
     assert tree(worktree) == before
@@ -1325,28 +1371,23 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         assert trace.read_bytes() == trace_before
     before = tree(explicit_go)
     rejection = owned_install(explicit_go, "--skills", "go", "--stage", "research", "--conflict", "skip", expected=1)
-    assert ".source-code.json" in rejection and "cannot change" in rejection, rejection
+    assert "cannot change" in rejection and "SKILL.md" in rejection, rejection
     assert tree(explicit_go) == before
     policy_path.write_text(original)
     legacy_runner = explicit_go / "scripts/check-go.sh"
     legacy_bytes = legacy_runner.read_bytes()
     legacy_runner.write_bytes(b"#!/bin/sh\nexit 0\n")
-    manifest_path = explicit_go / ".agents/repo-bootstrap.json"
-    manifest_bytes = manifest_path.read_bytes()
-    manifest = json.loads(manifest_bytes)
-    manifest["files"]["scripts/check-go.sh"]["sha256"] = hashlib.sha256(legacy_runner.read_bytes()).hexdigest()
-    manifest_path.write_text(json.dumps(manifest))
     before = tree(explicit_go)
     assert "requires an updated go runner" in owned_install(explicit_go, "--skills", "go", "--no-go", "--stage", "research", expected=1)
     assert tree(explicit_go) == before
     legacy_runner.write_bytes(legacy_bytes)
-    manifest_path.write_bytes(manifest_bytes)
     versions = json.loads(registry_bytes)
     versions["skills"]["go"] = "1.2.0"
     registry.write_text(json.dumps(versions))
     legacy_runner.write_bytes(legacy_bytes + b"\n# Local runner customization.\n")
     before = tree(explicit_go)
-    assert "scripts/check-go.sh" in run([str(cli), "upgrade", "--repo", str(explicit_go), "--conflict", "skip"], expected=1)
+    rejection = run([str(cli), "upgrade", "--repo", str(explicit_go), "--conflict", "skip"], expected=1)
+    assert "cannot change" in rejection, rejection
     assert tree(explicit_go) == before, "version upgrade retained a modified runtime with a newer pin"
     legacy_runner.write_bytes(legacy_bytes)
     before = tree(explicit_go)
@@ -1380,7 +1421,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     for target in (shared, *(workspace / ("kind-" + name) for name in ("service", "library", "tool"))):
         if target != shared:
             saved_kind = json.loads((target / ".source-code.json").read_text())["kind"]
-            (target / "source-code.toml").write_text('schema_version = 1\nstage = "research"\nkind = "' + saved_kind + '"\n')
+            write_intent((target / "source-code.toml"), 'schema_version = 1\nstage = "research"\nkind = "' + saved_kind + '"\n')
         installed_runner = (target / "scripts/check-source-code.py").read_bytes()
         subset_view = json.loads(run([str(cli), "explain", "--skill-storage", "copied", "--repo", str(target), "--skills", "pull-request", "--json"]))
         assert subset_view["desired"]["skill_versions"]["source-code-lifecycle"] == json.loads(registry_bytes)["skills"]["source-code-lifecycle"]

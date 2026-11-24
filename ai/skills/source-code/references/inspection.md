@@ -2,7 +2,7 @@
 
 ## Inspect the target
 
-Resolve the intended checkout and inspect existing repository instructions, `.source-code.json`, the `AGENTS.override.md` router, and generated `.agents/source-code.md` when present. Reuse an assigned worktree; setup operates on that checkout and does not allocate worktrees. Existing policy records the installed lifecycle stage, skill selections, check profiles, and detection evidence. Read authored `source-code.toml` at the target Git root when present; it expresses desired policy separately from generated state.
+Resolve the intended checkout and inspect existing repository instructions, `.source-code.json`, the `AGENTS.override.md` router, and generated `.agents/source-code.md` when present. Reuse an assigned worktree; setup operates on that checkout and does not allocate worktrees. Existing policy records the installed lifecycle stage, skill selections, check profiles, and detection evidence. Read `source-code.toml` at the target Git root when present. Its authored settings express desired policy; reserved `[installed]` and `[installed.skill_versions]` tables record applied selections and versions without file inventories or hashes.
 
 Use `source-code --help` and the chosen subcommand’s `--help` for the installed version’s supported options. If the command is missing, the dotfiles workstation set supplies it; `make source-code-config` from the owning dotfiles checkout links it explicitly. Do not apply unrelated workstation configuration or assume a newer release is installed.
 

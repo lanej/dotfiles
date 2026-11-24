@@ -81,9 +81,16 @@ enabled = false
     assert (work / ".claude/skills/builder/SKILL.md").is_file()
     assert json.loads((work / ".source-code.json").read_text())["stage"] == "alpha"
     assert git("status", "--porcelain", cwd=work) == ""
-    before = (work / ".agents/repo-bootstrap.json").read_bytes()
+    before = (work / "source-code.toml").read_bytes()
     hydrate(work)
-    assert before == (work / ".agents/repo-bootstrap.json").read_bytes()
+    assert before == (work / "source-code.toml").read_bytes()
+    # A partially missing host installation must be restored by hydration.
+    (work / ".claude/skills/builder").unlink()
+    (work / ".claude/rules/source-code.md").unlink()
+    hydrate(work)
+    assert (work / ".claude/skills/builder/SKILL.md").is_file()
+    assert (work / ".claude/rules/source-code.md").is_file()
+    assert before == (work / "source-code.toml").read_bytes()
     # Target configuration wins over the primary checkout's shadow configuration.
     # Explicitly suppress global hooks when preparing manual hydration cases.
     git("config", "hook.source-code-checkout.enabled", "false")
