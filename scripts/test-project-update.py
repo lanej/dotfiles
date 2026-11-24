@@ -309,6 +309,80 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(rows[0]["activation"], "already-current")
         self.assertEqual([json.loads(line)[0] for line in self.log.read_text().splitlines()], ["inventory", "verify"])
 
+    def test_lost_original_restore_ack_reconciles_without_repeating_effects(self):
+        hook = self.base / "original-owner.py"
+        state = self.base / "original-owner.json"
+        selected = self.base / "select-original"
+        process = {"pid": 123, "start_identity": "original-start",
+                   "native_id": "original-native", "owner_verified": True}
+        state.write_text(json.dumps({"process": process, "ready": True}))
+        hook.write_text(f'''import json, os, pathlib, sys
+actor, action = sys.argv[1:]
+log = pathlib.Path({str(self.log)!r})
+with log.open('a') as out:
+    out.write(json.dumps([actor, action]) + '\\n')
+state = pathlib.Path({str(state)!r})
+value = json.loads(state.read_text())
+target = {{**value,'target':'local','expected_identity':'original-image' if pathlib.Path({str(selected)!r}).exists() else 'selected-image',
+          'running_identity':'original-image','sessions':[],'scheduler_paused':False}}
+if actor == 'prerequisite':
+    target.update(ready=False, running_identity=None, process=None)
+else:
+    if action == 'checkpoint':
+        target.update(ready=False, checkpoint={{'state':'confirmed','run_id':os.environ['PROJECT_UPDATE_RUN_ID']}})
+        state.write_text(json.dumps(target))
+    if action == 'restore':
+        assert os.environ.get('PROJECT_UPDATE_RECOVER_ORIGINAL') == '1'
+        target.pop('checkpoint', None)
+        target['ready'] = True
+        state.write_text(json.dumps(target))
+        print('restore acknowledgement lost')
+        sys.exit(0)
+print(json.dumps({{'schema_version':1,'targets':[target]}}))
+if action == 'verify' and (not target['ready'] or target['running_identity'] != target['expected_identity']):
+    sys.exit(3)
+''')
+        command = [sys.executable, str(hook)]
+        self.config.write_text(
+            f'[projects.fixture]\npath={json.dumps(str(self.checkout))}\n'
+            f'command={json.dumps([*command, "fixture"])}\ndepends_on=["prerequisite"]\n'
+            f'[projects.prerequisite]\npath={json.dumps(str(self.checkout))}\n'
+            f'command={json.dumps([*command, "prerequisite"])}\n')
+        first = self.invoke("restart", "fixture", code=3)[0]
+        self.assertEqual(first["target_results"][0]["phase"], "original-restoration-requested")
+        self.assertNotIn("recovered_original", first["target_results"][0])
+        self.assertTrue(json.loads(state.read_text())["ready"])
+        self.invoke("verify", "fixture", code=3)
+        selected.touch()
+
+        # A healthy different owner cannot prove release of the frozen owner.
+        changed = json.loads(state.read_text())
+        changed["process"] = {**process, "native_id": "different-owner"}
+        state.write_text(json.dumps(changed))
+        blocked = self.invoke("restart", "fixture", code=3)[0]
+        self.assertIn("previous-update-not-restored", blocked["reason"])
+        changed["process"] = process
+        state.write_text(json.dumps(changed))
+
+        # Even an exact original is insufficient after an unknown launch.
+        operation = Path(first["recovery_path"])
+        unknown = operation / "evidence/unknown-restart.json"
+        unknown.write_text(json.dumps({"project": "fixture", "target": "local",
+                                      "action": "restart", "state": "outcome-unknown"}))
+        unknown.chmod(0o600)
+        blocked = self.invoke("restart", "fixture", code=3)[0]
+        self.assertIn("previous-update-not-restored", blocked["reason"])
+        unknown.unlink()
+
+        completed = self.invoke("restart", "fixture")[0]
+        self.assertEqual(completed["activation"], "already-current")
+        reconciled = json.loads((operation / "fixture-reconciled.json").read_text())
+        self.assertTrue(reconciled["targets"][0]["recovered_original"])
+        actions = [json.loads(line) for line in self.log.read_text().splitlines()]
+        self.assertEqual(actions.count(["fixture", "checkpoint"]), 1)
+        self.assertEqual(actions.count(["fixture", "restore"]), 1)
+        self.assertNotIn(["fixture", "restart"], actions)
+
     def test_changed_process_blocks_replacement(self):
         (self.checkout / "process-change").touch()
         rows = self.invoke("restart", "fixture", code=3)
@@ -641,6 +715,17 @@ elif action in ('inventory','checkpoint','verify','restore'):
         self.invoke("restart", "beads")
         state = self.base / "beads-runtime.json"
         runtime = json.loads(state.read_text())
+        restarts_before = (self.base / "beads-restarts").read_text().splitlines()
+        runtime["ready"] = False
+        state.write_text(json.dumps(runtime))
+        self.invoke("restart", "beads")
+        self.assertTrue(json.loads(state.read_text())["ready"])
+        self.assertEqual(len((self.base / "beads-restarts").read_text().splitlines()),
+                         len(restarts_before) + 1)
+        self.invoke("restart", "beads")
+        self.assertEqual(len((self.base / "beads-restarts").read_text().splitlines()),
+                         len(restarts_before) + 1, "A healthy current owner was replaced")
+        runtime = json.loads(state.read_text())
         runtime["running_identity"] = "previous-native-image"
         state.write_text(json.dumps(runtime))
         (self.base / "beads-native-refusal").touch()
@@ -654,7 +739,8 @@ elif action in ('inventory','checkpoint','verify','restore'):
         installed_helper.write_text("modified outside staging\n")
         self.assertIsNone(self.invoke("status", "beads")[0]["runtime"]["installed_versions"])
         self.invoke("restart", "beads", code=3)
-        self.assertEqual((self.base / "beads-restarts").read_text(), "restart\nrestart\n")
+        self.assertEqual((self.base / "beads-restarts").read_text().splitlines(),
+                         [*restarts_before, "restart"])
         self.assertEqual(persistent.read_text(), "retained task data")
         self.assertEqual(local_config.read_text(), "# retained operator settings\n")
 
@@ -753,7 +839,14 @@ chmod +x "$HOME/.local/bin/worktree"
                           f'with open({str(log)!r}, "a") as out: out.write(json.dumps(sys.argv[1:]) + "\\n")\n'
                           'if "lifecycle" in sys.argv:\n'
                           ' if sys.argv[-1]=="artifact": print(json.dumps({"expected_identity":"managed-fixture"}))\n'
-                          ' elif os.environ.get("PROJECT_UPDATE_OPERATION_DIR"): print((pathlib.Path(os.environ["PROJECT_UPDATE_OPERATION_DIR"])/"octo-manager-inventory.json").read_text())\n'
+                          ' elif os.environ.get("PROJECT_UPDATE_OPERATION_DIR"):\n'
+                          '  operation=pathlib.Path(os.environ["PROJECT_UPDATE_OPERATION_DIR"])\n'
+                          '  observed=operation/"octo-observed.json"\n'
+                          '  value=json.loads((observed if observed.exists() else operation/"octo-manager-inventory.json").read_text())\n'
+                          '  if sys.argv[-1]=="restore":\n'
+                          '   value["targets"][0].pop("checkpoint",None);value["targets"][0]["ready"]=True\n'
+                          '   observed.write_text(json.dumps(value))\n'
+                          '  print(json.dumps(value))\n'
                           'if "scripts/install-local.ts" in sys.argv:\n'
                           ' if "--stage-only" in sys.argv:\n'
                           '  import shutil, subprocess\n'
@@ -798,7 +891,9 @@ chmod +x "$HOME/.local/bin/worktree"
         operation.mkdir(mode=0o700)
         run_id = "11111111-2222-4333-8444-555555555555"
         target = {"target": "local", "expected_identity": "managed-fixture",
-                  "running_identity": "old-image", "ready": False, "process": None, "sessions": [],
+                  "running_identity": "old-image", "ready": False,
+                  "process": {"pid": 123, "start_identity": "original-start",
+                              "native_id": "original-native", "owner_verified": True}, "sessions": [],
                   "checkpoint": {"state": "confirmed", "run_id": run_id}}
         (operation / "octo-manager-inventory.json").write_text(json.dumps({"schema_version": 1, "targets": [target]}))
         (operation / "octo-manager-inventory.json").chmod(0o600)
@@ -809,6 +904,19 @@ chmod +x "$HOME/.local/bin/worktree"
         refused = json.loads(result.stdout)["targets"][0]
         self.assertEqual(refused["reason"], "native-service-owner-differs")
         self.assertIn("do not repeat", refused["replacement_outcome"])
+        env["PROJECT_UPDATE_RECOVER_ORIGINAL"] = "1"
+        released = invoke("restore")
+        self.assertEqual(released.returncode, 0, released.stderr)
+        restored = json.loads(released.stdout)["targets"][0]
+        self.assertTrue(restored["ready"])
+        self.assertFalse(restored["selected_cli_ready"])
+        self.assertEqual(restored["running_identity"], "old-image")
+        self.assertEqual(restored["process"], target["process"])
+        self.assertNotIn("checkpoint", restored)
+        self.assertEqual(invoke("verify").returncode, 3,
+                         "Releasing the original was incorrectly reported as selected-version completion")
+        self.assertEqual({path: path.read_bytes() for path in before}, before)
+        env.pop("PROJECT_UPDATE_RECOVER_ORIGINAL")
         # A runnable host below the shared minimum cannot establish identity or issue a checkpoint.
         binary.write_text(binary.read_text().replace('print("1.10.0")', 'print("1.4.4")'))
         before = log.read_bytes()

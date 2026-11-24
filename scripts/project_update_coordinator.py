@@ -3,7 +3,7 @@
 import hashlib
 import subprocess
 
-from project_update_activation import IncompleteActivation, native, reconcile_sessions, verified
+from project_update_activation import IncompleteActivation, native, original_restored, reconcile_sessions, verified
 from project_update_operations import private_directory, write_json
 
 ERRORS = (OSError, ValueError, IncompleteActivation, subprocess.SubprocessError)
@@ -110,8 +110,7 @@ def activate_targets(names, projects, rows, directory, save, ordering, failure):
             row["targets"] = values
             row["target_results"] = [
                 {"target": value["target"], "outcome": "ok", "completed": [],
-                 "replacement_needed": not bool(value.get("expected_identity") and
-                                                value["expected_identity"] == value["running_identity"])}
+                  "replacement_needed": not verified([value])[0]}
                 for value in values]
             blockers = row.get("previous_target_blockers", {})
             for target in row["target_results"]:
@@ -301,10 +300,7 @@ def activate_targets(names, projects, rows, directory, save, ordering, failure):
                 save()
                 restored = one(projects[name], target, "restore", directory, recover_original=True)
                 reconcile_sessions([target], [restored], restored=True)
-                if (restored.get("process") != inventory[name][target["target"]].get("process")
-                        or restored["running_identity"] != inventory[name][target["target"]]["running_identity"]
-                        or not restored["ready"]):
-                    raise IncompleteActivation("original-process-restoration-unverified", [restored])
+                original_restored(target, restored, directory.name)
                 result["recovered_original"] = True
             except ERRORS as error:
                 result["recovery_reason"] = str(error)

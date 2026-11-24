@@ -133,8 +133,8 @@ def inspect(project, action="inventory"):
                     release = selected.parent.parent
                     target["selected_release"] = str(release)
                     current = Path.home() / ".local/share/octo-manager/current"
-                    if not current.exists() or current.resolve() != release:
-                        target["ready"] = False
+                    target["selected_cli_ready"] = current.exists() and current.resolve() == release
+                    if not target["selected_cli_ready"]:
                         target["reason"] = target.get("reason") or "selected-native-cli-not-promoted"
             return value, code
     except (OSError, ValueError, subprocess.SubprocessError):
@@ -181,7 +181,9 @@ def main():
     if action in ("inventory", "checkpoint", "verify"):
         value, code = inspect(project, action)
         if action == "verify" and any(not target["ready"] or not target["expected_identity"]
-                                      or target["running_identity"] != target["expected_identity"] for target in value["targets"]):
+                                      or target["running_identity"] != target["expected_identity"]
+                                      or target.get("selected_cli_ready", True) is not True
+                                      for target in value["targets"]):
             code = 3
         return emit(value, 0 if action == "inventory" else code)
     if action == "restore":

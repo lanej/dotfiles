@@ -18,8 +18,8 @@ import uuid
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
-from project_update_activation import (IncompleteActivation, native, reconcile_sessions,
-                                       verified)
+from project_update_activation import (IncompleteActivation, native, original_restored,
+                                       reconcile_sessions, verified)
 from project_update_operations import (acquire, operation_path, private_directory,
                                       read_json, state_root, wait_result, write_json)
 
@@ -143,13 +143,15 @@ def reconcile_previous(name, project, directory):
         if reconciled.is_file():
             settled.update(value["target"] for value in read_json(reconciled)["targets"])
         journal = previous / "evidence"
-        unresolved = set()
+        unresolved, restart_requested = set(), set()
         if journal.is_dir():
             for path in journal.iterdir():
                 attempt = read_json(path)
                 if attempt.get("project") != name or attempt.get("action") not in ("checkpoint", "restart", "restore"):
                     continue
                 target = attempt.get("target")
+                if attempt.get("action") == "restart":
+                    restart_requested.add(target)
                 if target in settled:
                     continue
                 response = attempt.get("response", {}).get("targets", [])
@@ -169,15 +171,24 @@ def reconcile_previous(name, project, directory):
         if restoration_path.is_file():
             before = read_json(restoration_path).get(name, {"targets": before})["targets"]
         observed = []
+        phases = {value["target"]: value.get("phase") for value in row.get("target_results", [])}
         for target in before:
             if None not in unresolved and target["target"] not in unresolved:
                 continue
             try:
-                after = native({**project, "target": target["target"]}, "verify", directory)
-                reconcile_sessions([target], after, restored=True)
-                complete, reason = verified(after)
-                if not complete:
-                    raise IncompleteActivation(reason, after)
+                after = native({**project, "target": target["target"]}, "inventory", directory)
+                try:
+                    reconcile_sessions([target], after, restored=True)
+                    complete, reason = verified(after)
+                    if not complete:
+                        raise IncompleteActivation(reason, after)
+                except IncompleteActivation:
+                    if (phases.get(target["target"]) != "original-restoration-requested"
+                            or None in restart_requested or target["target"] in restart_requested
+                            or len(after) != 1 or after[0]["target"] != target["target"]):
+                        raise
+                    original_restored(target, after[0], previous.name)
+                    after[0]["recovered_original"] = True
                 observed.extend(after)
             except (OSError, ValueError, IncompleteActivation, subprocess.SubprocessError) as error:
                 blockers[target["target"]] = f"previous-update-not-restored: {previous.name}: {error}"

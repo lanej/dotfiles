@@ -58,6 +58,8 @@ def verified(targets):
             return False, target.get("reason", "running-artifact-does-not-match")
         if target["ready"] is not True:
             return False, target.get("reason", "target-not-ready")
+        if target.get("selected_cli_ready", True) is not True:
+            return False, target.get("reason", "selected-native-cli-not-promoted")
         if any(session["restoration"] not in ("restored", "unchanged") for session in target["sessions"]):
             return False, target.get("reason", "session-restoration-incomplete")
     return True, None
@@ -117,14 +119,14 @@ def native(project, action, directory=None, timeout=None):
     return targets
 
 
-def reconcile_sessions(before, after, *, restored=False):
+def reconcile_sessions(before, after, *, restored=False, selected=True):
     """Every observed native session must still be accounted for after restore."""
     actual = {target["target"]: target for target in after}
     for target in before:
         observed = actual.get(target["target"])
         if observed is None:
             raise IncompleteActivation(f"target-disappeared: {target['target']}")
-        if observed["expected_identity"] != target["expected_identity"]:
+        if selected and observed["expected_identity"] != target["expected_identity"]:
             raise IncompleteActivation(f"selected-artifact-changed: {target['target']}")
         paused = target.get("restore_scheduler_paused", target.get("scheduler_paused"))
         if restored and type(paused) is bool and observed.get("scheduler_paused") != paused:
@@ -136,3 +138,22 @@ def reconcile_sessions(before, after, *, restored=False):
             for key in ("transcript_path", "branch_id", "cwd", "layout_identity"):
                 if key in session and session[key] != sessions[session["session_id"]].get(key):
                     raise IncompleteActivation(f"restored-{key}-differs: {session['session_id']}")
+
+
+def original_restored(before, after, run_id):
+    """Prove release of an original checkpoint without claiming an upgrade."""
+    process = before.get("process")
+    checkpoint = before.get("checkpoint") or {}
+    if (not isinstance(process, dict) or process.get("owner_verified") is not True
+            or type(process.get("pid")) is not int or process["pid"] <= 0
+            or not all(isinstance(process.get(key), str) and process[key]
+                       for key in ("start_identity", "native_id"))
+            or checkpoint.get("state") != "confirmed" or checkpoint.get("run_id") != run_id
+            or not before.get("running_identity")
+            or after.get("process") != process
+            or after.get("running_identity") != before["running_identity"]
+            or after.get("ready") is not True or after.get("checkpoint") is not None
+            or any(session["restoration"] not in ("restored", "unchanged")
+                   for session in after["sessions"])):
+        raise IncompleteActivation("original-process-restoration-unverified", [after])
+    reconcile_sessions([before], [after], restored=True, selected=False)
