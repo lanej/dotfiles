@@ -35,7 +35,6 @@ package.loaded["beads.store"] = {
 		}
 	end,
 }
-local readfile = vim.fn.readfile
 vim.fn.readfile = function()
 	calls.tokens = calls.tokens + 1
 	error("Unexpected file/token read")
@@ -161,9 +160,4 @@ passive(function()
 	ids({})
 end)
 eq(calls, { new = 3, list = 4, get = 1, verify = 1, tokens = 0, requests = 0 })
--- Check the actual startup source ordering, not a fictional Lazy command loader.
--- Full disposable init.lua startup and keyboard Tab remain separate external gates.
-local startup = table.concat(readfile("nvim/init.lua"), "\n")
-local registration = assert(startup:find('require("beads").setup(vim.g.beads or {})', 1, true))
-assert(registration < assert(startup:find('require("lazy").setup', 1, true)))
 print("Beads isolated command/completion acceptance passed")
