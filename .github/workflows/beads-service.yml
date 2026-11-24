@@ -5,7 +5,6 @@ on:
     paths: &beads-paths
       - 'tools/beads/**'
       - 'config/beads/**'
-      - 'bootstrap/tools.toml'
       - '.github/workflows/beads-service.yml'
   push:
     branches:

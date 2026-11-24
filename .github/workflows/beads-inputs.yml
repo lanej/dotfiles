@@ -1,0 +1,36 @@
+name: Beads capability inputs
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: &inputs
+      - 'tools/beads/tool.toml'
+      - 'bootstrap/tools.toml'
+      - 'scripts/dotfiles-config.py'
+      - 'scripts/runtime_requirements.py'
+      - 'Makefile'
+      - 'config/targets.mk'
+      - 'config/sets/*.toml'
+      - 'scripts/test-beads-inputs.mjs'
+      - 'tools/task-runtime/package.json'
+      - 'tools/task-runtime/package-lock.json'
+      - '.github/workflows/**'
+  push:
+    branches:
+      - master
+    paths: *inputs
+permissions:
+  contents: read
+jobs:
+  selection:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm --prefix tools/task-runtime ci --ignore-scripts
+      - run: node --test scripts/test-beads-inputs.mjs

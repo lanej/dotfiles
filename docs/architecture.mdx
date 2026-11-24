@@ -11,7 +11,7 @@ The checkout is the source of configuration. Machine TOML selects what applies; 
 | --- | --- | --- |
 | Machine | Set selection and final property overrides | `~/.config/dotfiles/config.toml` |
 | Sets | Reusable bundles and work context | [config/sets](https://github.com/lanej/dotfiles/tree/master/config/sets) |
-| Catalog | Tool pins, dependencies, installers, configuration targets, hooks | [bootstrap/tools.toml](https://github.com/lanej/dotfiles/blob/master/bootstrap/tools.toml) |
+| Catalog | Tool pins, dependencies, installers, configuration targets, hooks | [Legacy catalog](https://github.com/lanej/dotfiles/blob/master/bootstrap/tools.toml) composed with [Beads recipe](https://github.com/lanej/dotfiles/blob/master/tools/beads/tool.toml) |
 | Resolver | Validates and composes the selected plan | [scripts/dotfiles-config.py](https://github.com/lanej/dotfiles/blob/master/scripts/dotfiles-config.py) |
 | Installation | Executes selected installers | [bootstrap.sh](https://github.com/lanej/dotfiles/blob/master/bootstrap.sh) |
 | Configuration | Links files and runs selected integrations | [Makefile](https://github.com/lanej/dotfiles/blob/master/Makefile) |

@@ -15,7 +15,6 @@ on:
       - 'tools/task-runtime/**'
       - 'tools/beads/**'
       - 'config/beads/**'
-      - 'bootstrap/tools.toml'
       - '.github/workflows/neovim-beads.yml'
   push:
     branches: [master]

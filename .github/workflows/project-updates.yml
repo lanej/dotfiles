@@ -22,6 +22,7 @@ on:
       - 'scripts/dotfiles-config.py'
       - 'bootstrap.sh'
       - 'bootstrap/tools.toml'
+      - 'tools/beads/tool.toml'
       - 'config/project-updates.toml'
       - '.github/workflows/project-updates.yml'
   push:

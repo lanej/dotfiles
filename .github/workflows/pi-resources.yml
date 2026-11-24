@@ -14,6 +14,9 @@ on:
       - 'Makefile'
       - 'bootstrap.sh'
       - 'bootstrap/tools.toml'
+      - 'tools/beads/tool.toml'
+      - 'scripts/dotfiles-config.py'
+      - 'scripts/runtime_requirements.py'
       - 'scripts/install-pi'
       - '.github/workflows/pi-resources.yml'
   push:
@@ -30,6 +33,9 @@ on:
       - 'Makefile'
       - 'bootstrap.sh'
       - 'bootstrap/tools.toml'
+      - 'tools/beads/tool.toml'
+      - 'scripts/dotfiles-config.py'
+      - 'scripts/runtime_requirements.py'
       - 'scripts/install-pi'
       - '.github/workflows/pi-resources.yml'
 

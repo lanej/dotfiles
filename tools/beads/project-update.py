@@ -29,7 +29,7 @@ def binary_digest(path):
 
 def beads_source():
     files = ("tools/beads/project-update.py", "tools/beads/beads-service.py", "tools/beads/beads_config.py",
-             "tools/beads/beads_lifecycle.py", "config/beads/trial.toml", "bootstrap/tools.toml")
+             "tools/beads/beads_lifecycle.py", "config/beads/trial.toml", "tools/beads/tool.toml")
     hashes = {name: binary_digest(ROOT / name) for name in files}
     revision = run(["git", "-C", str(ROOT), "rev-parse", "HEAD"], capture=True)
     dirty = bool(run(["git", "-C", str(ROOT), "status", "--porcelain", "--untracked-files=all", "--", *files], capture=True))
@@ -122,7 +122,7 @@ def beads_locked(action, lock_fd=None):
         for name in ("beads-service.py", "beads_config.py", "beads_lifecycle.py"):
             if binary_digest(ROOT / "tools/beads" / name) != binary_digest(share / name):
                 raise ValueError("Installed Beads controller differs from the selected source")
-        catalog = tomllib.loads((ROOT / "bootstrap/tools.toml").read_text())["tools"]["beads"]
+        catalog = tomllib.loads((ROOT / "tools/beads/tool.toml").read_text())["tools"]["beads"]
         versions = {"beads": catalog["version"], "dolt": catalog["dolt_version"]}
         if platform.system() == "Darwin":
             binaries = json.loads((share / "runtime.json").read_text())
