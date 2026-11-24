@@ -45,14 +45,24 @@ pub fn select() -> Result<Option<PathBuf>> {
 
 /// Called by ~/.ssh/rc, before any user shell or command is launched.
 fn publish_login() -> Result<()> {
+    if ["ZELLIJ", "TMUX"]
+        .iter()
+        .any(|key| env::var_os(key).is_some_and(|value| !value.is_empty()))
+    {
+        bail!("publish-login requires the current SSH login shell outside Zellij or tmux; reconnect with agent forwarding, or detach and run it there.");
+    }
     if let Some(link) = select()? {
-        if let Some(raw) = env::var_os("DOTFILES_SSH_INCOMING_SOCK")
-            .or_else(|| env::var_os("SSH_AUTH_SOCK"))
+        let incoming = match env::var_os("SSH_AUTH_SOCK") {
+            Some(socket) if Path::new(&socket) == link => env::var_os("DOTFILES_SSH_INCOMING_SOCK"),
+            socket => socket,
+        };
+        if let Some(raw) = incoming
             .filter(|s| !s.is_empty())
             .map(PathBuf::from)
             .filter(|raw| *raw != link)
         {
-            let info = fs::symlink_metadata(&raw)?;
+            let info = fs::symlink_metadata(&raw)
+                .with_context(|| format!("Inspect incoming SSH agent socket: {}", raw.display()))?;
             if !raw.is_absolute() || !info.file_type().is_socket() || !owned(&info) {
                 bail!(
                     "Expected an owned raw forwarded SSH agent socket: {}",

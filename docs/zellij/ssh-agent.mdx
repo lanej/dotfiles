@@ -24,6 +24,8 @@ Remote shells export `SSH_AUTH_SOCK=$HOME/.ssh/dotfiles-agent/forwarded.sock`. T
 
 The latest forwarded login selects the agent for every session on that host. If that connection closes, reconnect with forwarding enabled; there is no automatic fallback to another connection. Nested mux shells cannot republish their inherited, stale socket. Missing or invalid incoming sockets produce an error and leave the selected agent unchanged.
 
+For manual recovery, run `zellij-agent publish-login` in the current SSH login shell outside Zellij or tmux, then reattach. Running it inside a mux reports this requirement and preserves the selected agent. `zellij-agent init` and `fixssh` select the shared path; they do not repair a disconnected forwarding connection.
+
 ## Adopt the stable path in existing programs
 
 Programs started before this change need to inherit the new path once. In an existing remote pane, run:
