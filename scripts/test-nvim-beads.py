@@ -66,6 +66,9 @@ class Boundary:
                 body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))) or b"{}")
                 with state.lock:
                     if path == "/control":
+                        if body.get("add_task"):
+                            identity = body["add_task"]
+                            state.tasks[identity] = task(identity, "Uncached explicit task")
                         if body.get("edit"):
                             item = state.tasks[body["edit"]]
                             item["revision"] = str(int(item["revision"]) + 1)
