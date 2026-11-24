@@ -27,7 +27,8 @@ Use the project ID reported by `GET /v0/beads/context`. The client requires the 
 
 | Command | Action |
 |---|---|
-| `:Beads [project]` | Open or focus that project's persistent explorer. |
+| `:BeadsProjects` | List sorted configured project names; `*` marks the current project. With none configured, show configuration guidance. |
+| `:Beads [project]` | Open or focus that project's persistent explorer; complete configured names by prefix. |
 | `:BeadsOpen [id]` | Open a task in a normal editing window; reuse its buffer across windows/tabs. |
 | `:BeadsNew [parent-id]` | Open an unsaved root or child draft. |
 | `:BeadsRefresh` | Refresh the graph while preserving expansion, selection, focus and dirty documents. |
@@ -35,6 +36,10 @@ Use the project ID reported by `GET /v0/beads/context`. The client requires the 
 | `:BeadsStatus status` | Explicitly change status under revision and server policy checks. |
 | `:BeadsRecover` | Open a durable pending-creation draft for reconciliation. |
 | `:BeadsReload[!]` | Reload an existing task's latest document/revision; `!` explicitly replaces unsaved text. |
+
+Commands without an explicit project use the current Beads document or explorer's project before the global active/default project. Opening an explorer changes the global active project; listing and completion do not. `:BeadsOpen` and `:BeadsNew` complete sorted, literal-prefix IDs from that project's cached graph only. Candidates are empty before a successful refresh; a failed refresh retains the previous cache. Manually typed IDs need not be cached. Listing shows names only, never URLs, credentials or database discovery results. Neither listing nor completion reads tokens, contacts services, creates explorers or discovers databases.
+
+`nvim/init.lua` registers these commands eagerly, before Lazy setup, including with no configured projects. Project-name completion is available before opening any explorer; there is no separate lazy command loader.
 
 In the explorer use `j`/`k` to move, `l` to expand, `h` to collapse or move to the parent, Tab to toggle, Enter/`o` to open, `a` to create a child, `A` to create a root, `s` to enter a status, `gr` for relationships, `r` to refresh and `q` to close the explorer. Blocker links are independent of nesting. Containment does not indicate readiness or authorize child dispatch. Orphans and cyclic containment remain inspectable with warnings.
 
@@ -69,6 +74,12 @@ Before creation, the editor writes a private receipt under `stdpath("state")/bea
 Missing tasks, unavailable reads, mismatched markers/parents or intervening remote edits leave the draft and receipt pending for manual inspection. A missing task does not prove creation never committed. Inspect the target through the configured service and preserve the receipt/draft while resolving the outcome; do not delete the receipt merely to retry. The receipt stores the submitted text, not a crash-proof journal of subsequent unsaved keystrokes. A confirmed no-write server refusal permits a corrected explicit save.
 
 ## Development checks
+
+`nvim --headless -u NONE -i NONE -n -l nvim/tests/beads-completion.lua` exercises real command registration/execution and `getcompletion` without plugins or network. Its controlled in-process store supplies distinct project graphs via real refresh, including before explorer creation. It checks empty/single/multiple configurations, context precedence, literal prefixes and passive-operation call/buffer invariants. Only the explorer portion suppresses Nui rendering; it does not stand in for full startup or visual acceptance.
+
+The separate external gates are the pinned-Nui HTTP journey, `make check-beads-lua`, full disposable `nvim/init.lua` startup, and actual keyboard Tab plus empty/populated rendered output with retained visual evidence. The HTTP journey requires loopback and installed locked dependencies and is not part of isolation.
+
+[Project listing at 120 columns](screenshots/neovim-beads-projects.png) and [task completion at 64 columns](screenshots/neovim-beads-completion.png) show native Neovim grid captures from the complete configuration with lockfile plugin revisions. The narrow capture shows the cached task selected in Blink’s menu; pressing Tab inserts its ID while remaining on the command line without submitting. The repository renderer draws the captured cells with Hack Nerd Font Mono and composites transparency against the configured Kitty background; these are editor-grid reconstructions, not desktop screenshots.
 
 `make test-nvim-beads` exercises public editor commands against a controlled HTTP boundary, including lost responses and recovery in a new Neovim process. It uses the installed Nui checkout at the lockfile revision; set `NVIM_TEST_NUI=/path/to/nui.nvim` to select another checkout of that same revision. `make check-beads-lua` checks generated binding freshness after `npm ci --prefix tools/task-runtime`. Regenerate using `npm --prefix tools/task-runtime run generate:beads-lua`; keep the schema and both generated clients synchronized when updating Beads.
 

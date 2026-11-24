@@ -27,6 +27,44 @@ local function project(name)
 	return projects[name]
 end
 
+local function prefix_candidates(values, lead)
+	local result = {}
+	for _, value in ipairs(values) do
+		if value:sub(1, #lead) == lead then
+			result[#result + 1] = value
+		end
+	end
+	table.sort(result)
+	return result
+end
+
+function M.projects()
+	local names = prefix_candidates(vim.tbl_keys(projects), "")
+	if #names == 0 then
+		notify("No projects configured. Set vim.g.beads.projects or call require('beads').setup({ projects = ... }).")
+		return
+	end
+	local ok, current = pcall(project)
+	local lines = { "Configured projects (* current):" }
+	for _, name in ipairs(names) do
+		lines[#lines + 1] = (ok and current.name == name and "* " or "  ") .. name
+	end
+	notify(table.concat(lines, "\n"))
+end
+
+-- Completion is deliberately cache-only: never verify authority or load a graph.
+local function complete_ids(lead)
+	local ok, p = pcall(project)
+	if not ok then
+		return {}
+	end
+	local ids = {}
+	for _, task in ipairs(p.graph.items) do
+		ids[#ids + 1] = task.id
+	end
+	return prefix_candidates(ids, lead)
+end
+
 local function async(fn, done)
 	api.run(fn, function(err, result)
 		if done then
@@ -628,14 +666,15 @@ function M.setup(options)
 	end
 	command("Beads", M.explorer, {
 		nargs = "?",
-		complete = function()
-			return vim.tbl_keys(projects)
+		complete = function(lead)
+			return prefix_candidates(vim.tbl_keys(projects), lead)
 		end,
 	})
-	command("BeadsOpen", M.open, { nargs = "?" })
+	command("BeadsProjects", M.projects)
+	command("BeadsOpen", M.open, { nargs = "?", complete = complete_ids })
 	command("BeadsNew", function(parent)
 		M.new(parent ~= "" and parent or nil)
-	end, { nargs = "?" })
+	end, { nargs = "?", complete = complete_ids })
 	command("BeadsRefresh", function()
 		M.refresh()
 	end)
