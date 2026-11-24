@@ -42,8 +42,13 @@ case "$target" in
         ;;
     source-code-config)
         mkdir -p "$setup_home/.local/bin"
+        ln -fs "$dotfiles/bin/source-code-worktree-hook" "$setup_home/.local/bin/source-code-worktree-hook"
         ln -fs "$dotfiles/bin/source-code" "$setup_home/.local/bin/source-code"
         ln -fs "$dotfiles/bin/repo-bootstrap" "$setup_home/.local/bin/repo-bootstrap"
+        mkdir -p "$setup_home/.config/dotfiles"
+        source_code_config="$setup_home/.config/dotfiles/source-code.gitconfig"
+        git config --file "$source_code_config" hook.source-code-worktree.enabled true
+        git config --file "$source_code_config" hook.source-code-checkout.enabled true
         ;;
     shell)
         mkdir -p "${setup_home}/.local/bin"
@@ -122,8 +127,8 @@ case "$target" in
     zellij-status)
         status_wasm=${6:-$dotfiles/zellij/status/target/wasm32-wasip1/release/lane-status.wasm}
         if [ "$status_wasm" = "$dotfiles/zellij/status/target/wasm32-wasip1/release/lane-status.wasm" ]; then
-            cd "$dotfiles/zellij/status"
-            cargo build --locked --release --target wasm32-wasip1 --target-dir target
+            python3 "$dotfiles/scripts/zellij-artifacts.py" plugin lane-status \
+                "$dotfiles/zellij/status" "$dotfiles/zellij/status/target" "$status_wasm"
         else
             test -s "$status_wasm"
         fi

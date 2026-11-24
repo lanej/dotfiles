@@ -1,3 +1,4 @@
+mod activation;
 mod agent;
 mod agent_titles;
 mod auto_title;
@@ -65,6 +66,11 @@ fn run(args: &[String]) -> Result<()> {
             "context" if rest.first().is_some_and(|arg| arg == "inspect") => {
                 panes::inspect(&rest[1..])?
             }
+            "context" if rest.first().is_some_and(|arg| arg == "activation-image") => {
+                activation::probe(&rest[1..])?
+            }
+            "context" if rest == ["activation-layout"] => activation::layout()?,
+            "context" if rest == ["activation-shape"] => activation::shape()?,
             "pane" => panes::main(rest)?,
             "navigate" => navigation::main(rest)?,
             "popup" if rest.is_empty() => session::popup()?,

@@ -85,7 +85,7 @@ Coding agent used with shared skills, role instructions, and repository guidance
 
 ### Codex
 
-Coding agent used with shared skills, role instructions, and repository guidance. Source-code setup installs repository-only publication guidance for projects that select Octo; the caller writes descriptions and [Octo validates format and publishes through pending receipts](octo-pr-submission.md), with daemon-backed tracking opt-in. Global Git and PR skills remain tool-neutral. Shared specification, writing, learning-capture, and handoff workflows use portable skill packages and the repository-owned [skill-authoring workflow](skill-maintenance.md).
+Coding agent used with shared skills, role instructions, and repository guidance. Selected Bedrock installation activates the standalone router through its native installer and verifies service health while preserving healthy running services. Source-code setup installs repository-only publication guidance for projects that select Octo; the caller writes descriptions and [Octo validates format and publishes through pending receipts](octo-pr-submission.md), with daemon-backed tracking opt-in. Global Git and PR skills remain tool-neutral. Shared specification, writing, learning-capture, and handoff workflows use portable skill packages and the repository-owned [skill-authoring workflow](skill-maintenance.md).
 
 ### fzf
 
@@ -101,7 +101,7 @@ Tiling window manager via the macOS Accessibility API. Manages all windows at th
 
 ### Zellij
 
-[Zellij](zellij.md): my adopted terminal multiplexer with tmux-style bindings and a compact layout in Kitty. Bootstrap installs version 0.45.1 or newer; `zj main` attaches to or creates a named session. Tmux remains available for existing agent-status integrations.
+[Zellij](zellij.md): my adopted terminal multiplexer with tmux-style bindings and a compact layout in Kitty. Bootstrap installs version 0.45.1 or newer; `zj main` attaches to or creates a named session. Routine project updates defer Zellij builds and session replacement; automatic restoration remains disabled. Tmux remains available for existing agent-status integrations.
 
 ### Biome
 
@@ -141,7 +141,7 @@ Strict Protobuf compilation, lint, formatting, and compatibility checks through 
 
 ### Beads and Dolt
 
-[Beads](beads.md) provides a shared local work graph through one managed HTTP endpoint backed by a private Dolt SQL server. Native binaries are pinned and checksum-verified. Pi's local task workflow reads and claims native beads over HTTP. Octo owns GitHub delivery. Issue synchronization requires separate integration.
+[Beads](beads.md) provides a shared local work graph through one managed HTTP endpoint backed by a private Dolt SQL server. macOS uses preinstalled Homebrew Beads and Dolt with version and CLI capability preflights; Linux retains pinned, checksum-verified private binaries. Pi's local task workflow reads and claims native beads over HTTP. The [Neovim explorer](neovim-beads.md) edits task documents through generated native Lua bindings. Octo owns GitHub delivery. Issue synchronization requires separate integration.
 
 ### Mergiraf
 
@@ -173,7 +173,7 @@ Strict Protobuf compilation, lint, formatting, and compatibility checks through 
 
 ### Pi
 
-[Pi](pi.md): a composable agent runtime under assessment, with shared skills and role instructions. Its opt-in [daily driver](../pi/daily-driver/README.md) runs one ready bead in a managed worktree and interactive Zellij pane, records verification and supports independent CLI inspection. The [runtime plan](../pi/daily-driver/RUNTIME.md) covers agent delegation, Octo delivery and archival.
+[Pi](pi.md): a composable agent runtime under assessment, with shared skills and role instructions. Its opt-in Bun-based [Studio daily driver](https://github.com/lanej/studio), maintained in its own repository with vendored shared clients and resources, runs one ready bead in a managed worktree and interactive Zellij pane, records verification and supports independent CLI inspection. Studio and Octo use shared Bun with declared [minimum requirements](setup-requirements.md#project-runtime-requirements); bootstrap takes the highest requirement and preserves newer installed versions. The [runtime plan](https://github.com/lanej/studio/blob/main/RUNTIME.md) covers agent delegation, Octo delivery and archival.
 
 ### AeroSpace
 

@@ -62,6 +62,10 @@ source-code-python-check:
 test-python-quality:
 	@python3 "$(DOTFILES)/scripts/test-python-quality.py"
 
+.PHONY: test-source-code-hydration
+test-source-code-hydration:
+	@python3 "$(DOTFILES)/scripts/test-source-code-hydration.py"
+
 .PHONY: test-repo-bootstrap
 test-repo-bootstrap:
 	@python3 "$(DOTFILES)/scripts/test-repo-bootstrap.py"
@@ -435,6 +439,10 @@ export BEDROCK_TOKEN_FILE
 bedrock-credentials:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/setup-bedrock-credentials.py"
 
+.PHONY: bedrock-router
+bedrock-router:
+	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/install-bedrock-router.py"
+
 test-bootstrap-nvim:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-bootstrap-nvim.py"
 
@@ -539,7 +547,11 @@ test-zellij-tab-labels: zellij-helpers
 test-zellij-ancestor-navigation:
 	@python3 "$(DOTFILES)/scripts/test-zellij-sessions.py" --ancestor-navigation-only
 
-test-zellij-sessions: zellij-helpers
+.PHONY: test-zellij-session-cycles
+test-zellij-session-cycles:
+	@python3 "$(DOTFILES)/scripts/test-zellij-session-cycles.py"
+
+test-zellij-sessions: zellij-helpers test-zellij-session-cycles
 	@python3 "$(DOTFILES)/scripts/test-zellij-sessions.py"
 
 .PHONY: directory-picker
@@ -615,17 +627,9 @@ pi-resources: codex-skills
 test-pi-resources:
 	@python3 "$(DOTFILES)/scripts/test-pi-resources.py"
 
-.PHONY: pi-driver-config pi-driver-aot test-pi-driver test-pi-components
+.PHONY: test-pi-components
 test-pi-components:
 	@bun run --cwd "$(DOTFILES)/tools/pi-components" check
-
-pi-driver-config:
-	@python3 "$(DOTFILES)/scripts/configure-pi-driver.py" "$(DOTFILES)/pi/daily-driver" "$(HOME)/.pi/agent"
-pi-driver-aot:
-	@npm --prefix "$(DOTFILES)/pi/daily-driver" run build:aot
-test-pi-driver:
-	@npm --prefix "$(DOTFILES)/pi/daily-driver" run check
-	@npm --prefix "$(DOTFILES)/pi/daily-driver" run test:pi-native
 
 firstmate-retire:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
@@ -636,6 +640,11 @@ codex-octo-hook:
 
 test-codex-octo-hook: FORCE
 	@python3 "$(DOTFILES)/scripts/test-codex-octo-hook.py"
+
+# Studio's project owns its versioned bundle and Pi resource configuration.
+.PHONY: studio-install
+studio-install:
+	@HOME="$(HOME)" python3 "$(DOTFILES)/scripts/install-studio.py"
 
 .PHONY: test-octo-manager-install
 test-octo-manager-install:
@@ -670,3 +679,13 @@ update-projects:
 
 test-project-update:
 	@"$(UV)" run --no-project --python ">=3.11" python "$(DOTFILES)/scripts/test-project-update.py"
+
+.PHONY: test-nvim-beads test-nvim-beads-presentation test-nvim-beads-native check-beads-lua
+test-nvim-beads:
+	@python3 "$(DOTFILES)/scripts/test-nvim-beads.py"
+test-nvim-beads-presentation:
+	@python3 "$(DOTFILES)/scripts/test-nvim-beads.py" --presentation
+check-beads-lua:
+	@npm --prefix "$(DOTFILES)/tools/task-runtime" run check:beads-lua
+test-nvim-beads-native:
+	@env BEADS_TEST_BD="$(BEADS_TEST_BD)" BEADS_TEST_DOLT="$(BEADS_TEST_DOLT)" STUDIO_TEST_SOURCE="$(STUDIO_TEST_SOURCE)" bun "$(DOTFILES)/scripts/test-nvim-beads-native.mts"

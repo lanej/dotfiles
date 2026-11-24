@@ -84,7 +84,8 @@ export PS1="$ZELLIJ_SESSION_NAME:agent-probe-ready> "
             "ENV": str(startup),
         }
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR",
-                    "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "BASH_ENV"):
+                    "ZELLIJ_CONFIG_FILE", "TMUX", "TMUX_PANE", "BASH_ENV",
+                    "DOTFILES_SSH_INCOMING_SOCK"):
             env.pop(key, None)
         # Match managed installations: otherwise Linux's first-run wizard can
         # own the focused screen even after the underlying shell is ready.

@@ -17,6 +17,6 @@ Read the matching reference before performing these operations:
 | Configure stage, authority, adoption, visibility, skills, or language profiles | [Setup](references/setup.md) | `setup` |
 | Check package integrity, inspect drift, or upgrade retained selections | [Validation and upgrades](references/validation.md) | `validation` |
 
-Preview the exact requested setup or upgrade arguments before applying them. Review selected files, conflicts, and relaxed or added obligations. Apply only within the authorized scope; do not replace customized files to force installation through. Preserve explicit authority and adoption choices rather than inferring them from hosting.
+Preview the exact requested setup or upgrade arguments before applying them. Review selected files, conflicts, and relaxed or added obligations. Apply only within the authorized scope; keep project customizations in authored instructions, since selected generated regular files refresh with backups. Preserve explicit authority and adoption choices rather than inferring them from hosting.
 
 Keep installer validation, project test outcomes, and release readiness separate. Report the target checkout, effective profile, and unresolved limits. Setup and skill discovery do not authorize staging, committing, pushing, publishing, messaging, or applying unrelated workstation configuration.

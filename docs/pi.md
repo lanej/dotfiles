@@ -1,12 +1,16 @@
 # Pi
 
-[Pi](https://github.com/earendil-works/pi) is an optional coding-agent runtime. The dotfiles integration shares skills and role instructions. The [daily driver](../pi/daily-driver/README.md) adds the shared theme, task browser, idle compaction, work/personal profiles and a terminal workflow for an existing Beads task. Start it from Zellij, steer the Pi worker in its managed checkout and inspect the outcome from a separate terminal with Paseo offline.
+[Pi](https://github.com/earendil-works/pi) is an optional coding-agent runtime. The dotfiles integration shares skills and role instructions. The [Studio daily driver](https://github.com/lanej/studio#readme) adds the shared theme, task browser, idle compaction, work/personal profiles and a terminal workflow for an existing Beads task. Start it from Zellij, steer the Pi worker in its managed checkout and inspect the outcome from a separate terminal with Paseo offline.
 
-The [runtime integration plan](../pi/daily-driver/RUNTIME.md) evaluates existing Pi packages for subagent delegation and session management, with adapters for the native worktree manager, Beads authority, Octo feedback delivery, and the merge/removal/archive sequence. It separates the next read-only delegation increment from task-bound coding and the complete delivery lifecycle.
+The [runtime integration plan](https://github.com/lanej/studio/blob/main/RUNTIME.md) evaluates existing Pi packages for subagent delegation and session management, with adapters for the native worktree manager, Beads authority, Octo feedback delivery, and the merge/removal/archive sequence. It separates the next read-only delegation increment from task-bound coding and the complete delivery lifecycle.
 
 ## Install
 
-Select `pi = true` under `[tools]` in the machine TOML and run `make install` to install `@earendil-works/pi-coding-agent` at version 1.4.0 or retain an already installed newer version, then configure its shared resources. Bootstrap installs Node 24 first. The Pi package is installed with npm lifecycle scripts disabled.
+Select `pi = true` under `[tools]` in the machine TOML and run `make install` to install the configured standalone Pi release and share its resources. The installer places the launcher at `~/.local/bin/pi`. If an older npm launcher appears first in your shell, open a new shell or put `~/.local/bin` first on PATH.
+
+Studio is included in the `workstation` set. Select it independently with `studio = true` under `[tools]`, or override it with `studio = false`. Run `make install`, or `make studio-install` for an explicit Studio-only installation. The installer clones a missing `~/src/studio` checkout, ensures the shared Bun on PATH satisfies Studio's `engines.bun` minimum, and calls Studio's own installer to register its bundled Pi resources. A newer installed Bun is retained; successful installation contributes Studio's minimum to the [shared runtime requirements](setup-requirements.md#project-runtime-requirements). Reruns preserve the checkout revision, local edits, unrelated Pi settings, and active sessions. Optional Beads, Zellij, worktree, and Octo integrations remain separately configured.
+
+If the installer reports an unmanaged launcher at `~/.local/bin/pi`, move that launcher aside before retrying.
 
 If Pi is already installed, run `make pi` to share resources. `make pi-config` removes retired Firstmate integration registrations while preserving unrelated Pi settings and saved work. These configuration targets do not download Pi. Authenticate and select a provider/model using Pi's own setup. The shared-resource synchronizer does not copy credentials or configure providers.
 
@@ -29,3 +33,5 @@ Local Pi prompts are preserved, including collisions with the `dotfiles-` names.
 ## Verification boundary
 
 `make test-pi-resources` exercises the real configuration target in an isolated home. CI also uses Pi 1.4.0 to discover the installed resources without making a model request. Resource discovery does not establish that a model follows every shared instruction or that Claude-specific skills work unchanged.
+
+Studio owns the daily-driver source, installation, and checks in [lanej/studio](https://github.com/lanej/studio). Dotfiles uses its [project-owned installer](https://github.com/lanej/studio#install) with the shared environment Bun. Dotfiles registers that checkout with `project-update`: use `project-update pull studio`, `project-update build studio`, and `project-update restart studio`, or `project-update update studio` for the sequence. Pull an existing checkout before building if it still declares an exact Bun version. Managed hosts checkpoint through Studio's native controls and restore the exact transcript branch using the selected bundle, pinned Pi dependency, and verified shared Bun image. Unfinished or uncertain Bash operations refuse checkpointing. Legacy hosts without the native admission boundary remain running and report incomplete activation (3). Studio installation remains separate from the standalone Pi launcher and shared-resource configuration above.

@@ -35,7 +35,7 @@ source = "release"
 | `ai` | Claude, Codex, worktree manager, and agent status |
 | `octo-manager` | Opt-in Octo service with Codex tracking and receipt hooks |
 | `worktrees` | Standalone worktree manager with task protection, tracking, optional limits, and explicit safe pruning |
-| `workstation` | Adds editor, development, AI tools, and source-code project setup, plus mail and Quarto configuration |
+| `workstation` | Adds editor, development, AI tools, source-code project setup, Studio, mail, and Quarto configuration |
 | `macos` | Yabai/skhd installation and their configuration |
 | `linux` | X11, Polybar, and bspwm configuration for separately installed desktop tools |
 | `easypost` | GitHub app access off, EasyPost direnv integration, and Bedrock setup |

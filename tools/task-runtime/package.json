@@ -22,9 +22,12 @@
   },
   "scripts": {
     "generate:beads": "openapi-typescript api/beads-1.3.4.yaml -o generated/beads.ts",
-    "check:beads-api": "openapi-typescript api/beads-1.3.4.yaml -o generated/beads.ts --check"
+    "check:beads-api": "openapi-typescript api/beads-1.3.4.yaml -o generated/beads.ts --check",
+    "generate:beads-lua": "node scripts/generate-beads-lua.mjs",
+    "check:beads-lua": "node scripts/generate-beads-lua.mjs --check"
   },
   "devDependencies": {
-    "openapi-typescript": "^7.13.0"
+    "openapi-typescript": "^7.13.0",
+    "js-yaml": "4.3.2"
   }
 }

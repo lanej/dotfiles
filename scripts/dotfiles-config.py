@@ -9,6 +9,8 @@ import re
 import shlex
 import sys
 
+from runtime_requirements import RUNTIMES, add_requirements, combined_requirements, version_key
+
 try:
     import tomllib
 except ImportError:
@@ -41,9 +43,26 @@ SETTINGS = {
 }
 SET_NAME = re.compile(r"[a-z0-9][a-z0-9_-]*")
 TOOL_FILE = ROOT / "bootstrap/tools.toml"
-TOOLS = tomllib.loads(TOOL_FILE.read_text())["tools"]
-INSTALLERS = {"approval-cli", "beads", "package", "system", "config", "build", "rust", "go", "zellij", "font", "git-worktree-hooks", "worktree-policy", "worktree-manager", "treehouse", "firstmate", "macos-window-tool", "npm", "octo-manager"}
-HOOKS = {"directory-picker", "github-auth", "bedrock-credentials", "agent-status-broker", "kitty-terminfo", "neovim", "atuin-sync", "sql-formatters", "zellij-status", "zellij-copy-hop"}
+# Capability recipes stay beside their consumers; all other tools remain legacy.
+TOOL_FILES = (TOOL_FILE, ROOT / "tools/beads/tool.toml")
+
+
+def load_tools():
+    tools, sources = {}, {}
+    for source in TOOL_FILES:
+        recipes = tomllib.loads(source.read_text())["tools"]
+        if source != TOOL_FILE and set(recipes) != {"beads"}:
+            raise ValueError(f"{source}: expected only the Beads recipe")
+        for name, recipe in recipes.items():
+            if name in tools:
+                raise ValueError(f"{source}: duplicate tool {name!r}; already defined in {sources[name]}")
+            tools[name], sources[name] = recipe, source
+    return tools, sources
+
+
+TOOLS, TOOL_SOURCES = load_tools()
+INSTALLERS = {"studio", "approval-cli", "beads", "package", "system", "config", "build", "rust", "go", "zellij", "font", "git-worktree-hooks", "worktree-policy", "worktree-manager", "treehouse", "firstmate", "macos-window-tool", "npm", "octo-manager"}
+HOOKS = {"directory-picker", "github-auth", "bedrock-credentials", "bedrock-router", "agent-status-broker", "kitty-terminfo", "neovim", "atuin-sync", "sql-formatters", "zellij-status", "zellij-copy-hop"}
 for tool, recipe in TOOLS.items():
     SETTINGS[f"tools.{tool}"] = {
         "type": bool,
@@ -51,7 +70,7 @@ for tool, recipe in TOOLS.items():
     }
 
 
-def tool_plan(values, origins, specified, host):
+def tool_plan(values, origins, specified, host, requirements=None):
     """Resolve a concrete ordered tool plan; explicit disables constrain dependencies."""
     ordered, visiting = [], []
 
@@ -69,22 +88,22 @@ def tool_plan(values, origins, specified, host):
         if recipe.get("platform", host) != host:
             raise ValueError(f"tools.{name} requires {recipe['platform']}; this host is {host}")
         if recipe.get("installer", "package") not in INSTALLERS:
-            raise ValueError(f"{TOOL_FILE}: unknown installer for {name}")
+            raise ValueError(f"{TOOL_SOURCES[name]}: unknown installer for {name}")
         package = recipe.get("package", name)
         version = recipe.get("version", "-")
         package_pattern = r"(?:@[a-z0-9_.-]+/)?[a-z0-9_.-]+" if recipe.get("installer") == "npm" else SET_NAME.pattern
         if not isinstance(package, str) or not re.fullmatch(package_pattern, package):
-            raise ValueError(f"{TOOL_FILE}: invalid package name for {name}")
+            raise ValueError(f"{TOOL_SOURCES[name]}: invalid package name for {name}")
         if not isinstance(version, str) or (version != "-" and not re.fullmatch(r"[0-9]+(?:\.[0-9]+){0,2}", version)):
-            raise ValueError(f"{TOOL_FILE}: invalid version for {name}")
+            raise ValueError(f"{TOOL_SOURCES[name]}: invalid version for {name}")
         if recipe.get("installer", "package") in {"package", "rust", "go", "npm"} and version == "-":
-            raise ValueError(f"{TOOL_FILE}: missing version for {name}")
+            raise ValueError(f"{TOOL_SOURCES[name]}: missing version for {name}")
         for target in recipe.get("setup", []):
             if not isinstance(target, str) or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]*", target):
-                raise ValueError(f"{TOOL_FILE}: invalid setup target for {name}")
+                raise ValueError(f"{TOOL_SOURCES[name]}: invalid setup target for {name}")
         for phase in ("prepare", "post"):
             if any(hook not in HOOKS for hook in recipe.get(phase, [])):
-                raise ValueError(f"{TOOL_FILE}: unknown {phase} hook for {name}")
+                raise ValueError(f"{TOOL_SOURCES[name]}: unknown {phase} hook for {name}")
         visiting.append(name)
         dependencies = [*recipe.get("requires", []), *recipe.get(f"requires_{host}", [])]
         if name == "zellij" and values["zellij.source"] == "release":
@@ -97,10 +116,23 @@ def tool_plan(values, origins, specified, host):
             origins[key] = f"required by tools.{required_by}"
         ordered.append(name)
 
+    for name, requirement in (requirements or {}).items():
+        key = f"tools.{name}"
+        source = ", ".join(entry["source"] for entry in requirement["sources"])
+        if key in specified and values[key] is False:
+            raise ValueError(f"{source} requires tools.{name}, explicitly disabled in {origins[key]}")
+        if not values[key]:
+            values[key] = True
+            origins[key] = f"required by {source}"
+        enable(name)
     for name in TOOLS:
         if values[f"tools.{name}"]:
             enable(name)
     plan = [{"name": name, **TOOLS[name]} for name in ordered]
+    for tool in plan:
+        if requirement := (requirements or {}).get(tool["name"]):
+            if version_key(requirement["minimum"]) > version_key(tool["version"]):
+                tool["version"] = requirement["minimum"]
 
     def phase(key):
         return list(dict.fromkeys(value for tool in plan for value in tool.get(key, [])))
@@ -200,12 +232,19 @@ def resolve(path, environment, explicit=False, host="linux"):
     baseline_specified = {key for key in specified if key in baseline_keys or values[key] is False}
     baseline_plan, baseline_setup, baseline_prepare, baseline_post = tool_plan(
         baseline_values, origins.copy(), baseline_specified, host)
-    plan, setup, prepare, post = tool_plan(values, origins, specified, host)
+    # Generated native targets never depend on a particular machine's installed projects.
+    runtime_requirements = combined_requirements(environment=environment) if path is not None else {}
+    plan, setup, prepare, post = tool_plan(values, origins, specified, host, runtime_requirements)
+    for tool in plan:
+        if tool["name"] in RUNTIMES:
+            add_requirements(runtime_requirements, {tool["name"]: TOOLS[tool["name"]]["version"]},
+                             f"{TOOL_FILE} tools.{tool['name']}")
     all_setup = list(dict.fromkeys(target for recipe in TOOLS.values() for target in recipe.get("setup", [])))
     if any(not isinstance(target, str) or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]*", target) for target in all_setup):
         raise ValueError(f"{TOOL_FILE}: invalid setup target")
     return {"sets": applied, "settings": values, "sources": origins, "config": str(path) if path is not None else None,
             "tools": plan, "setup": setup, "prepare": prepare, "post": post,
+            "runtime_requirements": runtime_requirements,
             "all_setup": all_setup,
             "baseline": {"sets": baseline_sets, "tools": baseline_plan, "setup": baseline_setup,
                          "prepare": baseline_prepare, "post": baseline_post}}
@@ -283,7 +322,7 @@ def main():
     if options.format == "json":
         print(json.dumps(result, indent=2))
     elif options.format == "plan":
-        print(json.dumps({key: result[key] for key in ("baseline", "sets", "tools", "setup", "prepare", "post")}, indent=2))
+        print(json.dumps({key: result[key] for key in ("baseline", "sets", "tools", "runtime_requirements", "setup", "prepare", "post")}, indent=2))
     elif options.format in ("make", "shell"):
         if options.format == "shell" and (options.config is not None or "DOTFILES_CONFIG" in os.environ):
             # Bootstrap changes directories when it invokes Make. Carry the

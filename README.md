@@ -31,7 +31,7 @@ The [directory and worktree picker](docs/directory-picker.md) adds ranked paths,
 | **Navigate projects** | `Ctrl-B` / `zz` searches directory history; `Alt-W` / `zw` searches worktrees, with README and Git previews. [Picker guide →](docs/directory-picker.md) |
 | **Manage terminal sessions** | Zellij and tmux share a `Ctrl-f` prefix. Zellij adds attention triage, a command palette, a shared popup, and status for local and SSH sessions. [Terminal workflows →](docs/terminal-workflows.mdx) |
 | **Edit and review code** | Lua-based Neovim configuration, language tooling, and a GitHub PR review queue with local review worktrees. [Review workflow →](docs/neovim-pr-reviews.md) |
-| **Work with agents** | Shared Claude and Codex skills, agent definitions, isolated worktrees, and portable project setup. [Agent configuration →](docs/agent-configuration.md) |
+| **Work with agents** | Shared Claude and Codex skills, agent definitions, isolated worktrees, and the Pi-based Studio daily driver. [Agent configuration →](docs/agent-configuration.md) · [Studio setup →](docs/pi.md#install) |
 | **Keep tools visually consistent** | Nord colors and shared styling across the editor, terminal, multiplexers, pickers, diffs, and Markdown. [Design system →](docs/design-system.mdx) |
 | **Configure each machine** | Reusable tool sets, private overrides, pinned tool recipes, and an inspectable installation plan. [How it fits together →](docs/architecture.mdx) |
 
@@ -75,7 +75,7 @@ make install
 
 | Select | To add |
 | --- | --- |
-| `workstation` | Editor, development, AI tools, project setup, and mail and Quarto configuration. |
+| `workstation` | Editor, development, AI tools, project setup, Studio, and mail and Quarto configuration. |
 | `editor` | Neovim, formatters, language servers, and parser tooling. |
 | `development` | Language runtimes, Rust maintenance, and development caches. |
 | `ai` | Claude, Codex, the worktree manager, and agent status. |

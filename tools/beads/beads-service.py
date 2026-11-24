@@ -25,9 +25,49 @@ import urllib.error
 import urllib.request
 
 from beads_config import load, location, seed, write_record
+from beads_lifecycle import Control, inspect, process_identity
 
 ROOT = Path(__file__).resolve().parents[2]
 LABEL = "com.lanej.beads"
+
+
+class ActivationIncomplete(ValueError):
+    """A refused native replacement must preserve its current owner."""
+
+
+def require_activation_checkpoint(home):
+    try:
+        target = inspect(home, "inventory")["targets"][0]
+        expected = json.loads(os.environ.get("PROJECT_UPDATE_EXPECTED_PROCESS", "null"))
+    except (OSError, ValueError, KeyError) as error:
+        raise ActivationIncomplete("Native checkpoint unavailable; preserve this Beads owner") from error
+    if (target["process"] != expected or expected is None
+            or process_identity(expected["pid"]) != expected["start_identity"]
+            or target.get("checkpoint", {}).get("state") != "confirmed"
+            or target["checkpoint"].get("run_id") != os.environ.get("PROJECT_UPDATE_RUN_ID")
+            or not target["checkpoint"].get("run_id")
+            or target.get("retirement_policy") != "successful-exit"):
+        raise ActivationIncomplete("Beads checkpoint or process incarnation differs")
+    return expected
+
+
+def retire_owner(home, expected, manager_pid):
+    """Confirm normal native exit before letting an OS manager change the job."""
+    result = inspect(home, "stop")["targets"][0]
+    if result["process"] != expected or not result.get("stop_accepted"):
+        raise ActivationIncomplete("Beads retirement outcome unknown; do not repeat stop")
+    deadline = time.monotonic() + 60
+    while time.monotonic() < deadline:
+        observed = manager_pid()
+        if observed not in (None, expected["pid"]):
+            raise ActivationIncomplete("Service manager launched another Beads owner; preserve it")
+        try:
+            os.kill(expected["pid"], 0)
+        except ProcessLookupError:
+            if observed is None:
+                return
+        time.sleep(0.1)
+    raise ActivationIncomplete("Native Beads retirement unconfirmed after 60 seconds; no forced termination")
 
 
 @contextmanager
@@ -98,23 +138,104 @@ def probe(home):
             "history": {"mode": config["history"]["mode"], **history}}
 
 
+def homebrew_runtime(catalog):
+    """Resolve immutable Cellar paths and preflight without touching the workspace.
+
+    Help probes check the CLI contract for the versioned HTTP server; they do not
+    establish native readiness or restored-database compatibility.
+    """
+    brew = shutil.which("brew")
+    if brew is None:
+        brew = next((str(path) for path in (Path("/opt/homebrew/bin/brew"), Path("/usr/local/bin/brew"))
+                     if path.is_file() and os.access(path, os.X_OK)), None)
+    advice = "Install/repair Homebrew beads and dolt explicitly, then retry staging; current service preserved"
+    if brew is None:
+        raise ValueError(f"Homebrew not found. {advice}")
+    try:
+        brew = str(Path(brew).resolve(strict=True))
+    except OSError as error:
+        raise ValueError(f"Homebrew executable unavailable: {brew}. {advice}") from error
+    binaries = {}
+    # Keep help/version commands away from user config and task data, even when
+    # an upstream command decides to inspect its working directory.
+    with tempfile.TemporaryDirectory(prefix="beads-preflight-") as temporary:
+        env = {key: value for key, value in os.environ.items()
+               if not key.startswith(("BEADS_", "BD_", "DOLT_"))}
+        env.update(HOME=temporary, XDG_CONFIG_HOME=temporary, XDG_DATA_HOME=temporary,
+                   XDG_STATE_HOME=temporary, XDG_CACHE_HOME=temporary, DOLT_ROOT_PATH=temporary,
+                   DOLT_CLI_NO_UPDATE_CHECK="1", HOMEBREW_NO_AUTO_UPDATE="1",
+                   HOMEBREW_NO_ANALYTICS="1")
+
+        def check(argv):
+            try:
+                # Prefix/version/help stdout is a machine response, not a log.
+                return run(argv, cwd=temporary, env=env, timeout=15, stderr=subprocess.PIPE)
+            except (OSError, subprocess.SubprocessError) as error:
+                detail = (f"{error}; stdout={getattr(error, 'stdout', None)!r}; "
+                          f"stderr={getattr(error, 'stderr', None)!r}")
+                raise ValueError(f"Homebrew preflight failed: {shlex.join(map(str, argv))}: {detail}. {advice}") from error
+
+        for name, formula, minimum in (("bd", "beads", catalog["version"]),
+                                        ("dolt", "dolt", catalog["dolt_version"])):
+            prefix = Path(check([brew, "--prefix", formula]))
+            try:
+                if not prefix.is_absolute():
+                    raise ValueError("formula prefix is not absolute")
+                prefix = prefix.resolve(strict=True)
+                binary = (prefix / "bin" / name).resolve(strict=True)
+                if not binary.is_relative_to(prefix) or not binary.is_file() or not os.access(binary, os.X_OK):
+                    raise ValueError("formula executable is missing or outside its prefix")
+                if binary.stat().st_mode & 0o222:
+                    raise ValueError("formula executable must be read-only for guarded activation; repair its Homebrew installation")
+            except (OSError, ValueError) as error:
+                raise ValueError(f"Homebrew {formula}: {error}. {advice}") from error
+            output = check([binary, "version"])
+            match = re.search(rf"\b{name} version v?(\d+\.\d+\.\d+)(?=\s|$)", output)
+            floor = tuple(map(int, minimum.split(".")))
+            version = tuple(map(int, match[1].split("."))) if match else None
+            if version is None or version < floor or version[0] != floor[0]:
+                raise ValueError(f"Homebrew {name} version {output!r}; require stable >={minimum}, "
+                                 f"<{floor[0] + 1}.0.0. {advice}")
+            binaries[name] = str(binary)
+
+        contracts = (
+            ("bd", (), ("--sandbox", "--readonly", "--json", "--directory")),
+            ("bd", ("serve",), ("--addr",)),
+            ("bd", ("init",), ("--server", "--external", "--server-host", "--server-port",
+                                    "--database", "--prefix", "--skip-agents", "--skip-hooks", "--non-interactive")),
+            ("bd", ("sql",), ("--json",)),
+            ("bd", ("dolt", "remote", "list"), ("--json",)),
+            ("bd", ("dolt", "commit"), ("--message",)),
+            ("bd", ("dolt", "push"), ("--remote", "--no-adopt")),
+            ("dolt", ("sql-server",), ("--host", "--port", "--data-dir")),
+        )
+        for name, command, flags in contracts:
+            output = check([binaries[name], *command, "--help"])
+            missing = [flag for flag in flags
+                       if not re.search(r"(?<![\w-])" + re.escape(flag) + r"(?![\w-])", output)]
+            if missing:
+                raise ValueError(f"Homebrew {name} {' '.join(command)} lacks required capabilities: "
+                                 f"{', '.join(missing)}. {advice}")
+    return binaries
+
+
 def install(home, *, start=True):
     share, state, config_path = paths(home)
     target = {"Darwin": "darwin", "Linux": "linux"}.get(platform.system())
     arch = {"arm64": "arm64", "aarch64": "arm64", "x86_64": "amd64"}.get(platform.machine())
     if target is None or arch is None:
         raise ValueError("Beads service supports macOS and Linux on arm64 and amd64")
-    catalog = tomllib.loads((ROOT / "bootstrap/tools.toml").read_text())["tools"]["beads"]
+    catalog = tomllib.loads((ROOT / "tools/beads/tool.toml").read_text())["tools"]["beads"]
+    binaries = homebrew_runtime(catalog) if target == "darwin" else {}
     for directory in (share, state, config_path.parent):
         directory.mkdir(parents=True, mode=0o700, exist_ok=True)
     seed(home, ROOT / "config/beads/trial.toml")
     settings(home)
-    binaries = {}
-    for name, repo, version, asset in (
+    for name, repo, version, asset in (() if target == "darwin" else (
         ("bd", "gastownhall/beads", catalog["version"],
          f"beads_{catalog['version']}_{target}_{arch}.tar.gz"),
         ("dolt", "dolthub/dolt", catalog["dolt_version"], f"dolt-{target}-{arch}.tar.gz"),
-    ):
+    )):
         directory = share / "runtime" / f"{name}-{version}-{target}-{arch}"
         directory.mkdir(parents=True, exist_ok=True)
         binary = directory / name
@@ -144,15 +265,34 @@ def install(home, *, start=True):
                 candidate.replace(binary)
                 receipt.write_text(hashlib.sha256(binary.read_bytes()).hexdigest() + "\n")
         binaries[name] = str(binary)
-    (share / "runtime.json").write_text(json.dumps(binaries) + "\n")
+        binary.chmod(0o500)
+    payloads = {name: Path(__file__).with_name(name).read_bytes()
+                for name in ("beads-service.py", "beads_config.py", "beads_lifecycle.py")}
+    payloads["runtime.json"] = (json.dumps(binaries) + "\n").encode()
+    release_id = hashlib.sha256(b"".join(name.encode() + b"\0" + value
+                                        for name, value in sorted(payloads.items()))).hexdigest()
+    release = share / "releases" / release_id
+    release.mkdir(parents=True, mode=0o700, exist_ok=True)
+    for name, data in payloads.items():
+        path = release / name
+        if path.exists():
+            if path.read_bytes() != data:
+                raise ValueError("Preserve modified immutable Beads release")
+        else:
+            path.write_bytes(data)
+            path.chmod(0o500 if name == "beads-service.py" else 0o400)
+    for name in payloads:
+        link = share / f".{name}-{os.getpid()}"
+        try:
+            link.symlink_to(release / name)
+            link.replace(share / name)
+        finally:
+            link.unlink(missing_ok=True)
     controller = share / "beads-service.py"
-    shutil.copyfile(Path(__file__).with_name("beads_config.py"), share / "beads_config.py")
-    shutil.copyfile(Path(__file__), controller)
-    controller.chmod(0o700)
     launcher = home / ".local/bin/beads-service"
     launcher.parent.mkdir(parents=True, exist_ok=True)
     # The installed copy keeps the service independent of its source worktree.
-    launcher.write_text(f"#!{sys.executable}\nimport os, sys\nos.execv(sys.executable, [sys.executable, {str(controller)!r}, *sys.argv[1:]])\n")
+    launcher.write_text(f"#!{sys.executable}\nimport os, sys\nos.execv(sys.executable, [sys.executable, {str(controller.resolve())!r}, *sys.argv[1:]])\n")
     launcher.chmod(0o755)
     definition(home)
     if start:
@@ -163,14 +303,14 @@ def install(home, *, start=True):
 
 def definition(home):
     share, state, _ = paths(home)
-    argv = [sys.executable, str(share / "beads-service.py"), "run", "--home", str(home)]
+    argv = [sys.executable, str((share / "beads-service.py").resolve()), "run", "--home", str(home)]
     if platform.system() == "Darwin":
         destination = home / "Library/LaunchAgents" / f"{LABEL}.plist"
-        environment = {"HOME": str(home)}
+        environment = {"HOME": str(home), "PROJECT_UPDATE_RETIREMENT_POLICY": "successful-exit"}
         if "XDG_CONFIG_HOME" in os.environ:
             environment["XDG_CONFIG_HOME"] = os.environ["XDG_CONFIG_HOME"]
         payload = plistlib.dumps({"Label": LABEL, "ProgramArguments": argv,
-                                 "RunAtLoad": True, "KeepAlive": True, "ThrottleInterval": 10,
+                                 "RunAtLoad": True, "KeepAlive": {"SuccessfulExit": False}, "ThrottleInterval": 10,
                                  "ExitTimeOut": 35, "EnvironmentVariables": environment,
                                  "StandardOutPath": str(state / "service.log"),
                                  "StandardErrorPath": str(state / "service.log")})
@@ -185,6 +325,7 @@ def definition(home):
         payload = ("[Unit]\nDescription=Shared Beads API and Dolt database\n"
                    "[Service]\nType=simple\nExecStart=" + " ".join(map(quote, argv)) +
                    "\nRestart=on-failure\nRestartSec=10\nTimeoutStopSec=35\nKillMode=mixed\n"
+                   "Environment=PROJECT_UPDATE_RETIREMENT_POLICY=successful-exit\n"
                    + environment + "[Install]\nWantedBy=default.target\n").encode()
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_bytes(payload)
@@ -192,11 +333,23 @@ def definition(home):
 
 
 def manage(home, action):
+    expected = require_activation_checkpoint(home) if action == "restart" else None
     if platform.system() == "Darwin":
         domain = f"gui/{os.getuid()}"
         target = f"{domain}/{LABEL}"
-        loaded = subprocess.run(["launchctl", "print", target], stdout=subprocess.DEVNULL,
-                                stderr=subprocess.DEVNULL).returncode == 0
+        observed = subprocess.run(["launchctl", "print", target], capture_output=True, text=True)
+        loaded = observed.returncode == 0
+        if expected is not None:
+            match = re.search(r"(?m)^\tpid = (\d+)$", observed.stdout)
+            if not loaded or match is None or int(match[1]) != expected["pid"]:
+                raise ActivationIncomplete("Registered Beads service owner differs")
+            def manager_pid():
+                current = subprocess.run(["launchctl", "print", target], capture_output=True, text=True)
+                if current.returncode not in (0, 3, 113):
+                    raise ActivationIncomplete("Cannot verify the registered Beads owner")
+                match = re.search(r"(?m)^\tpid = (\d+)$", current.stdout)
+                return int(match[1]) if match else None
+            retire_owner(home, expected, manager_pid)
         if action == "stop":
             if loaded:
                 run(["launchctl", "bootout", target])
@@ -206,6 +359,8 @@ def manage(home, action):
             if not loaded:
                 run(["launchctl", "bootstrap", domain, home / "Library/LaunchAgents" / f"{LABEL}.plist"])
             elif action == "restart":
+                if manager_pid() is not None:
+                    raise ActivationIncomplete("A Beads owner appeared before OS job replacement; preserve it")
                 run(["launchctl", "bootout", target])
                 # bootout returns before launchd has finished removing a running job.
                 deadline = time.monotonic() + 35
@@ -216,12 +371,24 @@ def manage(home, action):
                     time.sleep(0.1)
                 run(["launchctl", "bootstrap", domain, home / "Library/LaunchAgents" / f"{LABEL}.plist"])
     elif platform.system() == "Linux":
+        if expected is not None:
+            observed = subprocess.run(["systemctl", "--user", "show", "beads.service",
+                                       "--property=MainPID", "--value"], capture_output=True, text=True)
+            if observed.returncode or observed.stdout.strip() != str(expected["pid"]):
+                raise ActivationIncomplete("Registered Beads service owner differs")
+            def manager_pid():
+                current = subprocess.run(["systemctl", "--user", "show", "beads.service",
+                                          "--property=MainPID", "--value"], capture_output=True, text=True)
+                if current.returncode or not current.stdout.strip().isdigit():
+                    raise ActivationIncomplete("Cannot verify the registered Beads owner")
+                return int(current.stdout.strip()) or None
+            retire_owner(home, expected, manager_pid)
         run(["systemctl", "--user", "daemon-reload"])
         if action == "stop":
             run(["systemctl", "--user", "disable", "--now", "beads.service"])
         else:
             run(["systemctl", "--user", "enable", "beads.service"])
-            run(["systemctl", "--user", action, "beads.service"])
+            run(["systemctl", "--user", "start", "beads.service"])
     else:
         raise ValueError("Unsupported service manager")
     if action != "stop":
@@ -247,7 +414,9 @@ def serve(home):
 
 
 def supervise(home, share, state, config):
-    binaries = json.loads((share / "runtime.json").read_text())
+    program = Path(__file__).resolve().parent
+    manifest = program / "runtime.json" if (program / "runtime.json").is_file() else share / "runtime.json"
+    binaries = json.loads(manifest.read_text())
     workspace, data = state / "workspace", state / "dolt"
     for directory in (workspace, data):
         directory.mkdir(mode=0o700, exist_ok=True)
@@ -261,6 +430,7 @@ def supervise(home, share, state, config):
     endpoint = state / "endpoint.json"
     endpoint.unlink(missing_ok=True)
     children = []
+    control = Control(home, lambda: probe(home)["ready"], program, binaries)
     stopped = False
 
     def stop(_number, _frame):
@@ -322,8 +492,15 @@ def supervise(home, share, state, config):
             raise ValueError("Beads is on a different Dolt branch than the trial profile")
         children.append(subprocess.Popen([*bd, "serve", "--addr", f"127.0.0.1:{config['http_port']}"],
                                          cwd=workspace, env=env))
+        control.bind_children(children, binaries)
         deadline = time.monotonic() + 45
         while not stopped:
+            if control.retired.is_set():
+                break
+            if control.requested.is_set():
+                control.checkpoint_children(children)
+                time.sleep(0.1)
+                continue
             if any(child.poll() is not None for child in children):
                 raise ValueError("Beads or Dolt exited; restarting the complete service is required")
             if not endpoint.exists():
@@ -335,6 +512,7 @@ def supervise(home, share, state, config):
                     raise ValueError("Beads did not become database-ready within 45 seconds")
             time.sleep(0.2)
     finally:
+        control.close()
         endpoint.unlink(missing_ok=True)
         # Drain HTTP requests before stopping their database. Never kill by port or process name.
         for child in reversed(children):
@@ -343,7 +521,7 @@ def supervise(home, share, state, config):
                 try:
                     child.wait(timeout=15)
                 except subprocess.TimeoutExpired:
-                    child.kill()
+                    print("Beads child has not acknowledged termination; waiting without forced termination", file=sys.stderr)
                     child.wait()
         for sig, handler in previous.items():
             signal.signal(sig, handler)
@@ -421,7 +599,8 @@ def checkpoint(home):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("install", "start", "restart", "stop", "status", "run", "config", "backup"))
+    parser.add_argument("action", choices=("install", "start", "restart", "stop", "status", "run", "config", "backup",
+                                          "inventory", "checkpoint", "retire", "restore", "verify"))
     parser.add_argument("--home", type=Path, default=Path.home())
     parser.add_argument("--no-start", action="store_true", help="stage installation without starting or restarting the service")
     parser.add_argument("--install-lock-fd", type=int, help=argparse.SUPPRESS)
@@ -439,6 +618,18 @@ def main():
                 manage(home, args.action)
     elif args.action == "run":
         serve(home)
+    elif args.action in ("inventory", "checkpoint", "retire", "restore", "verify"):
+        native_action = {"restore": "verify", "retire": "stop"}.get(args.action, args.action)
+        value = inspect(home, native_action)
+        print(json.dumps(value))
+        target = value["targets"][0]
+        if args.action == "inventory":
+            return 0
+        if args.action == "checkpoint":
+            return 0 if target.get("checkpoint", {}).get("state") == "confirmed" else 3
+        if args.action == "retire":
+            return 0 if target.get("stop_accepted") else 3
+        return 0 if target["ready"] and target["expected_identity"] and target["expected_identity"] == target["running_identity"] else 3
     elif args.action == "status":
         status = probe(home)
         print(json.dumps(status))
@@ -455,5 +646,8 @@ def main():
 if __name__ == "__main__":
     try:
         sys.exit(main())
+    except ActivationIncomplete as error:
+        print(f"beads-service: {error}", file=sys.stderr)
+        sys.exit(3)
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         sys.exit(f"beads-service: {error}")

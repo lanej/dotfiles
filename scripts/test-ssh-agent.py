@@ -37,6 +37,7 @@ import sys
 assert sys.argv[1:3] == ["attach", "--create"], sys.argv
 Path(os.environ["ATTACHED"]).write_text(json.dumps({
     "args": sys.argv[1:], "socket": os.environ.get("SSH_AUTH_SOCK", ""),
+    "incoming": os.environ.get("DOTFILES_SSH_INCOMING_SOCK"),
 }))
 ''')
         zellij.chmod(0o755)
@@ -74,9 +75,9 @@ Path(os.environ["ATTACHED"]).write_text(json.dumps({
                            timeout=5)
             return json.loads(attached.read_text())
 
-        def login(socket):
+        def login(socket, **updates):
             subprocess.run([shutil.which("zsh"), "-c", '/bin/sh "$HOME/.ssh/rc"'],
-                           env={**env, "SSH_AUTH_SOCK": socket},
+                           env={**env, **updates, "SSH_AUTH_SOCK": socket},
                            check=True, capture_output=True, text=True)
 
         def assert_live(socket):
@@ -107,11 +108,29 @@ Path(os.environ["ATTACHED"]).write_text(json.dumps({
 
             # The attach boundary also normalizes direct callers before starting
             # Zellij, so command panes do not depend on an interactive shell.
-            login(other)
-            original = attach("work", SSH_AUTH_SOCK=other)
-            assert original == {"args": ["attach", "--create", "work"], "socket": str(stable)}
+            login(other, DOTFILES_SSH_INCOMING_SOCK=str(home / "expired.sock"))
+            subprocess.run(
+                ["/bin/bash", "-c", '/bin/sh "$HOME/.ssh/rc"'],
+                env={**env, "SSH_AUTH_SOCK": other,
+                     "DOTFILES_SSH_INCOMING_SOCK": str(home / "expired.sock")},
+                check=True, capture_output=True, text=True,
+            )
+            original = attach("work", SSH_AUTH_SOCK=other, DOTFILES_SSH_INCOMING_SOCK=first)
+            assert original == {"args": ["attach", "--create", "work"], "socket": str(stable),
+                                "incoming": None}, original
             assert stable.readlink() == Path(other)
             assert legacy.readlink() == Path(first), "Migration replaced an old consumer's link"
+            login("", DOTFILES_SSH_INCOMING_SOCK=first)
+            assert stable.readlink() == Path(other), "Login without forwarding republished an inherited agent"
+            for mux in ("ZELLIJ", "TMUX"):
+                rejected = subprocess.run(
+                    [str(bindir / "zellij-agent"), "publish-login"],
+                    env={**env, "SSH_AUTH_SOCK": str(stable),
+                         "DOTFILES_SSH_INCOMING_SOCK": first, mux: "fixture"},
+                    capture_output=True, text=True,
+                )
+                assert rejected.returncode != 0 and "outside Zellij or tmux" in rejected.stderr, rejected
+                assert stable.readlink() == Path(other), "Mux publication replaced the current agent"
             # Even an old non-mux caller selects without republishing its raw
             # socket, while that socket still exists and after it disappears.
             assert shell(SSH_AUTH_SOCK=first) == str(stable)

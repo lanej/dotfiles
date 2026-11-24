@@ -2,6 +2,7 @@
 """One fresh-box bootstrap workflow; downloads and package managers are fixtures."""
 from pathlib import Path
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -9,6 +10,170 @@ import subprocess
 import sys
 import tempfile
 import tomllib
+
+
+def test_bedrock(root):
+    with tempfile.TemporaryDirectory(prefix="dotfiles-bedrock-") as temporary:
+        home = Path(temporary)
+        fixture = home / "fixture"
+        fixture.mkdir()
+        driver = fixture / "driver"
+        driver.write_text(f"#!{sys.executable}\n" + r'''
+import os
+import json
+from pathlib import Path
+import shutil
+import sys
+home = Path(os.environ["HOME"])
+args = sys.argv[1:]
+name = Path(sys.argv[0]).name
+def record(event):
+    with (home / "events").open("a") as output:
+        output.write(event + "\n")
+if name == "uv":
+    assert args[:3] == ["run", "--no-project", "python"], args
+    os.execv(sys.executable, [sys.executable, *args[3:]])
+elif name == "git":
+    if args[:2] == ["clone", "--"]:
+        assert args[2] == "https://github.com/lanej/bedrock-router.git", args
+        checkout = Path(args[3])
+        checkout.mkdir(parents=True)
+        (checkout / "config.json").write_text('{"port":18081}\n')
+        builder = checkout / "scripts/build-lifecycle.py"
+        builder.parent.mkdir()
+        builder.write_text(
+            "import hashlib,json,os,pathlib,shutil,sys\n"
+            "home=pathlib.Path(os.environ['HOME'])\n"
+            "out=pathlib.Path(sys.argv[sys.argv.index('--output')+1])\n"
+            "shutil.copyfile(home/'fixture/driver',out);out.chmod(0o755)\n"
+            "with out.open('a') as binary:binary.write('\\n# native lifecycle installer\\n')\n"
+            "pathlib.Path(sys.argv[sys.argv.index('--manifest')+1]).write_text(json.dumps("
+            "{'expected_identity':'build:fixture','sha256':hashlib.sha256(out.read_bytes()).hexdigest()}))\n"
+            "with (home/'events').open('a') as events:events.write('build\\n')\n"
+        )
+        record("clone")
+    elif args == ["rev-parse", "HEAD"]:
+        print("a" * 40)
+    elif args[:2] == ["status", "--porcelain"]:
+        if os.environ.get("FIXTURE_DIRTY_ROUTER"):
+            print(" M config.json")
+    else:
+        raise AssertionError(args)
+elif name == "go":
+    assert args[:2] == ["build", "-buildvcs=true"], args
+    destination = Path(args[args.index("-o") + 1])
+    shutil.copyfile(home / "fixture/driver", destination)
+    destination.chmod(0o755)
+    record("build")
+elif name == "loginctl":
+    if args[0] == "show-user":
+        print("yes" if (home / "lingering").exists() else "no")
+    elif args[0] == "enable-linger":
+        (home / "lingering").touch()
+    else:
+        raise AssertionError(args)
+elif name == "bedrock-router":
+    if args == ["lifecycle", "identity"]:
+        if os.environ.get("FIXTURE_PRE_NATIVE_ROUTER") and not Path(__file__).read_text().endswith("\n# native lifecycle installer\n"):
+            sys.exit(3)
+        print(json.dumps({"identity":"build:fixture"}))
+    elif args == ["install", "--help"]:
+        print("-keep-env")
+        if not os.environ.get("FIXTURE_LEGACY_ROUTER"):
+            print("-preserve-mcp")
+    elif args == ["status", "--quiet"]:
+        sys.exit(0 if (home / "router-running").exists() and not os.environ.get("FIXTURE_UNHEALTHY_ROUTER") else 1)
+    elif args[:1] == ["install"]:
+        assert "--keep-env" in args and "--preserve-mcp" in args, args
+        if os.environ.get("FIXTURE_PRE_NATIVE_ROUTER") and "--no-start" not in args:
+            if not Path(__file__).read_text().endswith("\n# native lifecycle installer\n"):
+                record("legacy start requested")
+            sys.exit(3)
+        installed = home / ".codex/bedrock-router/bedrock-router"
+        if Path(sys.argv[0]) != installed:
+            shutil.copyfile(sys.argv[0], installed)
+            installed.chmod(0o755)
+        source = Path(args[args.index("--config") + 1])
+        config = installed.parent / "config.json"
+        config.write_bytes(source.read_bytes())
+        if "--no-start" not in args:
+            (home / "router-running").touch()
+            record("start")
+        else:
+            record("stage")
+    else:
+        raise AssertionError(args)
+else:
+    raise AssertionError(name)
+''')
+        driver.chmod(0o755)
+        for tool in ("uv", "git", "go", "loginctl"):
+            (fixture / tool).symlink_to(driver)
+        installed = home / ".codex/bedrock-router/bedrock-router"
+        installed.parent.mkdir(parents=True)
+        shutil.copyfile(driver, installed)
+        installed.chmod(0o755)
+        credentials = home / ".config/bedrock/env"
+        credentials.parent.mkdir(parents=True)
+        credentials.write_text("private-test-credentials\n")
+        config = installed.parent / "config.json"
+        config.write_text('{"port":18088}\n')
+        state = installed.parent / "sessions.sqlite3"
+        state.write_bytes(b"retained session state")
+        environment = home / ".codex/.env"
+        environment.write_text("custom credential source\n")
+        codex = home / ".codex/config.toml"
+        codex.write_text('[mcp_servers.custom]\nenabled = false\n')
+        protected = {path: path.read_bytes() for path in (credentials, config, state, environment, codex)}
+        env = {**os.environ, "HOME": str(home), "PATH": f"{fixture}:{os.environ['PATH']}",
+               "XDG_CONFIG_HOME": str(home / ".config"), "XDG_CACHE_HOME": str(home / ".cache"),
+               "UV": str(fixture / "uv")}
+        for key in ("CODEX_HOME", "DOTFILES_CONFIG", "BEDROCK_TOKEN_FILE"):
+            env.pop(key, None)
+        command = ["/usr/bin/make", "--no-print-directory", "bedrock-router"]
+
+        def run(extra=None, success=True):
+            result = subprocess.run(command, cwd=root, env={**env, **(extra or {})},
+                                    capture_output=True, text=True, timeout=30)
+            assert (result.returncode == 0) == success, result.stdout + result.stderr
+            return result
+
+        run()
+        assert (home / "router-running").exists(), "Setup did not activate the stopped service"
+        assert all(path.read_bytes() == value for path, value in protected.items())
+        if sys.platform == "linux":
+            assert (home / "lingering").exists()
+        events = (home / "events").read_text()
+        run()
+        assert (home / "events").read_text().splitlines().count("start") == events.splitlines().count("start"), "Rerun restarted the healthy router"
+        failed = run({"FIXTURE_UNHEALTHY_ROUTER": "1"}, success=False)
+        assert "Bedrock router is installed and healthy." not in failed.stdout
+        credentials.unlink()
+        before = (home / "events").read_text()
+        missing = run(success=False)
+        assert "Bedrock credentials are missing" in missing.stderr
+        assert (home / "events").read_text() == before
+        credentials.write_bytes(protected[credentials])
+        installed.unlink()
+        config.unlink()
+        (home / "router-running").unlink()
+        run()
+        assert (home / "events").read_text().splitlines()[-4:] == ["clone", "build", "stage", "start"]
+        assert (home / "router-running").exists() and state.read_bytes() == protected[state]
+        config.write_bytes(protected[config])
+        run({"FIXTURE_LEGACY_ROUTER": "1"})
+        assert config.read_bytes() == protected[config], "Upgrading an incompatible router lost its custom port"
+        before = installed.read_bytes()
+        dirty = run({"FIXTURE_LEGACY_ROUTER": "1", "FIXTURE_DIRTY_ROUTER": "1"}, success=False)
+        assert "Preserve Bedrock Router checkout changes" in dirty.stderr
+        assert installed.read_bytes() == before
+        installed.write_bytes(driver.read_bytes())
+        before_starts = (home / "events").read_text().splitlines().count("start")
+        run({"FIXTURE_PRE_NATIVE_ROUTER": "1", "FIXTURE_UNHEALTHY_ROUTER": "1"}, success=False)
+        after = (home / "events").read_text().splitlines()
+        assert "legacy start requested" not in after and after.count("start") == before_starts
+        assert (home / "router-running").exists(), "A legacy unhealthy owner was disrupted"
+        print("PASS Bedrock setup activates stopped services, preserves private state, avoids healthy restarts, installs fresh hosts and rejects failures")
 
 
 def test_compatibility(root):
@@ -57,6 +222,16 @@ printf '%s\\n' "${SSL_CERT_FILE-unset}" "${SSL_CERT_DIR-unset}"
         result = run(trust, extra={"PATH": f"{home}:{env['PATH']}"})
         assert result.stdout.splitlines() == ["unset", "unset"], result.stdout
         print("PASS Linux CA discovery preserves existing and explicit trust stores")
+
+        result = run('''
+os=linux
+bun() { printf '%s\\n' "${TEST_BUN_VERSION:-1.4.5-canary}"; }
+package_semver() { return 1; }
+install_bun_from_release() { TEST_BUN_VERSION=$1; printf 'installed stable %s\\n' "$1"; }
+install_package_version bun 1.4.5
+''')
+        assert "installed stable 1.4.5" in result.stdout, result.stdout
+        print("PASS prerelease Bun does not satisfy a stable runtime minimum")
 
         npm_bin = home / "npm-bin"
         cargo_bin = home / ".cargo/bin"
@@ -135,13 +310,196 @@ install_luacheck_package
         assert f"luarocks install --tree {home}/.local luacheck" in events
         print("PASS DNF Luacheck installs through LuaRocks and propagates package failures")
 
+        bsdtar_fixtures = '''
+command() {
+    case "$*" in
+        "-v bsdtar") test -x "$HOME/.local/bin/bsdtar" ;;
+        "-v brew") return 1 ;;
+        "-v dnf") return 0 ;;
+        *) builtin command "$@" ;;
+    esac
+}
+source() {
+    if [ "$1" = /etc/os-release ]; then
+        ID=${TEST_OS_ID:-rocky}
+    else
+        builtin source "$@"
+    fi
+}
+uname() { printf '%s\\n' "${TEST_ARCH:-x86_64}"; }
+rpm() {
+    printf 'rpm %s\\n' "$*" >> "$HOME/events"
+    case "$1" in
+        -q) printf '%s\\n' "${TEST_LIBARCHIVE:-3.3.3 3.el8_5 x86_64}" ;;
+        --checksig)
+            printf '%s: %s\\n' "$2" "${TEST_SIGNATURE:-digests signatures OK}"
+            ;;
+        -qp) printf '%s\\n' "${TEST_RPM_IDENTITY:-bsdtar-3.3.3-3.el8_5.x86_64}" ;;
+        *) return 1 ;;
+    esac
+}
+curl() {
+    printf 'curl %s\\n' "$*" >> "$HOME/events"
+    [ "${TEST_DOWNLOAD_FAIL:-0}" != 1 ] || return 1
+    while [ "$#" -gt 0 ]; do
+        if [ "$1" = -o ]; then
+            printf 'fixture rpm\\n' > "$2"
+            return
+        fi
+        shift
+    done
+    return 1
+}
+sudo() {
+    printf 'sudo %s\\n' "$*" >> "$HOME/events"
+    if [ "$*" = "dnf install -y bsdtar" ]; then
+        [ "${TEST_DNF_MATCH:-0}" = 1 ] || return 1
+    else
+        [ "$1 $2 $3 $4" = "dnf install -y --setopt=localpkg_gpgcheck=1" ] || return 1
+        [ -f "$5" ] || return 1
+        [ "${TEST_INSTALL_FAIL:-0}" != 1 ] || return 1
+    fi
+    mkdir -p "$HOME/.local/bin"
+    printf '#!/bin/sh\\nprintf "bsdtar fixture\\\\n"\\n' > "$HOME/.local/bin/bsdtar"
+    chmod +x "$HOME/.local/bin/bsdtar"
+}
+install_from_package_manager bsdtar
+'''
+        package_home = home / "bsdtar"
+        package_home.mkdir()
+        package_env = {"HOME": str(package_home), "TMPDIR": str(package_home)}
+        result = run(bsdtar_fixtures, extra=package_env)
+        installed_tool = package_home / ".local/bin/bsdtar"
+        assert subprocess.check_output([installed_tool], text=True) == "bsdtar fixture\n"
+        events = (package_home / "events").read_text()
+        assert "https://dl.rockylinux.org/vault/rocky/8.5/BaseOS/x86_64/os/Packages/b/bsdtar-3.3.3-3.el8_5.x86_64.rpm" in events
+        assert "--setopt=localpkg_gpgcheck=1" in events
+        assert not list(package_home.glob("dotfiles-bsdtar.*")), "Downloaded RPM scratch was retained"
+        previous = events
+        run(bsdtar_fixtures, extra=package_env)
+        assert (package_home / "events").read_text() == previous, "Rerun reinstalled bsdtar"
+        installed_tool.unlink()
+        for failure in (
+            {"TEST_SIGNATURE": "digests OK"},
+            {"TEST_SIGNATURE": "digests SIGNATURES NOT OK"},
+            {"TEST_SIGNATURE": "digests SIGNATURES NOT OK (NOKEY)"},
+            {"TEST_RPM_IDENTITY": "bsdtar-3.3.3-3.el8_5.aarch64"},
+            {"TEST_DOWNLOAD_FAIL": "1"},
+            {"TEST_INSTALL_FAIL": "1"},
+            {"TEST_OS_ID": "fedora"},
+            {"TEST_LIBARCHIVE": "3.3.3 5.el8 x86_64"},
+        ):
+            run(bsdtar_fixtures, extra={**package_env, **failure}, success=False)
+            assert not installed_tool.exists(), f"Unsafe or failed archive installed a tool: {failure}"
+            assert not list(package_home.glob("dotfiles-bsdtar.*")), failure
+        result = run(bsdtar_fixtures, extra={
+            **package_env,
+            "TEST_ARCH": "aarch64",
+            "TEST_LIBARCHIVE": "3.4.0 2.el9_3 aarch64",
+            "TEST_RPM_IDENTITY": "bsdtar-3.4.0-2.el9_3.aarch64",
+        })
+        assert installed_tool.is_file()
+        events = (package_home / "events").read_text()
+        assert "https://dl.rockylinux.org/vault/rocky/9.3/BaseOS/aarch64/os/Packages/b/bsdtar-3.4.0-2.el9_3.aarch64.rpm" in events
+        installed_tool.unlink()
+        (package_home / "events").unlink()
+        run(bsdtar_fixtures, extra={**package_env, "TEST_DNF_MATCH": "1"})
+        assert installed_tool.is_file()
+        assert "curl " not in (package_home / "events").read_text()
+        print("PASS pinned Rocky libarchive gets a matching signed bsdtar; untrusted archives and failures are rejected")
+
+
+def test_go_path_precedence(root):
+    with tempfile.TemporaryDirectory(prefix="dotfiles-bootstrap-go-path-") as temporary:
+        for custom_gobin in (False, True):
+            home = Path(temporary) / ("custom-gobin" if custom_gobin else "default-gopath")
+            local_bin = home / ".local/bin"
+            go_bin = home / ("custom-bin" if custom_gobin else "go-primary/bin")
+            local_bin.mkdir(parents=True)
+            go_bin.mkdir(parents=True)
+            old_shfmt = go_bin / "shfmt"
+            old_shfmt.write_text("#!/bin/sh\nprintf 'v3.10.0\\n'\n")
+            old_shfmt.chmod(0o755)
+            go_tool = go_bin / "go-only"
+            go_tool.write_text("#!/bin/sh\nprintf 'Go tool available\\n'\n")
+            go_tool.chmod(0o755)
+            env = {
+                **os.environ,
+                "HOME": str(home),
+                "PATH": "/usr/bin:/bin",
+                "GOPATH": os.pathsep.join((str(home / "go-primary"), str(home / "go-secondary"))),
+            }
+            env.pop("GOBIN", None)
+            env.pop("NVM_BIN", None)
+            if custom_gobin:
+                env["GOBIN"] = str(go_bin)
+                nvm_bin = home / ".nvm/versions/node/v24.0.0/bin"
+                nvm_bin.mkdir(parents=True)
+                for node_bin, version in ((local_bin, "v22.23.3"), (nvm_bin, "v24.0.0")):
+                    node = node_bin / "node"
+                    node.write_text(f"#!/bin/sh\nprintf '{version}\\n'\n")
+                    node.chmod(0o755)
+                (home / ".nvm/nvm.sh").write_text(
+                    'export NVM_BIN="$HOME/.nvm/versions/node/v24.0.0/bin"\n'
+                )
+            result = subprocess.run(
+                ["/bin/bash", "-c", '''
+set -e
+source "$1"
+go() {
+    case "$*" in
+        version) printf 'go version go1.26.2 linux/amd64\\n' ;;
+        "env GOBIN") printf '%s\\n' "${GOBIN:-}" ;;
+        "env GOPATH") printf '%s\\n' "$GOPATH" ;;
+        "install mvdan.cc/sh/v3/cmd/shfmt@v3.14.1")
+            printf '#!/bin/sh\\nprintf "v3.14.1\\\\n"\\n' > "$GOBIN/shfmt"
+            chmod +x "$GOBIN/shfmt"
+            ;;
+        *) printf 'Unexpected Go command: %s\\n' "$*" >&2; return 1 ;;
+    esac
+}
+install_config_runtime() { :; }
+load_dotfiles_config() {
+    DOTFILES_TOOLS=go,shfmt
+    DOTFILES_INSTALL_PLAN=$'go\\tgo\\tgo\\t1.26.2\\nshfmt\\tpackage\\tshfmt\\t3.14.1'
+}
+package_semver() { return 1; }
+run_configured_hooks() { :; }
+make() { :; }
+post_install_setup() { :; }
+bootstrap_dotfiles install
+printf 'Selected shfmt: %s\\n' "$(command -v shfmt)"
+shfmt --version
+go-only
+if [ -n "${NVM_BIN:-}" ]; then node --version; fi
+''', "bootstrap-go-path-test", str(root / "bootstrap.sh")],
+                env=env, capture_output=True, text=True, timeout=10,
+            )
+            assert result.returncode == 0, (
+                f"Go PATH setup failed (custom GOBIN={custom_gobin}):\n"
+                + result.stdout + result.stderr
+            )
+            expected = [f"Selected shfmt: {local_bin / 'shfmt'}", "v3.14.1", "Go tool available"]
+            if custom_gobin:
+                expected.append("v24.0.0")
+            assert result.stdout.splitlines()[-len(expected):] == expected, result.stdout
+            assert old_shfmt.read_text() == "#!/bin/sh\nprintf 'v3.10.0\\n'\n"
+        print("PASS selected NVM and installed tools precede older Go binaries; default GOPATH and custom GOBIN remain available")
+
 
 def main():
     root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--compatibility-only", action="store_true")
+    parser.add_argument("--bedrock-only", action="store_true")
     options = parser.parse_args()
+    if options.bedrock_only:
+        test_bedrock(root)
+        return
+    if not options.compatibility_only:
+        test_bedrock(root)
     test_compatibility(root)
+    test_go_path_precedence(root)
     if options.compatibility_only:
         return
     with tempfile.TemporaryDirectory(prefix="dotfiles-bootstrap-") as temporary:
@@ -168,9 +526,17 @@ def main():
         shutil.copyfile(root / "Makefile", checkout / "Makefile")
         shutil.copytree(root / "config", checkout / "config")
         shutil.copytree(root / "bootstrap", checkout / "bootstrap")
+        (checkout / "tools/beads").mkdir(parents=True)
+        shutil.copyfile(root / "tools/beads/tool.toml", checkout / "tools/beads/tool.toml")
         (checkout / "scripts").mkdir()
+        shutil.copyfile(root / "scripts/install-pi", checkout / "scripts/install-pi")
         shutil.copyfile(root / "scripts/dotfiles-config.py", checkout / "scripts/dotfiles-config.py")
+        shutil.copyfile(root / "scripts/runtime_requirements.py", checkout / "scripts/runtime_requirements.py")
+        (checkout / "scripts/prepare-project-runtimes.py").write_text(
+            'import json, pathlib, sys\n'
+            'pathlib.Path(sys.argv[sys.argv.index("--output")+1]).write_text(json.dumps({"projects": {}}))\n')
         (checkout / "scripts/install-approval-cli.py").write_text("from pathlib import Path\nimport os, sys\nPath(os.environ['HOME'], sys.argv[1] + '-installed').touch()\n")
+        (checkout / "scripts/install-studio.py").write_text("from pathlib import Path\nimport os\nhome = Path(os.environ['HOME'])\n(home / 'studio-installed').touch()\nwith (home / 'events').open('a') as log: log.write('studio install\\n')\n")
         shutil.copyfile(root / "scripts/install-treehouse", checkout / "scripts/install-treehouse")
         (checkout / "scripts/install-worktree-policy").write_text('#!/bin/sh\n[ "$1" = 0.1.1 ] || exit 1\ntouch "$HOME/native-policy-installed"\n')
         manager_version = tomllib.loads((root / "bootstrap/tools.toml").read_text())["tools"]["worktree-manager"]["version"]
@@ -185,6 +551,29 @@ def main():
         machine_config.write_text('sets = ["not-a-set"]\n')
         shutil.copytree(root / "scripts/make", checkout / "scripts/make")
         shutil.copyfile(root / "scripts/install-zellij", checkout / "scripts/install-zellij")
+        shutil.copyfile(root / "scripts/zellij-artifacts.py", checkout / "scripts/zellij-artifacts.py")
+        # Control the native build boundary; the wrapper selects real immutable artifacts.
+        (checkout / "scripts/build-zellij-activation.py").write_text(
+            "import hashlib,json,os,pathlib,subprocess,sys,tempfile\n"
+            "home=pathlib.Path.home()\n"
+            "revision,toolchain,host=sys.argv[1:]\n"
+            "assert toolchain=='1.95.0' and host=='aarch64-unknown-linux-gnu'\n"
+            "assert os.environ['CARGO_PROFILE_RELEASE_LTO']=='true'\n"
+            "assert os.environ['CARGO_PROFILE_RELEASE_CODEGEN_UNITS']=='1'\n"
+            "target=home/'.cache/dotfiles/zellij/target'/(revision+'-curated')\n"
+            "with (home/'zellij-installs').open('a') as log:log.write(json.dumps({'revision':revision,'target_dir':str(target),'patch':None})+'\\n')\n"
+            "if os.environ.get('FIXTURE_FAIL_ZELLIJ_INSTALL'):sys.exit('fixture native build failed')\n"
+            "with tempfile.TemporaryDirectory() as stage:\n"
+            " out=pathlib.Path(stage)/'zellij'\n"
+            " out.write_bytes((home/'fixture/driver').read_bytes()+('\\n# revision '+revision+'\\n').encode());out.chmod(0o755)\n"
+            " subprocess.run([sys.executable,str(pathlib.Path(__file__).with_name('zellij-artifacts.py')),'runtime',str(out)],check=True)\n"
+            " selected=(home/'.local/bin/zellij').resolve()\n"
+            " receipt=selected.parent/'build.json'\n"
+            " if not receipt.exists():\n"
+            "  receipt.write_text(json.dumps({'schema_version':1,'base_revision':revision,'activation_patch':None,'toolchain':toolchain,'host':host,'sha256':hashlib.sha256(selected.read_bytes()).hexdigest()}));receipt.chmod(0o444)\n"
+            "(home/'zellij-owned').write_text(revision)\n"
+            "with (home/'events').open('a') as log:log.write('zellij\\n')\n"
+        )
         shutil.copyfile(root / "scripts/install-zellij-navigation.py", checkout / "scripts/install-zellij-navigation.py")
         shutil.copytree(root / "zellij/navigation", checkout / "zellij/navigation")
         shutil.copyfile(root / "scripts/install-zellij-command-prompt.py", checkout / "scripts/install-zellij-command-prompt.py")
@@ -194,6 +583,7 @@ def main():
             root / "scripts/setup-bedrock-credentials.py",
             checkout / "scripts/setup-bedrock-credentials.py",
         )
+        shutil.copyfile(root / "scripts/install-bedrock-router.py", checkout / "scripts/install-bedrock-router.py")
         token = "test-only-'$(touch \"$HOME/token-executed\")`id`"
         source = home / "user (13).json"
         source.write_text(json.dumps({"bearer_token": token, "region": "us-east-1", "expiration": 4102444800}))
@@ -203,6 +593,7 @@ def main():
         driver.write_text(f"#!{sys.executable}\n" + r'''
 import os
 from pathlib import Path
+import hashlib
 import io
 import json
 import shutil
@@ -282,6 +673,22 @@ NVM
 ln -fs "$HOME/fixture/driver" "$HOME/.cargo/bin/rustup"
 echo 'export PATH="$HOME/.cargo/bin:$PATH"' > "$HOME/.cargo/env"
 """
+    elif url.startswith("https://github.com/earendil-works/pi/releases/download/v1.4.0/"):
+        name = "pi-linux-arm64.tar.gz"
+        if url.endswith("/" + name):
+            with tarfile.open(target, "w:gz") as archive:
+                content = (fixture / "driver").read_bytes()
+                binary = tarfile.TarInfo("pi/pi")
+                binary.mode = 0o755
+                binary.size = len(content)
+                archive.addfile(binary, io.BytesIO(content))
+            (home / "pi-version").write_text("1.4.0")
+            record("pi")
+        else:
+            assert url.endswith("/SHA256SUMS"), url
+            digest = hashlib.sha256(Path(target).with_name(name).read_bytes()).hexdigest()
+            Path(target).write_text(f"{digest}  {name}\n")
+        sys.exit(0)
     elif url.endswith("/Hack.zip"):
         with zipfile.ZipFile(target, "w") as archive:
             archive.writestr("HackNerdFontMono-Regular.ttf", b"fixture font")
@@ -341,13 +748,14 @@ elif name == "python3":
 elif name == "node":
     print("v24.0.0" if ".nvm/versions/" in sys.argv[0] else
           "v22.23.3" if managed else "v16.19.1")
+elif name == "bun":
+    assert args == ["--version"], args
+    print("1.10.0")
 elif name == "npm" and args[:1] == ["list"]:
     print('{"dependencies": {"yaml-language-server": {"version": "99.0.0"}}}')
 elif name == "npm" and args[:2] == ["install", "-g"]:
     package, version = args[-1].rsplit("@", 1)
-    tool = {"@openai/codex": "codex", "@earendil-works/pi-coding-agent": "pi"}[package]
-    if tool == "pi":
-        assert args[2] == "--ignore-scripts", args
+    tool = {"@openai/codex": "codex"}[package]
     node_bin = Path(shutil.which("node")).parent
     (node_bin / tool).symlink_to(fixture / "driver")
     (home / (tool + "-version")).write_text(version)
@@ -382,6 +790,9 @@ elif name == "make" and args[-1:] == ["directory-picker"]:
 elif name == "make" and args[-1:] == ["pi-config"]:
     assert subprocess.check_output(["pi", "--version"], text=True).strip() == "1.4.0"
     record("pi config")
+elif name == "make" and "bedrock-router" in args:
+    subprocess.run(["/usr/bin/make", *args], check=True)
+    record("router setup")
 elif name == "make" and args[-1:] == ["base"]:
     subprocess.run(["/usr/bin/make", *args], check=True)
     record("base")
@@ -419,7 +830,22 @@ elif name == "nvim" and "--headless" in args:
     assert os.environ["DOTFILES_NVIM_BOOTSTRAP"].endswith("/scripts/bootstrap-nvim.lua")
     record("neovim setup")
 elif name == "loginctl":
-    print("Linger=yes")
+    print("yes" if "--value" in args else "Linger=yes")
+elif name == "bedrock-router":
+    if args == ["lifecycle", "identity"]:
+        print(json.dumps({"identity":"build:fixture"}))
+    elif args == ["install", "--help"]:
+        print("-keep-env\n-preserve-mcp")
+    elif args == ["status", "--quiet"]:
+        sys.exit(0 if (home / "router-running").exists() else 1)
+    elif args[:1] == ["install"]:
+        assert "--keep-env" in args and "--preserve-mcp" in args, args
+        assert args[args.index("--config") + 1] == str(home / ".codex/bedrock-router/config.json"), args
+        if "--no-start" not in args:
+            (home / "router-running").touch()
+            record("router start")
+    else:
+        raise AssertionError(args)
 elif name == "git-crypt":
     if args != ["version"]:
         sys.exit(2)
@@ -519,11 +945,14 @@ else:
     print(name + " 99.0.0")
 ''')
         driver.chmod(0o755)
+        shutil.copyfile(driver, router_binary)
+        router_binary.chmod(0o755)
+        previous_router = router_binary.read_bytes()
         suggestions = home / ".zsh/plugins/zsh-autosuggestions"
         suggestions.mkdir(parents=True)
         (suggestions / "zsh-autosuggestions.zsh").write_text("# version 99.0.0\n")
         for tool in (
-            "uname", "git", "sudo", "apt-get", "apt-cache", "dnf", "curl", "uv", "node", "npm",
+            "uname", "git", "sudo", "apt-get", "apt-cache", "dnf", "curl", "uv", "node", "npm", "bun",
             "make", "cmake", "cc", "cargo", "rustc", "rust-analyzer", "go",
             "fzf", "starship", "atuin", "sk", "delta", "bat", "fd",
             "zsh-autosuggestions", "cargo-sweep", "cargo-cache",
@@ -553,6 +982,7 @@ else:
             "XDG_CACHE_HOME": str(home / ".cache"),
             "XDG_STATE_HOME": str(home / ".local/state"),
             "XDG_CONFIG_HOME": str(home / ".config"),
+            "XDG_DATA_HOME": str(home / ".local/share"),
             "CARGO_BUILD_TARGET": "x86_64-unknown-linux-gnu",
         }
         env.pop("GOPATH", None)
@@ -573,10 +1003,16 @@ else:
         assert (home / ".local/bin/uv").is_file()
         assert (home / ".local/bin/python3").is_file()
         assert not (home / "patched-git-installed").exists()
+        assert not (home / "studio-installed").exists()
         assert not (home / ".nvm").exists()
         assert not (home / ".cargo").exists()
         assert not (home / ".local/bin/codex").exists()
         assert not (home / ".config/bedrock/env").exists()
+
+        # An up-to-date npm launcher must not satisfy the standalone Pi install.
+        legacy_pi = fixture / "pi"
+        legacy_pi.symlink_to(driver)
+        (home / "pi-version").write_text("1.4.0")
 
         # Stage two installs the configured workstation on ARM Linux, including
         # an older Neovim that needs a source build and missing eza/yq/btop.
@@ -606,6 +1042,8 @@ else:
             raise AssertionError(result.stdout + result.stderr)
         assert shadow_node.is_symlink() and shadow_node.resolve() == driver.resolve()
         events = (home / "events").read_text().splitlines()
+        assert legacy_pi.resolve() == driver.resolve()
+        assert (home / ".local/bin/pi").readlink() == home / ".local/share/pi-standalone/1.4.0/pi/pi"
         assert "mergiraf" in events
         assert (home / ".cargo/bin/mergiraf").is_file()
         assert events.index("make") > max(
@@ -630,72 +1068,76 @@ else:
         assert (home / ".local/bin/zellij").is_file()
         assert "zellij helpers" in (home / "events").read_text()
         assert events.index("zellij") < events.index("make")
-        # Repeat the real entrypoint with the installed executable already in
-        # place. Cargo owns installation and caching; the fixture models its output.
+        # Repeated setup observes the selected image rather than overwriting a mapped file.
         runtime_command = ["/bin/bash", str(checkout / "scripts/install-zellij")]
-        runtime_env = {**env, "PATH": f"{home / '.cargo/bin'}:{env['PATH']}",
+        runtime_env = {**env, "PATH": f"{home / '.cargo/bin'}:{home / '.local/bin'}:{env['PATH']}",
                        "CARGO_PROFILE_RELEASE_LTO": "false",
                        "CARGO_PROFILE_RELEASE_CODEGEN_UNITS": "16"}
         installed = home / ".local/bin/zellij"
         previous = installed.read_bytes()
-        repeated = subprocess.run(runtime_command, env=runtime_env, capture_output=True, text=True)
-        assert repeated.returncode == 0, repeated.stdout + repeated.stderr
-        assert installed.read_bytes() == previous
-        assert (home / "events").read_text().splitlines().count("zellij") == 1
-        # Model a legacy owned same-revision installation without a receipt.
-        # Keep its populated build cache: cache state cannot verify the binary.
+        selected = installed.resolve()
+        assert installed.is_symlink() and selected.parent.name == hashlib.sha256(previous).hexdigest()
         def runtime_calls():
             return [json.loads(line) for line in (home / "zellij-installs").read_text().splitlines()]
-
-        first_call, repeat_call = runtime_calls()
+        first_call, = runtime_calls()
         revision = first_call["revision"]
-        assert first_call["target_dir"] == str(home / ".cache/dotfiles/zellij/target" / revision)
-        assert first_call["force"] and not repeat_call["force"]
-        (home / ".local/.dotfiles-zellij-install").unlink(missing_ok=True)
+        assert first_call["target_dir"] == str(home / ".cache/dotfiles/zellij/target" / (revision + "-curated"))
+        assert first_call["patch"] is None
+        repeated = subprocess.run(runtime_command, env=runtime_env, capture_output=True, text=True)
+        assert repeated.returncode == 0, repeated.stdout + repeated.stderr
+        assert installed.resolve() == selected and installed.read_bytes() == previous
+        assert len(runtime_calls()) == 1, f"Verified selection rebuilt: {runtime_calls()}; {repeated.stdout}; {repeated.stderr}; {installed.resolve()}"
+        receipt = home / ".local/.dotfiles-zellij-install"
+        foreign = home / "foreign-zellij"
+        foreign.write_bytes(previous + b"\n# different immutable runtime\n")
+        foreign.chmod(0o755)
+        foreign_selected = subprocess.run(
+            [sys.executable, str(checkout / "scripts/zellij-artifacts.py"), "runtime", str(foreign)],
+            env=runtime_env, capture_output=True, text=True)
+        assert foreign_selected.returncode == 0, foreign_selected.stderr
+        other_image = installed.resolve()
+        assert other_image != selected
+        corrected = subprocess.run(runtime_command, env=runtime_env, capture_output=True, text=True)
+        assert corrected.returncode == 0, corrected.stdout + corrected.stderr
+        assert installed.resolve() == selected and selected.read_bytes() == previous
+        assert other_image.read_bytes() == foreign.read_bytes(), "Correction overwrote a foreign immutable image"
+        assert len(runtime_calls()) == 2, "A stale curated stamp hid a changed immutable selection"
+        receipt.unlink()
         failed = subprocess.run(runtime_command,
                                 env={**runtime_env, "FIXTURE_FAIL_ZELLIJ_INSTALL": "1"},
                                 capture_output=True, text=True)
         assert failed.returncode != 0 and "fixture native build failed" in failed.stderr
-        assert installed.read_bytes() == previous
+        assert installed.resolve() == selected and installed.read_bytes() == previous
+        assert not receipt.exists(), "A failed build published a completion receipt"
         migrated = subprocess.run(runtime_command, env=runtime_env, capture_output=True, text=True)
         assert migrated.returncode == 0, migrated.stdout + migrated.stderr
-        assert runtime_calls()[-1]["force"], "A failed build was treated as an installed isolated runtime"
-        assert (home / "events").read_text().splitlines().count("zellij") == 2
+        assert installed.resolve() == selected and receipt.is_file()
+        builds = len(runtime_calls())
         repeated = subprocess.run(runtime_command, env=runtime_env, capture_output=True, text=True)
-        assert repeated.returncode == 0, repeated.stdout + repeated.stderr
-        assert not runtime_calls()[-1]["force"]
-        assert (home / "events").read_text().splitlines().count("zellij") == 2
-        receipt = home / ".local/.dotfiles-zellij-install"
+        assert repeated.returncode == 0 and len(runtime_calls()) == builds
         receipt.write_text(f"revision-target-v1:{revision}\n")
         failed = subprocess.run(runtime_command,
                                 env={**runtime_env, "FIXTURE_FAIL_ZELLIJ_INSTALL": "1"},
                                 capture_output=True, text=True)
-        assert failed.returncode != 0 and runtime_calls()[-1]["force"]
-        assert installed.read_bytes() == previous
-        assert receipt.read_text() == f"revision-target-v1:{revision}\n"
+        assert failed.returncode != 0 and "fixture native build failed" in failed.stderr
+        assert installed.read_bytes() == previous and receipt.read_text() == f"revision-target-v1:{revision}\n"
         optimized = subprocess.run(runtime_command, env=runtime_env, capture_output=True, text=True)
         assert optimized.returncode == 0, optimized.stdout + optimized.stderr
-        assert runtime_calls()[-1]["force"], "Old-profile installation skipped the optimized rebuild"
-        repeated = subprocess.run(runtime_command, env=runtime_env, capture_output=True, text=True)
-        assert repeated.returncode == 0, repeated.stdout + repeated.stderr
-        assert not runtime_calls()[-1]["force"], "Matching optimized installation rebuilt unnecessarily"
+        assert receipt.read_text().startswith("immutable-runtime-v4:")
         isolated_target = runtime_calls()[-1]["target_dir"]
-        # Exercise a second pinned recipe through the same installer entrypoint.
         alternate_revision = "1" * 40
-        alternate = home / "install-zellij-other"
+        alternate = checkout / "scripts/install-zellij-other"
         alternate.write_text((checkout / "scripts/install-zellij").read_text().replace(
             "zellij_revision=" + revision, "zellij_revision=" + alternate_revision))
         changed = subprocess.run(["/bin/bash", str(alternate)], env=runtime_env,
                                  capture_output=True, text=True)
         assert changed.returncode == 0, changed.stdout + changed.stderr
         changed_call = runtime_calls()[-1]
-        assert changed_call["revision"] == alternate_revision
-        assert changed_call["target_dir"] != isolated_target and changed_call["force"]
-        assert Path(changed_call["target_dir"]).name == alternate_revision
+        assert changed_call["revision"] == alternate_revision and changed_call["target_dir"] != isolated_target
+        assert installed.resolve() != selected and selected.read_bytes() == previous
         restored = subprocess.run(runtime_command, env=runtime_env, capture_output=True, text=True)
         assert restored.returncode == 0, restored.stdout + restored.stderr
-        assert runtime_calls()[-1]["target_dir"] == isolated_target
-        assert runtime_calls()[-1]["force"], "Returning to an old pin trusted build-cache state"
+        assert installed.resolve() == selected and runtime_calls()[-1]["target_dir"] == isolated_target
         assert (home / "zellij-owned").read_text() == revision
         font_dir = home / ".local/share/fonts"
         assert (font_dir / "HackNerdFontMono-Regular.ttf").read_bytes() == b"fixture font"
@@ -708,9 +1150,11 @@ else:
         assert (home / "events").read_text().splitlines().count("hack font") == 1
         assert (home / ".local/share/btop/themes/dracula.theme").is_file()
         assert "atuin setup" in events
-        assert router_binary.read_bytes() == b"externally installed router"
+        assert router_binary.read_bytes() == previous_router
         assert router_config.read_bytes() == b"external router configuration"
         assert router_state.read_bytes() == b"external session database"
+        assert (home / "router-running").exists()
+        assert events.index("router setup") > events.index("make")
         assert events.index("agent status setup") > events.index("make")
         assert (home / ".codex/.env").resolve() == (home / ".config/bedrock/env").resolve()
         credential_file = home / ".config/bedrock/env"
@@ -754,7 +1198,7 @@ else:
         # A local property removes the editor from the same composed bundles.
         # Keep an older system editor present: installation must leave it alone
         # and skip both the source install and Neovim's post-install setup.
-        machine_config.write_text(machine_config.read_text() + "neovim = false\n")
+        machine_config.write_text(machine_config.read_text() + "neovim = false\nstudio = false\n")
         (home / ".local/bin/nvim").unlink()
         (home / "pi-version").write_text("1.5.0")
         previous_events = len((home / "events").read_text().splitlines())
@@ -763,6 +1207,7 @@ else:
         assert reduced.returncode == 0, reduced.stdout + reduced.stderr
         new_events = (home / "events").read_text().splitlines()[previous_events:]
         assert "neovim build" not in new_events and "neovim setup" not in new_events
+        assert "studio install" not in new_events
         assert "pi" not in new_events
         assert "mergiraf" not in new_events
         assert (home / "pi-version").read_text() == "1.5.0"
@@ -771,6 +1216,7 @@ else:
         assert (home / "patched-git-installed").is_file()
         assert (home / "native-policy-installed").is_file()
         assert (home / "intent-installed").is_file()
+        assert (home / "studio-installed").is_file()
         assert (home / "keylease-installed").is_file()
         assert (home / "worktree-manager-installed").is_file()
         print("PASS: minimal bootstrap provides the native baseline and runtime; explicit installation adds selected tools and private Bedrock credentials.")

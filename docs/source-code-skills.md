@@ -93,7 +93,7 @@ Use fragments for selected commands and obligations that the entrypoint must sta
 | Path-adapted resources and generated checks | Managed regular files | Managed regular files | Run setup or upgrade. |
 | Skill release registry | Canonical link | Copied registry matching installed pins | Live versions describe available source; they do not regenerate rendered files. |
 
-Changing the stage requires setup or upgrade to select a different entrypoint. Authored settings and customized installed files retain normal conflict protection; preview updates before applying them. Do not edit generated instructions or manifest fingerprints to claim a refreshed installation.
+Changing the stage requires setup or upgrade to select a different entrypoint. Authored settings remain intact; selected generated files refresh with backups. Preview updates before applying them. Do not edit generated instructions or recorded versions to claim a refreshed installation.
 
 ## Inspect the right evidence
 
@@ -120,4 +120,4 @@ To locate the current template markers, include the hidden and ignored source di
 rg --hidden --no-ignore --glob SKILL.md -n '^<!-- source-code:' ai/skills
 ```
 
-Keep release versions, policy version, lifecycle stage, installation fingerprints, and template declarations separate. Each describes a different part of the installation contract.
+Keep release versions, policy version, lifecycle stage, installation selections, and template declarations separate. Each describes a different part of the installation contract.

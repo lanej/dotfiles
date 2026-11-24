@@ -2,9 +2,11 @@
 
 ## Purpose and normative language
 
-**Architectural formulation:**
+**Separate policy from mechanism.** Policy decides what should happen given the facts. Mechanism supplies the operations used to make and carry out that decision.
 
-> Functional Core, Imperative Shell, a Thin Canonical Model, and Selective Ports and Adapters at genuine substitution or isolation boundaries.
+For example, “choose the cheapest eligible, unexpired quote” sets the policy. Sorting or taking a minimum are two mechanisms for applying the same ranking rule. Reading the clock, fetching quotes, and submitting the selection are mechanisms too. Changing the ranking rule should leave submission alone. Replacing the provider client should preserve the selection for the same facts.
+
+A functional core makes the rule exercisable with supplied values. An imperative shell gathers those values, executes the chosen action, and reports its outcome. Keep the canonical model thin and introduce ports and adapters where substitution or isolation earns the extra structure.
 
 **Governing objective:**
 

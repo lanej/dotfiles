@@ -1,7 +1,7 @@
 # Collapse captured model transcripts in PR diffs; reviews and result notes stay visible.
 claude/evals/socrates-dialogue/results/**/record.json linguist-generated=true
 
-# Collapse generated contracts and adapters in PR diffs.
+# Collapse generated contracts, adapters, and Bun lockfiles in PR diffs.
 design-system/generated/** linguist-generated=true
 config/schema.json linguist-generated=true
 config/targets.mk linguist-generated=true

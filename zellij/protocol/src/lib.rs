@@ -8,6 +8,7 @@ use std::collections::BTreeMap;
 
 pub const RELOAD: &str = "lane-attention-reload";
 pub const READINESS: &str = "lane-attention-ready";
+pub const ACTIVATION_IMAGE: &str = "lane-activation-image-v1";
 pub const MAX_CONFIG_BYTES: usize = 16 * 1024;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -127,6 +128,26 @@ pub struct ReadinessReply {
     pub config_ready: bool,
     pub attention_ready: bool,
     pub bindings_installed: bool,
+}
+
+/// A separate versioned, read-only probe leaves the established reload wire intact.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ActivationImageRequest {
+    pub schema_version: u32,
+    pub request: String,
+    pub plugin_id: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ActivationImageReply {
+    pub schema_version: u32,
+    pub request: String,
+    pub plugin_id: u32,
+    pub client_id: u32,
+    pub image_id: String,
+    pub ready: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

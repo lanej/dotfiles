@@ -49,6 +49,57 @@ package_semver() {
 	fi
 }
 
+install_bsdtar_rocky_archive() (
+	local ID='' version release arch installed library_arch package stage signature identity rocky_release
+	# A pinned libarchive can predate the OS minor and the active repositories.
+	# shellcheck disable=SC1091
+	source /etc/os-release || return 1
+	if [ "$ID" != rocky ]; then
+		echo 'No archived bsdtar fallback is available for this distribution' >&2
+		return 1
+	fi
+	arch=$(uname -m) || return 1
+	case "$arch" in
+		x86_64 | aarch64) ;;
+		*)
+			echo "Unsupported bsdtar architecture: $arch" >&2
+			return 1
+			;;
+	esac
+	installed=$(rpm -q --qf '%{VERSION} %{RELEASE} %{ARCH}\n' "libarchive.$arch") || return 1
+	read -r version release library_arch <<<"$installed"
+	if [[ ! $version =~ ^[0-9]+(\.[0-9]+)+$ || ! $release =~ ^[[:alnum:]_.+]+$ || $library_arch != "$arch" ]]; then
+		echo 'Cannot determine the installed libarchive package identity' >&2
+		return 1
+	fi
+	if [[ $release =~ \.el([0-9]+)_([0-9]+)(\.[[:alnum:]_.+]+)?$ ]]; then
+		rocky_release="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+	else
+		echo "Cannot map libarchive release $release to a Rocky archive" >&2
+		return 1
+	fi
+	package="bsdtar-$version-$release.$arch"
+	stage=$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-bsdtar.XXXXXXXX") || return 1
+	trap 'rm -rf "$stage"' EXIT
+	curl -fsSL --proto '=https' --proto-redir '=https' \
+		"https://dl.rockylinux.org/vault/rocky/$rocky_release/BaseOS/$arch/os/Packages/b/$package.rpm" \
+		-o "$stage/$package.rpm" || return 1
+	signature=$(LC_ALL=C rpm --checksig "$stage/$package.rpm") || return 1
+	case "$signature" in
+		*": digests signatures OK") ;;
+		*)
+			echo 'Archived bsdtar RPM lacks a trusted signature' >&2
+			return 1
+			;;
+	esac
+	identity=$(rpm -qp --qf '%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}' "$stage/$package.rpm") || return 1
+	if [ "$identity" != "$package" ]; then
+		echo "Archived bsdtar RPM identity differs from $package" >&2
+		return 1
+	fi
+	sudo dnf install -y --setopt=localpkg_gpgcheck=1 "$stage/$package.rpm"
+)
+
 install_bsdtar_package() {
 	if command -v bsdtar >/dev/null; then
 		return 0
@@ -56,7 +107,7 @@ install_bsdtar_package() {
 	if command -v brew >/dev/null; then
 		brew install libarchive
 	elif command -v dnf >/dev/null; then
-		sudo dnf install -y bsdtar
+		sudo dnf install -y bsdtar || install_bsdtar_rocky_archive
 	elif command -v apt-get >/dev/null; then
 		sudo apt-get install -y libarchive-tools
 	elif command -v pacman >/dev/null; then
@@ -385,6 +436,19 @@ node_current_semver() {
 	node --version 2>/dev/null | sed 's/^v//' | parse_semver
 }
 
+bun_current_semver() {
+	# A prerelease does not satisfy a stable minimum.
+	bun --version 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$'
+}
+
+install_bun_from_release() {
+	local root
+	root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
+	python3 "$root/scripts/bun_runtime.py" "$1" || return 1
+	export PATH="$HOME/.local/bin:$PATH"
+	hash -r
+}
+
 cargo_current_semver() {
 	cargo --version 2>/dev/null | parse_semver | head -n1
 }
@@ -455,6 +519,18 @@ install_glow_from_source() {
 }
 
 installed_semver() {
+	if [ "$1" = bun ]; then
+		bun_current_semver
+		return
+	fi
+	if [ "$1" = pi ]; then
+		# Only a launcher installed from the standalone release satisfies bootstrap.
+		local launcher="$HOME/.local/bin/pi" target
+		target=$(readlink "$launcher") || return 1
+		case "$target" in "$HOME"/.local/share/pi-standalone/*/pi/pi) ;; *) return 1 ;; esac
+		"$launcher" --version 2>/dev/null | parse_semver | head -n1
+		return
+	fi
 	explicit_current_semver "$1" || current_heuristic_semver "$1" || go_binary_semver "$1"
 }
 
@@ -776,9 +852,13 @@ install_claude-code_from_release() (
 	bash "$claude_stage" "$1" || exit 1
 )
 
+pi_package_semver() {
+	# The package-manager name does not identify the upstream standalone release.
+	return 1
+}
+
 install_pi_from_release() {
-	install_package_version node 24 || return 1
-	npm install -g --ignore-scripts "@earendil-works/pi-coding-agent@$1"
+	sh "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/install-pi" "$1"
 }
 
 install_stylua_from_release() {
@@ -1230,8 +1310,21 @@ install_rust_runtime() {
 install_dependencies() {
 	install_config_runtime || return 1
 	load_dotfiles_config || return 1
-	local tool installer package version go_bin dotfiles_root
+	local tool installer package version go_bin dotfiles_root requirements
 	dotfiles_root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
+	if dotfiles_has_tool studio || dotfiles_has_tool octo-manager; then
+		# Read every selected project's minimum before choosing one shared runtime.
+		requirements=$(mktemp) || return 1
+		if ! python3 "$dotfiles_root/scripts/prepare-project-runtimes.py" --tools "$DOTFILES_TOOLS" --output "$requirements"; then
+			rm -f "$requirements"
+			return 1
+		fi
+		if ! DOTFILES_RUNTIME_REQUIREMENTS_FILE="$requirements" load_dotfiles_config; then
+			rm -f "$requirements"
+			return 1
+		fi
+		rm -f "$requirements"
+	fi
 	while IFS=$'\t' read -r tool installer package version; do
 		[ -n "$tool" ] || continue
 		echo "Configuring tool: $tool"
@@ -1258,7 +1351,8 @@ install_dependencies() {
 					go_bin=$(go env GOPATH)
 					go_bin="${go_bin%%:*}/bin"
 				fi
-				export PATH="$go_bin:$PATH"
+				# Keep the selected Node runtime and dotfiles tools ahead of older Go binaries.
+				export PATH="${NVM_BIN:+$NVM_BIN:}$HOME/.local/bin:$go_bin:$PATH"
 				;;
 			zellij) install_zellij_runtime || return 1 ;;
 			font) install_hack_nerd_font || return 1 ;;
@@ -1277,6 +1371,9 @@ install_dependencies() {
 				;;
 			approval-cli)
 				python3 "$dotfiles_root/scripts/install-approval-cli.py" "$tool" || return 1
+				;;
+			studio)
+				python3 "$dotfiles_root/scripts/install-studio.py" || return 1
 				;;
 			octo-manager)
 				python3 "$dotfiles_root/scripts/install-octo-manager.py" || return 1
@@ -1321,6 +1418,7 @@ run_configured_hooks() {
 			directory-picker) make -C "$configuration_root" directory-picker || return 1 ;;
 			github-auth) setup_gh_auth || return 1 ;;
 			bedrock-credentials) setup_bedrock_credentials || return 1 ;;
+			bedrock-router) make -C "$configuration_root" bedrock-router UV="$(command -v uv)" || return 1 ;;
 			agent-status-broker) make -C "$HOME/.files" agent-status-broker || return 1 ;;
 			kitty-terminfo) setup_kitty_terminfo || return 1 ;;
 			neovim) setup_neovim || return 1 ;;

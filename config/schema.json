@@ -96,6 +96,10 @@
           "type": "boolean",
           "description": "Enable the node bootstrap recipe."
         },
+        "bun": {
+          "type": "boolean",
+          "description": "Shared Bun runtime; project requirements may raise its minimum version."
+        },
         "go": {
           "type": "boolean",
           "description": "Enable the go bootstrap recipe."
@@ -332,13 +336,13 @@
           "type": "boolean",
           "description": "Enable the codex bootstrap recipe."
         },
+        "studio": {
+          "type": "boolean",
+          "description": "Install Studio's Pi host and extension using the shared Bun runtime; optional integrations stay separately configured."
+        },
         "octo-manager": {
           "type": "boolean",
           "description": "Opt-in Octo service with Codex session, PR tracking and receipt hooks on macOS and Linux."
-        },
-        "beads": {
-          "type": "boolean",
-          "description": "Opt-in shared Beads HTTP endpoint with a private Dolt SQL server; Octo owns dispatch."
         },
         "treehouse": {
           "type": "boolean",
@@ -366,7 +370,7 @@
         },
         "bedrock": {
           "type": "boolean",
-          "description": "Prepare shared Bedrock credentials. Install the router separately."
+          "description": "Prepare Bedrock credentials and install the standalone router service."
         },
         "ep-direnv": {
           "type": "boolean",
@@ -403,6 +407,10 @@
         "keylease": {
           "type": "boolean",
           "description": "Install the Keylease credential broker; preserve active brokers and leases."
+        },
+        "beads": {
+          "type": "boolean",
+          "description": "Opt-in shared Beads HTTP endpoint with a private Dolt SQL server; macOS requires preinstalled Homebrew beads and dolt; Octo owns dispatch."
         }
       }
     }

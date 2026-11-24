@@ -2,14 +2,16 @@
 """Project-owned adapters for the workstation lifecycle convention."""
 
 import hashlib
+import importlib
 import json
 import os
 from pathlib import Path
-import platform
-import shutil
 import subprocess
 import sys
 import tempfile
+
+from bun_runtime import ensure_runtime, require_runtime
+from runtime_requirements import project_requirements, register_requirements
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -18,6 +20,24 @@ def run(args, capture=False, **kwargs):
     result = subprocess.run(args, check=True, text=True,
                             stdout=subprocess.PIPE if capture else None, **kwargs)
     return result.stdout.strip() if capture else ""
+
+
+def activate_service(project, arguments):
+    """Preserve native refusal codes and evidence after an attempted replacement."""
+    result = subprocess.run(arguments, text=True, capture_output=True)
+    if result.returncode == 0:
+        return json.loads(result.stdout) if project == "octo-manager" and result.stdout.strip() else {}
+    service = importlib.import_module("service-project-activation")
+    value, _ = service.inspect(project)
+    reason = result.stderr.strip()[-1200:] or f"{project}-native-replacement-unverified"
+    try:
+        native_result = json.loads(result.stdout)
+        if isinstance(native_result, dict) and isinstance(native_result.get("reason"), str):
+            reason = native_result["reason"]
+    except ValueError:
+        pass
+    value["targets"][0].update(reason=reason, replacement_outcome="unverified; do not repeat replacement")
+    return service.emit(value, 3 if result.returncode == 3 else 1)
 
 
 def router(action):
@@ -38,16 +58,27 @@ def router(action):
         return 0
     if action in ("build", "restart") and run(["git", "status", "--porcelain"], capture=True):
         raise ValueError("Preserve Bedrock Router checkout changes before installing or restarting a versioned build")
-    flags = ["install", "--config", str(Path.cwd() / "config.json"), "--keep-env", "--preserve-mcp"]
+    config = installed.parent / "config.json"
+    if not config.is_file():
+        config = Path.cwd() / "config.json"
+    flags = ["install", "--config", str(config), "--keep-env", "--preserve-mcp"]
     if action == "build":
         built.parent.mkdir(parents=True, exist_ok=True)
-        run(["go", "build", "-buildvcs=true", "-o", str(built), "."])
+        run([sys.executable, "scripts/build-lifecycle.py", "--output", str(built),
+             "--manifest", str(built.with_suffix(".build.json"))])
+        artifact = json.loads(built.with_suffix(".build.json").read_text())
+        if (not artifact.get("expected_identity")
+                or artifact.get("sha256") != binary_digest(built)):
+            raise ValueError("Native Router build manifest does not bind the staged image")
         run([str(built), *flags, "--no-start"])
+        if artifact["sha256"] != binary_digest(installed):
+            raise ValueError("Selected Router installation differs from its native build manifest")
         temporary = None
         try:
             with tempfile.NamedTemporaryFile("w", dir=receipt.parent, prefix=".project-update-", delete=False) as staged:
                 temporary = Path(staged.name)
-                json.dump({"revision": revision, "sha256": binary_digest(installed)}, staged)
+                json.dump({"revision": revision, "sha256": artifact["sha256"],
+                           "expected_identity": artifact["expected_identity"]}, staged)
             os.replace(temporary, receipt)
         finally:
             if temporary is not None:
@@ -55,7 +86,17 @@ def router(action):
     elif action == "restart":
         if not built.is_file() or not installed.is_file() or not same_binary(built, installed):
             raise ValueError("Build and stage this Bedrock Router revision before restarting")
-        run([str(built), *flags])
+        service = importlib.import_module("service-project-activation")
+        try:
+            service.checkpoint_binding("bedrock-router")
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
+            value, _ = service.inspect("bedrock-router")
+            value["targets"][0]["reason"] = str(error)
+            return service.emit(value, 3)
+        activated = activate_service("bedrock-router", [str(built), *flags])
+        if isinstance(activated, int):
+            return activated
+        return service.emit(*service.inspect("bedrock-router", "verify"))
     else:
         raise ValueError("Bedrock Router supports build, restart and status; clean is not configured")
     return 0
@@ -80,10 +121,10 @@ def approval_cli(project, action):
     installed_revision = None
     if record and installed.is_file() and record["sha256"] == binary_digest(installed):
         installed_revision = record["revision"]
-    activation = ("Start new Keylease sessions; existing brokers and leases are preserved"
+    activation = ("Native lifecycle controls preserve unsupported conversations and require fresh approval after replacement"
                   if project == "keylease" else
-                  "Automatic SSH approval awaits production stable-socket integration; "
-                  "installation does not activate transport. Existing sessions are preserved")
+                  "Native lifecycle controls discover existing local and paired remote profiles; "
+                  "installation does not create or enable SSH transports")
     if action == "status":
         print(json.dumps({"installed_binary": str(installed) if installed.is_file() else None,
                           "installed_revision": installed_revision, "running_revision": None,
@@ -126,14 +167,30 @@ def main():
         raise ValueError("Usage: project-lifecycle.py PROJECT ACTION")
     project, action = sys.argv[1:]
     if project in ("intent", "keylease"):
+        if action in ("inventory", "checkpoint", "restart", "restore", "verify"):
+            return subprocess.run([sys.executable, str(ROOT / "scripts/approval-project-activation.py"),
+                                   project, action]).returncode
+        if action == "build":
+            result = approval_cli(project, action)
+            if project == "intent":
+                return subprocess.run([sys.executable, str(ROOT / "scripts/approval-project-activation.py"),
+                                       project, "stage-remotes"]).returncode
+            return result
         return approval_cli(project, action)
+    if action in ("inventory", "checkpoint", "restore", "verify"):
+        script = "zellij-activation.py" if project == "zellij" else "service-project-activation.py"
+        command = [sys.executable, str(ROOT / "scripts" / script)]
+        if project != "zellij":
+            command.append(project)
+        return subprocess.run([*command, action]).returncode
     if project == "bedrock-router":
         return router(action)
     if action == "status":
         if project == "octo-manager":
             metadata = Path.home() / ".local/share/octo-manager/current/release.json"
             installed = json.loads(metadata.read_text()) if metadata.exists() else None
-            print(json.dumps({"installed": installed, "running_revision": None}))
+            service = importlib.import_module("service-project-activation")
+            print(json.dumps({"installed": installed, "staged": service.staged_selection(), "running_revision": None}))
         else:
             stamp = Path.home() / ".local/.dotfiles-zellij-install"
             print(json.dumps({"installed_runtime": stamp.read_text().strip() if stamp.exists() else None,
@@ -141,22 +198,35 @@ def main():
                               "activation": "New sessions load installed runtime and plugins; existing sessions require restart"}))
         return 0
     if project == "octo-manager":
-        architecture = {"aarch64": "arm64", "x86_64": "x64"}.get(platform.machine(), platform.machine())
-        private_bun = Path.home() / f".local/share/octo-manager/runtime/{sys.platform}-{architecture}/bun-1.4.4/bun"
-        bun = str(private_bun) if private_bun.is_file() else (shutil.which("bun") or str(private_bun))
         if action == "build":
-            run([bun, "install", "--frozen-lockfile", "--ignore-scripts"])
-            run([bun, "scripts/install-local.ts", "--no-start"])
+            bun = str(ensure_runtime(Path.cwd()))
+            environment = {**os.environ, "PATH": str(Path(bun).parent) + os.pathsep + os.environ.get("PATH", "")}
+            run([bun, "install", "--frozen-lockfile", "--ignore-scripts"], env=environment)
+            staged = json.loads(run([bun, "scripts/install-local.ts", "--stage-only"], capture=True, env=environment))
+            service = importlib.import_module("service-project-activation")
+            service.record_selection(staged)
+            register_requirements("octo-manager", project_requirements(Path.cwd()), source=str(Path.cwd() / "package.json"))
         elif action == "restart":
             revision = run(["git", "rev-parse", "HEAD"], capture=True)
-            metadata = Path.home() / ".local/share/octo-manager/current/release.json"
+            service = importlib.import_module("service-project-activation")
+            metadata = service.selected_release() / "release.json"
             if not metadata.exists() or json.loads(metadata.read_text())["revision"] != revision:
                 raise ValueError("Build this revision before restarting OctoManager")
-            result = json.loads(run([bun, "scripts/install-local.ts"], capture=True))
-            print(json.dumps(result))
+            try:
+                service.checkpoint_binding("octo-manager")
+            except (OSError, ValueError, subprocess.SubprocessError) as error:
+                value, _ = service.inspect("octo-manager")
+                value["targets"][0]["reason"] = str(error)
+                return service.emit(value, 3)
+            bun = str(require_runtime(Path.cwd()))
+            result = activate_service("octo-manager", [bun, "scripts/install-local.ts"])
+            if isinstance(result, int):
+                return result
             if result.get("started") is not True:
-                print("OctoManager requires manual startup; see manualCommand above", file=sys.stderr)
-                return 3
+                value, _ = service.inspect("octo-manager")
+                value["targets"][0]["reason"] = "native-service-start-unavailable"
+                return service.emit(value, 3)
+            return service.emit(*service.inspect("octo-manager", "verify"))
         else:
             raise ValueError("OctoManager supports build, restart and status; clean is not configured")
     elif action == "build":
@@ -169,18 +239,10 @@ def main():
         if source == "patched":
             targets.append("zellij-copy-hop")
         run(["make", "-C", str(ROOT), *targets])
+        run([sys.executable, str(ROOT / "scripts/zellij-activation.py"), "stage"])
     elif action == "restart":
-        binary = Path.home() / ".local/bin/zellij"
-        sessions = subprocess.run([str(binary), "list-sessions", "--no-formatting"], text=True, capture_output=True)
-        if sessions.returncode == 1 and sessions.stderr.strip() == "No active zellij sessions found.":
-            return 0
-        if sessions.returncode != 0:
-            print(sessions.stderr, file=sys.stderr)
-            raise ValueError("Cannot determine Zellij session state; no sessions were stopped")
-        active = [line for line in sessions.stdout.splitlines() if line.strip() and not line.endswith("(EXITED - attach to resurrect)")]
-        if active:
-            print("Zellij restart required. Existing sessions were preserved:\n" + "\n".join(active), file=sys.stderr)
-            return 3
+        return subprocess.run([sys.executable, str(ROOT / "scripts/zellij-activation.py"), action]).returncode
+
     else:
         raise ValueError(f"{project} supports build, restart and status; clean is not configured")
     return 0

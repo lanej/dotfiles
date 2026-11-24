@@ -12,8 +12,69 @@ import tempfile
 import tarfile
 import tomllib
 
+from runtime_requirements import combined_requirements, project_requirements, register_requirements
+
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def check_runtime_requirements(home, env, run, command, config):
+    """Installed requirements and a pending install share the same observable plan."""
+    original = config.read_text()
+    config.write_text("")
+    source = home / "project"
+    source.mkdir()
+    manifest = source / "package.json"
+    manifest.write_text(json.dumps({"engines": {"bun": ">=1.9.0", "npm": ">=10"}, "packageManager": "bun@1.4.5"}))
+    assert project_requirements(source) == {"bun": "1.9.0"}, "Package-manager metadata is not a runtime constraint"
+    first = register_requirements("first", project_requirements(source), home, environment=env, source=manifest)
+    second = register_requirements("second", {"bun": "1.10.0", "node": "22.0.0"}, home, environment=env)
+    before = {path: path.read_bytes() for path in first.parent.iterdir()}
+    plan = json.loads(run(*command, "--format", "plan").stdout)
+    tools = {tool["name"]: tool for tool in plan["tools"]}
+    assert tools["bun"]["version"] == "1.10.0", "Numeric minimum comparison must not sort 1.9 above 1.10"
+    assert tools["node"]["version"] == "24", "A project cannot lower the catalog baseline"
+    requirement = plan["runtime_requirements"]["bun"]
+    assert requirement["minimum"] == "1.10.0"
+    assert {str(first), str(second)} <= {entry["source"] for entry in requirement["sources"]}
+    assert "bun" not in {tool["name"] for tool in plan["baseline"]["tools"]}
+    assert before == {path: path.read_bytes() for path in first.parent.iterdir()}, "Planning must not rewrite declarations"
+    assert (ROOT / "config/targets.mk").read_text() == run(*command, "--format", "make-targets").stdout
+    assert combined_requirements(environment={"HOME": str(home / "another-home")}) == {}, "Resolution must use its supplied environment"
+
+    prepared = home / "prepared.json"
+    prepared.write_text(json.dumps({"projects": {"incoming": {"engines": {"bun": ">=1.11.0", "go": ">=1.30", "rust": ">=1.95.0"}, "source": str(manifest)}}}))
+    env["DOTFILES_RUNTIME_REQUIREMENTS_FILE"] = str(prepared)
+    pending = json.loads(run(*command, "--format", "plan").stdout)
+    versions = {tool["name"]: tool["version"] for tool in pending["tools"] if "version" in tool}
+    assert (versions["bun"], versions["go"], versions["rust"]) == ("1.11.0", "1.30.0", "1.95.0")
+    assert before == {path: path.read_bytes() for path in first.parent.iterdir()}, "Prepared requirements remain ephemeral"
+    env.pop("DOTFILES_RUNTIME_REQUIREMENTS_FILE")
+
+    config.write_text("[tools]\nbun = false\n")
+    blocked = run(*command, "--format", "plan", check=False)
+    assert blocked.returncode != 0 and "requires tools.bun" in blocked.stderr
+    config.write_text("")
+    for unsupported in ("1.4.5", "^1.4.5", ">=1.4.5 <2.0.0", ">=1.4.5-beta.1"):
+        second.write_text(json.dumps({"engines": {"bun": unsupported}}))
+        rejected = run(*command, "--format", "plan", check=False)
+        assert rejected.returncode != 0 and "runtime requirement" in rejected.stderr, rejected.stderr
+    second.unlink()
+    register_requirements("first", {"bun": "1.12.0"}, home, environment=env)
+    assert combined_requirements(environment=env)["bun"]["minimum"] == "1.12.0", "A reinstall replaces its declaration atomically"
+    first.unlink()
+    first.symlink_to(manifest)
+    preserved = manifest.read_bytes()
+    try:
+        register_requirements("first", {"bun": "1.13.0"}, home, environment=env)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Registration overwrote a symlinked declaration")
+    assert manifest.read_bytes() == preserved
+    first.unlink()
+    first.parent.rmdir()
+    config.write_text(original)
 
 
 def main():
@@ -21,7 +82,7 @@ def main():
         home = Path(temporary)
         env = {**os.environ, "HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config"),
                "XDG_CACHE_HOME": str(home / ".cache")}
-        for name in ("DOTFILES_CONFIG", "IS_EASYPOST", "BOOTSTRAP_MERMAID"):
+        for name in ("DOTFILES_CONFIG", "IS_EASYPOST", "BOOTSTRAP_MERMAID", "DOTFILES_RUNTIME_REQUIREMENTS_FILE"):
             env.pop(name, None)
         command = [sys.executable, str(ROOT / "scripts/dotfiles-config.py")]
 
@@ -33,6 +94,31 @@ def main():
         schema = json.loads(run(*command, "--format", "schema").stdout)
         assert json.loads((ROOT / "config/schema.json").read_text()) == schema, "Regenerate config/schema.json from the runtime definitions."
         assert (ROOT / "config/targets.mk").read_text() == run(*command, "--format", "make-targets").stdout, "Regenerate config/targets.mk from the native sets and tool catalog."
+        # The editor and installer see the same capability-local recipe.
+        recipe = tomllib.loads((ROOT / "tools/beads/tool.toml").read_text())["tools"]["beads"]
+        assert "beads" not in tomllib.loads((ROOT / "bootstrap/tools.toml").read_text())["tools"]
+        assert schema["properties"]["tools"]["properties"]["beads"]["description"] == recipe["description"]
+        chosen = home / "beads.toml"
+        chosen.write_text('[tools]\nbeads = true\n')
+        for host in ("macos", "linux"):
+            selected = json.loads(run(*command, "--config", str(chosen), "--platform", host, "--format", "json").stdout)
+            planned = next(tool for tool in selected["tools"] if tool["name"] == "beads")
+            assert planned == {"name": "beads", **recipe}, planned
+            names = [tool["name"] for tool in selected["tools"]]
+            assert names.index("git") < names.index("beads") and names.index("gh") < names.index("beads")
+        chosen.unlink()
+        # A capability cannot silently shadow a legacy recipe during composition.
+        with tempfile.TemporaryDirectory(prefix="tool-catalog-conflict-") as directory:
+            fixture = Path(directory)
+            for name in ("scripts/dotfiles-config.py", "scripts/runtime_requirements.py", "tools/beads/tool.toml"):
+                destination = fixture / name
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes((ROOT / name).read_bytes())
+            (fixture / "bootstrap").mkdir()
+            (fixture / "bootstrap/tools.toml").write_text('[tools.beads]\nversion="0.0.0"\n')
+            rejected = run(sys.executable, str(fixture / "scripts/dotfiles-config.py"), "--format", "schema", check=False)
+            assert rejected.returncode != 0 and "duplicate tool 'beads'" in rejected.stderr, rejected.stderr
+            assert "tools/beads/tool.toml" in rejected.stderr and "bootstrap/tools.toml" in rejected.stderr
         platform_set = "macos" if sys.platform == "darwin" else "linux"
         native_tools = {"git", "git-worktree-hooks", "worktree-policy", "build"} | ({"yabai", "skhd"} if platform_set == "macos" else {"x11", "polybar", "bspwm", "bsdtar"})
         disabled_native = "yabai" if platform_set == "macos" else "polybar"
@@ -46,6 +132,7 @@ def main():
         assert baseline["settings"]["codex.easypost"] is False
         assert baseline["settings"]["features.nvim_ghlite"] is False
         assert "octo-manager" not in {tool["name"] for tool in baseline["tools"]}
+        assert "studio" not in {tool["name"] for tool in baseline["tools"]}
         assert "source-code" not in {tool["name"] for tool in baseline["tools"]}
         config = home / ".config/dotfiles/config.toml"
         sets = config.parent / "sets"
@@ -63,7 +150,7 @@ def main():
         octo = json.loads(run(*command, "--platform", "macos", "--format", "json").stdout)
         octo_names = [tool["name"] for tool in octo["tools"]]
         assert "octo-manager" in octo_names
-        assert all(octo_names.index(dependency) < octo_names.index("octo-manager") for dependency in ("git", "gh", "go"))
+        assert all(octo_names.index(dependency) < octo_names.index("octo-manager") for dependency in ("git", "gh", "go", "bun"))
         assert not any("octo" in target for target in octo["setup"]), "Configuration must not install or start the service"
         linux_octo=json.loads(run(*command,"--platform","linux","--format","json").stdout)
         assert "octo-manager" in {tool["name"] for tool in linux_octo["tools"]}
@@ -82,7 +169,20 @@ def main():
         config.write_text('sets = ["workstation"]\n')
         workstation = json.loads(run(*command, "--format", "json").stdout)
         names = [tool["name"] for tool in workstation["tools"]]
-        assert {"intent", "keylease"} <= set(names)
+        assert {"intent", "keylease", "studio"} <= set(names)
+        assert names.index("git") < names.index("studio")
+        config.write_text('sets = ["workstation"]\n[tools]\nstudio = false\n')
+        without_studio = json.loads(run(*command, "--format", "json").stdout)
+        assert "studio" not in {tool["name"] for tool in without_studio["tools"]}
+        config.write_text('[tools]\nstudio = true\n')
+        for host in ("macos", "linux"):
+            direct = json.loads(run(*command, "--platform", host, "--format", "json").stdout)
+            studio = next(tool for tool in direct["tools"] if tool["name"] == "studio")
+            assert studio["installer"] == "studio" and studio["requires"] == ["git", "bun"]
+            assert not {"pi", "octo-manager", "beads"} & {tool["name"] for tool in direct["tools"]}
+            assert not any("studio" in target for target in direct["setup"]), "Configuration must not download or install Studio"
+
+        check_runtime_requirements(home, env, run, command, config)
         assert names.index("go") < names.index("intent") and names.index("go") < names.index("keylease")
         config.write_text('sets = ["workstation"]\n[tools]\nkeylease = false\n')
         selected = json.loads(run(*command, "--format", "json").stdout)
@@ -131,6 +231,8 @@ def main():
         assert selected["settings"]["tools.mermaid"] is False
         assert selected["settings"]["codex.easypost"] is True
         assert {"neovim", "codex", "zellij", "ep-direnv", "bedrock"} <= {tool["name"] for tool in selected["tools"]}
+        assert "bedrock-router" in selected["post"] and "bedrock-router" not in selected["setup"]
+        assert "bedrock-router" not in baseline["post"]
         names = [tool["name"] for tool in selected["tools"]]
         assert "mergiraf" in names
         assert names.index("rust") < names.index("zellij") and len(names) == len(set(names))
@@ -140,6 +242,12 @@ def main():
         plan = json.loads(run("make", "--no-print-directory", "plan").stdout)
         assert plan["tools"] == selected["tools"] and plan["setup"] == selected["setup"]
         assert plan["baseline"] == selected["baseline"]
+        previous_config = config.read_text()
+        config.write_text('sets = ["easypost"]\n[tools]\nbedrock = false\n')
+        disabled_bedrock = json.loads(run(*command, "--format", "json").stdout)
+        assert "bedrock-router" not in disabled_bedrock["post"]
+        assert "bedrock-credentials" not in disabled_bedrock["prepare"]
+        config.write_text(previous_config)
 
         # Exercise the real Make -> bootstrap -> installer path. Only compilation
         # and release downloads are fixtures; the installed binaries and source
@@ -248,7 +356,7 @@ else:
         config.write_text('[tools]\nmergiraf = true\nrust = false\n')
         blocked = run(*command, check=False)
         assert blocked.returncode != 0 and "requires tools.rust" in blocked.stderr
-        tools = tomllib.loads((ROOT / "bootstrap/tools.toml").read_text())["tools"]
+        tools = schema["properties"]["tools"]["properties"]
         config.write_text("[tools]\n" + "".join(
             f"{name} = {'true' if name in ('stylua', 'node') else 'false'}\n" for name in tools
         ))

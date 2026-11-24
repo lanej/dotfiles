@@ -13,6 +13,12 @@ with open(sys.argv[1], 'rb') as stream:
 PYTHON
 }
 case ${1:-} in
+	inventory | verify | checkpoint | restore)
+		git_runtime_catalog
+		selection=$(git_runtime_cache)/selected-source
+		[[ ! -f $selection ]] || git_runtime_source "$(cat "$selection")"
+		python3 "$root/scripts/worktree-manager-activation.py" "$1" "$runtime_version" "$(manager_version)"
+		;;
 	pull) bash "$root/scripts/pull-git-worktree-source.sh" ;;
 	build)
 		selection=$(git_runtime_cache)/selected-source
@@ -45,11 +51,12 @@ case ${1:-} in
 				printf 'Build the selected Git and worktree manager before activation\n' >&2
 				exit 1
 			fi
+			python3 "$root/scripts/worktree-manager-activation.py" "$1" "$runtime_version" "$(manager_version)"
 		fi
 		# Each invocation loads its installed executable; neither CLI has a service.
 		;;
 	*)
-		printf 'Usage: %s {pull|build|restart|status}\n' "$0" >&2
+		printf 'Usage: %s {pull|build|restart|status|inventory|checkpoint|restore|verify}\n' "$0" >&2
 		exit 2
 		;;
 esac

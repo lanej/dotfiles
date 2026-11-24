@@ -81,3 +81,11 @@ Events are `add`, `move`, and `remove`. Inapplicable paths are empty arguments. 
 Hooks do not serialize concurrent commands. Two requests can both pass a capacity check before either creates a checkout. A sequential request sees updated usage, but a small simultaneous overshoot remains possible and is accepted for this policy. Hook configuration can also disable these checks.
 
 See [worktree policy](git-worktree-policy.md) for global inventory, optional per-repository and global count/disk budgets, Treehouse integration, and the stock Git `post-checkout` fallback. That fallback misses `--no-checkout` creation and removal/move/prune events and cannot veto creation; explicit reconciliation keeps those worktrees discoverable.
+
+## Source-code guidance
+
+Global named `post-worktree` and `post-checkout` hooks invoke `source-code-worktree-hook`. They are disabled by default; `make source-code-config` installs the hook and CLI and enables the integration through a local Git configuration include. Basic Git configuration therefore works without installing source-code. This uses configured-hook support from the patched Git runtime; older Git needs the same hook command integrated into its existing hook manager.
+
+On worktree creation, `source-code hydrate --repo PATH` restores a missing installation using the target checkout's `source-code.toml`. When that file is locally excluded, it falls back to the primary checkout's configuration and recorded selections. Configured packages are rendered separately in each worktree; canonical shared resources retain their normal links. Repositories without configuration or an existing installation are skipped. A complete installation is left alone, so this hook does not upgrade policy on ordinary checkouts.
+
+Hydration uses the existing installer, including selected check resources, but refuses changes to tracked files or existing customized artifacts. Conflicts report failure after Git has created the worktree; inspect the checkout and use explicit setup or upgrade to reconcile it. No files are staged or committed. Creation with `--no-checkout` defers hydration until the initial checkout. To repair an existing worktree, preview `source-code hydrate --repo PATH --dry-run`, then run the same command without `--dry-run`.

@@ -49,6 +49,23 @@ Initialization MUST create missing parent directories and MUST preserve existing
 
 **SETUP-10 — Shared definitions.** Configuration and installation MUST derive their selections from the same sets and tool catalog. A checked-in projection that keeps first-stage Make independent of Python MUST be reproducible from those definitions and checked for drift. Tool versions, dependencies, configuration targets, and hooks MUST NOT acquire a separate, conflicting installation plan in the bootstrap path.
 
+**SETUP-11 — Shared runtime minimums.** Applications using Bun, Node, or another externally managed interpreter MUST declare a minimum supported runtime and use the environment's runtime. They MUST NOT install private copies, embed that interpreter in the distributed CLI, or require an exact runtime version. Native application binaries remain valid distribution artifacts. Full installation MUST combine the catalog baseline, installed-project declarations, and selected-project requirements, choose the greatest minimum for each runtime, and retain an installed version that already satisfies it. Unsupported ranges and explicitly disabled required runtimes MUST fail before optional installation. Application revisions and dependency lockfiles remain separate from runtime requirements.
+
+### Project runtime requirements
+
+JavaScript projects declare their Bun or Node minimum in `package.json`, for example `"engines": {"bun": ">=1.4.5"}`. The project installer validates the shared executable before changing its installation. Dotfiles reads those declarations when preparing an explicit installation and records successful installs under `${XDG_CONFIG_HOME:-~/.config}/dotfiles/runtime-requirements.d/<project>.json`. Projects contribute data; they do not rewrite the bootstrap script.
+
+Each drop-in contains an `engines` object with one or more of `bun`, `node`, `go`, or `rust`. Requirements use `>=` followed by a stable numeric version. Exact versions, caret ranges, upper bounds, prereleases, and alternative ranges are rejected because taking the greatest minimum does not resolve those constraints. Numeric comparison means `1.10.0` exceeds `1.9.0`. An optional `source` string can identify the originating manifest.
+
+```json
+{
+  "engines": {"bun": ">=1.4.5", "node": ">=24.0.0"},
+  "source": "/path/to/project/package.json"
+}
+```
+
+`make plan` reports each resolved runtime minimum and the declarations contributing to it without writing files or fetching source. For a new or updated external project, the preview uses the catalog and any last-installed declaration; `make install` reads the selected source manifests and resolves the final requirements before installing runtimes. Installed-project requirements remain active when a tool selection is disabled, since disabling a tool does not uninstall it; remove its declaration when the project is actually uninstalled. Setting a required runtime itself to `false` is an explicit conflict. The Python-free baseline and generated Make targets do not read these declarations.
+
 ## Acceptance workflows
 
 Keep protection in the existing feature detectors, following the repository's [verification policy](verification.md). The observable outcomes below are acceptance criteria, not a substitute for examining the implementation.
