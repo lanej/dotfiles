@@ -50,6 +50,10 @@ def load_projects(config):
             raise ValueError(f"{name}: command must be a nonempty argv array")
         if not isinstance(project.get("pull_sources", False), bool):
             raise ValueError(f"{name}: pull_sources must be a boolean")
+        repository = project.get("repository")
+        if repository is not None and (not isinstance(repository, str) or not repository.strip()
+                                       or repository.startswith("-")):
+            raise ValueError(f"{name}: repository must be a nonempty Git clone URL or path")
         dependencies = project.get("depends_on", [])
         if not isinstance(dependencies, list) or not all(isinstance(x, str) for x in dependencies):
             raise ValueError(f"{name}: depends_on must be an array of project names")
@@ -59,7 +63,9 @@ def load_projects(config):
             raise ValueError(f"{name}: automatic_restart must be a boolean")
         if project.get("automatic_restart") is False and project.get("lifecycle") != "terminal":
             raise ValueError(f"{name}: manual restart policy requires a terminal lifecycle")
-        project["path"] = Path(project["path"].replace("{dotfiles}", str(ROOT))).expanduser().resolve()
+        configured_path = Path(project["path"].replace("{dotfiles}", str(ROOT))).expanduser().absolute()
+        project["configured_path"] = str(configured_path)
+        project["path"] = configured_path.resolve()
         project["name"] = name
         project["command"] = [x.replace("{dotfiles}", str(ROOT)).replace("{python}", sys.executable) for x in command]
         if "remote" in project and (not isinstance(project["remote"], str) or not project["remote"] or project["remote"].startswith("-")):
@@ -242,6 +248,8 @@ def execute(action, names, projects, fetch=False, directory=None):
                     continue
                 path = project["path"]
                 try:
+                    if step == "pull":
+                        ensure_checkout(path, project)
                     if not path.is_dir():
                         raise ValueError(f"Checkout not found: {path}")
                     if step == "build" and project.get("build_deferred"):
@@ -340,6 +348,29 @@ def refresh(path, remote):
     target = f"refs/remotes/{remote}/{branch}"
     git(path, "fetch", remote, f"refs/heads/{branch}:{target}")
     return branch, target
+
+
+def ensure_checkout(path, project):
+    configured = Path(project.get("configured_path", str(path)))
+    for component in (configured, *configured.parents):
+        if component.is_symlink() and not component.exists():
+            raise ValueError(f"Preserving dangling symlink in configured checkout path: {component}")
+    if path.exists() or path.is_symlink():
+        if not path.is_dir() or Path(git(path, "rev-parse", "--show-toplevel")).resolve() != path:
+            raise ValueError(f"Preserving existing path that is not a checkout: {path}")
+        return
+    repository = project.get("repository")
+    if repository is None:
+        raise ValueError(f"Checkout not found: {path}; configure repository to allow cloning")
+    # Reserve the destination before Git writes; a concurrent creator must win
+    # without its files being replaced. Failed clones remain available to inspect.
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.mkdir()
+    print(f"{project['name']}: clone {repository} into {path}", file=sys.stderr, flush=True)
+    try:
+        run(["git", "clone", "--origin", project.get("remote", "origin"), "--", repository, str(path)], path.parent)
+    except subprocess.SubprocessError as error:
+        raise ValueError(f"Clone failed; inspect reserved checkout before retrying: {path}") from error
 
 
 def pull(path, project):

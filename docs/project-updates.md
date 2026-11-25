@@ -51,17 +51,18 @@ Beads maintenance does not push or pull task history, migrate a database, or alt
 
 ## Preserve source selection and local work
 
-`pull` resolves the remote's default branch, fetches it, and fast-forwards a checkout already on that branch. It prefers `upstream` when present, otherwise `origin`, unless the registry selects a remote. Nonconflicting local edits and untracked files survive; conflicting files, unfinished Git operations, topic branches, detached heads, local commits, and diverged history block the pull. The command never stashes, resets, switches branches, or pushes. Native projects may additionally require clean source before installation.
+`pull` clones a missing checkout from the registry’s `repository` URL or local Git path, using the remote’s default branch. The `remote` setting names the clone’s remote and defaults to `origin`. Existing paths must already be checkout roots and are never replaced. Dangling symlinks in a configured path are rejected before cloning; live symlinks to existing checkout roots remain supported. Failed clones stop that project before build and leave the reserved destination for inspection before retrying. Status, build, restart, verify and dry runs never create checkouts. For an existing checkout, `pull` resolves the remote's default branch, fetches it, and fast-forwards a checkout already on that branch. It prefers `upstream` when present, otherwise `origin`, unless the registry selects a remote. Nonconflicting local edits and untracked files survive; conflicting files, unfinished Git operations, topic branches, detached heads, local commits, and diverged history block the pull. The command never stashes, resets, switches branches, or pushes. Native projects may additionally require clean source before installation.
 
 Projects sharing a checkout pull it once per invocation. `pull_sources = true` invokes an adapter's explicit additional source pull afterward; worktree manager uses it to select stable Git. Build and restart do not refresh sources implicitly. Mutations are locked per affected checkout, independently of other Git tools. `status` reports checkout and installation state; upstream information is cached or unknown unless `--fetch` is requested. `--dry-run` prints actions without fetching, locking, building, or restarting.
 
 ## Add a native adapter
 
-The registry is `config/project-updates.toml`; `--config PATH` selects a replacement registry. Paths expand `~` and `{dotfiles}`; argv also expands `{python}`. Commands execute in the checkout without a shell and receive the action as their final argument.
+The registry is `config/project-updates.toml`; `--config PATH` selects a replacement registry. Paths expand `~` and `{dotfiles}`; argv also expands `{python}`. The optional `repository` is required to create a missing checkout. Commands execute in the checkout without a shell and receive the action as their final argument.
 
 ```toml
 [projects.example]
 path = "~/src/example"
+repository = "https://github.com/example/example.git"
 command = ["./scripts/project-update"]
 lifecycle = "consumer"
 depends_on = ["intent"]
