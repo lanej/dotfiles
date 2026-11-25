@@ -141,6 +141,31 @@ class LifecycleTests(unittest.TestCase):
         self.assertFalse((self.checkout / ".git").exists())
         self.assertFalse(self.log.exists())
 
+    def test_clone_rejects_dangling_checkout_symlinks(self):
+        for ancestor in (False, True):
+            with self.subTest(ancestor=ancestor):
+                target = self.base / ("missing-parent" if ancestor else "missing-checkout")
+                link = self.base / ("parent-link" if ancestor else "checkout-link")
+                link.symlink_to(target, target_is_directory=True)
+                configured = link / "checkout" if ancestor else link
+                self.config.write_text(f'[projects.fixture]\npath={json.dumps(str(configured))}\n'
+                                       f'command={json.dumps([sys.executable, str(self.base / "hook.py")])}\n'
+                                       f'repository={json.dumps(str(self.origin))}\n')
+                rows = self.invoke("update", "fixture", code=1)
+                self.assertIn("dangling symlink", rows[0]["error"])
+                self.assertTrue(link.is_symlink())
+                self.assertFalse(target.exists())
+                self.assertFalse(self.log.exists())
+
+    def test_pull_preserves_live_checkout_symlink(self):
+        link = self.base / "checkout-link"
+        link.symlink_to(self.checkout, target_is_directory=True)
+        self.config.write_text(f'[projects.fixture]\npath={json.dumps(str(link))}\n'
+                               f'command={json.dumps([sys.executable, str(self.base / "hook.py")])}\n')
+        self.invoke("pull", "fixture")
+        self.assertTrue(link.is_symlink())
+        self.assertEqual(self.git(link, "rev-parse", "HEAD"), self.git(self.source, "rev-parse", "HEAD"))
+
     def test_clone_failure_stops_before_build(self):
         shutil.rmtree(self.checkout)
         with self.config.open("a") as output:
