@@ -3,6 +3,7 @@ local document = require("beads.document")
 local ui = require("beads.ui")
 local M = {}
 local projects, active, documents = {}, nil, {}
+local discovering = false
 local open_requests = {}
 local context_namespace = vim.api.nvim_create_namespace("beads-context")
 
@@ -41,11 +42,11 @@ end
 function M.projects()
 	local names = prefix_candidates(vim.tbl_keys(projects), "")
 	if #names == 0 then
-		notify("No projects configured. Set vim.g.beads.projects or call require('beads').setup({ projects = ... }).")
+		notify("No projects loaded. Run :Beads to discover the local service.")
 		return
 	end
 	local ok, current = pcall(project)
-	local lines = { "Configured projects (* current):" }
+	local lines = { "Projects (* current):" }
 	for _, name in ipairs(names) do
 		lines[#lines + 1] = (ok and current.name == name and "* " or "  ") .. name
 	end
@@ -630,25 +631,67 @@ function M.reload(force)
 	end)
 end
 
+local function add_project(name, settings)
+	if projects[name] then
+		assert(
+			vim.deep_equal(projects[name].settings, settings),
+			"Cannot reconfigure an active Beads project; restart Neovim"
+		)
+	else
+		projects[name] = {
+			name = name,
+			settings = settings,
+			store = require("beads.store").new(settings),
+			graph = { items = {}, edges = {} },
+			rows = {},
+			expanded = {},
+			generation = 0,
+		}
+	end
+end
+
+local function invoke(callback, ...)
+	local ok, err = pcall(callback, ...)
+	if not ok then
+		notify(api.message(err), vim.log.levels.ERROR)
+	end
+end
+
+local function with_project(callback, args)
+	if active or next(projects) then
+		invoke(callback, args)
+		return
+	end
+	if discovering then
+		notify("Local service discovery is in progress.", vim.log.levels.WARN)
+		return
+	end
+	local win, buf = vim.api.nvim_get_current_win(), vim.api.nvim_get_current_buf()
+	discovering = true
+	async(require("beads.discovery").local_project, function(err, found)
+		discovering = false
+		if err then
+			notify(api.message(err), vim.log.levels.ERROR)
+			return
+		end
+		invoke(function()
+			if not active and not next(projects) then
+				add_project(found.name, found.settings)
+				active = found.name
+			end
+			if vim.api.nvim_get_current_win() ~= win or vim.api.nvim_get_current_buf() ~= buf then
+				notify("Local project discovered. Run the Beads command again in its intended window.")
+				return
+			end
+			callback(args)
+		end)
+	end)
+end
+
 function M.setup(options)
 	options = options or {}
 	for name, settings in pairs(options.projects or {}) do
-		if projects[name] then
-			assert(
-				vim.deep_equal(projects[name].settings, settings),
-				"Cannot reconfigure an active Beads project; restart Neovim"
-			)
-		else
-			projects[name] = {
-				name = name,
-				settings = settings,
-				store = require("beads.store").new(settings),
-				graph = { items = {}, edges = {} },
-				rows = {},
-				expanded = {},
-				generation = 0,
-			}
-		end
+		add_project(name, settings)
 	end
 	active = options.default_project or active
 	if not active then
@@ -658,9 +701,10 @@ function M.setup(options)
 	end
 	local function command(name, callback, opts)
 		vim.api.nvim_create_user_command(name, function(args)
-			local ok, err = pcall(callback, args.args)
-			if not ok then
-				notify(api.message(err), vim.log.levels.ERROR)
+			if name == "BeadsProjects" then
+				invoke(callback)
+			else
+				with_project(callback, args.args)
 			end
 		end, vim.tbl_extend("force", { force = true }, opts or {}))
 	end
@@ -686,10 +730,7 @@ function M.setup(options)
 		M.recover()
 	end)
 	vim.api.nvim_create_user_command("BeadsReload", function(args)
-		local ok, err = pcall(M.reload, args.bang)
-		if not ok then
-			notify(api.message(err), vim.log.levels.ERROR)
-		end
+		invoke(M.reload, args.bang)
 	end, { bang = true, force = true })
 end
 

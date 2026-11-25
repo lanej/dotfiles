@@ -8,7 +8,6 @@
 
 local use_ghlite = require("dotfiles-config").enabled("features.nvim_ghlite")
 require("file-opener").setup()
-require("beads").setup(vim.g.beads or {})
 
 vim.opt.autoread = true
 vim.opt.autoindent = true
@@ -764,6 +763,7 @@ vim.opt.rtp:prepend(lazypath)
 require("dotfiles-theme").setup()
 
 require("lazy").setup({
+	require("beads.spec"),
 	{
 		"m00qek/baleia.nvim",
 		ft = "zellij-scrollback",

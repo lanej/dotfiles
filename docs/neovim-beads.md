@@ -4,7 +4,9 @@
 
 ## Configuration
 
-Set `vim.g.beads` before loading the dotfiles configuration, or call `require("beads").setup(...)` explicitly after startup. No service is contacted at startup. Projects are explicit and independent of the source checkout or current working directory:
+Run `:Beads` to discover and open the managed local workspace. Neovim reads `~/.local/state/beads-service/endpoint.json`, checks the live service context against the record, then pins the project UUID for the session. Use `beads-service status` if discovery fails, then retry `:Beads`. The local workspace is independent of the source checkout and current working directory.
+
+For a remote service or named projects, set `vim.g.beads` before the plugin loads, or call `require("beads").setup(...)` after startup. Explicit projects take precedence over discovery.
 
 ```lua
 require("beads").setup({
@@ -21,14 +23,14 @@ require("beads").setup({
 })
 ```
 
-Use the project ID reported by `GET /v0/beads/context`. The client requires the configured project, Dolt server backend and necessary capabilities to match; it does not adopt a different workspace automatically. Remote HTTP requires a loopback tunnel; non-loopback services require HTTPS. Token files are read for requests and excluded from command arguments and error messages. The explorer uses Neovim, curl and the pinned Nui library already installed by this configuration; the existing Markview setup supplies Markdown previews. Changing an already configured project's authority requires restarting Neovim.
+Use the project ID reported by `GET /v0/beads/context`. The client verifies the project pin, Dolt server backend and required capabilities before accessing tasks. Remote HTTP requires a loopback tunnel and non-loopback services require HTTPS. The client reads token files when sending requests and keeps tokens out of command arguments and error messages. The explorer uses Neovim, curl and the pinned Nui library. Markview supplies Markdown previews. Changing a project's authority requires restarting Neovim.
 
 ## Navigation
 
 | Command | Action |
 |---|---|
-| `:BeadsProjects` | List sorted configured project names; `*` marks the current project. With none configured, show configuration guidance. |
-| `:Beads [project]` | Open or focus that project's persistent explorer; complete configured names by prefix. |
+| `:BeadsProjects` | List loaded project names. `*` marks the current project. |
+| `:Beads [project]` | Open or focus the explorer. With no configured projects, discover the local service. |
 | `:BeadsOpen [id]` | Open a task in a normal editing window; reuse its buffer across windows/tabs. |
 | `:BeadsNew [parent-id]` | Open an unsaved root or child draft. |
 | `:BeadsRefresh` | Refresh the graph while preserving expansion, selection, focus and dirty documents. |
@@ -37,9 +39,9 @@ Use the project ID reported by `GET /v0/beads/context`. The client requires the 
 | `:BeadsRecover` | Open a durable pending-creation draft for reconciliation. |
 | `:BeadsReload[!]` | Reload an existing task's latest document/revision; `!` explicitly replaces unsaved text. |
 
-Commands without an explicit project use the current Beads document or explorer's project before the global active/default project. Opening an explorer changes the global active project; listing and completion do not. `:BeadsOpen` and `:BeadsNew` complete sorted, literal-prefix IDs from that project's cached graph only. Candidates are empty before a successful refresh; a failed refresh retains the previous cache. Manually typed IDs need not be cached. Listing shows names only, never URLs, credentials or database discovery results. Neither listing nor completion reads tokens, contacts services, creates explorers or discovers databases.
+Commands without an explicit project use the current Beads document or explorer's project before the global active/default project. Opening an explorer changes the active project. `:Beads` completes loaded project names by prefix. `:BeadsOpen` and `:BeadsNew` complete IDs by literal prefix from the cached graph. Candidates are empty before a successful refresh, and a failed refresh retains the previous cache. Manually typed IDs work before the graph is cached. Listing and completion use in-memory project names and task IDs.
 
-`nvim/init.lua` registers these commands eagerly, before Lazy setup, including with no configured projects. Project-name completion is available before opening any explorer; there is no separate lazy command loader.
+Lazy loads the local Beads plugin on the first Beads command or command-line completion. Service discovery begins when a command needs a project. Editor startup, project listing and completion work without contacting the service.
 
 In the explorer use `j`/`k` to move, `l` to expand, `h` to collapse or move to the parent, Tab to toggle, Enter/`o` to open, `a` to create a child, `A` to create a root, `s` to enter a status, `gr` for relationships, `r` to refresh and `q` to close the explorer. Blocker links are independent of nesting. Containment does not indicate readiness or authorize child dispatch. Orphans and cyclic containment remain inspectable with warnings.
 

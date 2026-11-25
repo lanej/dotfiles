@@ -120,7 +120,7 @@ local function quote(value)
 	return '"' .. value:gsub("\\", "\\\\"):gsub('"', '\\"'):gsub("\n", "\\n"):gsub("\r", "\\r") .. '"'
 end
 
-function M.new(settings)
+local function new_client(settings, discovery)
 	assert(type(settings) == "table", "Configure Beads projects before opening the explorer")
 	local origin = assert(settings.url, "A Beads service URL is required"):gsub("/$", "")
 	local scheme, host = origin:match("^(https?)://([^/]+)$")
@@ -132,7 +132,10 @@ function M.new(settings)
 		)
 	end
 	assert(
-		type(settings.project_id) == "string" and settings.project_id:match("^[%x%-]+$") and #settings.project_id == 36,
+		discovery
+			or type(settings.project_id) == "string"
+				and settings.project_id:match("^[%x%-]+$")
+				and #settings.project_id == 36,
 		"A project UUID is required"
 	)
 	for _, key in ipairs({ "token_file", "state_dir" }) do
@@ -144,6 +147,7 @@ function M.new(settings)
 	local client = { settings = vim.deepcopy(settings), origin = origin }
 
 	function client:call(name, args)
+		assert(not discovery or name == "getContext", "Discovery only reads the Beads context")
 		local operation = assert(contract.operations[name], "Unknown generated Beads operation")
 		args = args or {}
 		local path, query = operation.path, {}
@@ -173,7 +177,10 @@ function M.new(settings)
 		if operation.body then
 			validate(args.body, operation.body, "request")
 		end
-		local headers = { "Content-Type: application/json", "Bd-Project-Id: " .. self.settings.project_id }
+		local headers = { "Content-Type: application/json" }
+		if not discovery then
+			headers[#headers + 1] = "Bd-Project-Id: " .. self.settings.project_id
+		end
 		if self.settings.token_file then
 			local token = table.concat(vim.fn.readfile(self.settings.token_file), "\n"):gsub("%s+$", "")
 			assert(token ~= "" and not token:find("[%c]"), "Invalid Beads token file")
@@ -207,6 +214,9 @@ function M.new(settings)
 			"--write-out",
 			"\n%{http_code}",
 		}
+		if origin:match("^http://127%.0%.0%.1:%d+$") then
+			vim.list_extend(command, { "--noproxy", "127.0.0.1" })
+		end
 		local body = args.body and vim.json.encode(args.body) or nil
 		if body then
 			vim.list_extend(command, { "--data-binary", "@-" })
@@ -225,6 +235,9 @@ function M.new(settings)
 		vim.uv.fs_unlink(config)
 		requests[config] = nil
 		if result.code ~= 0 then
+			if discovery then
+				fail("Local Beads service is unreachable. Check `beads-service status`.")
+			end
 			fail("Beads transport failed; the server outcome may be unknown")
 		end
 		local raw, status = result.stdout:match("^(.*)\n(%d%d%d)$")
@@ -271,6 +284,14 @@ function M.new(settings)
 		end
 	end
 	return client
+end
+
+function M.new(settings)
+	return new_client(settings, false)
+end
+
+function M.discover_context(url)
+	return new_client({ url = url }, true):call("getContext")
 end
 
 return M

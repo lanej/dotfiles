@@ -41,6 +41,7 @@ class Boundary:
         self.list_fail = False
         self.unavailable = set()
         self.lock = threading.RLock()
+        self.workspace = None
 
     def handler(self):
         state = self
@@ -58,7 +59,9 @@ class Boundary:
                 self.wfile.write(data)
 
             def route(self):
-                if self.headers.get("Bd-Project-Id") != PROJECT:
+                project = self.headers.get("Bd-Project-Id")
+                discovery = self.command == "GET" and self.path == "/v0/beads/context" and project is None
+                if project != PROJECT and not discovery:
                     self.respond(dict(code="project_mismatch"), 409)
                     return
                 url = urlparse(self.path)
@@ -79,8 +82,11 @@ class Boundary:
                             state.list_fail = body["list_fail"]
                         self.respond(dict(creates=state.creates, writes=state.writes, tasks=state.tasks, edges=state.edges))
                     elif path.endswith("/context"):
-                        self.respond(dict(api_version="/v0", bd_version="1.3.4", backend="dolt", dolt_mode="server", schema_version=1, database="trial", project_id=PROJECT,
-                                          capabilities=["project.enforce", "issues.list", "issues.get", "issues.create", "issues.update", "issues.batchApply", "issues.close", "issues.reopen", "dependencies.list", "config.get"]))
+                        context = dict(api_version="/v0", bd_version="1.3.4", backend="dolt", dolt_mode="server", schema_version=1, database="trial", project_id=PROJECT,
+                                       capabilities=["project.enforce", "issues.list", "issues.get", "issues.create", "issues.update", "issues.batchApply", "issues.close", "issues.reopen", "dependencies.list", "config.get"])
+                        if state.workspace:
+                            context.update(repo_root=str(state.workspace), beads_dir=str(state.workspace / ".beads"))
+                        self.respond(context)
                     elif path.endswith("/config/issue_prefix"):
                         self.respond(dict(key="issue_prefix", value="trial", redacted=False))
                     elif path.endswith("/dependencies"):
@@ -174,11 +180,18 @@ def main():
             raise SystemExit(f'Use the locked Markview revision {markview_pin}; selected {markview_observed}')
     state = Boundary()
     with tempfile.TemporaryDirectory(prefix="nvim-beads-") as directory:
+        home = Path(directory) / "home"
+        state.workspace = home / ".local/state/beads-service/workspace"
         with ThreadingHTTPServer(("127.0.0.1", 0), state.handler()) as server:
             thread = threading.Thread(target=server.serve_forever, daemon=True)
             thread.start()
             env = {**os.environ, "NVIM_TEST_NUI": str(args.nui.resolve()), "NVIM_TEST_MARKVIEW": str(args.markview.resolve()), "NVIM_LOG_FILE": str(Path(directory) / "nvim.log"), "BEADS_TEST_SETTINGS": json.dumps(dict(url=f"http://127.0.0.1:{server.server_port}", project_id=PROJECT, state_dir=directory))}
             try:
+                if not args.presentation:
+                    subprocess.run(
+                        ["nvim", "--headless", "-u", "NONE", "-i", "NONE", "-n", "-l", "nvim/tests/beads-discovery.lua"],
+                        cwd=ROOT, env={**env, "HOME": str(home)}, check=True, timeout=15,
+                    )
                 scenarios = ['beads-markdown.lua'] if args.presentation else ['beads.lua', 'beads-restart.lua']
                 for scenario in scenarios:
                     subprocess.run(["nvim", "--headless", "-u", "NONE", "-i", "NONE", "-n", "-l", "nvim/tests/" + scenario], cwd=ROOT, env=env, check=True, timeout=45)
