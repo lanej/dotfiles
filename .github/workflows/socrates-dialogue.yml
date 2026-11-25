@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'ai/skills/socrates/**'
+      - 'ai/skills/data-change-planning/**'
       - 'ai/skills/reflection/**'
       - 'ai/skills/specify/**'
       - 'ai/skills/critique/**'
@@ -38,6 +39,7 @@ on:
     branches: [master]
     paths:
       - 'ai/skills/socrates/**'
+      - 'ai/skills/data-change-planning/**'
       - 'ai/skills/reflection/**'
       - 'ai/skills/specify/**'
       - 'ai/skills/critique/**'

@@ -4,6 +4,8 @@ Read `dialogue.txt` beside this file first. It exclusively owns readiness, freez
 
 ## Draft the concrete plan
 
+For data structure or interface changes, carry the relevant before-and-after and representative exchange from the shared dialogue into the plan before listing implementation steps. Tie the steps to that design, including applicable compatibility work and a check that can expose a broken invariant or boundary. Use the existing contracts directly when they already support the requested behavior.
+
 Once readiness passes, draft in this turn without asking permission merely to plan. Trace each task to a requirement and each requirement to the problem. Identify inputs/outputs, dependencies, safe parallel work, constraints, and a proportionate feedback check for each task. A task can run in parallel only if it does not depend on another task's output or shared mutable state. Apply repository commit and review conventions rather than imposing a new commit policy.
 
 Use the actual host's planning and write capabilities:
