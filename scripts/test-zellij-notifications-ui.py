@@ -10,10 +10,8 @@ import shutil
 import subprocess
 import tempfile
 
-import pyte
-
 workflow = importlib.import_module("test-zellij")
-status = importlib.import_module("test-zellij-status")
+native = importlib.import_module("test-theme-native")
 ROOT, Terminal, PROMPT = workflow.ROOT, workflow.Terminal, workflow.PROMPT
 
 
@@ -63,8 +61,8 @@ for line in sys.stdin:
         name = "notifications-" + work.name
         client = Terminal(shutil.which("zellij"), env, name)
         clients = [client]
-        screen = status.Display(120, 32)
-        stream = pyte.Stream(screen)
+        screen = native.ZellijScreen(120, 32)
+        stream = native.NativeStream(screen)
         decoder = codecs.getincrementaldecoder("utf-8")("replace")
         offset = 0
 
@@ -171,8 +169,8 @@ for line in sys.stdin:
             client.send(b"\x1b")
             client = Terminal(shutil.which("zellij"), env, name + "-narrow", columns=80)
             clients.append(client)
-            screen = status.Display(80, 32)
-            stream = pyte.Stream(screen)
+            screen = native.ZellijScreen(80, 32)
+            stream = native.NativeStream(screen)
             decoder = codecs.getincrementaldecoder("utf-8")("replace")
             offset = 0
             client.grant_status_permissions()

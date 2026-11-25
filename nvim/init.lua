@@ -1349,7 +1349,7 @@ require("lazy").setup({
 	},
 	{
 		"numToStr/Navigator.nvim",
-		dependencies = { "lanej/zellij-client.nvim" },
+		dependencies = { { "lanej/zellij-client.nvim", branch = "fix/attention-runtime-contract" } },
 		config = function()
 			require("pane-navigation").setup()
 		end,
