@@ -16,8 +16,10 @@ def test_selective_workflow_install_survives_checkout_removal_and_preserves_loca
     source.mkdir(parents=True)
     names = json.loads((ROOT / "ai/skills/portable-workflows.json").read_text())
     shutil.copyfile(ROOT / "ai/skills/portable-workflows.json", source / "portable-workflows.json")
+    shutil.copytree(ROOT / "ai/skills/data-change-planning", source / "data-change-planning")
     for name in names:
-        shutil.copytree(ROOT / "ai/skills" / name, source / name)
+        shutil.copytree(ROOT / "ai/skills" / name, source / name, symlinks=name == "socrates")
+    shutil.copyfile(ROOT / "ai/skills/project-only.json", source / "project-only.json")
     home = tmp_path / "user"
     local = home / ".agents/skills/personal/SKILL.md"
     local.parent.mkdir(parents=True)
@@ -27,6 +29,7 @@ def test_selective_workflow_install_survives_checkout_removal_and_preserves_loca
     resources = {
         "socrates": {
             "dialogue.txt": ROOT / "claude/commands/socrates/dialogue.txt",
+            "data-change-planning.md": ROOT / "ai/skills/data-change-planning/SKILL.md",
             "spec-scaffold.tpl": ROOT / "claude/commands/socrates/spec-scaffold.tpl",
             "phases-2-3.txt": ROOT / "claude/commands/socrates/phases-2-3.txt",
         },
@@ -52,6 +55,9 @@ def test_selective_workflow_install_survives_checkout_removal_and_preserves_loca
     subprocess.run(command + ["--only", *names], check=True, capture_output=True, text=True)
     assert unrelated.read_text() == "Keep this installed entry.\n"
     shutil.rmtree(source.parent.parent)
+    assert not (home / ".agents/skills/dotfiles/data-change-planning").exists()
+    installed_reference = home / ".agents/skills/dotfiles/socrates/references/data-change-planning.md"
+    assert installed_reference.read_bytes() == (ROOT / "ai/skills/data-change-planning/SKILL.md").read_bytes()
     for name in names:
         installed = home / ".agents/skills/dotfiles" / name
         for document in installed.rglob("*"):

@@ -63,7 +63,14 @@ def bundle(ref, entry):
         }))
     elif shared in tracked:
         paths.append(shared)
-    content = "\n\n".join(f"<file path='{p}'>\n{git('show', f'{ref}:{p}')}\n</file>" for p in paths)
+    sources = {path: path for path in paths}
+    data_reference = "ai/skills/socrates/references/data-change-planning.md"
+    if data_reference in tracked:
+        sources[data_reference] = "ai/skills/data-change-planning/SKILL.md"
+    content = "\n\n".join(
+        f"<file path='{path}'>\n{git('show', f'{ref}:{source}')}\n</file>"
+        for path, source in sources.items()
+    )
     return DRIVER + "\n\n" + content
 
 

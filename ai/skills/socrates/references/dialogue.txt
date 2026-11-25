@@ -166,6 +166,10 @@ Repair, Least Surprise, and Regression Protection. Research/analysis adds
 Falsifiability, Reproducibility, Bias, and Causation. Writing adds Audience,
 Argument, Evidence, and Action. Apply the relevant sets to mixed tasks.
 
+## Data and interface design
+
+When software work changes a data structure or interface, read [the data and interface planning guidance](data-change-planning.md) beside this procedure. Before evaluating readiness, connect the motivating behavior to a focused before-and-after of the model and affected exchange. Inspect actual callers, show a representative operation through the proposed boundary, and record the identity, ownership, invariants, and compatibility decisions that affect the outcome. Use the existing decision record and applicable properties, including Modularity, Robustness, Harmony, and Execution Readiness. Ask about a design choice when it changes a consequential decision and needs the user's judgment. Scale the evidence to the change.
+
 ## Critique reconciliation
 
 Each critique identifies its reviewed specification version and stable finding IDs.
