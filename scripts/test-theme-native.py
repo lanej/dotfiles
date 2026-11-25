@@ -41,8 +41,10 @@ class NativeStream(pyte.Stream):
     def feed(self, data):
         # pyte treats xterm's CSI >4;2m keyboard mode as SGR underline.
         # A PTY read can split the escape sequence at any byte.
-        data = self.pending + data
-        tail = re.search(r"\x1b(?:\[>?[0-9:;]*)?\Z", data)
+        # DCS is terminal metadata. pyte otherwise prints Zellij's attachment
+        # announcements over pane contents, even when they span multiple reads.
+        data = re.sub(r"\x1bP.*?\x1b\\", "", self.pending + data, flags=re.DOTALL)
+        tail = re.search(r"\x1b(?:P.*|\[>?[0-9:;]*)?\Z", data, flags=re.DOTALL)
         self.pending = tail[0] if tail else ""
         complete = data[:tail.start()] if tail else data
         # pyte parses colon-separated SGR parameters as printable characters.
