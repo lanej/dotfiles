@@ -357,14 +357,6 @@ impl ZellijPlugin for State {
         // is still visible, but its keys currently belong to another session.
         let dimmed = self.mode.session_ascended == Some(true)
             || self.mode.session_dimmed == Some(true);
-        if self.mode.mode == InputMode::Tmux && !dimmed {
-            // Prefix waiting owns the whole row, even when a narrow terminal
-            // would otherwise give all its space to the clock or a notice.
-            let label = clipped(" PREFIX  waiting for next key  |  Esc cancels ", cols);
-            print!("\x1b[1;23;{};{}m{}{}\x1b[0m",
-                background(colors.ribbon_selected.background), foreground(colors.ribbon_selected.base), label, " ".repeat(cols.saturating_sub(label.width())));
-            return;
-        }
         if self.mode.mode == InputMode::RenameSession && !dimmed {
             // ModeInfo carries the native per-client draft, not the committed
             // session name. Native Enter/cancel/validation own its lifecycle.

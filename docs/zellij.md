@@ -13,7 +13,7 @@ zj
 zj work
 ```
 
-After pulling helper or status plugin updates, run `make zellij-status zellij` to rebuild the commands and status plugin and refresh their links. Full `make install` includes this step for the patched and main runtimes.
+After pulling helper or status plugin updates, run `make zellij-status zellij` to rebuild the commands and status plugin and refresh their links. For the orange mode indicators, run `make zellij-runtime zellij-status zellij` with the patched runtime selected, then start a fresh session. Full `make install` includes the build for the selected runtime.
 
 `zj` attaches to or creates `main`; `zj work` chooses a session named `work`. **Ctrl-f d** detaches and keeps programs running. Run the same command to return.
 
@@ -21,7 +21,9 @@ If a first-use permission prompt appears in the top bar, focus it with **Ctrl-f 
 
 ## Familiar keys
 
-Press **Ctrl-f**, release it, then press the next key. Uppercase letters need Shift. **Esc**, **Enter**, or **Ctrl-c** cancels the prefix. Most shortcuts immediately return control to the application.
+Press **Ctrl-f**, release it, then press the next key. While Zellij waits for the next key, an orange line frames the window and the tab bar stays visible. Entering copy mode with **[** or **e** moves the orange outline to the focused pane. Uppercase letters need Shift. **Esc**, **Enter**, or **Ctrl-c** cancels the prefix. Most shortcuts immediately return control to the application.
+
+![Normal focus, the orange window outline after Ctrl-f, and the orange pane border in copy mode](images/zellij-mode-frames.png)
 
 The [keybinding map](zellij-keybinds.mdx) lists shortcuts, aliases, and keys inside modes. **Ctrl-f p** pastes copied session text; **Ctrl-f Ctrl-p** switches tabs.
 

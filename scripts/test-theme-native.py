@@ -7,6 +7,7 @@
 
 import argparse
 import codecs
+from collections import namedtuple
 import difflib
 import fcntl
 import html
@@ -41,9 +42,11 @@ class NativeStream(pyte.Stream):
         # pyte treats xterm's CSI >4;2m keyboard mode as SGR underline.
         # A PTY read can split the escape sequence at any byte.
         data = self.pending + data
-        tail = re.search(r"\x1b(?:\[(?:>[0-9;]*)?)?\Z", data)
+        tail = re.search(r"\x1b(?:\[>?[0-9:;]*)?\Z", data)
         self.pending = tail[0] if tail else ""
         complete = data[:tail.start()] if tail else data
+        # pyte parses colon-separated SGR parameters as printable characters.
+        complete = re.sub(r"\x1b\[58:2::(\d+):(\d+):(\d+)m", "\x1b" + r"[58;2;\1;\2;\3m", complete)
         super().feed(re.sub(r"\x1b\[>[0-9;]*m", "", complete))
 
 
@@ -66,8 +69,35 @@ class NativeScreen(pyte.Screen):
             super().report_device_status(mode)
 
 
+# pyte 0.8.2 tracks whether a cell is underlined, but discards SGR 58/59.
+ZellijCell = namedtuple("ZellijCell", [*pyte.screens.Char._fields, "underline_color"])
+
+
+class ZellijScreen(NativeScreen):
+    @property
+    def default_char(self):
+        return ZellijCell(*super().default_char, "default")
+
+    def reset(self):
+        super().reset()
+        self.cursor.attrs = self.default_char
+
+    def select_graphic_rendition(self, *attrs):
+        if attrs[:2] == (58, 2) and len(attrs) == 5:
+            color = "{:02x}{:02x}{:02x}".format(*attrs[2:])
+            self.cursor.attrs = self.cursor.attrs._replace(underline_color=color)
+        elif attrs == (59,):
+            self.cursor.attrs = self.cursor.attrs._replace(underline_color="default")
+        else:
+            super().select_graphic_rendition(*attrs)
+
+
 def cells(screen, lines):
-    return [[{key: getattr(screen.buffer[row][col], key) for key in ("data", "fg", "bg", "bold", "italics", "underscore", "reverse")} for col in range(screen.columns)] for row in range(lines)]
+    attributes = ("data", "fg", "bg", "bold", "italics", "underscore", "reverse")
+    if isinstance(screen, ZellijScreen):
+        attributes += ("underline_color",)
+    return [[{key: getattr(screen.buffer[row][col], key) for key in attributes}
+             for col in range(screen.columns)] for row in range(lines)]
 
 
 def ansi_cells(text, columns=76, lines=10):
@@ -166,10 +196,13 @@ def svg(name, rows):
                 fg, bg = bg, fg
             x, y = 12 + col * 9, 12 + row * 20
             result.append(f'<rect x="{x}" y="{y}" width="{len(cell["data"])*9}" height="20" fill="{bg}"/>')
+            underline_color = cell.get("underline_color", "default")
+            if cell["underscore"] and underline_color != "default":
+                result.append(f'<rect x="{x}" y="{y+17}" width="{len(cell["data"])*9}" height="1" fill="{color(underline_color, fg)}"/>')
             if cell["data"].strip():
                 weight = "bold" if cell["bold"] else "normal"
                 italic = "italic" if cell["italics"] else "normal"
-                decoration = "underline" if cell["underscore"] else "none"
+                decoration = "underline" if cell["underscore"] and underline_color == "default" else "none"
                 # WHY: SVG renderers can discard terminal padding before applying textLength.
                 visible = cell["data"].strip(" ")
                 text_x = x + (len(cell["data"]) - len(cell["data"].lstrip(" "))) * 9
@@ -258,21 +291,35 @@ print(json.dumps({name: str(getattr(opts, name)) for name in ("foreground", "bac
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR", "ZELLIJ_CONFIG_FILE", "ENV", "BASH_ENV"):
             native_env.pop(key, None)
         subprocess.run(["make", "--no-print-directory", "zellij"], cwd=ROOT, env=native_env, check=True, capture_output=True)
-        name = "theme-" + work.name
-        client = workflow.Terminal(shutil.which("zellij"), native_env, name, install_navigation=False, columns=76)
-        screen = NativeScreen(76, 32)
+        # Keep machine-specific notices and status modules outside this narrow fixture.
+        # Its fixed name is isolated by the private socket directory.
+        name, columns, lines = "work", 28, 8
+        client = workflow.Terminal(shutil.which("zellij"), native_env, name, install_navigation=False)
+        screen = ZellijScreen(120, 32)
         stream, decoder, offset = NativeStream(screen), codecs.getincrementaldecoder("utf-8")("replace"), 0
-        def ready():
+        def update_screen():
             nonlocal offset
             stream.feed(decoder.decode(bytes(client.output[offset:])))
             offset = len(client.output)
-            return "PREFIX" in screen.display[0] and "Esc cancels" in screen.display[0]
+
+        def ready():
+            update_screen()
+            return ("0:Shell" in screen.display[0] and "!?" not in screen.display[0]
+                    and screen.display[2].strip("│ ") == workflow.PROMPT.decode().strip()
+                    and all(screen.buffer[0][x].underscore for x in range(columns))
+                    and screen.buffer[lines - 1][columns - 1].fg == screen.buffer[0][5].underline_color)
         try:
             client.grant_status_permissions()
             client.until("theme fixture shell ready", lambda: workflow.PROMPT in client.output)
+            client.action("rename-pane", "Shell")
+            update_screen()
+            screen.resize(lines=lines, columns=columns)
+            fcntl.ioctl(client.fd, termios.TIOCSWINSZ, struct.pack("HHHH", lines, columns, 0, 0))
+            # Remove shell-specific startup text before recording the pane.
+            client.send(b"printf '\\033[2J\\033[H'\r")
             client.send(b"\x06")
             client.until("native themed prefix", ready)
-            return cells(screen, 1)
+            return cells(screen, lines)
         finally:
             subprocess.run(["zellij", "kill-session", name], env=native_env, capture_output=True, timeout=5)
             client.close()
