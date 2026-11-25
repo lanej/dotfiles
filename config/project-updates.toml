@@ -1,12 +1,14 @@
 # Each command receives one action as its last argument, in the project checkout.
 # Add missing projects only after identifying their real build/restart entrypoints.
 [projects.octo-manager]
+repository = "https://github.com/lanej/octo-manager.git"
 path = "~/src/oss/octo-manager"
 command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "octo-manager"]
 
 # Dotfiles owns the curated runtime pin and compatible plugin revisions.
 # Pull dotfiles' default branch, rather than Zellij's upstream main mirror.
 [projects.zellij]
+repository = "https://github.com/lanej/dotfiles.git"
 path = "{dotfiles}"
 command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "zellij"]
 lifecycle = "terminal"
@@ -15,18 +17,22 @@ depends_on = ["studio", "keylease"]
 
 # Beads and Dolt versions are curated together in the dotfiles catalog.
 [projects.beads]
+repository = "https://github.com/lanej/dotfiles.git"
 path = "{dotfiles}"
 command = ["{python}", "{dotfiles}/tools/beads/project-update.py"]
 
 [projects.bedrock-router]
+repository = "https://github.com/lanej/bedrock-router.git"
 path = "~/src/bedrock-router"
 command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "bedrock-router"]
 
 [projects.intent]
+repository = "https://github.com/lanej/intent.git"
 path = "~/src/intent"
 command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "intent"]
 
 [projects.keylease]
+repository = "https://github.com/lanej/keylease.git"
 path = "~/src/1password-agent"
 command = ["{python}", "{dotfiles}/scripts/project-lifecycle.py", "keylease"]
 lifecycle = "consumer"
@@ -34,12 +40,14 @@ depends_on = ["intent", "bedrock-router"]
 
 # Dotfiles pins the manager and patches; pull also selects upstream stable Git.
 [projects.worktree-manager]
+repository = "https://github.com/lanej/dotfiles.git"
 path = "{dotfiles}"
 command = ["bash", "{dotfiles}/scripts/worktree-manager-update.sh"]
 pull_sources = true
 lifecycle = "stateless"
 
 [projects.studio]
+repository = "https://github.com/lanej/studio.git"
 path = "~/src/studio"
 command = ["{python}", "{dotfiles}/scripts/install-studio.py"]
 lifecycle = "consumer"

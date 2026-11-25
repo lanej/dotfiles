@@ -104,6 +104,51 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual([json.loads(line) for line in self.log.read_text().splitlines()],
                          [[action] for action in ("build", "inventory", "checkpoint", "restart", "restore", "verify")])
 
+    def test_update_clones_missing_checkout_from_registered_repository(self):
+        shutil.rmtree(self.checkout)
+        self.checkout = self.base / "new parent" / "checkout with spaces"
+        self.config.write_text(f'[projects.fixture]\npath={json.dumps(str(self.checkout))}\n'
+                               f'command={json.dumps([sys.executable, str(self.base / "hook.py")])}\n')
+        self.invoke("update", "fixture", "--dry-run")
+        self.invoke("status", "fixture", code=1)
+        self.assertFalse(self.checkout.exists())
+        missing = self.invoke("pull", "fixture", code=1)
+        self.assertIn("configure repository", missing[0]["error"])
+        self.assertFalse(self.checkout.exists())
+        with self.config.open("a") as output:
+            output.write(f'repository={json.dumps(str(self.origin))}\nremote="upstream"\n')
+        self.commit("latest remote content")
+        self.git(self.source, "push")
+        rows = self.invoke("update", "fixture")
+        self.assertEqual(rows[0]["outcome"], "ok")
+        self.assertEqual(self.git(self.checkout, "symbolic-ref", "--short", "HEAD"), "trunk")
+        self.assertEqual(self.git(self.checkout, "remote", "get-url", "upstream"), str(self.origin))
+        self.assertEqual((self.checkout / "content").read_text(), "latest remote content")
+        self.assertEqual(rows[0]["completed"],
+                         ["pull", "build", "inventory", "checkpoint", "restart", "restore", "verify"])
+        self.invoke("pull", "fixture")
+
+    def test_clone_preserves_existing_non_checkout_directory(self):
+        shutil.rmtree(self.checkout)
+        self.checkout.mkdir()
+        valuable = self.checkout / "valuable.txt"
+        valuable.write_text("preserve me")
+        with self.config.open("a") as output:
+            output.write(f'repository={json.dumps(str(self.origin))}\n')
+        rows = self.invoke("update", "fixture", code=1)
+        self.assertEqual(rows[0]["completed"], [])
+        self.assertEqual(valuable.read_text(), "preserve me")
+        self.assertFalse((self.checkout / ".git").exists())
+        self.assertFalse(self.log.exists())
+
+    def test_clone_failure_stops_before_build(self):
+        shutil.rmtree(self.checkout)
+        with self.config.open("a") as output:
+            output.write(f'repository={json.dumps(str(self.base / "unavailable.git"))}\n')
+        rows = self.invoke("update", "fixture", code=1)
+        self.assertIn("Clone failed", rows[0]["error"])
+        self.assertFalse(self.log.exists())
+
     def test_zellij_update_is_deferred_until_explicitly_requested(self):
         self.config.write_text(
             f'[projects.zellij]\npath={json.dumps(str(self.checkout))}\n'
