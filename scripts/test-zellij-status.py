@@ -24,18 +24,9 @@ import termios
 import time
 import uuid
 
-import pyte
-
+native = importlib.import_module("test-theme-native")
 workflow = importlib.import_module("test-zellij")
 ROOT, Terminal, PROMPT = workflow.ROOT, workflow.Terminal, workflow.PROMPT
-
-
-class Display(pyte.Screen):
-    def report_device_status(self, mode, **kwargs):
-        # Zellij asks the real PTY for private terminal status. This decoder
-        # observes rendered cells; Terminal handles the interactive endpoint.
-        if not kwargs.get("private"):
-            super().report_device_status(mode)
 
 
 EMITTER = r'''
@@ -135,8 +126,8 @@ def main():
 
         def display(client):
             if client not in screens:
-                screen = Display(120, 32)
-                screens[client] = [screen, pyte.Stream(screen), codecs.getincrementaldecoder("utf-8")("replace"), 0]
+                screen = native.ZellijScreen(120, 32)
+                screens[client] = [screen, native.NativeStream(screen), codecs.getincrementaldecoder("utf-8")("replace"), 0]
             screen, stream, decoder, offset = screens[client]
             stream.feed(decoder.decode(bytes(client.output[offset:])))
             screens[client][3] = len(client.output)
@@ -149,13 +140,16 @@ def main():
             display(client).resize(lines=32, columns=cols)
             fcntl.ioctl(client.fd, termios.TIOCSWINSZ, struct.pack("HHHH", 32, cols, 0, 0))
 
-        def prefix_banner(client):
+        orange = "d08770"  # Nord's attention color.
+
+        def window_frame(client):
             screen = display(client)
-            return "PREFIX" in screen.display[0] and all(
-                screen.buffer[0][col].bg == "b48ead"
-                and screen.buffer[0][col].fg == "2e3440"
-                and screen.buffer[0][col].bold
-                for col in range(screen.columns))
+            right, bottom = screen.columns - 1, screen.lines - 1
+            return (all(screen.buffer[0][x].underscore and screen.buffer[0][x].underline_color == orange
+                        for x in range(screen.columns))
+                    and all(screen.buffer[y][x].fg == orange
+                            for y in range(2, bottom) for x in (0, right))
+                    and all(screen.buffer[bottom][x].fg == orange for x in range(screen.columns)))
 
         terminal = StatusTerminal(binary, env, first)
         clients.append(terminal)
@@ -170,34 +164,52 @@ def main():
             active_cell = display(terminal).buffer[0][top_line(terminal).index("0:Tab #0")]
             assert (active_cell.fg, active_cell.bg, active_cell.bold) == ("2e3440", "b48ead", True)
             terminal.send(b"\x06")
-            terminal.until("prefix waiting paints the whole bar with bold high-contrast text", lambda:
-                           prefix_banner(terminal) and "waiting for next key" in top_line(terminal)
-                           and "Esc cancels" in top_line(terminal))
-            # The prefix wins over the clock even when the terminal is narrow.
+            terminal.until("prefix outlines the window and keeps the selected tab readable", lambda:
+                           window_frame(terminal) and first[:18] in top_line(terminal)
+                           and "0:Tab #0" in top_line(terminal))
             resize(terminal, 28)
-            terminal.until("prefix remains visible after narrowing the terminal", lambda:
-                           prefix_banner(terminal) and top_line(terminal).endswith("…"))
+            terminal.until("narrowing the window moves the frame and preserves the tab", lambda:
+                           window_frame(terminal) and "0:Tab #0" in top_line(terminal))
             if os.environ.get("THEME_CAPTURE_DIR"):
                 capture = Path(os.environ["THEME_CAPTURE_DIR"])
                 capture.mkdir(parents=True, exist_ok=True)
                 screen = display(terminal)
-                cells = [screen.buffer[0][col]._asdict() for col in range(screen.columns)]
+                cells = [[screen.buffer[y][x]._asdict() for x in range(screen.columns)]
+                         for y in range(screen.lines)]
                 (capture / "zellij-prefix.json").write_text(json.dumps(cells, indent=2) + "\n")
             terminal.send(b"\x1b")
-            terminal.until("Escape restores the normal bar", lambda:
-                           "PREFIX" not in top_line(terminal)
-                           and "0:Tab #0" in top_line(terminal)
-                           and display(terminal).buffer[0][0].bg == "88c0d0")
+            terminal.until("Escape clears the frame", lambda:
+                           not display(terminal).buffer[0][5].underscore
+                           and display(terminal).buffer[8][0].fg == "b48ead"
+                           and "0:Tab #0" in top_line(terminal))
             resize(terminal, 120)
             terminal.send(b"\x06")
-            terminal.until("prefix waiting can be entered again", lambda: prefix_banner(terminal))
+            terminal.until("prefix waiting can be entered again", lambda: window_frame(terminal))
             terminal.send(b"\x12")
             terminal.until("a command consumes the prefix and labels the resulting mode", lambda:
-                           "RESIZE" in top_line(terminal) and "PREFIX" not in top_line(terminal)
+                           "RESIZE" in top_line(terminal) and not window_frame(terminal)
                            and display(terminal).buffer[0][0].bg == "88c0d0")
             terminal.send(b"\r")
             terminal.until("leaving resize restores the ordinary bar", lambda:
                            "RESIZE" not in top_line(terminal) and "0:Tab #0" in top_line(terminal))
+
+            terminal.prefix(b"v")
+            terminal.until("two panes visible", lambda: len(terminal.terminals()) == 2)
+            split = max(pane["pane_x"] for pane in terminal.terminals())
+            terminal.send(b"\x06")
+            terminal.until("prefix surrounds both panes and leaves the divider alone", lambda:
+                           window_frame(terminal) and display(terminal).buffer[8][split].fg != orange)
+            terminal.send(b"[")
+            terminal.until("copy frames only the right-hand pane", lambda:
+                           display(terminal).buffer[8][split].fg == orange
+                           and display(terminal).buffer[8][119].fg == orange
+                           and display(terminal).buffer[8][0].fg != orange
+                           and not display(terminal).buffer[0][5].underscore)
+            terminal.send(b"q")
+            terminal.until("leaving copy restores the focused pane color", lambda:
+                           display(terminal).buffer[8][split].fg == "b48ead")
+            terminal.prefix(b"x")
+            terminal.until("original pane focused again", lambda: len(terminal.terminals()) == 1)
             first_pane = terminal.terminals()[0]["id"]
             first_pid = home / "first-agent-pid"
             terminal.send((shlex.join(["python3", str(program), str(first_pid)]) + "\r").encode())
@@ -240,7 +252,7 @@ def main():
             # explicit action rather than changing tmux's selection policy.
             other.prefix(b"\x01")
             other.until("attention key completes without leaving the current session", lambda:
-                        "PREFIX" not in top_line(other)
+                        not window_frame(other)
                         and bool(other.action("list-clients", session=second).strip().splitlines()[1:]))
             other.settle_ordinary_navigation()
             other.action("go-to-next-attention")
@@ -301,10 +313,10 @@ def main():
                         focused_tab() == question_tab)
             other.send(b"\x06")
             other.until("direct jump can be repeated from the highest-ranked tab", lambda:
-                        prefix_banner(other))
+                        window_frame(other))
             other.send(b"a")
             other.until("direct jump stays on the highest-ranked tab", lambda:
-                        "PREFIX" not in top_line(other) and focused_tab() == question_tab)
+                        not window_frame(other) and focused_tab() == question_tab)
             other.prefix(b"\x01")
             other.until("next request follows tab order", lambda: focused_tab() == approval_tab)
             other.prefix(b"\x01")

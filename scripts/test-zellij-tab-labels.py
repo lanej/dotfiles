@@ -18,10 +18,8 @@ import tempfile
 import termios
 import time
 
-import pyte
-
 workflow = importlib.import_module("test-zellij")
-Display = importlib.import_module("test-zellij-status").Display
+native = importlib.import_module("test-theme-native")
 ROOT, Terminal, PROMPT = workflow.ROOT, workflow.Terminal, workflow.PROMPT
 
 
@@ -117,8 +115,8 @@ def main(fixed_titles=False, native_bar=False):
         name = "labels-" + work.name
         terminal = Terminal(binary, env, name)
         other = None
-        screen, decoder = Display(480, 32), codecs.getincrementaldecoder("utf-8")("replace")
-        stream, offset = pyte.Stream(screen), 0
+        screen, decoder = native.ZellijScreen(480, 32), codecs.getincrementaldecoder("utf-8")("replace")
+        stream, offset = native.NativeStream(screen), 0
 
         def top_line():
             nonlocal offset

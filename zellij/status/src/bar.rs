@@ -234,12 +234,12 @@ impl State {
             .notice()
             .or_else(|| notification.map(|(_, text)| text));
         let mode = match self.mode.mode {
-            InputMode::Normal | InputMode::Locked => "",
-            InputMode::Tmux => "PREFIX ",
+            InputMode::Normal | InputMode::Locked | InputMode::Tmux => "",
             InputMode::Resize => "RESIZE ",
             InputMode::Move => "MOVE ",
             InputMode::Tab => "TAB ",
             InputMode::RenameTab => "RENAME TAB ",
+            InputMode::Copy => "COPY ",
             InputMode::Scroll => "SCROLL ",
             InputMode::EnterSearch | InputMode::Search => "SEARCH ",
             _ => "MODE ",

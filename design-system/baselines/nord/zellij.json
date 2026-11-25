@@ -1,12 +1,257 @@
 [
   [
     {
-      "bg": "b48ead",
+      "bg": "88c0d0",
       "bold": true,
-      "data": " PREFIX  waiting for next key  |  Esc cancels                               ",
+      "data": " work ",
       "fg": "2e3440",
       "italics": false,
       "reverse": false,
+      "underline_color": "d08770",
+      "underscore": true
+    },
+    {
+      "bg": "b48ead",
+      "bold": false,
+      "data": "\ue0b0",
+      "fg": "88c0d0",
+      "italics": false,
+      "reverse": false,
+      "underline_color": "d08770",
+      "underscore": true
+    },
+    {
+      "bg": "b48ead",
+      "bold": true,
+      "data": " 0:Shell ",
+      "fg": "2e3440",
+      "italics": false,
+      "reverse": false,
+      "underline_color": "d08770",
+      "underscore": true
+    },
+    {
+      "bg": "2e3440",
+      "bold": false,
+      "data": "\ue0b0",
+      "fg": "b48ead",
+      "italics": false,
+      "reverse": false,
+      "underline_color": "d08770",
+      "underscore": true
+    },
+    {
+      "bg": "2e3440",
+      "bold": false,
+      "data": "           ",
+      "fg": "81a1c1",
+      "italics": false,
+      "reverse": false,
+      "underline_color": "d08770",
+      "underscore": true
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": true,
+      "data": "\u2502",
+      "fg": "d08770",
+      "italics": false,
+      "reverse": false,
+      "underline_color": "default",
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": true,
+      "data": " Shell \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+      "fg": "b48ead",
+      "italics": false,
+      "reverse": false,
+      "underline_color": "default",
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": true,
+      "data": "\u2502",
+      "fg": "d08770",
+      "italics": false,
+      "reverse": false,
+      "underline_color": "default",
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": true,
+      "data": "\u2502",
+      "fg": "d08770",
+      "italics": false,
+      "reverse": false,
+      "underline_color": "default",
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "zellij-ready>             ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underline_color": "default",
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": true,
+      "data": "\u2502",
+      "fg": "d08770",
+      "italics": false,
+      "reverse": false,
+      "underline_color": "default",
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": true,
+      "data": "\u2502",
+      "fg": "d08770",
+      "italics": false,
+      "reverse": false,
+      "underline_color": "default",
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "                          ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underline_color": "default",
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": true,
+      "data": "\u2502",
+      "fg": "d08770",
+      "italics": false,
+      "reverse": false,
+      "underline_color": "default",
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": true,
+      "data": "\u2502",
+      "fg": "d08770",
+      "italics": false,
+      "reverse": false,
+      "underline_color": "default",
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "                          ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underline_color": "default",
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": true,
+      "data": "\u2502",
+      "fg": "d08770",
+      "italics": false,
+      "reverse": false,
+      "underline_color": "default",
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": true,
+      "data": "\u2502",
+      "fg": "d08770",
+      "italics": false,
+      "reverse": false,
+      "underline_color": "default",
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "                          ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underline_color": "default",
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": true,
+      "data": "\u2502",
+      "fg": "d08770",
+      "italics": false,
+      "reverse": false,
+      "underline_color": "default",
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": true,
+      "data": "\u2502",
+      "fg": "d08770",
+      "italics": false,
+      "reverse": false,
+      "underline_color": "default",
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "                          ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underline_color": "default",
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": true,
+      "data": "\u2502",
+      "fg": "d08770",
+      "italics": false,
+      "reverse": false,
+      "underline_color": "default",
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": true,
+      "data": "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518",
+      "fg": "d08770",
+      "italics": false,
+      "reverse": false,
+      "underline_color": "default",
       "underscore": false
     }
   ]

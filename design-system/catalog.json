@@ -113,7 +113,7 @@
     "description": "Native key notation with shared emphasis.",
     "implementations": {
       "Neovim": "WhichKey / WhichKeyDesc",
-      "Zellij": "prefix banner and stock help styles",
+      "Zellij": "mode frames and stock help styles",
       "tmux": "prefix_highlight plugin options",
       "CLI": "keyhint role"
     }
