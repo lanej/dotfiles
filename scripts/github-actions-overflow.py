@@ -22,6 +22,25 @@ SHA = re.compile(r"[0-9a-f]{40}")
 RUN_URL = re.compile(r"https://github.com/lanej/dotfiles/actions/runs/(\d+)")
 RETRY_DELAY = 300
 MAX_QUEUE = timedelta(minutes=10)
+HOSTED_NODE = "W_kwDOACeEE84YD6uP"
+QUEUE_QUERY = """query($hosted: ID!, $job: String!) {
+  hosted: node(id: $hosted) {
+    ... on Workflow {
+      runs(first: 50, orderBy: {field: CREATED_AT, direction: DESC}) {
+        pageInfo { hasNextPage }
+        nodes {
+          databaseId createdAt event
+          checkSuite {
+            checkRuns(first: 1, filterBy: {checkName: $job, statuses: [QUEUED]}) {
+              nodes { id }
+            }
+          }
+        }
+      }
+    }
+  }
+  rateLimit { cost }
+}"""
 
 
 def github(path, *fields):
@@ -58,11 +77,48 @@ def current_pull(number, head):
     return None
 
 
-def select_job(minimum_age):
+def queue_hint(minimum_age):
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(hours=3)
+    try:
+        response = github(
+            "graphql", "-f", f"query={QUEUE_QUERY}", "-f", f"hosted={HOSTED_NODE}",
+            "-f", f"job={HOSTED_JOB}",
+        )
+        if response.get("errors"):
+            raise ValueError("Incomplete GraphQL response")
+        hosted = response["data"]["hosted"]["runs"]
+        nodes = hosted["nodes"]
+        if not isinstance(nodes, list) or any(
+            not isinstance(run["checkSuite"]["checkRuns"]["nodes"], list) for run in nodes
+        ):
+            raise ValueError("Incomplete GraphQL check list")
+        # A truncated window cannot rule out a queued pull request.
+        if hosted["pageInfo"]["hasNextPage"] and (
+            not nodes or timestamp(nodes[-1]["createdAt"]) >= cutoff
+        ):
+            return None
+        candidates = {
+            run["databaseId"] for run in nodes
+            if run["event"] == "pull_request"
+            and cutoff <= timestamp(run["createdAt"]) <= now - timedelta(seconds=minimum_age)
+            and run["checkSuite"]["checkRuns"]["nodes"]
+        }
+        if not all(type(run_id) is int and run_id > 0 for run_id in candidates):
+            raise ValueError("Missing workflow run ID")
+        return candidates
+    except (subprocess.SubprocessError, AttributeError, KeyError, TypeError, ValueError):
+        print("GraphQL queue hint unavailable; checking REST.", file=sys.stderr)
+        return None
+
+
+def select_job(minimum_age, candidate_ids=None):
     now = datetime.now(timezone.utc)
     cutoff = (now - timedelta(hours=3)).strftime("%Y-%m-%dT%H:%M:%SZ")
     query = f"event=pull_request&created=%3E%3D{cutoff}&per_page=50"
     for run in reversed(workflow_runs(HOSTED_WORKFLOW, query)):
+        if candidate_ids is not None and run["id"] not in candidate_ids:
+            continue
         if (
             run["status"] not in {"queued", "in_progress"}
             or run["actor"]["login"] != OWNER
@@ -146,24 +202,36 @@ def resolve_pending(state, runs):
 
 
 def cycle(path, state, minimum_age, observe):
-    runs = workflow_runs(OVERFLOW_WORKFLOW, "event=workflow_dispatch&per_page=100")
-    if not observe:
-        resolve_pending(state, runs)
-        save(path, state)
-    if any(r["status"] != "completed" for r in runs):
+    runs = None
+    if any(not entry.get("done") for entry in state.values()):
+        runs = workflow_runs(OVERFLOW_WORKFLOW, "event=workflow_dispatch&per_page=100")
+        if not observe:
+            resolve_pending(state, runs)
+            save(path, state)
+        if any(r["status"] != "completed" for r in runs):
+            return
+
+    candidate_ids = queue_hint(minimum_age)
+    if candidate_ids == set():
         return
-    runners = github(f"repos/{REPO}/actions/runners")["runners"]
-    if not any(r["name"] == RUNNER and r["status"] == "online" and not r["busy"] for r in runners):
-        return
-    for job, pr in select_job(minimum_age):
+    for job, pr in select_job(minimum_age, candidate_ids):
         job_id = str(job["id"])
         commit, head = pr["merge_commit_sha"], pr["head"]["sha"]
         key = f"{job_id}:{commit}"
         title = f"Mac overflow for hosted job {job_id} at {commit}"
         previous = state.get(key, {})
         can_retry = previous.get("retry_at", float("inf")) <= datetime.now(timezone.utc).timestamp()
-        if (previous and not can_retry) or any(r["display_title"] == title for r in runs):
+        if previous and not can_retry:
             continue
+        if runs is None:
+            runs = workflow_runs(OVERFLOW_WORKFLOW, "event=workflow_dispatch&per_page=100")
+            if any(r["status"] != "completed" for r in runs):
+                return
+        if any(r["display_title"] == title for r in runs):
+            continue
+        runners = github(f"repos/{REPO}/actions/runners")["runners"]
+        if not any(r["name"] == RUNNER and r["status"] == "online" and not r["busy"] for r in runners):
+            return
         print(f"PR #{pr['number']} job {job_id} commits {head} / {commit}", flush=True)
         if observe:
             return
