@@ -1,4 +1,4 @@
-"""Focused installation and native-policy checks for Octo command allowances."""
+"""Focused checks for Codex defaults and native Octo command policy."""
 import json
 import os
 from pathlib import Path
@@ -6,8 +6,33 @@ import shutil
 import subprocess
 import tomllib
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+@pytest.mark.parametrize(("stage", "expected"), [("under development", True), ("removed", None)])
+def test_structured_question_default_uses_client_feature_support(tmp_path, stage, expected):
+    tools = tmp_path / "bin"
+    tools.mkdir()
+    codex = tools / "codex"
+    codex.write_text(
+        '#!/bin/sh\n[ "$*" = "features list" ] && [ -d "$CODEX_HOME" ] || exit 1\ncat "$0.features"\n'
+    )
+    codex.chmod(0o755)
+    (tools / "codex.features").write_text(f"default_mode_request_user_input  {stage}  false\n")
+    codex_home = tmp_path / "codex"
+    config = codex_home / "config.toml"
+    env = dict(os.environ, CODEX_HOME=str(codex_home), PATH=f"{tools}{os.pathsep}{os.environ['PATH']}")
+    command = [
+        "uv", "run", "--script", str(ROOT / "bin/sync-codex-permissions"),
+        "--github-enabled", "false", "--easypost", "false",
+    ]
+
+    subprocess.run(command, env=env, check=True, capture_output=True, text=True, timeout=15)
+    features = tomllib.loads(config.read_text()).get("features", {})
+    assert features.get("default_mode_request_user_input") is expected
 
 
 def test_make_codex_permissions_installs_preserves_and_refreshes_rules(tmp_path):
@@ -22,6 +47,7 @@ def test_make_codex_permissions_installs_preserves_and_refreshes_rules(tmp_path)
         '[apps.connector_76869538009648d5b282a4bb21c3d157]\nenabled = true\n'
         '[plugins."github@openai-curated"]\nenabled = true\n'
         '[plugins."github@openai-curated-remote"]\nenabled = true\n'
+        '[features]\nmemories = true\ndefault_mode_request_user_input = false\n'
     )
     config.write_text(original)
     config.chmod(0o640)

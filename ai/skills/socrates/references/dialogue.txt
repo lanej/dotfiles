@@ -16,7 +16,6 @@ In Claude Code, preserve the per-session pointer `.socrates/.current-<CLAUDE_COD
 
 In Codex, do not read or write Claude pointers or use Claude sockets. Retain the selected session path in conversation context. Without a bound path, use the picker; do not invent a binding or overwrite a session another conversation may be using. Resolve uncertain ownership before editing.
 
-Use the host's available user-input tools for consequential questions, respecting its channel rules. In Claude Code, bounded alternatives can use `AskUserQuestion`. In Codex, use an available user-input tool; if none is available, ask in the conversational reply. An unanswered question remains open.
 Initialization (a task title was supplied):
 
 1. Generate the timestamp and create a new directory. If it already exists, obtain
@@ -92,6 +91,12 @@ old value, basis, and the reason for the change in `## Decision History`; mark t
 old decision superseded and link its replacement. Do not append an audit row on
 every turn. Questions are not decisions until answered.
 
+## Asking the user
+
+Ask the first unresolved question in the current turn, including when the user needs to select a session. Use the host's available user-input tools and respect their channel rules. In Claude Code, bounded alternatives can use `AskUserQuestion`.
+
+In Codex, call the native `request_user_input` tool before replying in prose when the host exposes it for the current mode and the question fits its schema. Availability depends on the client and its configuration, including in Default mode. If the tool is unavailable or unsuitable, use `request_user_input_async` when exposed, including for a free-text question. Incorporate the answer as soon as it arrives, in the active turn if delivered there. If neither tool can present the question, ask it directly in the conversational reply. Ask once, and finish any work independent of the answer. When the answer is the only remaining blocker, leave the decision open and yield without polling or asking the user to say “continue”.
+
 ## Dialogue loop
 
 1. **Select the decision before the question.** Identify what different answers
@@ -106,10 +111,7 @@ every turn. Questions are not decisions until answered.
    facts directly; use findings about tradeoffs to inform the question, not to
    silently decide the user's intent. Never rerun research merely because another
    dialogue turn began.
-4. **Ask one natural question.** Lead with a relevant finding when there is one,
-   then ask the consequential question. Do not fabricate a finding as a preamble.
-   Use the host question routing described above; offer alternatives only when their tradeoffs matter. Do not bundle unrelated questions or expose the internal
-   checklist as a form to fill out.
+4. **Ask one natural question.** If a readiness property still fails, name the concrete gap or competing requirements, explain the consequence, and ask for the missing decision or evidence using the host routing above. Offer alternatives only when their tradeoffs matter. Do not bundle unrelated questions or expose the internal checklist as a form to fill out.
 5. **Examine the answer.** Clarify vagueness that affects the decision. Challenge
    an unsupported premise by naming the evidence gap and the consequence if it is
    wrong. Surface contradictions explicitly. A clear user preference or explicitly
@@ -120,11 +122,7 @@ every turn. Questions are not decisions until answered.
    or treat missing evidence as an observed absence. For example, "irreversible"
    does not silently become "deleted from the live store only" because backups
    were not mentioned. Resolve a consequential boundary from evidence or ask.
-6. **Show what changed.** Incorporate a consequential answer into the decision
-   record and affected requirements, then briefly explain its effect before the
-   next question. Do not recite the full spec or score every commandment aloud.
-   Describe the consequence in the user's terms; keep decision IDs and readiness
-   bookkeeping in the artifact. A sentence or two is usually enough.
+6. **Show what changed.** Incorporate the answer into the decision record and affected requirements. Recheck the affected properties immediately and ask the next blocking question or follow the readiness handoff in the same turn. Briefly describe the effect in the user's terms. Keep decision IDs and coverage bookkeeping in the artifact.
 7. **Respect closure.** Reopen a settled decision only for new evidence, a concrete
    contradiction, or changed scope. State that trigger and exactly which decision
    it affects. Resume from open decisions; a restart is not a reason to ask again.
