@@ -8,13 +8,14 @@ import argparse
 from collections import Counter
 import hashlib
 import json
+import tomllib
 from pathlib import Path
 import re
 import shutil
 import unicodedata
 
 ROOT = Path(__file__).resolve().parents[1]
-CONTRACT = ROOT / "design-system/native-review-contract.json"
+CONTRACT = ROOT / "design-system/native-review-contract.toml"
 from theme_review import GLYPH_PATHS
 
 DECORATIVE_JOINS = set("\ue0b0\ue0b1\ue0b2\ue0b3")
@@ -232,7 +233,7 @@ def verify_review(directory, policy_path=CONTRACT, *, profile=None, commit=None,
     """
     from theme_review import render_svg
     manifest = json.loads((directory / "manifest.json").read_text())
-    policy = json.loads(policy_path.read_text())
+    policy = tomllib.loads(policy_path.read_text())
     if manifest.get("schema") != 2 or manifest.get("contract_sha256") != sha256(policy_path):
         raise ValueError("missing or stale review contract")
     if commit is not None and manifest.get("commit") != commit:
@@ -243,7 +244,7 @@ def verify_review(directory, policy_path=CONTRACT, *, profile=None, commit=None,
         raise ValueError("review evidence belongs to a different preset")
     if colors is not None and manifest.get("colors_sha256") != sha256(colors):
         raise ValueError("review evidence does not use the expected generated theme")
-    if sha256(directory / "review-contract.json") != manifest["contract_sha256"] or sha256(directory / "colors.json") != manifest["colors_sha256"]:
+    if sha256(directory / "review-contract.toml") != manifest["contract_sha256"] or sha256(directory / "colors.json") != manifest["colors_sha256"]:
         raise ValueError("review inputs changed")
     theme = json.loads((directory / "colors.json").read_text())
     if theme["theme"] != manifest["preset"] or theme["symbols"] != manifest["symbols"]:

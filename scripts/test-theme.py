@@ -32,7 +32,7 @@ def write_definition(path, data):
         if value is None:
             return "false"  # TOML has no null; this is still invalid for a string token.
         return json.dumps(value, ensure_ascii=False)
-    path.write_text("".join(json.dumps(k) + " = " + encode(v) + "\n" for k, v in data.items()))
+    path.write_text("".join(json.dumps(k) + " = " + encode(v) + "\n" for k, v in ({"items": data} if isinstance(data, list) else data).items()))
 
 
 class ThemeTests(unittest.TestCase):
@@ -110,7 +110,7 @@ class ThemeTests(unittest.TestCase):
                     for foreground in ("text", "status.error", *(r for r in colors if r.startswith("syntax."))):
                         with self.subTest(diff_background=background, foreground=foreground):
                             self.assertGreaterEqual(contrast(colors[background], colors[foreground]), 4.5)
-                for group in theme.read(theme.SOURCE / "semantic-states.json"):
+                for group in theme.read(theme.SOURCE / "semantic-states.toml"):
                     for state in group["states"]:
                         for background in ("surface", "surface.raised", "surface.selected"):
                             with self.subTest(state=state["id"], background=background):
@@ -249,7 +249,7 @@ class ThemeTests(unittest.TestCase):
             theme.resolve(data, shared)
 
     def test_semantic_state_review_catalog(self):
-        groups = theme.read(theme.SOURCE / "semantic-states.json")
+        groups = theme.read(theme.SOURCE / "semantic-states.toml")
         self.assertEqual([group["id"] for group in groups],
                          ["configuration", "severity", "execution", "health",
                           "interaction", "connectivity", "data", "access"])
@@ -300,7 +300,7 @@ class ThemeTests(unittest.TestCase):
         self.assertEqual(mapping["execution", "retrying"], "status.warning")
 
     def test_semantic_state_tokens_are_exported_for_every_preset_and_symbol_mode(self):
-        groups = theme.read(theme.SOURCE / "semantic-states.json")
+        groups = theme.read(theme.SOURCE / "semantic-states.toml")
         shared = theme.read(theme.SOURCE / "tokens.toml")["roles"]
         for name in ("nord", "sage"):
             preset = theme.read(theme.SOURCE / "themes" / f"{name}.toml")
@@ -325,7 +325,7 @@ class ThemeTests(unittest.TestCase):
                                      "@text.subtle" if name == "sage" else "@text.muted")
 
     def test_semantic_state_token_validation_rejects_invalid_declarations(self):
-        groups = theme.read(theme.SOURCE / "semantic-states.json")
+        groups = theme.read(theme.SOURCE / "semantic-states.toml")
         colors, _ = theme.resolve(theme.read(theme.SOURCE / "themes/sage.toml"),
                                   theme.read(theme.SOURCE / "tokens.toml")["roles"])
         duplicate = copy.deepcopy(groups)
@@ -451,7 +451,7 @@ class ThemeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="theme-catalog-") as directory:
             source = Path(directory)
             for catalog in ([{"id": "a", "level": "atom", "composes": ["absent"]}], [{"id": "a", "level": "atom", "composes": ["a"]}]):
-                (source / "catalog.json").write_text(json.dumps(catalog))
+                write_definition(source / "catalog.toml", catalog)
                 with self.assertRaises((KeyError, ValueError)):
                     theme.validate_catalog(source)
 
@@ -468,8 +468,8 @@ class ThemeTests(unittest.TestCase):
                 for name, accepted in (("script", True), ("alias", True), ("missing", False), ("directory", False)):
                     for location in ("catalog", "integration"):
                         paths = ["bin/" + name]
-                        (source / "catalog.json").write_text(json.dumps([{"id": "fixture", "level": "atom", "sources": paths if location == "catalog" else []}]))
-                        (source / "integrations.json").write_text(json.dumps([{"sources": paths if location == "integration" else []}]))
+                        write_definition(source / "catalog.toml", [{"id": "fixture", "level": "atom", "sources": paths if location == "catalog" else []}])
+                        write_definition(source / "integrations.toml", [{"sources": paths if location == "integration" else []}])
                         with self.subTest(name=name, location=location):
                             if accepted:
                                 theme.validate_catalog(source)

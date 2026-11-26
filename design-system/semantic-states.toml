@@ -1,0 +1,48 @@
+[[items]]
+id = "configuration"
+title = "Configuration"
+description = "Intentional settings, independent of health or execution outcome."
+states = [{ id = "on", label = "ON", glyph = "●", ascii = "+", role = "accent", description = "Enabled by configuration.", example = "Auto-publish" }, { id = "off", label = "OFF", glyph = "○", ascii = "-", role = "text.subtle", description = "Intentionally disabled; not a failure.", example = "Auto-merge", fallback_role = "text.muted" }]
+
+[[items]]
+id = "severity"
+title = "Log severity"
+description = "Severity communicates the importance of an observation, not the state of a task."
+states = [{ id = "trace", label = "TRACE", glyph = "·", ascii = ".", role = "text.subtle", description = "Fine-grained execution detail.", example = "Read configuration", fallback_role = "text.muted" }, { id = "debug", label = "DEBUG", glyph = "·", ascii = ".", role = "text.muted", description = "Diagnostic context for investigation.", example = "Loaded 3 adapters" }, { id = "info", label = "INFO", glyph = "i", ascii = "i", role = "status.info", description = "Normal, relevant observation.", example = "Session started" }, { id = "warning", label = "WARN", glyph = "△", ascii = "!", role = "status.warning", description = "Potential problem or degraded condition.", example = "Retry budget low" }, { id = "error", label = "ERROR", glyph = "×", ascii = "x", role = "status.error", description = "An operation failed or a condition is invalid.", example = "Connection refused" }, { id = "fatal", label = "FATAL", glyph = "×", ascii = "x", role = "status.error", bold = true, description = "Unrecoverable failure of this process.", example = "Cannot initialize" }]
+
+[[items]]
+id = "execution"
+title = "Execution"
+description = "Work lifecycle; pending and blocked work are not failed work."
+states = [{ id = "queued", label = "QUEUED", glyph = "○", ascii = "o", role = "status.idle", description = "Ready or waiting to be scheduled.", example = "Generate release notes" }, { id = "running", label = "RUNNING", glyph = "›", ascii = ">", role = "status.info", description = "Execution in progress.", example = "Compile workspace" }, { id = "paused", label = "PAUSED", glyph = "‖", ascii = "|", role = "text.muted", description = "Execution intentionally suspended and can resume.", example = "Pause worker" }, { id = "retrying", label = "RETRYING", glyph = "↻", ascii = "r", role = "status.warning", description = "A new attempt after an unsuccessful attempt; not a terminal failure.", example = "Retry checkout" }, { id = "input", label = "NEEDS INPUT", glyph = "!", ascii = "!", role = "status.attention", bold = true, description = "Human decision or input required.", example = "Approve publication" }, { id = "blocked", label = "BLOCKED", glyph = "△", ascii = "!", role = "status.warning", description = "Cannot proceed until a dependency clears.", example = "Await upstream check" }, { id = "succeeded", label = "SUCCEEDED", glyph = "✓", ascii = "+", role = "status.success", description = "Completed with a successful outcome.", example = "Validate configuration" }, { id = "failed", label = "FAILED", glyph = "×", ascii = "x", role = "status.error", description = "Execution ended unsuccessfully.", example = "Run integration tests" }, { id = "canceled", label = "CANCELED", glyph = "–", ascii = "-", role = "text.muted", description = "Intentionally stopped; not necessarily an error.", example = "Superseded run" }, { id = "skipped", label = "SKIPPED", glyph = "–", ascii = "-", role = "text.subtle", description = "Execution was not attempted because a condition did not apply.", example = "Optional checks", fallback_role = "text.muted" }]
+
+[[items]]
+id = "health"
+title = "System health"
+description = "Observed condition of a component, independent of configuration."
+states = [{ id = "healthy", label = "HEALTHY", glyph = "●", ascii = "+", role = "status.success", description = "Known healthy.", example = "Producer" }, { id = "degraded", label = "DEGRADED", glyph = "△", ascii = "!", role = "status.warning", description = "Operating with reduced capability.", example = "Publisher" }, { id = "unavailable", label = "UNAVAILABLE", glyph = "×", ascii = "x", role = "status.error", description = "Known unavailable.", example = "Remote worker" }, { id = "unknown", label = "UNKNOWN", glyph = "?", ascii = "?", role = "text.muted", description = "No sufficiently recent observation.", example = "Stagehand" }]
+
+[[items]]
+id = "interaction"
+title = "Interaction"
+description = "UI interaction state; focus, selection and availability are independent."
+states = [{ id = "focused", label = "FOCUSED", glyph = "◆", ascii = ">", role = "focus", description = "Current keyboard input target; does not imply selection.", example = "Editor input" }, { id = "selected", label = "SELECTED", glyph = "›", ascii = ">", role = "accent", description = "Item chosen in the current context; pair with a marker or contrasting fill.", example = "Release candidate" }, { id = "disabled", label = "DISABLED", glyph = "○", ascii = "-", role = "text.subtle", description = "Control cannot be used in the current context; readable explanation remains visible.", example = "Merge button", fallback_role = "text.muted" }]
+
+[[items]]
+id = "connectivity"
+title = "Connectivity"
+description = "Transport state does not establish service health or successful work."
+states = [{ id = "connecting", label = "CONNECTING", glyph = "◐", ascii = "~", role = "status.info", description = "Establishing a connection; no success implied.", example = "Remote agent" }, { id = "connected", label = "CONNECTED", glyph = "●", ascii = "+", role = "accent.secondary", description = "Transport is established; not a health check.", example = "SSH session" }, { id = "disconnected", label = "OFFLINE", glyph = "○", ascii = "-", role = "text.subtle", description = "No connection is present; an intentional offline mode is not an error.", example = "Local workspace", fallback_role = "text.muted" }, { id = "reconnecting", label = "RECONNECTING", glyph = "↻", ascii = "r", role = "status.warning", description = "Restoring an interrupted connection.", example = "Event stream" }, { id = "lost", label = "LOST", glyph = "×", ascii = "x", role = "status.error", description = "An expected connection was unexpectedly lost.", example = "Worker socket" }]
+
+[[items]]
+id = "data"
+title = "Data quality & freshness"
+description = "Freshness, presence and validity describe evidence, not the outcome of a task."
+states = [{ id = "fresh", label = "FRESH", glyph = "●", ascii = "+", role = "accent.secondary", description = "Observation is within its freshness window; accuracy is not implied.", example = "Task index · 2s" }, { id = "stale", label = "STALE", glyph = "△", ascii = "!", role = "status.warning", description = "Observation is older than its freshness window.", example = "Task index · 5m" }, { id = "missing", label = "MISSING", glyph = "–", ascii = "-", role = "text.muted", description = "No observation or expected value is available; not necessarily an error.", example = "No run history" }, { id = "invalid", label = "INVALID", glyph = "×", ascii = "x", role = "status.error", description = "Observed data violates a declared contract.", example = "Manifest schema" }]
+
+[[items]]
+id = "access"
+title = "Access & approval"
+description = "Permission and approval signals describe what may be done, not service health."
+states = [{ id = "readwrite", label = "READ/WRITE", glyph = "●", ascii = "+", role = "accent", description = "Read and write access is available.", example = "Worktree" }, { id = "readonly", label = "READ-ONLY", glyph = "◇", ascii = "-", role = "text.muted", description = "Inspection allowed; mutation intentionally unavailable.", example = "Branch preview" }, { id = "approval", label = "APPROVAL", glyph = "!", ascii = "!", role = "status.attention", bold = true, description = "Explicit approval is required before a privileged action.", example = "Publish release" }, { id = "approved", label = "APPROVED", glyph = "✓", ascii = "+", role = "accent", description = "Explicit authorization has been granted; execution has not necessarily started or succeeded.", example = "Release authorized" }, { id = "denied", label = "DENIED", glyph = "×", ascii = "x", role = "status.error", description = "Requested access was refused.", example = "Protected branch" }]
+

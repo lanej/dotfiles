@@ -2,6 +2,7 @@
 """Negative controls for the independent native visual acceptance contract."""
 import copy
 import json
+import tomllib
 from pathlib import Path
 import shutil
 import tempfile
@@ -11,7 +12,7 @@ from theme_review import render_svg
 import theme_review_contract as review
 
 
-POLICY = json.loads(review.CONTRACT.read_text())
+POLICY = tomllib.loads(review.CONTRACT.read_text())
 # Fixed historical Sage values keep the bad and corrected specimens independent
 # of future changes to the compiler or adapter under test.
 THEME = {
@@ -128,7 +129,7 @@ class NativeReviewContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             rows = bottom()
-            shutil.copyfile(review.CONTRACT, root / "review-contract.json")
+            shutil.copyfile(review.CONTRACT, root / "review-contract.toml")
             data = {
                 "colors.json": THEME,
                 "bottom.grid.json": rows,

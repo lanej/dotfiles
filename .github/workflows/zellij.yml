@@ -11,7 +11,7 @@ on:
       - 'scripts/test-theme-native.py'
       - 'scripts/theme_review.py'
       - 'scripts/theme_review_contract.py'
-      - 'design-system/native-review-contract.json'
+      - 'design-system/native-review-contract.toml'
       - 'design-system/themes/**'
       - 'bin/zellij-*'
       - '!bin/zellij-attach'

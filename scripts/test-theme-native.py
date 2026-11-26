@@ -13,6 +13,7 @@ import fcntl
 import html
 import importlib.util
 import json
+import tomllib
 import os
 from pathlib import Path
 import pty
@@ -543,8 +544,8 @@ def main():
     if args.review_dir:
         if len(set(surfaces)) != len(surfaces):
             parser.error("review surfaces must be unique")
-        policy = json.loads(review_contract.CONTRACT.read_text())
-        shutil.copyfile(review_contract.CONTRACT, args.review_dir / "review-contract.json")
+        policy = tomllib.loads(review_contract.CONTRACT.read_text())
+        shutil.copyfile(review_contract.CONTRACT, args.review_dir / "review-contract.toml")
         shutil.copyfile(GENERATED / "colors.json", args.review_dir / "colors.json")
         evidence.update(
             schema=2, approval="unreviewed", required_surfaces=surfaces,
