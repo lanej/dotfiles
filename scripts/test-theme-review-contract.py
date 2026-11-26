@@ -98,6 +98,18 @@ class NativeReviewContractTests(unittest.TestCase):
         specimen[-1] = row(" ")
         self.assertIn("fixture.content", failures(report("bat", specimen)))
 
+    def test_primitives_are_reusable_and_fail_closed(self):
+        policy = copy.deepcopy(POLICY)
+        policy["surfaces"]["process-table"] = copy.deepcopy(policy["surfaces"]["bottom"])
+        self.assertEqual(review.audit_capture("process-table", bottom(), THEME, policy)["status"], "pass")
+        specimen = bottom()
+        specimen[1] = row("producer  1.8%  0.6%  123", "#0D1513", "#ACC8B7")
+        self.assertIn("process-table.fill-emphasis",
+                      failures(review.audit_capture("process-table", specimen, THEME, policy)))
+        policy["surfaces"]["process-table"]["primitives"].append({"kind": "misspelled"})
+        with self.assertRaisesRegex(ValueError, "unknown visual primitive"):
+            review.audit_capture("process-table", bottom(), THEME, policy)
+
     def test_evidence_replay_rejects_altered_or_omitted_images(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -137,6 +149,15 @@ class NativeReviewContractTests(unittest.TestCase):
             self.assertTrue(verify(gallery=gallery))
             shutil.copyfile(root / "bottom.svg", gallery / "bottom.svg")
             self.assertEqual(verify(gallery=gallery), [])
+            item.update(status="capture-failed", contract_status="fail", grid="bottom.grid.json")
+            save()
+            self.assertIn("bottom: capture failed", verify(gallery=gallery))
+            summary = root / "summary.md"
+            review.write_summary(summary, root, "failed", ["bottom: capture failed"])
+            self.assertIn("capture-failed", summary.read_text())
+            self.assertIn("Human approval: pending", summary.read_text())
+            item.update(status="captured", contract_status="pass")
+            save()
             (gallery / "bottom.svg").write_text("recolored")
             self.assertTrue(verify(gallery=gallery))
             (root / "bottom.svg").write_text("recolored")

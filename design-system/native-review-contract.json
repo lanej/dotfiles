@@ -1,23 +1,204 @@
 {
-  "version": 1,
-  "visual_presets": ["sage"],
-  "contrast": {"text_min": 4.5, "indicator_min": 3.0},
-  "dense_selection": {"min_coverage": 0.5, "min_background_contrast": 3.0, "max_base_contrast": 4.0},
-  "marked_selection": {"max_base_contrast": 2.0},
-  "profiles": {
-    "theme": ["neovim", "neovim-frame", "tmux", "cli", "fzf", "bat", "delta", "glow", "bottom"],
-    "zellij": ["zellij"]
+  "version": 2,
+  "visual_presets": [
+    "sage"
+  ],
+  "contrast": {
+    "text_min": 4.5,
+    "indicator_min": 3
   },
-  "structured_only": ["neovim", "kitty"],
+  "dense_selection": {
+    "min_coverage": 0.5,
+    "min_background_contrast": 3,
+    "max_base_contrast": 4
+  },
+  "marked_selection": {
+    "max_base_contrast": 2
+  },
+  "profiles": {
+    "theme": [
+      "neovim",
+      "neovim-frame",
+      "tmux",
+      "cli",
+      "fzf",
+      "bat",
+      "delta",
+      "glow",
+      "bottom"
+    ],
+    "zellij": [
+      "zellij"
+    ]
+  },
+  "structured_only": [
+    "neovim",
+    "kitty"
+  ],
   "surfaces": {
-    "neovim-frame": {"anchors": ["code.lua", "Review retry budget", "Fixture diagnostic", "print(greet"], "forbidden": ["E1568:", "Error detected while processing", "Press ENTER or type command"]},
-    "tmux": {"anchors": ["Workspace review", "Editor", "Publisher", "Checks", "Shell"]},
-    "cli": {"anchors": ["CONFIGURATION", "SEVERITY", "EXECUTION", "HEALTH", "INTERACTION", "CONNECTIVITY", "DATA", "ACCESS", "CONNECTING", "APPROVED"]},
-    "fzf": {"anchors": ["Workspace tasks", "TASK DETAILS", "Publish release", "NEEDS INPUT", "RUNNING", "FAILED", "BLOCKED", "SUCCEEDED", "QUEUED", "Authorization required"]},
-    "bat": {"anchors": ["code.lua", "local retries = 3", "print(greet"]},
-    "delta": {"anchors": ["service.lua", "local retries = 2", "local retries = 3"]},
-    "glow": {"anchors": ["Service inspection", "Release checklist", "runbook", "Approval pending", "Evidence", "Missing data remains unknown.", "return retries"]},
-    "bottom": {"anchors": ["Name(n)", "CPU%", "Mem%", "PID(p)"]},
-    "zellij": {"anchors": ["0:Shell", "1:Editor", "2:Publisher", "zellij-ready>"]}
+    "neovim-frame": {
+      "anchors": [
+        "code.lua",
+        "Review retry budget",
+        "Fixture diagnostic",
+        "print(greet"
+      ],
+      "forbidden": [
+        "E1568:",
+        "Error detected while processing",
+        "Press ENTER or type command"
+      ]
+    },
+    "tmux": {
+      "anchors": [
+        "Workspace review",
+        "Editor",
+        "Publisher",
+        "Checks",
+        "Shell"
+      ],
+      "primitives": [
+        {
+          "kind": "tab-strip",
+          "row": "last",
+          "labels": [
+            "0:Editor",
+            "1:Publisher",
+            "2:Checks",
+            "3:Shell"
+          ],
+          "active": 0,
+          "active_ink": "text.inverse",
+          "active_fill": "focus",
+          "inactive_ink": "text.muted",
+          "padding": 1,
+          "markers": [
+            {
+              "after": 0,
+              "glyph": "◐",
+              "ink": "status.info"
+            },
+            {
+              "after": 1,
+              "glyph": "×",
+              "ink": "status.error"
+            },
+            {
+              "after": 2,
+              "glyph": "!",
+              "ink": "status.attention"
+            }
+          ]
+        }
+      ]
+    },
+    "cli": {
+      "anchors": [
+        "CONFIGURATION",
+        "SEVERITY",
+        "EXECUTION",
+        "HEALTH",
+        "INTERACTION",
+        "CONNECTIVITY",
+        "DATA",
+        "ACCESS",
+        "CONNECTING",
+        "APPROVED"
+      ]
+    },
+    "fzf": {
+      "anchors": [
+        "Workspace tasks",
+        "TASK DETAILS",
+        "Publish release",
+        "NEEDS INPUT",
+        "RUNNING",
+        "FAILED",
+        "BLOCKED",
+        "SUCCEEDED",
+        "QUEUED",
+        "Authorization required"
+      ],
+      "primitives": [
+        {
+          "kind": "marked-selection",
+          "selected": "NEEDS INPUT",
+          "pointers": [
+            "▌",
+            ">",
+            "›"
+          ],
+          "labels": {
+            "NEEDS INPUT": "status.attention",
+            "RUNNING": "status.info",
+            "FAILED": "status.error",
+            "BLOCKED": "status.warning",
+            "SUCCEEDED": "status.success",
+            "QUEUED": "status.idle"
+          }
+        }
+      ]
+    },
+    "bat": {
+      "anchors": [
+        "code.lua",
+        "local retries = 3",
+        "print(greet"
+      ]
+    },
+    "delta": {
+      "anchors": [
+        "service.lua",
+        "local retries = 2",
+        "local retries = 3"
+      ],
+      "primitives": [
+        {
+          "kind": "change-markers",
+          "patterns": [
+            "-\\s*local retries = 2",
+            "\\+\\s*local retries = 3"
+          ]
+        }
+      ]
+    },
+    "glow": {
+      "anchors": [
+        "Service inspection",
+        "Release checklist",
+        "runbook",
+        "Approval pending",
+        "Evidence",
+        "Missing data remains unknown.",
+        "return retries"
+      ]
+    },
+    "bottom": {
+      "anchors": [
+        "Name(n)",
+        "CPU%",
+        "Mem%",
+        "PID(p)"
+      ],
+      "primitives": [
+        {
+          "kind": "dense-selection",
+          "header": [
+            "Name(n)",
+            "CPU%"
+          ],
+          "ink": "text.strong",
+          "minimum_text_cells": 5
+        }
+      ]
+    },
+    "zellij": {
+      "anchors": [
+        "0:Shell",
+        "1:Editor",
+        "2:Publisher",
+        "zellij-ready>"
+      ]
+    }
   }
 }

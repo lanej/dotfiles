@@ -74,7 +74,7 @@ The renderer uses terminal cell coordinates, including wide glyph continuations 
 
 ## Native visual acceptance
 
-A capture is not a verdict. The [independent contract](../../design-system/native-review-contract.json) specifies required fixture content and limits on text contrast, non-text contrast and visual emphasis, rather than merely comparing a native application with its own generated configuration.
+A capture is not a verdict. The [independent contract](../../design-system/native-review-contract.json) specifies required fixture content and limits on text contrast, non-text contrast and visual emphasis, rather than merely comparing a native application with its own generated configuration. Named visual primitives (`dense-selection`, `tab-strip`, `marked-selection`, `change-markers`) are configured by semantic anchors, expected ink roles and independent bounds. A new surface can reuse them without changing the evaluator. Readiness checks wait for fixture content, not correct styles; incomplete frames with observed cells still produce evidence and fail the gate. The Actions step summary shows measured minima and failed predicates, while the artifact retains the exact counterexample.
 
 - Sage text cells must meet 4.5:1; meaningful geometry and markers must meet 3:1. Decorative Powerline joins and empty Neovim filler tildes are explicitly excluded. Missing content, startup errors, replacement glyphs and unsupported private-use glyphs in SVG evidence are failures.
 - A dense bottom selection must occupy one process row, use strong light ink, and have fill contrast of 3:1 or greater on base and raised surfaces but at most 4:1 against base. A marked fzf selection retains a quiet fill (at most 2:1 against base) and a contrasting pointer.
@@ -89,6 +89,6 @@ python3 scripts/theme_review_contract.py --verify-dir /tmp/theme-review/sage \
   --colors /tmp/theme-sage/colors.json
 ```
 
-Add `--gallery-dir docs/design-system/review/sage/native` to require all published images in that profile to match the captured SVG bytes. Do not edit, recolor, or omit a defective capture to make it pass. Fix the underlying adapter or fixture and replace the image from verified evidence. Changes to acceptance thresholds are design changes and require review, not automatic baseline updates.
+Add `--gallery-dir docs/design-system/review/sage/native` to require all published images in that profile to match the captured SVG bytes. After a complete passing run, `--export-gallery docs/design-system/review/sage/native` copies the exact verified SVGs; it refuses to publish an incomplete or failing profile. Do not edit, recolor, or omit a defective capture to make it pass. Fix the underlying adapter or fixture and replace the image from verified evidence. Changes to acceptance thresholds are design changes and require review, not automatic baseline updates.
 
 Passing the contract does **not** approve the design. The evidence is reconstructed from terminal cells, not an OS-level screenshot; font rasterization, opacity, real terminal behavior and subjective composition still require an independent visual sign-off. A structured observation without pixels is marked not-visual. Approval remains pending even when all automated checks pass.

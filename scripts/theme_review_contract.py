@@ -10,6 +10,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import shutil
 import unicodedata
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -125,57 +126,77 @@ def audit_capture(surface, rows, theme, policy):
             return False
         return all(ink[0] == roles[fg] and (bg is None or ink[1] == roles[bg]) for ink in inks[y][bounds[0]:bounds[1]])
 
-    if surface == "bottom":
+    def dense_selection(primitive):
         rule = policy["dense_selection"]
-        header = next((i for i, line in enumerate(lines) if "Name(n)" in line and "CPU%" in line), len(rows))
+        header = next((i for i, line in enumerate(lines)
+                       if all(label in line for label in primitive["header"])), len(rows))
         candidates = []
         for y in range(header + 1, len(rows)):
             bg_counts = Counter(bg for _, bg in inks[y] if bg not in (base, raised))
             if not bg_counts:
                 continue
             fill, count = bg_counts.most_common(1)[0]
-            if count / len(rows[y]) >= rule["min_coverage"] and sum(c["data"].strip() != "" and bg == fill for c, (_, bg) in zip(rows[y], inks[y])) >= 5:
+            if count / len(rows[y]) >= rule["min_coverage"] and sum(c["data"].strip() != "" and bg == fill for c, (_, bg) in zip(rows[y], inks[y])) >= primitive["minimum_text_cells"]:
                 candidates.append((y, fill, count))
-        check("bottom.unique-selection", len(candidates) == 1, "one selected process row", [y+1 for y, _, _ in candidates])
+        check(surface + ".unique-selection", len(candidates) == 1, "one selected process row", [y+1 for y, _, _ in candidates])
         for y, fill, count in candidates:
             ratios = {"base": contrast(fill, base), "raised": contrast(fill, raised)}
-            check("bottom.fill-emphasis", min(ratios.values()) >= rule["min_background_contrast"] and ratios["base"] <= rule["max_base_contrast"],
+            check(surface + ".fill-emphasis", min(ratios.values()) >= rule["min_background_contrast"] and ratios["base"] <= rule["max_base_contrast"],
                   {"minimum_vs_base_and_raised": rule["min_background_contrast"], "maximum_vs_base": rule["max_base_contrast"]},
                   {"row": y+1, "fill": fill, "coverage": round(count/len(rows[y]), 3), **{k: round(v, 3) for k, v in ratios.items()}})
             fg = {ink for c, (ink, bg) in zip(rows[y], inks[y]) if c["data"].strip() and bg == fill}
-            check("bottom.selection-ink", fg == {roles["text.strong"]}, roles["text.strong"], sorted(fg))
+            check(surface + ".selection-ink", fg == {roles[primitive["ink"]]}, roles[primitive["ink"]], sorted(fg))
 
-    elif surface == "tmux":
-        y = len(rows)-1
-        labels = ("0:Editor", "1:Publisher", "2:Checks", "3:Shell")
+    def tab_strip(primitive):
+        if primitive["row"] not in ("first", "last"):
+            raise ValueError("tab-strip requires first or last row")
+        y = 0 if primitive["row"] == "first" else len(rows)-1
+        labels = primitive["labels"]
         for i, label in enumerate(labels):
-            check("tmux.label." + label, styled(y, label, "text.inverse" if i == 0 else "text.muted", "focus" if i == 0 else "surface"),
-                  "focus fill with inverse ink" if i == 0 else "muted ink on base", label)
-        active = span(rows[y], labels[0])
-        excess = [x+1 for x, (_, bg) in enumerate(inks[y]) if bg != base and not (active and active[0]-1 <= x <= active[1])]
-        check("tmux.no-inactive-ribbons", not excess, "non-base fill only within active label and its padding", {"excess_columns": excess[:24], "count": len(excess)})
-        for i, (glyph, role) in enumerate((("◐", "status.info"), ("×", "status.error"), ("!", "status.attention"))):
-            current, following = span(rows[y], labels[i]), span(rows[y], labels[i+1])
+            focused = i == primitive["active"]
+            fg = primitive["active_ink"] if focused else primitive["inactive_ink"]
+            bg = primitive["active_fill"] if focused else "surface"
+            bounds = span(rows[y], label)
+            actual = sorted(set(inks[y][bounds[0]:bounds[1]])) if bounds else []
+            check(surface + ".label." + label, styled(y, label, fg, bg),
+                  {"fg": roles[fg], "bg": roles[bg]}, {"row": y+1, "label": label, "inks": actual})
+        active = span(rows[y], labels[primitive["active"]])
+        pad = primitive["padding"]
+        excess = [x+1 for x, (_, bg) in enumerate(inks[y]) if bg != base and not (active and active[0]-pad <= x < active[1]+pad)]
+        check(surface + ".no-inactive-ribbons", not excess, "non-base fill only within active label and its padding", {"excess_columns": excess[:24], "count": len(excess)})
+        for marker in primitive["markers"]:
+            i, glyph, role = marker["after"], marker["glyph"], marker["ink"]
+            current = span(rows[y], labels[i])
+            following = span(rows[y], labels[i+1]) if i+1 < len(labels) else (len(rows[y]), len(rows[y]))
             matches = [] if not (current and following) else [x for x in range(current[1], following[0]) if rows[y][x]["data"] == glyph]
-            check("tmux.marker." + role, len(matches) == 1 and inks[y][matches[0]] == (roles[role], base),
-                  "one " + glyph + " on the base after " + labels[i], {"columns": [x+1 for x in matches]})
+            check(surface + ".marker." + role, len(matches) == 1 and inks[y][matches[0]] == (roles[role], base),
+                  "one " + glyph + " on the base after " + labels[i], {"row": y+1, "columns": [x+1 for x in matches], "inks": [inks[y][x] for x in matches]})
 
-    elif surface == "fzf":
-        for label, role in (("NEEDS INPUT", "status.attention"), ("RUNNING", "status.info"), ("FAILED", "status.error"), ("BLOCKED", "status.warning"), ("SUCCEEDED", "status.success"), ("QUEUED", "status.idle")):
+    def marked_selection(primitive):
+        for label, role in primitive["labels"].items():
             matches = [y for y, row in enumerate(rows) if span(row, label)]
-            check("fzf.status." + label, len(matches) == 1 and styled(matches[0], label, role), role, {"rows": [y+1 for y in matches]})
-        selected = [(y, span(row, "NEEDS INPUT")) for y, row in enumerate(rows) if span(row, "NEEDS INPUT")]
+            check(surface + ".status." + label, len(matches) == 1 and styled(matches[0], label, role), role, {"rows": [y+1 for y in matches]})
+        selected = [(y, span(row, primitive["selected"])) for y, row in enumerate(rows) if span(row, primitive["selected"])]
+        check(surface + ".unique-selection", len(selected) == 1, "one selected anchor", {"rows": [y+1 for y, _ in selected]})
         if len(selected) == 1:
             y, (x, _) = selected[0]
             fill = inks[y][x][1]
-            pointers = [i for i in range(x) if rows[y][i]["data"] in ("▌", ">", "›") and inks[y][i][1] == fill and contrast(*inks[y][i]) >= floors["indicator_min"]]
+            pointers = [i for i in range(x) if rows[y][i]["data"] in primitive["pointers"] and inks[y][i][1] == fill and contrast(*inks[y][i]) >= floors["indicator_min"]]
             ratio = contrast(fill, base)
-            check("fzf.marked-selection", len(pointers) == 1 and ratio <= policy["marked_selection"]["max_base_contrast"],
-                  "one contrasting pointer and quiet selected surface", {"pointer_columns": [i+1 for i in pointers], "fill_contrast": round(ratio, 3)})
+            check(surface + ".marked-selection", len(pointers) == 1 and ratio <= policy["marked_selection"]["max_base_contrast"],
+                  "one contrasting pointer and quiet selected surface", {"row": y+1, "pointer_columns": [i+1 for i in pointers], "fill_contrast": round(ratio, 3)})
 
-    elif surface == "delta":
-        check("delta.change-markers", all(any(re.search(pattern, line) for line in lines) for pattern in (r"-\s*local retries = 2", r"\+\s*local retries = 3")),
-              "visible + and - change markers", [line.strip() for line in lines if "local retries" in line])
+    def change_markers(primitive):
+        check(surface + ".change-markers", all(any(re.search(pattern, line) for line in lines) for pattern in primitive["patterns"]),
+              primitive["patterns"], [line.strip() for line in lines if any(re.search(pattern, line) for pattern in primitive["patterns"])])
+
+    handlers = {"dense-selection": dense_selection, "tab-strip": tab_strip,
+                "marked-selection": marked_selection, "change-markers": change_markers}
+    for primitive in rules.get("primitives", []):
+        kind = primitive["kind"]
+        if kind not in handlers:
+            raise ValueError(f"{surface}: unknown visual primitive {kind!r}")
+        handlers[kind](primitive)
     return finish()
 
 
@@ -210,7 +231,10 @@ def verify_review(directory, policy_path=CONTRACT, *, profile=None, commit=None,
     for surface, item in manifest["surfaces"].items():
         if item["status"] != "captured":
             errors.append(surface + ": capture failed")
-            continue
+            # Verify the partial frame too, if present. Incomplete captures
+            # cannot pass even when their remaining visible cells pass.
+            if "grid" not in item:
+                continue
         files = [surface + ".json"]
         structured = surface in policy["structured_only"]
         if not structured:
@@ -233,7 +257,8 @@ def verify_review(directory, policy_path=CONTRACT, *, profile=None, commit=None,
         if (directory / (surface + ".svg")).read_text() != rendered:
             raise ValueError(surface + ": SVG does not replay from the observed grid")
         audit = audit_capture(surface, rows, theme, policy)
-        if json.loads((directory / (surface + ".audit.json")).read_text()) != audit or item.get("contract_status") != audit["status"]:
+        expected_status = "fail" if item["status"] != "captured" else audit["status"]
+        if json.loads((directory / (surface + ".audit.json")).read_text()) != audit or item.get("contract_status") != expected_status:
             raise ValueError(surface + ": audit report does not replay")
         errors.extend(surface + ": " + c["id"] for c in audit["checks"] if not c["passed"])
         if gallery is not None:
@@ -241,6 +266,47 @@ def verify_review(directory, policy_path=CONTRACT, *, profile=None, commit=None,
             if not published.is_file() or sha256(published) != item["sha256"][surface + ".svg"]:
                 errors.append(surface + ": gallery image missing or differs from native artifact")
     return errors
+
+
+def export_gallery(directory, gallery, *, profile, commit, preset, colors):
+    """Publish exact captured bytes, never a repaired or synthesized screenshot."""
+    if not profile or not commit or not preset or colors is None:
+        raise ValueError("gallery export requires profile, checkout, preset and expected colors")
+    failures = verify_review(directory, profile=profile, commit=commit, preset=preset, colors=colors)
+    if failures:
+        raise ValueError("gallery export requires a passing profile: " + ", ".join(failures))
+    manifest = json.loads((directory / "manifest.json").read_text())
+    gallery.mkdir(parents=True, exist_ok=True)
+    for surface, item in manifest["surfaces"].items():
+        if "svg" in item:
+            name = surface + ".svg"
+            shutil.copyfile(directory / name, gallery / name)
+    errors = verify_review(directory, profile=profile, commit=commit, preset=preset, colors=colors, gallery=gallery)
+    if errors:
+        raise ValueError("exported gallery does not match evidence: " + ", ".join(errors))
+
+
+def write_summary(path, directory, verdict, errors):
+    """Publish measured results, not an aesthetic approval."""
+    manifest = json.loads((directory / "manifest.json").read_text())
+    lines = [f'### Native review — {manifest["preset"]} / {verdict}',
+             "", f'Checkout: {manifest["commit"]}. Human approval: pending.', "",
+             "| Surface | Capture | Contract | Min text | Min indicator | Failed predicates |",
+             "| --- | --- | --- | ---: | ---: | --- |"]
+    for surface, item in manifest["surfaces"].items():
+        audit_path = directory / (surface + ".audit.json")
+        audit = json.loads(audit_path.read_text()) if audit_path.is_file() else {"checks": []}
+        checks = {c["id"]: c for c in audit["checks"]}
+        def minimum(kind):
+            result = checks.get("contrast." + kind, {}).get("observed", {}).get("minimum")
+            return f"{result:.3f}:1" if result is not None else "—"
+        failed = ", ".join(c["id"] for c in audit["checks"] if not c["passed"]) or "—"
+        lines.append(f'| {surface} | {item["status"]} | {item["contract_status"]} | {minimum("text")} | {minimum("indicator")} | {failed} |')
+    if errors:
+        lines += ["", "Verification failures:", *("- " + str(error).replace("\n", " ") for error in errors)]
+    lines += ["", "See the uploaded native review artifact for exact SVGs, grids, raw output and coordinate-level audit JSON.", ""]
+    with path.open("a") as out:
+        out.write("\n".join(lines) + "\n")
 
 
 if __name__ == "__main__":
@@ -251,9 +317,21 @@ if __name__ == "__main__":
     parser.add_argument("--preset", required=True)
     parser.add_argument("--colors", type=Path)
     parser.add_argument("--gallery-dir", type=Path, help="Require every published SVG to match the verified artifact bytes")
+    parser.add_argument("--summary", type=Path, help="Append measured results to a review summary")
+    parser.add_argument("--export-gallery", type=Path, help="Copy exact SVGs only after every required check passes")
     args = parser.parse_args()
-    failures = verify_review(args.verify_dir, profile=args.profile, commit=args.commit,
-                             preset=args.preset, colors=args.colors, gallery=args.gallery_dir)
+    try:
+        failures = verify_review(args.verify_dir, profile=args.profile, commit=args.commit,
+                                 preset=args.preset, colors=args.colors, gallery=args.gallery_dir)
+    except (ValueError, OSError, KeyError, TypeError) as error:
+        if args.summary and (args.verify_dir / "manifest.json").is_file():
+            write_summary(args.summary, args.verify_dir, "evidence invalid", [error])
+        raise
+    if args.summary:
+        write_summary(args.summary, args.verify_dir, "failed" if failures else "checks passed", failures)
     if failures:
         raise SystemExit("Native review contract failed:\n" + "\n".join(failures))
+    if args.export_gallery:
+        export_gallery(args.verify_dir, args.export_gallery, profile=args.profile,
+                       commit=args.commit, preset=args.preset, colors=args.colors)
     print("Native review contract: verified evidence and all applicable checks passed (not visual approval)")

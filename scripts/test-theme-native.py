@@ -26,7 +26,6 @@ import sys
 import tempfile
 import termios
 import time
-import tomllib
 
 import pyte
 
@@ -149,6 +148,14 @@ def stop_child_group(pid):
         os.waitpid(pid, 0)
 
 
+class IncompleteCapture(AssertionError):
+    """Keep the observed frame even when the readiness criterion fails."""
+
+    def __init__(self, message, rows):
+        super().__init__(message)
+        self.rows = rows
+
+
 def terminal(command, env, ready, *, columns=76, lines=24, capture_lines=10, raw_path=None):
     pid, fd = pty.fork()
     if pid == 0:
@@ -181,7 +188,10 @@ def terminal(command, env, ready, *, columns=76, lines=24, capture_lines=10, raw
                     return cells(screen, capture_lines)
             else:
                 ready_since = None
-        raise AssertionError(f"Native preview did not become ready: {command[0]}\n" + "\n".join(screen.display))
+        message = f"Native preview did not become ready: {command[0]}\n" + "\n".join(screen.display)
+        if raw_path:
+            raise IncompleteCapture(message, cells(screen, capture_lines))
+        raise AssertionError(message)
     finally:
         if raw_path:
             raw_path.write_bytes(raw)
@@ -337,7 +347,13 @@ print(json.dumps({name: str(getattr(opts, name)) for name in ("foreground", "bac
             # Remove shell-specific startup text before recording the pane.
             client.send(b"printf '\\033[2J\\033[H'\r")
             client.send(b"\x06")
-            client.until("native themed prefix", ready)
+            try:
+                client.until("native themed prefix", ready)
+            except AssertionError as error:
+                if raw_path:
+                    update_screen()
+                    raise IncompleteCapture(str(error), cells(screen, lines)) from error
+                raise
             return cells(screen, lines)
         finally:
             if raw_path:
@@ -373,11 +389,6 @@ print(json.dumps({name: str(getattr(opts, name)) for name in ("foreground", "bac
                 command.append("--line-numbers")
             text = subprocess.check_output(command, env=env, input=(ROOT / "design-system/fixtures/change.diff").read_text(), text=True)
         rows = observed_ansi(text, columns=96 if review else 76, lines=24 if review else 10)
-        if review and surface == "delta":
-            displayed = "\n".join("".join(cell["data"] for cell in row) for row in rows)
-            assert "service.lua" in displayed, "Delta filename missing in captured cells; inspect raw ANSI"
-            if json.loads((GENERATED / "tokens.json").read_text())["presentation"]["diff.markers"]["resolved"]:
-                assert re.search(r"-\s*local retries", displayed) and re.search(r"\+\s*local retries", displayed), "Delta lost explicit +/- change markers"
         return rows
     if surface == "glow":
         document = ROOT / "design-system/fixtures/document.md"
@@ -439,23 +450,14 @@ return retries
         return terminal(command, env, lambda screen: "worker ERROR" in "\n".join(screen.display))
     if surface == "bottom":
         if review:
-            style = tomllib.loads((GENERATED / "bottom.toml").read_text())["styles"]["widgets"]["selected_text"]
-            expected_fg, expected_bg = (style[key].lstrip("#").lower() for key in ("color", "bg_color"))
-
             def selected_row_ready(screen):
-                # Verify the actual selected process row, not just the CPU
-                # header. The visible table must contain both configured RGBs.
-                if not any("CPU%" in line for line in screen.display):
-                    return False
-                for y in range(screen.lines):
-                    row = [screen.buffer[y][x] for x in range(screen.columns)]
-                    highlighted = [cell for cell in row
-                                   if (cell.fg.lower(), cell.bg.lower()) == (expected_fg, expected_bg)
-                                   and not cell.reverse]
-                    if (len(highlighted) >= screen.columns // 2
-                            and sum(bool(cell.data.strip()) for cell in highlighted) >= 5):
-                        return True
-                return False
+                # Readiness is content, never compliance with a desired color.
+                # The independent audit owns row coverage, ink and fill.
+                header = next((y for y, line in enumerate(screen.display)
+                               if "Name(n)" in line and "CPU%" in line), None)
+                return header is not None and any(
+                    re.search(r"\d+(?:\.\d+)?%.*\d+(?:\.\d+)?%", line)
+                    for line in screen.display[header + 1:])
 
             return terminal(["btm", "--config_location", str(GENERATED / "bottom.toml"), "--basic"],
                             env, selected_row_ready, columns=100, lines=18,
@@ -496,33 +498,10 @@ return retries
                 tmux("set-option", "-w", "-t", "fixture:Checks", "@claude-state", "approval")
                 tmux("set-option", "-w", "-t", "fixture:Checks", "@claude-glyph", "!")
                 tmux("new-window", "-d", "-n", "Shell", "sleep 60")
-                metadata = json.loads((GENERATED / "tokens.json").read_text())
-                compact_tabs = metadata["presentation"]["tmux.tabs.compact"]["resolved"]
-                roles = json.loads((GENERATED / "colors.json").read_text())["roles"]
-
                 def tabs_ready(screen):
-                    if not all(label in "\n".join(screen.display)
-                               for label in ("Workspace review", "Editor", "Publisher", "Checks", "Shell")):
-                        return False
-                    if not compact_tabs:
-                        return True
-                    row = screen.display[-1]
-                    def has_style(label, fg, bg):
-                        x = row.find(label)
-                        if x < 0:
-                            return False
-                        return all((cell.fg.lower(), cell.bg.lower()) ==
-                                   (roles[fg][1:].lower(), roles[bg][1:].lower())
-                                   and not cell.reverse
-                                   for cell in (screen.buffer[screen.lines - 1][i]
-                                                for i in range(x, x + len(label))))
-                    return (has_style("Editor", "tab.active.fg", "tab.active.bg")
-                            and has_style("Publisher", "text.muted", "surface")
-                            and has_style("Checks", "text.muted", "surface")
-                            and has_style("Shell", "text.muted", "surface")
-                            and has_style("◐", "status.info", "surface")
-                            and has_style("×", "status.error", "surface")
-                            and has_style("!", "status.attention", "surface"))
+                    # A bad tab must still produce a counterexample.
+                    return all(label in "\n".join(screen.display)
+                               for label in ("Workspace review", "Editor", "Publisher", "Checks", "Shell"))
 
                 return terminal(["tmux", "-S", socket, "attach-session", "-t", "fixture"], env,
                                 tabs_ready, columns=112, lines=16,
@@ -584,8 +563,15 @@ def main():
             env.pop(name, None)
         for surface in surfaces:
             raw_path = args.review_dir / (surface + ".ansi") if args.review_dir else None
+            incomplete = None
             try:
                 observed = run(surface, work, env, args.plugins_dir, raw_path=raw_path)
+            except IncompleteCapture as error:
+                if not args.review_dir:
+                    raise
+                failures.append(surface)
+                incomplete = str(error)
+                observed = error.rows
             except Exception as error:
                 if not args.review_dir:
                     raise
@@ -603,6 +589,8 @@ def main():
                 snapshot_name = surface + ".json"
                 (args.review_dir / snapshot_name).write_text(json.dumps(snapshot, indent=2, sort_keys=True) + "\n")
                 detail = {"status": "captured", "cells": snapshot_name, "contract_status": "not-visual"}
+                if incomplete is not None:
+                    detail.update(status="capture-failed", error=incomplete, contract_status="fail")
                 if raw_path.exists():
                     detail["ansi"] = raw_path.name
                 if terminal_rows:
@@ -614,7 +602,7 @@ def main():
                     try:
                         audit = review_contract.audit_capture(surface, observed, metadata, policy)
                         report_path.write_text(json.dumps(audit, indent=2, ensure_ascii=False) + "\n")
-                        detail.update(audit=report_path.name, contract_status=audit["status"])
+                        detail.update(audit=report_path.name, contract_status="fail" if incomplete is not None else audit["status"])
                         for check in audit["checks"]:
                             if not check["passed"]:
                                 print(f"REVIEW FAIL {surface}/{check['id']}: {json.dumps(check['observed'], ensure_ascii=False)}", file=sys.stderr)
