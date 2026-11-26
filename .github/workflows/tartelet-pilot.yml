@@ -1,0 +1,41 @@
+name: Tartelet macOS pilot
+
+on:
+  push:
+    branches:
+      - ci/tartelet-pilot
+
+permissions:
+  contents: read
+
+jobs:
+  resources:
+    if: github.repository == 'lanej/dotfiles' && github.actor == 'lanej'
+    runs-on:
+      - self-hosted
+      - macOS
+      - ARM64
+      - tartelet-pilot
+    timeout-minutes: 5
+    steps:
+      - name: Verify the macOS guest
+        run: |
+          test "$(uname -ms)" = 'Darwin arm64'
+          if mount | awk '/virtiofs/ { found = 1 } END { exit !found }'; then
+            echo 'Unexpected shared VM filesystem' >&2
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install standalone Pi
+        run: |
+          version=$(awk '
+            /^\[tools\.pi\]$/ { pi = 1; next }
+            /^\[/ { pi = 0 }
+            pi && $1 == "version" && $2 == "=" { gsub(/"/, "", $3); print $3; exit }
+          ' bootstrap/tools.toml)
+          sh scripts/install-pi "$version"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Discover the shared catalog through native Pi
+        run: python3 scripts/test-pi-resources.py --native
