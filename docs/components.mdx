@@ -33,6 +33,8 @@ In Codex, invoke `$socrates Task title` to start a specification dialogue and dr
 4. **Approve or revise.** The outcome of approval is the exact approved plan revision and a `Planned` session. Changes to a frozen requirement reopen the spec before redrafting. Say **“approve and execute”** to authorize both steps with one reply, or approve the plan and use its versioned `$shape` instruction later.
 5. **Execute and verify.** The outcome is the agreed deliverables and `verification.md`. With execution authorized, Shape completes the plan and its checks without another prompt between tasks. Actual blockers such as missing authority still require resolution. A passing result marks the session `Verified`.
 
+Each session keeps `progress.md` alongside its spec and plan. It records the current stage, checked tasks and evidence, and the next action or blocker. Use `$socrates .socrates/<timestamp>/ Show progress` for a read-only summary, or open the file directly.
+
 ### Other shared workflows
 
 Use `$compose` for evidence-backed document development, `$eureka` to capture a breakthrough, and `$stahp` to record a demonstrated dead end. `$reflection` reviews the current conversation and returns findings without changing files or memory. `$handoff` prepares a transcript-backed brief and dispatches a fresh-context subagent; unavailable transcript or dispatch capabilities leave an explicit manual handoff instead of an assumed success.

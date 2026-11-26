@@ -15,6 +15,8 @@ Include a **Work dependencies** section in the plan itself. Give each task an ID
 
 Explain which tasks can run together and what must finish before integration or verification. Shared mutable state also constrains scheduling. For a sequential plan, show the sequence. For a single task, one row suffices. Apply repository commit and review conventions.
 
+Use the task checks as checkpoints for the shared `progress.md` record. For a long-running task, identify an intermediate signal when it would expose a stall or failure before the deliverable is ready.
+
 Include an **Execution handoff** that a fresh executor can use without the original chat. Identify the matching specification and plan revision, the working location and required inputs, the allowed effects, and how to run the task checks and final acceptance checks. State the expected evidence and what to do on a defined failure. Refer to the existing task breakdown and validation contract where they already provide that detail. Include a ready-to-use `$shape` instruction for Codex or `/shape` for Claude Code with the actual absolute session path and both identifiers. For example, `$shape Execute and verify spec v1, approved plan p1, in /path/to/repo/.socrates/20260101-120000/`.
 
 Identify applicable gates using [Shape's review rules](../../shape/SKILL.md) and the repository's policy. Complete required planning reviews before offering execution. Keep a versioned record of their dispositions with the specification or plan so a fresh executor can confirm which version or revision they covered and how blocking findings were resolved.

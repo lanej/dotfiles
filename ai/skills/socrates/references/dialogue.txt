@@ -49,6 +49,16 @@ override plan-only mode to write session files. If writes are restricted, keep t
 draft in the permitted plan artifact or conversation, state that persistence is
 pending, and persist only once permitted. Never report an unwritten artifact as saved.
 
+## Progress record
+
+Maintain `progress.md` beside the spec throughout an active session when writes are permitted. Record the current stage, specification version, plan revision when available, last completed milestone with its evidence, and the next concrete action or blocker. Add a short checkpoint when a stage changes, a consequential decision is settled, or a blocker appears or clears. Save the checkpoint before yielding for input or starting dependent work.
+
+Once there is a plan, keep a compact table with task ID, state, and evidence or blocker. Use `pending`, `in progress`, `checked`, `failed`, `blocked`, or `skipped`. Before an action that could duplicate an effect on retry, record `in progress` and the target or operation reference already known. Record what was actually checked and the observed outcome before marking a task `checked`. Record the reason and next action for a failed or blocked task. Use `skipped` only when the plan permits it. The session owner updates the shared file using evidence from the work and any delegated checks.
+
+On resume, read `progress.md` if present and check it against the current spec, plan, and actual evidence. Inspect the actual state before repeating an action whose checkpoint is interrupted, stale, or missing. When the action's outcome is uncertain and a retry could duplicate an effect, keep it blocked until reconciliation establishes a safe next action. A recorded task result applies to the stated revision and deliverable. Initialize a missing record from evidence available in the session. When replacing a spec version or plan revision, archive its progress under a unique timestamped `history/` path and carry forward results only when they still apply and can be confirmed. Progress records observed work. The spec, plan approval, and verification report remain authoritative for lifecycle, authority, and acceptance.
+
+When writes are restricted, keep the checkpoint in the conversation or permitted artifact and say that saving `progress.md` is pending. Persist it when writes are available.
+
 ## Evidence and the decision record
 
 Use these labels in `Basis / evidence`:

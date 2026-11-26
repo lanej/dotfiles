@@ -28,4 +28,6 @@ Classify the overall result:
 
 Write `verification.md` beside the spec, preserving an existing report in a unique timestamped `history/` file. Include the specification version and plan revision when available, verified target, classification, per-criterion evidence, regression results, feedback usage, decisions/readiness, failure signals, false-positive risks, and residual uncertainty as applicable. Distinguish local checks, hosted CI, delivery, and live acceptance when relevant. Set the spec to `Verified` only when the evidence matches the current specification and applicable approved plan, the result earns `VERIFIED`, and writes are permitted. Preserve its frozen decisions. Other results do not advance lifecycle state.
 
+Record the classification and a link to `verification.md` in `progress.md` when the report covers the active spec and plan. For incomplete verification, keep the next required check or blocker visible.
+
 Missing evidence is unknown, not success. Do not redefine success, weaken requirements, manufacture acceptance, or reopen settled questions just to fill the report. State unavailable review or execution capabilities. When writes are restricted, return findings inline and identify unsaved artifacts.

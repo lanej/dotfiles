@@ -11,6 +11,8 @@ Read [the shared dialogue procedure](references/dialogue.txt) before initializin
 
 `$socrates Task title` initializes a session; `$socrates` continues one. An explicit `.socrates/<timestamp>/` path selects that session. Preserve the existing `.socrates/YYYYMMDD-HHMMSS/` artifacts and lifecycle states.
 
+Keep the session's `progress.md` current using the shared dialogue procedure. For a progress-only request, compare the saved checkpoint with the available session artifacts and report the last evidenced milestone and the next action or blocker. Keep the request read-only, even when the checkpoint is absent or stale.
+
 ## Turn flow and outcomes
 
 1. **Open the session.** The outcome is a selected session with a draft or saved specification that captures the goal, constraints, and observable success criteria. Resolve the path with the shared procedure and carry forward settled decisions. Preserve a supported `Planned`, `Executing`, or `Verified` state unless new evidence or changed scope requires reopening.
