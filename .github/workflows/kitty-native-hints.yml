@@ -20,6 +20,12 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v5
+      - name: Hydrate and validate the configured source-code policy
+        run: |
+          python3 bin/source-code hydrate --repo "$GITHUB_WORKSPACE" --dry-run
+          python3 bin/source-code hydrate --repo "$GITHUB_WORKSPACE"
+          python3 bin/source-code validate --repo "$GITHUB_WORKSPACE"
+          git diff --exit-code -- source-code.toml
       - uses: actions/setup-go@v6
         with:
           go-version: '1.26.10'
