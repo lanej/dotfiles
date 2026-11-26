@@ -93,6 +93,47 @@ class TypeScriptBootstrap(unittest.TestCase):
         self.assertEqual(install, ["bun", "install", "--frozen-lockfile", "--ignore-scripts"])
         self.assertIn("already current", self.install("--go").stdout)
 
+    def test_bun_lockfiles_select_bun_for_setup_and_upgrade_without_a_runtime_pin(self):
+        manifest = self.root / "package.json"
+        package = json.loads(manifest.read_text())
+        package["engines"] = {"bun": ">=1.4.4"}
+        manifest.write_text(json.dumps(package))
+        lock = self.root / "bun.lockb"
+        lock.write_bytes(b"legacy lock fixture")
+        (self.root / "go.mod").write_text("module example.invalid/mixed\n\ngo 1.26.0\n")
+        self.install("--go", "--go-rollout", "strict")
+        settings = self.root / ".typescript-quality.json"
+        before = settings.read_bytes()
+        self.assertEqual(json.loads(before)["commands"]["legacy"], [["bun", "run", "lint"]])
+        self.assertEqual(json.loads(before)["commands"]["test"], ["bun", "run", "test"])
+
+        lock = lock.rename(self.root / "bun.lock")
+        command(self.root, "python3", str(SOURCE / "bin/source-code"), "upgrade", "--repo", str(self.root))
+        for language in ("go", "typescript"):
+            workflow = (self.root / f".github/workflows/{language}-quality.yml").read_text()
+            self.assertIn("uses: oven-sh/setup-bun@v2\n", workflow)
+            self.assertIn("run: bun install --frozen-lockfile --ignore-scripts\n", workflow)
+            self.assertNotIn("bun-version:", workflow)
+            self.assertNotIn("run: npm ci\n", workflow)
+        self.assertEqual(settings.read_bytes(), before)
+        self.assertEqual(lock.read_bytes(), b"legacy lock fixture")
+
+    def test_declared_package_manager_resolves_conflicting_lockfiles(self):
+        (self.root / "bun.lock").touch()
+        (self.root / "package-lock.json").touch()
+        self.assertIn("multiple package managers", self.install(ok=False).stderr)
+        self.assertFalse((self.root / ".agents").exists())
+        manifest = self.root / "package.json"
+        package = json.loads(manifest.read_text())
+        package["packageManager"] = "npm@11.0.0"
+        manifest.write_text(json.dumps(package))
+        self.install()
+        settings = json.loads((self.root / ".typescript-quality.json").read_text())
+        self.assertEqual(settings["commands"]["test"], ["npm", "run", "test"])
+        workflow = (self.root / ".github/workflows/typescript-quality.yml").read_text()
+        self.assertIn("run: npm ci\n", workflow)
+        self.assertNotIn("setup-bun", workflow)
+
     def test_local_install_hides_generated_baseline_and_lock(self):
         self.install("--mode", "local")
         for name in (".typescript-quality-baseline.json", ".typescript-quality/package-lock.json"):

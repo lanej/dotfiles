@@ -43,7 +43,7 @@ export default function config(root, programs) {
       '@typescript-eslint/no-unnecessary-type-parameters': 'error',
       '@typescript-eslint/strict-boolean-expressions': [
         'error', {
-          allowString: false, allowNumber: false, allowNullableObject: false,
+          allowString: false, allowNumber: false, allowNullableObject: true,
           allowNullableBoolean: false, allowNullableString: false,
           allowNullableNumber: false, allowNullableEnum: false, allowAny: false,
         },
@@ -59,6 +59,7 @@ export default function config(root, programs) {
       ],
       'eslint-comments/require-description': 'error',
       'eslint-comments/no-unlimited-disable': 'error',
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
       'no-constant-condition': ['error', { checkLoops: false }],
       'no-debugger': 'error',
     },

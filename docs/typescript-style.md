@@ -6,7 +6,7 @@ Prefer explicit state, visible failures, and validated boundaries over a long li
 
 ## Adopt the profile
 
-Start with a Git repository containing a `package.json`, a `tsconfig.json`, and the dependencies needed to compile its source. Select a different config with `--typescript-project path/to/tsconfig.json`; repeat the option for independent leaf projects.
+Start with a Git repository containing a `package.json`, a `tsconfig.json`, and the dependencies needed to compile its source. Prefer Bun for new projects and commit `bun.lock` so `source-code` can select Bun for application checks and CI. Select a different TypeScript config with `--typescript-project path/to/tsconfig.json`. Repeat the option for independent leaf projects.
 
 ```sh
 source-code setup --repo ~/src/service --authority shared --adoption hold --typescript --pr-template none
@@ -32,8 +32,14 @@ The supplied CI workflow assumes npm for application installation. For pnpm or m
 | Error values | Throw Error objects, narrow catch values, and handle rejection deliberately. |
 | Control flow | Strict Boolean expressions, missing returns, switch fallthrough, unreachable code, unused locals and parameters. |
 | Suppressions | Named ESLint rules and explanations; unused suppressions fail. `@ts-ignore` and `@ts-nocheck` fail; `@ts-expect-error` needs a description. Suppression-policy findings cannot be baselined. |
-| Formatting | Prettier checks separately, respecting project configuration. Only explicit `fmt FILE...` rewrites source. |
+| Formatting | Prettier checks separately with the profile defaults and project overrides. Only explicit `fmt FILE...` rewrites source. |
 | Existing protections | Original lint/typecheck scripts, the original compiler configuration, tests, and dependency audit remain blocking. |
+
+The installed `.typescript-quality/package.json` declares Prettier defaults of two spaces, a 120-column print width, double quotes, semicolons, trailing commas where supported, and LF line endings. The runner applies each file’s existing `.editorconfig` and Prettier configuration over those defaults, using Prettier’s normal precedence. Add project-wide choices to a root Prettier config or use a nested config for a subtree. Format explicit paths with `node scripts/check-typescript.mjs fmt src/example.ts`.
+
+Use required values directly once their type and presence are established. The `no-unnecessary-condition` rule flags redundant presence checks. Validate untrusted inputs at the boundary so downstream code can use the validated types directly.
+
+Use `if (flag)` for a plain boolean and `if (result)` for a nullable object. Use `value != null` to check for either `null` or `undefined` while accepting `0`, `""`, and `false`. Use `value !== undefined` when only `undefined` means absent, and `value ?? fallback` for a nullish default. Other equality checks use `===` or `!==`.
 
 The runner reads each project's existing tsconfig, preserving module resolution, JSX, path aliases, and library choices. It applies the options from the [strict compiler profile](../ai/skills/typescript/assets/tsconfig.strict.json) in memory. Every strict subflag is explicit, so an inherited `strictNullChecks: false` cannot defeat `strict: true`. The same strict TypeScript Programs are passed to [typed ESLint](../ai/skills/typescript/assets/eslint.config.mjs); lint does not silently use the weaker original config during adoption.
 
