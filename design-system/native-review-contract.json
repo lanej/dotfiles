@@ -198,6 +198,15 @@
         "1:Editor",
         "2:Publisher",
         "zellij-ready>"
+      ],
+      "primitives": [
+        {
+          "kind": "plain-heading",
+          "row": "first",
+          "label": "work",
+          "ink": "text",
+          "padding": 1
+        }
       ]
     }
   }

@@ -1,10 +1,10 @@
 [
   [
     {
-      "bg": "88c0d0",
+      "bg": "2e3440",
       "bold": true,
       "data": " work ",
-      "fg": "2e3440",
+      "fg": "d8dee9",
       "italics": false,
       "reverse": false,
       "underline_color": "d08770",
@@ -13,8 +13,8 @@
     {
       "bg": "b48ead",
       "bold": false,
-      "data": "\ue0b0",
-      "fg": "88c0d0",
+      "data": "",
+      "fg": "2e3440",
       "italics": false,
       "reverse": false,
       "underline_color": "d08770",
@@ -33,7 +33,7 @@
     {
       "bg": "2e3440",
       "bold": false,
-      "data": "\ue0b0",
+      "data": "",
       "fg": "b48ead",
       "italics": false,
       "reverse": false,
@@ -55,7 +55,7 @@
     {
       "bg": "default",
       "bold": true,
-      "data": "\u2502",
+      "data": "│",
       "fg": "d08770",
       "italics": false,
       "reverse": false,
@@ -65,7 +65,7 @@
     {
       "bg": "default",
       "bold": true,
-      "data": " Shell \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+      "data": " Shell ───────────────────",
       "fg": "b48ead",
       "italics": false,
       "reverse": false,
@@ -75,7 +75,7 @@
     {
       "bg": "default",
       "bold": true,
-      "data": "\u2502",
+      "data": "│",
       "fg": "d08770",
       "italics": false,
       "reverse": false,
@@ -87,7 +87,7 @@
     {
       "bg": "default",
       "bold": true,
-      "data": "\u2502",
+      "data": "│",
       "fg": "d08770",
       "italics": false,
       "reverse": false,
@@ -107,7 +107,7 @@
     {
       "bg": "default",
       "bold": true,
-      "data": "\u2502",
+      "data": "│",
       "fg": "d08770",
       "italics": false,
       "reverse": false,
@@ -119,7 +119,7 @@
     {
       "bg": "default",
       "bold": true,
-      "data": "\u2502",
+      "data": "│",
       "fg": "d08770",
       "italics": false,
       "reverse": false,
@@ -139,7 +139,7 @@
     {
       "bg": "default",
       "bold": true,
-      "data": "\u2502",
+      "data": "│",
       "fg": "d08770",
       "italics": false,
       "reverse": false,
@@ -151,7 +151,7 @@
     {
       "bg": "default",
       "bold": true,
-      "data": "\u2502",
+      "data": "│",
       "fg": "d08770",
       "italics": false,
       "reverse": false,
@@ -171,7 +171,7 @@
     {
       "bg": "default",
       "bold": true,
-      "data": "\u2502",
+      "data": "│",
       "fg": "d08770",
       "italics": false,
       "reverse": false,
@@ -183,7 +183,7 @@
     {
       "bg": "default",
       "bold": true,
-      "data": "\u2502",
+      "data": "│",
       "fg": "d08770",
       "italics": false,
       "reverse": false,
@@ -203,7 +203,7 @@
     {
       "bg": "default",
       "bold": true,
-      "data": "\u2502",
+      "data": "│",
       "fg": "d08770",
       "italics": false,
       "reverse": false,
@@ -215,7 +215,7 @@
     {
       "bg": "default",
       "bold": true,
-      "data": "\u2502",
+      "data": "│",
       "fg": "d08770",
       "italics": false,
       "reverse": false,
@@ -235,7 +235,7 @@
     {
       "bg": "default",
       "bold": true,
-      "data": "\u2502",
+      "data": "│",
       "fg": "d08770",
       "italics": false,
       "reverse": false,
@@ -247,7 +247,7 @@
     {
       "bg": "default",
       "bold": true,
-      "data": "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518",
+      "data": "└──────────────────────────┘",
       "fg": "d08770",
       "italics": false,
       "reverse": false,

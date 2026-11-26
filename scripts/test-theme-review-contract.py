@@ -100,6 +100,18 @@ class NativeReviewContractTests(unittest.TestCase):
         specimen[-1] = row(" ")
         self.assertIn("fixture.content", failures(report("bat", specimen)))
 
+    def test_plain_session_heading_rejects_fill_and_missing_weight(self):
+        specimen = [row(" work 0:Shell 1:Editor 2:Publisher"), row("zellij-ready>")]
+        for cell in specimen[0][:6]:
+            cell["bold"] = True
+        self.assertEqual(report("zellij", specimen)["status"], "pass")
+        for cell in specimen[0][:6]:
+            cell.update(fg="0d1513", bg="acc8b7")
+        self.assertIn("zellij.plain-heading", failures(report("zellij", specimen)))
+        for cell in specimen[0][:6]:
+            cell.update(fg="d7dfd9", bg="0d1513", bold=False)
+        self.assertIn("zellij.plain-heading", failures(report("zellij", specimen)))
+
     def test_primitives_are_reusable_and_fail_closed(self):
         policy = copy.deepcopy(POLICY)
         policy["surfaces"]["process-table"] = copy.deepcopy(policy["surfaces"]["bottom"])

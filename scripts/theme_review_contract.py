@@ -192,8 +192,30 @@ def audit_capture(surface, rows, theme, policy):
         check(surface + ".change-markers", all(any(re.search(pattern, line) for line in lines) for pattern in primitive["patterns"]),
               primitive["patterns"], [line.strip() for line in lines if any(re.search(pattern, line) for pattern in primitive["patterns"])])
 
+    def plain_heading(primitive):
+        if primitive["row"] not in ("first", "last"):
+            raise ValueError("plain-heading requires first or last row")
+        y = 0 if primitive["row"] == "first" else len(rows)-1
+        label = primitive["label"]
+        bounds = span(rows[y], label)
+        region = []
+        if bounds:
+            start, end = bounds
+            pad = primitive["padding"]
+            region = list(range(max(0, start-pad), min(len(rows[y]), end+pad)))
+        expected = (roles[primitive["ink"]], base)
+        passed = bool(bounds and region) and all(
+            inks[y][x] == expected and rows[y][x].get("bold", False)
+            for x in region)
+        check(surface + ".plain-heading", passed,
+              {"label": label, "fg": expected[0], "bg": expected[1], "bold": True},
+              {"row": y+1, "cells": [{"column": x+1, "fg": inks[y][x][0],
+                                      "bg": inks[y][x][1], "bold": rows[y][x].get("bold", False)}
+                                     for x in region]})
+
     handlers = {"dense-selection": dense_selection, "tab-strip": tab_strip,
-                "marked-selection": marked_selection, "change-markers": change_markers}
+                "marked-selection": marked_selection, "change-markers": change_markers,
+                "plain-heading": plain_heading}
     for primitive in rules.get("primitives", []):
         kind = primitive["kind"]
         if kind not in handlers:

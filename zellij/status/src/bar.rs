@@ -293,20 +293,18 @@ impl State {
             available.saturating_sub(active_width.max(12) + 1).min(30),
         );
         let ascii = self.mode.capabilities.arrow_fonts;
-        let accent = colors.text_unselected.emphasis_1;
         let edge = colors.ribbon_unselected.base;
         print!("\x1b[{}m", if dimmed { 3 } else { 23 });
         let mut used = 0;
         let mut previous = surface;
         if !heading.is_empty() {
             Ribbon {
-                fg: surface,
-                bg: accent,
+                fg: colors.text_unselected.base,
+                bg: surface,
                 bold: true,
             }
             .paint(&heading);
             used = heading.width();
-            previous = accent;
         }
         let tab_space = available.saturating_sub(used + 1);
         let active_budget = active_width.min(tab_space);
