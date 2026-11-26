@@ -44,20 +44,21 @@ New default profiles include the project-only `pull-request` skill, which owns w
 | `.agents/skills/octo-manager/` | Optional repository-only Octo integration |
 | `.agents/skills/pull-request/` | PR drafting entrypoint, shared/GitHub writer instructions, and their writing references |
 | `.agents/skills/testing/` | Stage-specific verification and retained-behavior guidance |
-| `.agents/skills/source-code-lifecycle/` | Resolved project policy and runner data |
+| `.agents/skills/source-code-lifecycle/` | Resolved project policy |
 | `.source-code.json` | Schema version, policy version, stage, and installed languages |
 | `AGENTS.override.md` | Generated router to authored project instructions and generated policy |
 | `.agents/source-code.md` | Generated lifecycle, kind, pinned skills, and language gate instructions |
 | `.agents/source-code-versions.json` | Live canonical registry link, or copied registry matching portable pins |
 | `.claude/rules/source-code.md` | Claude's project-local route to the generated guidance, when selected |
-| `scripts/check-source-code.py` | Selected lifecycle gate, shared by local execution and generated CI |
-| `.source-code-stages.json` | Generated command plan; generated gates run without skill links |
+| `scripts/check-source-code.py` | Lifecycle gate with embedded command rules, shared by local execution and CI |
 | `.claude/skills/<name>` | Relative links to the same skill packages for Claude Code |
 | `source-code.toml` `[installed]` and `[installed.skill_versions]` | Recorded installation selections, policy version, and skill versions; no per-file ledger |
 | `.github/pull_request_template.md` | GitHub template, the default in tracked mode |
 | `.agents/templates/pull_request_template.md` | Local drafting template, the default in local mode |
 
 Codex uses `.agents/skills`. Claude Code uses the individual `.claude/skills` links; existing directories and unrelated entries are preserved. Pass `--agents codex` to omit new Claude links. Other agents can read these Markdown packages explicitly, but the installer does not claim to configure their native discovery or tool permissions.
+
+The stage table stays in the Source Code repository. The installer writes only the commands for enabled gates into the runner, so CI can use it from a fresh checkout. Upgrades back up and remove standalone stage plans from earlier installations. If a plan contains custom commands, move them to repository-owned checks before upgrading.
 
 The architecture skill automatically includes Builder because it shares the standard. Separately delegated PR writers retain the draft-only boundary: installation does not authorize creating, updating, or merging a PR. It respects the target repository's required title and template fields.
 

@@ -73,6 +73,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     shutil.copy2(SOURCE / "bin/source-code", source / "bin/source-code")
     (source / "scripts").mkdir()
     shutil.copy2(SOURCE / "scripts/source_code_languages.py", source / "scripts/source_code_languages.py")
+    shutil.copy2(SOURCE / "scripts/source-code-stages.json", source / "scripts/source-code-stages.json")
     shutil.copytree(SOURCE / "ai", source / "ai", symlinks=True)
     shutil.copytree(SOURCE / "docs", source / "docs", symlinks=True)
     cli = source / "bin/source-code"
@@ -309,8 +310,34 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     gate_clone = workspace / "gate clone"
     git(workspace, "clone", "--quiet", str(gate_project), str(gate_clone))
     assert not (gate_clone / ".agents/skills").exists()
+    assert not list(gate_project.rglob("*stages.json"))
     gate = ["python3", str(gate_clone / "scripts/check-source-code.py"), "go"]
     assert '["bash", "scripts/check-go.sh", "all"]' in run([*gate, "--dry-run"])
+    old_plan = gate_project / ".source-code-stages.json"
+    legacy_link = gate_project / ".agents/skills/source-code-lifecycle/references/stages.json"
+    legacy_link.symlink_to(source / "ai/skills/source-code-lifecycle/references/stages.json")
+    plan_bytes = (SOURCE / "scripts/source-code-stages.json").read_bytes()
+    custom_plan = json.loads(plan_bytes)
+    custom_plan["stages"]["beta"]["go"].append(["bash", "scripts/check-release.sh"])
+    old_plan.write_text(json.dumps(custom_plan))
+    before = tree(gate_project)
+    assert "preserving modified lifecycle plan" in run([str(cli), "upgrade", "--repo", str(gate_project)], expected=1)
+    assert tree(gate_project) == before
+    stock_plan = json.loads(plan_bytes)
+    for plan in stock_plan["stages"].values():
+        del plan["protobuf"]
+    stock_plan_bytes = json.dumps(stock_plan).encode()
+    old_plan.write_bytes(stock_plan_bytes)
+    git(gate_project, "add", old_plan.name)
+    before = tree(gate_project)
+    assert "retire lifecycle plan" in run([str(cli), "upgrade", "--repo", str(gate_project), "--dry-run"])
+    assert tree(gate_project) == before
+    run([str(cli), "upgrade", "--repo", str(gate_project)])
+    assert not old_plan.exists()
+    assert not legacy_link.is_symlink()
+    backups = list((gate_project / ".git/repo-bootstrap/backups").rglob(old_plan.name))
+    assert len(backups) == 1 and backups[0].read_bytes() == stock_plan_bytes
+    assert "already current" in run([str(cli), "upgrade", "--repo", str(gate_project)])
     (gate_clone / "scripts/check-go.sh").write_text("printf 'fresh-clone-gate:%s\\n' \"$1\"\n")
     assert "fresh-clone-gate:all" in run(gate)
 
@@ -773,6 +800,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     legacy_manifest_path = authority_project / "source-code.toml"
     legacy_pins_path = authority_project / ".agents/source-code-versions.json"
     legacy_plans_path = authority_project / ".agents/skills/source-code-lifecycle/references/stages.json"
+    legacy_plans_path.write_bytes(plan_bytes)
     for path in (legacy_policy_path, legacy_manifest_path, legacy_pins_path, legacy_plans_path):
         legacy = tomllib.loads(path.read_text())["installed"] if path == legacy_manifest_path else json.loads(path.read_text())
         legacy.pop("authority", None)
@@ -785,6 +813,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     assert "authority must be selected explicitly" in run([str(cli), "upgrade", "--repo", str(authority_project)], expected=1)
     assert tree(authority_project) == before
     install(authority_project, "--authority", "owned", "--adoption", "new", "--conflict", "replace")
+    assert not legacy_plans_path.exists()
     run([str(cli), "validate", "--repo", str(authority_project), "--strict"])
 
     configured = workspace / "toml project"
@@ -922,6 +951,8 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
         assert "run: npm ci\n" not in workflow
     commands = json.loads((profile_intent / ".typescript-quality.json").read_text())["commands"]
     assert commands["test"] == ["bun", "run", "test"]
+    plan = run(["python3", str(profile_intent / "scripts/check-source-code.py"), "typescript", "--dry-run"])
+    assert '["bun", "scripts/check-typescript.mjs", "typecheck"]' in plan
     assert bun_lock.read_text() == "fixture Bun lock\n"
     assert json.loads((profile_intent / ".source-code.json").read_text())["languages"] == ["go", "typescript"]
     guide = rendered_skill(profile_intent, "typescript")
@@ -1471,7 +1502,7 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     versions = json.loads(registry_bytes)
     versions["policy_version"] = "1.2.0"
     registry.write_text(json.dumps(versions))
-    plans_path = source / "ai/skills/source-code-lifecycle/references/stages.json"
+    plans_path = source / "scripts/source-code-stages.json"
     plans_bytes = plans_path.read_bytes()
     plans = json.loads(plans_bytes)
     plans["policy_version"] = "1.2.0"
