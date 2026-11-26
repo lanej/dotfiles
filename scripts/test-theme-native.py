@@ -166,12 +166,12 @@ def terminal(command, env, ready, *, columns=76, lines=24, capture_lines=10, raw
     stream = (ReviewStream if raw_path else NativeStream)(screen)
     decoder = codecs.getincrementaldecoder("utf-8")("replace")
     raw = bytearray()
-    queries = TerminalColorQueries(json.loads((GENERATED / "colors.json").read_text())) if raw_path else None
+    queries = TerminalColorQueries(json.loads((GENERATED / "colors.json").read_text())) if raw_path or command[0] == "nvim" else None
     deadline = time.monotonic() + 15
     ready_since = None
     try:
         while time.monotonic() < deadline:
-            if select.select([fd], [], [], 0.1)[0]:
+            if select.select([fd], [], [], 0.01)[0]:
                 try:
                     chunk = os.read(fd, 65536)
                 except OSError:
@@ -391,7 +391,7 @@ print(json.dumps({name: str(getattr(opts, name)) for name in ("foreground", "bac
                 # Line numbers exercise a richer native mode. Sage's actual
                 # generated config, not the review invocation, retains +/-.
                 command.append("--line-numbers")
-            text = subprocess.check_output(command, env=env, input=(ROOT / "design-system/fixtures/change.diff").read_text(), text=True)
+            text = subprocess.check_output(command, env=env, cwd=env["HOME"], input=(ROOT / "design-system/fixtures/change.diff").read_text(), text=True)
         rows = observed_ansi(text, columns=96 if review else 76, lines=24 if review else 10)
         return rows
     if surface == "glow":
@@ -563,8 +563,11 @@ def main():
         (home / ".gitconfig").write_text('[include]\npath = ' + str(GENERATED / 'delta.gitconfig') + '\n[delta]\nfeatures = dotfiles\n')
         locale = "C.UTF-8" if sys.platform.startswith("linux") else "en_US.UTF-8"
         env = {**os.environ, "HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config"), "XDG_CACHE_HOME": str(home / ".cache"), "XDG_DATA_HOME": str(home / ".local/share"), "BAT_CONFIG_DIR": str(home / ".config/bat"), "BAT_CACHE_PATH": str(home / ".cache/bat"), "TERM": "xterm-256color", "COLORTERM": "truecolor", "CLICOLOR_FORCE": "1", "DOTFILES_THEME_DIR": str(GENERATED), "LANG": locale, "LC_ALL": locale}
-        for name in ("TMUX", "TMUX_PANE", "NO_COLOR", "FZF_DEFAULT_OPTS", "FZF_DEFAULT_OPTS_FILE", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "BAT_THEME", "DELTA_FEATURES"):
+        for name in ("TMUX", "TMUX_PANE", "NO_COLOR", "FZF_DEFAULT_OPTS", "FZF_DEFAULT_OPTS_FILE", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "BAT_THEME", "DELTA_FEATURES", "GIT_CONFIG_COUNT", "GIT_CONFIG_PARAMETERS"):
             env.pop(name, None)
+        # Delta reads Git configuration via Git; isolate it from the checkout and host.
+        env["GIT_CONFIG_GLOBAL"] = str(home / ".gitconfig")
+        env["GIT_CONFIG_NOSYSTEM"] = "1"
         for surface in surfaces:
             raw_path = args.review_dir / (surface + ".ansi") if args.review_dir else None
             incomplete = None
