@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "period": "weekly",
+  "budgetsUsd": {
+    "executive": 50,
+    "judicial": 20,
+    "legislative": 10
+  },
+  "maxWorkers": {
+    "executive": 4,
+    "judicial": 2,
+    "legislative": 1
+  },
+  "protectedPaths": [
+    "pi/governance/budgets.json",
+    "pi/extensions/governance.mjs"
+  ],
+  "sessions": {
+    "judicial": {
+      "cadence": "weekly",
+      "purpose": "Review accumulated outcomes and produce a findings docket; urgent individual reviews may happen between sessions"
+    },
+    "legislative": {
+      "cadence": "monthly",
+      "purpose": "Consider the preceding judicial dockets and advance at most one ordinary systemic amendment per session",
+      "maxOrdinaryAmendments": 1
+    },
+    "adoption": {
+      "minObservationDays": 14,
+      "minDaysBetweenSystemicPromotions": 14,
+      "urgentChangesRequireHumanApproval": true
+    }
+  }
+}
