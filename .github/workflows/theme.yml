@@ -59,3 +59,28 @@ jobs:
           export PATH="$RUNNER_TEMP/theme-tools/bin:$PATH"
           uv run --script scripts/test-theme-native.py --plugins-dir "$RUNNER_TEMP/theme-tools/plugins" --surface neovim --surface neovim-frame --surface tmux --surface cli --surface fzf --surface bat --surface delta --surface glow --surface bottom
           uv run --script scripts/test-theme-presentation.py --plugins-dir "$RUNNER_TEMP/theme-tools/plugins"
+      - name: Capture alternate presets for visual review
+        if: github.event_name == 'pull_request' && runner.os == 'Linux'
+        shell: bash
+        run: |
+          export PATH="$RUNNER_TEMP/theme-tools/bin:$PATH"
+          selected=$(python3 -c 'import json; print(json.load(open("design-system/config.json"))["theme"])')
+          for definition in design-system/themes/*.json; do
+            preset=$(basename "$definition" .json)
+            [[ "$preset" != "$selected" ]] || continue
+            output="$RUNNER_TEMP/theme-$preset"
+            review="$RUNNER_TEMP/theme-review/$preset"
+            python3 scripts/theme.py --theme "$preset" --output-dir "$output"
+            DOTFILES_THEME_DIR="$output" uv run --script scripts/test-theme-native.py --record --plugins-dir "$RUNNER_TEMP/theme-tools/plugins" --surface neovim --surface neovim-frame --surface tmux --surface cli --surface fzf --surface bat --surface delta --surface glow --surface bottom
+            mkdir -p "$review"
+            cp -R "docs/design-system/presets/$preset" "$review/captures"
+            cp -R "design-system/baselines/$preset" "$review/baselines"
+          done
+      - name: Upload alternate native captures (unapproved)
+        if: github.event_name == 'pull_request' && runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: alternate-theme-native-review
+          path: ${{ runner.temp }}/theme-review
+          if-no-files-found: ignore
+          retention-days: 14

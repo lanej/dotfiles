@@ -69,7 +69,7 @@ test('Sage is discoverable and compares both presets without changing the defaul
   await page.getByRole('link', { name: 'Sage preset', exact: true }).first().click();
   await expect(page).toHaveURL(/\/design-system\/sage\/$/);
   await expect(page.getByRole('heading', { name: 'Sage preset', exact: true })).toBeVisible();
-  await expect(page.locator('#preset-palette')).toContainText('#ACC8B7');
+  await expect(page.locator('section[aria-labelledby="preset-palette"]')).toContainText('#ACC8B7');
   const sage = page.locator('[data-preset-preview="sage"]');
   const nord = page.locator('[data-preset-preview="nord"]');
   await expect(sage).toHaveCSS('background-color', 'rgb(29, 41, 36)');

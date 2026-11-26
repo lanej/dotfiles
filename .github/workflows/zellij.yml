@@ -224,6 +224,31 @@ jobs:
       - name: Build native attention bar
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
         run: make zellij-status
+      - name: Capture alternate Zellij presets for visual review
+        if: ${{ github.event_name == 'pull_request' && runner.os == 'Linux' && steps.zellij_install.outcome == 'success' }}
+        shell: bash
+        run: |
+          selected=$(python3 -c 'import json; print(json.load(open("design-system/config.json"))["theme"])')
+          trap 'git restore -- design-system/generated' EXIT
+          for definition in design-system/themes/*.json; do
+            preset=$(basename "$definition" .json)
+            [[ "$preset" != "$selected" ]] || continue
+            # The native make target links the checkout's generated KDL.
+            python3 scripts/theme.py --theme "$preset"
+            uv run --script scripts/test-theme-native.py --record --surface zellij
+            review="$RUNNER_TEMP/zellij-theme-review/$preset"
+            mkdir -p "$review"
+            cp "docs/design-system/presets/$preset/zellij.svg" "$review/"
+            cp "design-system/baselines/$preset/zellij.json" "$review/"
+          done
+      - name: Upload alternate Zellij captures (unapproved)
+        if: ${{ github.event_name == 'pull_request' && runner.os == 'Linux' && steps.zellij_install.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: alternate-zellij-native-review
+          path: ${{ runner.temp }}/zellij-theme-review
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Check disposable plugin installations
         run: python3 scripts/test-zellij-artifacts.py
       - name: Exercise fixed tab title controls
