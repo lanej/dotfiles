@@ -201,7 +201,7 @@ def sgr(fg, bg, flags=0, decoration=0, deco_fg=None):
     if decoration:
         parts.append("4:" + str(decoration))
         if deco_fg is not None:
-            parts.append("58;2;" + ";".join(map(str, rgb(deco_fg))))
+            parts.append("58:2::" + ":".join(map(str, rgb(deco_fg))))
     return ESC + "[" + ";".join(parts) + "m"
 
 
