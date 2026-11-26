@@ -14,5 +14,5 @@ require("lazy").setup({
 local plugin = require("lazy.core.config").plugins.copydesk
 local action = plugin._.installed and "restore" or "install"
 require("lazy")[action]({ plugins = { "copydesk" }, wait = true, show = false, lockfile = true })
-assert(not require("lazy.core.plugin").has_errors(plugin), "Lazy could not install the locked Copydesk revision")
+assert(not require("lazy.core.plugin").has_errors(plugin), "Lazy could not install the selected Copydesk revision")
 vim.cmd("qa")

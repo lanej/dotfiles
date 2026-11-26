@@ -54,7 +54,9 @@ lifecycle = "consumer"
 depends_on = ["beads", "octo-manager", "intent"]
 
 [projects.copydesk]
-repository = "https://github.com/lanej/dotfiles.git"
-path = "{dotfiles}"
+repository = "https://github.com/lanej/copydesk.git"
+path = "~/src/copydesk"
+remote = "origin"
+hydrate_checkout = false
 command = ["{python}", "{dotfiles}/scripts/project_update_copydesk.py"]
 lifecycle = "stateless"

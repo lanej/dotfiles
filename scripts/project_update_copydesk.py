@@ -1,9 +1,8 @@
-"""Install the dotfiles Copydesk pin in the active Neovim profile."""
+"""Install the fetched Copydesk main revision in the active Neovim profile."""
 import argparse
 import json
 import os
 from pathlib import Path
-import re
 import shutil
 import subprocess
 import sys
@@ -72,10 +71,12 @@ def main():
             print("copydesk: Neovim is disabled; skipping plugin installation", file=sys.stderr)
         return 0
 
-    pin = json.loads((ROOT / "nvim/lazy-lock.json").read_text())[PLUGIN]
-    expected = pin["commit"]
-    if not re.fullmatch(r"[a-f0-9]{40}", expected):
-        raise ValueError("Copydesk requires a full Git commit in the Neovim lockfile")
+    source = Path.cwd()
+    origin = git(source, "config", "--local", "--get", "remote.origin.url")
+    if origin not in {REMOTE, REMOTE.removesuffix(".git"), "git@github.com:lanej/copydesk.git",
+                      "ssh://git@github.com/lanej/copydesk.git"}:
+        raise ValueError(f"Expected the upstream Copydesk checkout: {source}")
+    expected = git(source, "rev-parse", "--verify", "refs/remotes/origin/main^{commit}")
     data = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share")
     lazy_root = data / (os.environ.get("NVIM_APPNAME") or "nvim") / "lazy"
     plugin = lazy_root / PLUGIN
@@ -90,9 +91,9 @@ def main():
         if not editor_available:
             raise ValueError(prerequisites)
         if revision != expected:
-            build(lazy_root, pin)
+            build(lazy_root, {"branch": "main", "commit": expected})
             if installed_revision(plugin) != expected:
-                raise ValueError("Copydesk installation did not match the locked revision")
+                raise ValueError("Copydesk installation did not match the fetched main revision")
         return 0
     if action == "status":
         print(json.dumps({
@@ -109,7 +110,7 @@ def main():
         "process": None,
         "sessions": [],
         "reason": ("Copydesk is available to new Neovim processes" if ready else
-                   "Build the locked Copydesk revision first" if editor_available else prerequisites),
+                   "Build the fetched Copydesk main revision first" if editor_available else prerequisites),
     }
     print(json.dumps({"schema_version": 1, "targets": [target]}))
     return 0 if target["ready"] or action == "inventory" else 3
