@@ -1,0 +1,37 @@
+name: Record Pi macOS verification
+
+on:
+  workflow_run:
+    workflows:
+      - Pi shared resources
+      - Mac overflow
+    types:
+      - completed
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+  statuses: write
+
+jobs:
+  record:
+    if: >-
+      github.repository == 'lanej/dotfiles' &&
+      github.event.workflow_run.actor.login == github.repository_owner &&
+      github.event.workflow_run.triggering_actor.login == github.repository_owner &&
+      (github.event.workflow_run.event == 'pull_request' ||
+       github.event.workflow_run.event == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # workflow_run executes from the default branch with write permission.
+      # Check out the trusted workflow revision and read Actions metadata only.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify the tested merge and record a passing result
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/github-pi-macos-verification.py
