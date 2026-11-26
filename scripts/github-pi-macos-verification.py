@@ -144,3 +144,5 @@ if __name__ == "__main__":
         main(json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text()))
     except subprocess.CalledProcessError as error:
         raise SystemExit(error.stderr.strip()) from error
+
+# Temporary pull request for the live macOS verification check.
