@@ -3,8 +3,10 @@
 
 import argparse
 from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 import fcntl
 import json
+from math import ceil, isfinite
 from pathlib import Path
 import re
 import subprocess
@@ -19,8 +21,14 @@ OVERFLOW_WORKFLOW = "mac-overflow.yml"
 RUNNER = "dotfiles-mac-mini"
 STATUS = "macOS overflow / Pi shared resources"
 SHA = re.compile(r"[0-9a-f]{40}")
-RUN_URL = re.compile(r"https://github.com/lanej/dotfiles/actions/runs/(\d+)")
 RETRY_DELAY = 300
+RATE_RETRY_DELAY = 60
+MAX_RATE_RETRY_DELAY = 1800
+RATE_MESSAGE = re.compile(
+    r"api rate limit exceeded|primary rate limit|secondary rate limit|"
+    r"rate limit (?:exceeded|reached)|rate limit temporarily exceeded",
+    re.IGNORECASE,
+)
 MAX_QUEUE = timedelta(minutes=10)
 HOSTED_NODE = "W_kwDOACeEE84YD6uP"
 QUEUE_QUERY = """query($hosted: ID!, $job: String!) {
@@ -43,12 +51,89 @@ QUEUE_QUERY = """query($hosted: ID!, $job: String!) {
 }"""
 
 
+class GitHubThrottled(RuntimeError):
+    def __init__(self, reason, retry_at):
+        super().__init__(reason)
+        self.reason = reason
+        self.retry_at = retry_at
+
+
+class GitHubRequestError(subprocess.CalledProcessError):
+    def __init__(self, result, status, body):
+        super().__init__(result.returncode, result.args, body, result.stderr)
+        self.status = status
+
+
+def github_response(output):
+    head, separator, body = output.replace("\r\n", "\n").partition("\n\n")
+    match = re.match(r"HTTP/\S+ (\d{3})\b", head)
+    if match is None or not separator:
+        return None, {}, output
+    headers = {}
+    for line in head.splitlines()[1:]:
+        name, _, value = line.partition(":")
+        headers[name.lower()] = value.strip()
+    return int(match[1]), headers, body
+
+
+def retry_after(value, now):
+    if not value:
+        return 0
+    try:
+        if value.isascii() and value.isdecimal():
+            return now + int(value)
+        date = parsedate_to_datetime(value)
+        return date.timestamp() if date.tzinfo else 0
+    except (ValueError, OverflowError, OSError):
+        return 0
+
+
+def check_throttle(graphql, status, headers, body, stderr):
+    if status not in {403, 429} and not (graphql and status == 200):
+        return
+    primary = headers.get("x-ratelimit-remaining") == "0"
+    retry_header = headers.get("retry-after")
+    rate_error = RATE_MESSAGE.search(stderr)
+    if graphql and status == 200 and not rate_error:
+        try:
+            errors = json.loads(body).get("errors", [])
+            rate_error = any(
+                error.get("type") == "RATE_LIMITED"
+                or RATE_MESSAGE.search(error.get("message", ""))
+                for error in errors
+            )
+        except (AttributeError, TypeError, ValueError):
+            pass
+    elif status in {403, 429}:
+        rate_error = rate_error or RATE_MESSAGE.search(body)
+    if (
+        status != 429
+        and not rate_error
+        and not (status == 403 and (primary or retry_header))
+    ):
+        return
+    now = datetime.now(timezone.utc).timestamp()
+    reset_header = headers.get("x-ratelimit-reset", "")
+    reset = int(reset_header) + 1 if primary and reset_header.isdecimal() else 0
+    retry_at = max(reset, retry_after(retry_header, now))
+    source = "GraphQL" if graphql else "REST"
+    reason = "primary rate limit" if primary else "rate limit"
+    raise GitHubThrottled(f"GitHub {source} {reason}", ceil(retry_at) if retry_at > now else None)
+
+
 def github(path, *fields):
-    output = subprocess.run(
-        ["gh", "api", path, *fields], check=True, capture_output=True,
+    result = subprocess.run(
+        ["gh", "api", "--include", path, *fields], capture_output=True,
         text=True, timeout=25,
-    ).stdout
-    return json.loads(output) if output.strip() else None
+    )
+    status, headers, body = github_response(result.stdout)
+    if status is None:
+        match = re.search(r"HTTP (\d{3})\b", result.stderr)
+        status = int(match[1]) if match else None
+    check_throttle(path == "graphql", status, headers, body, result.stderr)
+    if result.returncode:
+        raise GitHubRequestError(result, status, body)
+    return json.loads(body) if body.strip() else None
 
 
 def workflow_runs(workflow, query):
@@ -75,6 +160,21 @@ def current_pull(number, head):
     ):
         return pr
     return None
+
+
+def pull_for_run(run):
+    branch = run["head_branch"]
+    head = run["head_sha"]
+    if not branch or not SHA.fullmatch(head):
+        return None
+    associations = run["pull_requests"]
+    if not associations:
+        source = quote(f"{OWNER}:{branch}", safe="")
+        associations = github(f"repos/{REPO}/pulls?state=open&head={source}&per_page=2")
+    if len(associations) != 1:
+        return None
+    pr = current_pull(associations[0]["number"], head)
+    return pr if pr and pr["head"]["ref"] == branch else None
 
 
 def queue_hint(minimum_age):
@@ -124,10 +224,9 @@ def select_job(minimum_age, candidate_ids=None):
             or run["actor"]["login"] != OWNER
             or run["triggering_actor"]["login"] != OWNER
             or (run.get("head_repository") or {}).get("full_name") != REPO
-            or len(run["pull_requests"]) != 1
         ):
             continue
-        pr = current_pull(run["pull_requests"][0]["number"], run["head_sha"])
+        pr = pull_for_run(run)
         if not pr:
             continue
         jobs = github(f"repos/{REPO}/actions/runs/{run['id']}/jobs")["jobs"]
@@ -153,6 +252,40 @@ def save(path, state):
     temp.replace(path)
 
 
+def backoff_path(state_path):
+    return state_path.with_suffix(".backoff.json")
+
+
+def load_backoff(state_path):
+    try:
+        backoff = json.loads(backoff_path(state_path).read_text())
+    except FileNotFoundError:
+        return {}
+    if (
+        not isinstance(backoff, dict)
+        or type(backoff.get("retry_at")) not in {int, float}
+        or not isfinite(backoff["retry_at"])
+        or type(backoff.get("consecutive")) is not int
+        or backoff["consecutive"] < 1
+        or backoff.get("reason") not in {
+            "GitHub REST primary rate limit", "GitHub REST rate limit",
+            "GitHub GraphQL primary rate limit", "GitHub GraphQL rate limit",
+        }
+    ):
+        raise ValueError("Invalid GitHub rate-limit backoff state")
+    return backoff
+
+
+def record_backoff(state_path, previous, error, now):
+    consecutive = previous.get("consecutive", 0) + 1
+    default_delay = min(RATE_RETRY_DELAY * 2 ** min(consecutive - 1, 5), MAX_RATE_RETRY_DELAY)
+    retry_at = error.retry_at or ceil(now + default_delay)
+    save(backoff_path(state_path), {
+        "retry_at": retry_at, "consecutive": consecutive, "reason": error.reason,
+    })
+    return retry_at
+
+
 def resolve_pending(state, runs):
     for pending in state.values():
         if pending.get("done"):
@@ -167,7 +300,11 @@ def resolve_pending(state, runs):
         ), None)
         now = datetime.now(timezone.utc)
         if not run:
-            if not pending.get("reported") and now.timestamp() - pending["at"] >= RETRY_DELAY:
+            if (
+                "retry_at" not in pending
+                and not pending.get("reported")
+                and now.timestamp() - pending["at"] >= RETRY_DELAY
+            ):
                 print(f"Unconfirmed dispatch: {pending['title']}", file=sys.stderr)
                 pending["reported"] = True
             continue
@@ -206,8 +343,10 @@ def cycle(path, state, minimum_age, observe):
     if any(not entry.get("done") for entry in state.values()):
         runs = workflow_runs(OVERFLOW_WORKFLOW, "event=workflow_dispatch&per_page=100")
         if not observe:
-            resolve_pending(state, runs)
-            save(path, state)
+            try:
+                resolve_pending(state, runs)
+            finally:
+                save(path, state)
         if any(r["status"] != "completed" for r in runs):
             return
 
@@ -244,19 +383,26 @@ def cycle(path, state, minimum_age, observe):
         }
         state[key] = entry
         save(path, state)
-        result = subprocess.run(
-            ["gh", "workflow", "run", OVERFLOW_WORKFLOW, "-R", REPO,
-             "--ref", "master", "-f", f"hosted_job={job_id}", "-f", f"commit={commit}"],
-            text=True, capture_output=True, timeout=25,
-        )
-        if result.returncode:
-            refusal = re.search(r"HTTP (400|401|403|404|422)\b", result.stderr)
-            if refusal and entry["attempts"] < 3:
+        try:
+            result = github(
+                f"repos/{REPO}/actions/workflows/{OVERFLOW_WORKFLOW}/dispatches",
+                "--method", "POST", "-f", "ref=master", "-F", "return_run_details=true",
+                "-f", f"inputs[hosted_job]={job_id}", "-f", f"inputs[commit]={commit}",
+            )
+        except GitHubThrottled as error:
+            entry["attempts"] -= 1
+            entry["retry_at"] = error.retry_at or ceil(entry["at"] + RATE_RETRY_DELAY)
+            save(path, state)
+            raise
+        except GitHubRequestError as error:
+            if error.status in {400, 401, 403, 404, 422} and entry["attempts"] < 3:
                 entry["retry_at"] = entry["at"] + RETRY_DELAY
-            print(result.stderr.strip(), file=sys.stderr)
-        elif match := RUN_URL.search(result.stdout):
-            entry["run_id"] = int(match[1])
-            print(match[0], flush=True)
+            print((error.stderr or "").strip(), file=sys.stderr)
+        else:
+            run_id = result.get("workflow_run_id") if isinstance(result, dict) else None
+            if type(run_id) is int and run_id > 0:
+                entry["run_id"] = run_id
+                print(f"https://github.com/{REPO}/actions/runs/{entry['run_id']}", flush=True)
         save(path, state)
         return
 
@@ -275,15 +421,32 @@ def main():
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             return
+        try:
+            backoff = load_backoff(args.state)
+        except ValueError as error:
+            sys.exit(str(error))
+        if backoff.get("retry_at", 0) > datetime.now(timezone.utc).timestamp():
+            return
         state = json.loads(args.state.read_text()) if args.state.exists() else {}
         try:
             cycle(args.state, state, args.wait_seconds, args.observe)
+        except GitHubThrottled as error:
+            now = datetime.now(timezone.utc).timestamp()
+            if args.observe:
+                print(error.reason, file=sys.stderr)
+                return
+            retry_at = record_backoff(args.state, backoff, error, now)
+            next_poll = datetime.fromtimestamp(retry_at, timezone.utc).isoformat()
+            print(f"{error.reason}. Polling resumes after {next_poll}.", file=sys.stderr)
         except subprocess.CalledProcessError as error:
             print(error.stderr or f"GitHub CLI failed with exit {error.returncode}", file=sys.stderr)
             sys.exit(1)
         except subprocess.TimeoutExpired:
             print("GitHub CLI timed out. Any reserved dispatch will be reconciled.", file=sys.stderr)
             sys.exit(1)
+        else:
+            if not args.observe and backoff:
+                backoff_path(args.state).unlink()
 
 
 if __name__ == "__main__":

@@ -19,6 +19,8 @@ on:
       - 'scripts/runtime_requirements.py'
       - 'scripts/install-pi'
       - '.github/workflows/pi-resources.yml'
+      - '.github/workflows/pi-macos-verification.yml'
+      - 'scripts/github-pi-macos-verification.py'
   push:
     branches: [master]
     paths:
@@ -38,6 +40,8 @@ on:
       - 'scripts/runtime_requirements.py'
       - 'scripts/install-pi'
       - '.github/workflows/pi-resources.yml'
+      - '.github/workflows/pi-macos-verification.yml'
+      - 'scripts/github-pi-macos-verification.py'
 
 permissions:
   contents: read
@@ -62,6 +66,9 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Discover the shared catalog through native Pi
         run: python3 scripts/test-pi-resources.py --native
+      - name: Tested merge ${{ github.sha }}
+        if: runner.os == 'macOS' && github.event_name == 'pull_request'
+        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
       - name: Exercise the opt-in bootstrap workflow
         if: runner.os == 'Linux'
         run: python3 scripts/test-bootstrap.py
