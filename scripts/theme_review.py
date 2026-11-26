@@ -136,7 +136,7 @@ def render_svg(name, rows, theme, *, trim=True):
 
 
 class TerminalColorQueries:
-    """Answer OSC 10/11 color queries using the actual selected terminal palette."""
+    """Answer OSC 10/11 color queries and the startup DSR status probe."""
 
     def __init__(self, theme):
         self.colors = {"10": theme["roles"]["text"], "11": theme["roles"]["surface"]}
@@ -145,16 +145,19 @@ class TerminalColorQueries:
     def feed(self, data):
         import re
         data = self.pending + data
-        pattern = rb"\x1b\](10|11);\?(?:\x07|\x1b\\)"
+        pattern = rb"\x1b\](10|11);\?(\x07|\x1b\\)|\x1b\[5n"
         replies = []
         for match in re.finditer(pattern, data):
+            if match[1] is None:
+                replies.append(b"\x1b[0n")
+                continue
             key = match[1].decode("ascii")
             color = self.colors[key]
             rgb = "/".join(color[i:i+2].lower() * 2 for i in (1, 3, 5))
-            replies.append(f"\x1b]{key};rgb:{rgb}\x1b\\".encode("ascii"))
+            replies.append(f"\x1b]{key};rgb:{rgb}".encode("ascii") + match[2])
         # Retain only a suffix that might be the beginning of another query.
         prefixes = [b"\x1b]10;?\x1b\\", b"\x1b]11;?\x1b\\",
-                    b"\x1b]10;?\x07", b"\x1b]11;?\x07"]
+                    b"\x1b]10;?\x07", b"\x1b]11;?\x07", b"\x1b[5n"]
         self.pending = b""
         for size in range(min(len(data), 8), 0, -1):
             suffix = data[-size:]
