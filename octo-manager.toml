@@ -8,7 +8,7 @@ auto_merge = "project_stage"
 # Linux reports separately, and either runner can verify Pi on the current test merge.
 base = "master"
 owner_prs_only = true
-replace = ["resources (macos-latest)", "Pi shared resources"]
+replace = ["resources (macos-latest)", "resources (ubuntu-latest)", "Pi shared resources"]
 require = ["resources (ubuntu-latest)", "merge-status:Pi macOS verification"]
 
 [notifications.instructions]
