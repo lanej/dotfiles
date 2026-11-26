@@ -2,6 +2,7 @@
 import colorsys
 import json
 import os
+import re
 import sys
 from functools import lru_cache
 
@@ -70,6 +71,26 @@ def readable(fg, bg, minimum=4.5):
         candidates.append((abs(end - l) * hi, color_at(l + (end - l) * hi)))
     return min(candidates)[1] if candidates else max(
         (0, 0xFFFFFF), key=lambda c: contrast(c, bg))
+
+
+@lru_cache(maxsize=4096)
+def dimmed(fg, bg, minimum=4.5):
+    """Dim toward the cell's own background without crossing the contrast floor."""
+    if contrast(fg, bg) < minimum:
+        return readable(fg, bg, minimum)
+    candidate = mix(fg, bg, 0.55)
+    if contrast(candidate, bg) >= minimum:
+        return candidate
+    lo, hi = 0.55, 1.0
+    best = fg
+    for _ in range(16):
+        mid = (lo + hi) / 2
+        candidate = mix(fg, bg, mid)
+        if contrast(candidate, bg) >= minimum:
+            hi, best = mid, candidate
+        else:
+            lo = mid
+    return best
 
 
 def source_snapshot(screen, rows):
@@ -206,16 +227,59 @@ def sgr(fg, bg, flags=0, decoration=0, deco_fg=None):
     return ESC + "[" + ";".join(parts) + "m"
 
 
+def scheme_slots(model, mark, cells):
+    """Reserve visible scheme cells only; leave the domain at its original column.
+
+    HTTPS is implicit in hint mode. Other schemes keep their names, using
+    only the delimiter cells for the key. Wrapped or custom hyperlink labels
+    fall back to the ordinary in-place hint.
+    """
+    displayed = []
+    for x, y in cells:
+        cell = model["cells"][y][x]
+        if cell is None or cell[1] != 1 or len(cell[0]) != 1:
+            break
+        displayed.append(cell[0])
+        if len(displayed) >= 32 or "".join(displayed).endswith("://"):
+            break
+    match = re.fullmatch(r"([a-zA-Z][a-zA-Z0-9+.-]*)://", "".join(displayed))
+    if match is None:
+        return []
+    scheme = match[1]
+    size = len(match[0])
+    if not mark["target"].lower().startswith(scheme.lower() + "://") or len(cells) <= size:
+        return []
+    x, y = cells[0]
+    if cells[:size + 1] != [(x + i, y) for i in range(size + 1)]:
+        return []
+    return cells[:size] if scheme.lower() == "https" else cells[len(scheme):size]
+
+
 def active_cells(model, prefix):
-    """Index active targets and the remaining hint characters by terminal cell."""
-    marked, keys = {}, {}
+    """Index active targets, key cells and hidden scheme cells."""
+    marked, keys, hidden = {}, {}, set()
     for i, (mark, label) in enumerate(zip(model["marks"], labels(len(model["marks"])))):
         if not label.startswith(prefix):
             continue
         cells = [tuple(p) for p in mark["cells"]]
         for point in cells:
             marked[point] = i
-        remaining = iter(label[len(prefix):])
+        remaining = label[len(prefix):]
+        slots = scheme_slots(model, mark, cells)
+        if remaining and len(slots) >= len(remaining):
+            # Right-align a padded key badge in the scheme's own space.
+            padding = min(2, len(slots) - len(remaining))
+            badge = (" " if padding == 2 else "") + remaining + (" " if padding else "")
+            for point in slots[:-len(badge)]:
+                hidden.add(point)
+                marked.pop(point, None)
+            first = True
+            for point, char in zip(slots[-len(badge):], badge):
+                keys[point] = (char, first and char != " ")
+                if char != " ":
+                    first = False
+            continue
+        remaining = iter(remaining)
         first = True
         for x, y in cells:
             cell = model["cells"][y][x]
@@ -226,13 +290,12 @@ def active_cells(model, prefix):
                 break
             keys[(x, y)] = (key, first)
             first = False
-    return marked, keys
-
+    return marked, keys, hidden
 
 def render(model, prefix="", cols=None, rows=None):
     """Produce one frame, preserving coordinates, chromatic context and attributes."""
     palette = model["palette"]
-    marked, keys = active_cells(model, prefix)
+    marked, keys, hidden = active_cells(model, prefix)
     output = [RESET, ESC + "[H" + ESC + "[2J"]
     for y, row in enumerate(model["cells"][:rows]):
         output.append(f"{ESC}[{y + 1};1H")
@@ -245,7 +308,10 @@ def render(model, prefix="", cols=None, rows=None):
                 break
             point = (x, y)
             mark = marked.get(point)
-            if point in keys:
+            if point in hidden:
+                char = " " * width
+                flags, deco = 0, 0
+            elif point in keys:
                 char, next_key = keys[point]
                 char += " " * (width - 1)
                 bg = palette["key_bg"]
@@ -257,8 +323,9 @@ def render(model, prefix="", cols=None, rows=None):
                 deco = deco or 1
                 deco_fg = readable(palette["accent"], bg, 3.0)
             else:
-                fg = mix(fg, bg, 0.55)
-                deco_fg = mix(deco_fg, bg, 0.55)
+                fg = dimmed(fg, bg)
+                if deco:
+                    deco_fg = dimmed(deco_fg, bg, 3.0)
             if mark != last_mark:
                 output.append(OSC8 + (f"mark:{mark}" if mark is not None else "") + ST)
                 last_mark = mark
@@ -337,7 +404,7 @@ class HintOverlay(Handler):
         self.quit_loop()
 
     def on_click(self, event):
-        marked, _ = active_cells(self.model, self.prefix)
+        marked, _, _ = active_cells(self.model, self.prefix)
         index = marked.get((event.cell_x, event.cell_y))
         if index is not None:
             self.select(index)

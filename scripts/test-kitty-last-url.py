@@ -69,27 +69,71 @@ def check_image_hints(root):
             line = frame.line(0)
             def fg(x):
                 return int(profile.as_color(line.cursor_from(x).fg))
-            if (fg(0), fg(9), fg(10), fg(30)) != (
-                styling.mix(0xEBCB8B, palette["background"], .55), 0xEBCB8B, 0x88C0D0, 0xA3BE8C
+            if (fg(0), fg(15), fg(17), fg(30)) != (
+                styling.dimmed(0xEBCB8B, palette["background"]), 0xEBCB8B, 0x88C0D0, 0xA3BE8C
             ):
-                raise AssertionError(f"Hint frame colors: {[hex(fg(x)) for x in (0, 9, 10, 30)]}; mark starts {model['marks'][0]['cells'][:4]}; source row {str(line)!r}")
-            if int(profile.as_color(line.cursor_from(10).bg)) != palette["target"]:
+                raise AssertionError(f"Hint frame colors: {[hex(fg(x)) for x in (0, 15, 17, 30)]}; row {str(line)!r}")
+            if str(line)[9:17] != "      a " or str(line)[17:38] != "example.org/reference":
+                raise AssertionError(f"HTTPS scheme was not consumed in place: {str(line)!r}")
+            if int(profile.as_color(line.cursor_from(17).bg)) != palette["target"]:
                 raise AssertionError("URL background did not receive the target highlight")
-            if int(profile.as_color(line.cursor_from(10).decoration_fg)) != palette["accent"]:
+            if int(profile.as_color(line.cursor_from(17).decoration_fg)) != palette["accent"]:
                 raise AssertionError("URL underline did not receive the independent accent")
-            if line.cursor_from(10).decoration != 1:
+            if line.cursor_from(17).decoration != 1:
                 raise AssertionError("URL underline was not rendered")
+            for x in range(len(line)):
+                if str(line)[x:x+1].strip():
+                    cur = line.cursor_from(x)
+                    bg = profile.as_color(cur.bg)
+                    bg = int(bg) if bg is not None else int(profile.default_bg)
+                    if styling.contrast(fg(x), bg) < 4.5:
+                        raise AssertionError(f"Rendered foreground fell below 4.5:1 at column {x}")
+            handler = styling.HintOverlay(model)
+            handler.quit_loop = lambda: None
+            handler.on_text("a")
+            if handler.result["match"] != ["https://example.org/reference"]:
+                raise AssertionError("Hiding the scheme changed the exact selection destination")
     picker.handle_result(["select_hint.py", "url"], None, 7, boss)
     if calls[-1][1].type != "url":
         raise AssertionError("URL shortcut did not reach the styled picker")
     if len(set(styling.labels(90))) != 90 or any(len(code) != 3 for code in styling.labels(90)):
         raise AssertionError("Multi-key hints must be prefix-free")
-    for color in (0xBF616A, 0x81A1C1, 0x88C0D0, 0xA3BE8C):
+    for color in (0xBF616A, 0x81A1C1, 0x88C0D0, 0xA3BE8C, 0x4C566A, 0xEBCB8B, 0xD8DEE9, 0xECEFF4):
         adjusted = styling.readable(color, 0x3B4252)
         if styling.contrast(adjusted, 0x3B4252) < 4.5:
             raise AssertionError("Target foreground fell below the contrast floor")
         if styling.contrast(color, 0x3B4252) >= 4.5 and adjusted != color:
             raise AssertionError("Readable foreground was recolored")
+        for bg in (0x2E3440, 0x3D2B34, 0x2B3933, 0xECEFF4, 0x808080):
+            dim = styling.dimmed(color, bg)
+            if styling.contrast(dim, bg) < 4.5:
+                raise AssertionError(f"Context foreground {color:#x} on {bg:#x} fell below 4.5:1")
+            if styling.contrast(color, bg) >= 4.5 and styling.contrast(dim, bg) > styling.contrast(color, bg):
+                raise AssertionError("Already-readable context was brightened")
+            candidate = styling.mix(color, bg, .55)
+            if styling.contrast(color, bg) >= 4.5 and styling.contrast(candidate, bg) >= 4.5 and dim != candidate:
+                raise AssertionError("Contrast floor interfered with permissible dimming")
+
+    # Multiple candidates, non-HTTPS schemes and arbitrary OSC 8 labels.
+    urls = Screen(None, 12, 60, 0)
+    parse_bytes(urls, ("\r\n".join(["https://example.org/" + str(i) for i in range(10)] +
+                                ["http://example.org/insecure", "ftp://example.org/path"])).encode())
+    rows = picker.capture(urls)
+    model = styling.source_snapshot(urls, rows)
+    model["marks"] = styling.raw_url_marks(rows, model["wrapped"])
+    model["type"] = "url"
+    marked, keys, hidden = styling.active_cells(model, "")
+    if len(model["marks"]) != 12 or keys[(5, 0)] != ("a", True) or keys[(6, 0)] != ("a", False):
+        raise AssertionError(f"Multi-character HTTPS badge did not consume scheme space: {keys}")
+    if (0, 0) not in hidden or (8, 0) not in marked:
+        raise AssertionError("HTTPS elision moved the domain or left an active hidden cell")
+    if any((x, 10) in hidden or (x, 10) in keys for x in range(4)):
+        raise AssertionError("Insecure HTTP scheme name was hidden")
+    if any((x, 11) in hidden or (x, 11) in keys for x in range(3)):
+        raise AssertionError("FTP scheme name was hidden")
+    marked, keys, hidden = styling.active_cells(model, "s")
+    if (0, 0) in hidden or (8, 0) in marked or keys[(6, 9)] != ("a", True):
+        raise AssertionError("Filtered hints did not restore excluded schemes and promote the next key")
     parse_bytes(source.screen, b"\x1b[2J\x1b[H")
     
     screen = Screen(None, 12, 94, 12)

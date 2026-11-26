@@ -71,11 +71,13 @@ def main():
                 command("xdotool", "key", "--clearmodifiers", "ctrl+shift+e")
                 overlay_id = until("styled URL overlay", lambda: next(
                     (w["id"] for w in windows() if w["title"] == "Choose URL"), None))
-                until("rendered URL links", lambda: "ttps://github.com/lanej/dotfiles/pull/429"
+                until("rendered URL links", lambda: "a github.com/lanej/dotfiles/pull/429"
                       in remote("get-text", "--match", f"id:{overlay_id}"))
+                if "https://" in remote("get-text", "--match", f"id:{overlay_id}"):
+                    raise AssertionError("An active HTTPS scheme remained visible")
                 image = capture("review-url-hints.png", xid)
                 counts = dict((color, count) for count, color in image.getcolors(image.width * image.height))
-                for color in ((235, 203, 139), (136, 192, 208), (163, 190, 140), (59, 66, 82), (67, 76, 94)):
+                for color in ((235, 203, 139), (136, 192, 208), (163, 190, 140), (59, 66, 82), (67, 76, 94), (173, 153, 114)):
                     if counts.get(color, 0) < 5:
                         raise AssertionError(f"Representative frame is missing rendered color {color}")
                 command("xdotool", "key", "--clearmodifiers", "Escape")

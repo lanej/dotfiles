@@ -142,7 +142,7 @@ signal.pause()
             colors = dict((color, count) for count, color in image.getcolors(image.width * image.height))
             expected = [(235, 203, 139), (67, 76, 94), (59, 66, 82)]
             if url_mode:
-                expected.extend([(136, 192, 208), (163, 190, 140), (150, 135, 105)])
+                expected.extend([(136, 192, 208), (163, 190, 140), (173, 153, 114)])
             for color in expected:
                 if colors.get(color, 0) < 5:
                     raise AssertionError(f"Missing rendered hint color {color}")
