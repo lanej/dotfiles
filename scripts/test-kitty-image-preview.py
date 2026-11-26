@@ -97,6 +97,7 @@ print("  running-overview.png).")
 print("\\033]8;;''' + URL + '''\\033\\\\release notes\\033]8;;\\033\\\\", flush=True)
 print("\\033]8;;https://sw.kovidgoyal.net/kitty/\\033\\\\Kitty documentation\\033]8;;\\033\\\\", flush=True)
 print("src/reference.rs:42:7", flush=True)
+print("\\033[33mwarning\\033[0m  \\033[36mhttps://example.invalid/\\033[32mreference\\033[0m", flush=True)
 signal.pause()
 ''')
     layout = work / "layout.kdl"
@@ -114,12 +115,13 @@ signal.pause()
         return json.loads(command("zellij", "--session", session, "action", "list-panes", "--json"))
     def key(name):
         command("xdotool", "key", "--clearmodifiers", name)
-    def hint(fragment, label):
+    def hint(fragment, label, url_mode=False):
+        title = "Choose URL" if url_mode else "Choose text"
         def find():
             for os_window in json.loads(remote("ls")):
                 for tab in os_window["tabs"]:
                     for window in tab["windows"]:
-                        if window["title"] == "Choose text":
+                        if window["title"] == title:
                             output = remote("get-text", "--ansi", "--match", f'id:{window["id"]}')
                             for line in output.splitlines():
                                 if fragment in line:
@@ -127,16 +129,16 @@ signal.pause()
                                     if marks:
                                         return window["id"]
             return None
-        key("super+shift+u")
+        key("ctrl+shift+e" if url_mode else "super+shift+u")
         overlay_id = until("a native Kitty hint for " + fragment, find)
         colors = remote("get-colors", "--match", f"id:{overlay_id}")
-        if not re.search(r"foreground\s+#4c566a", colors, re.I):
+        if not re.search(r"foreground\s+#8c929d", colors, re.I):
             raise AssertionError("Non-link text must use the dim Nord foreground")
         artifacts = os.environ.get("KITTY_HINT_ARTIFACTS")
-        if artifacts and fragment in ("screenshots/plan-viewer", "reference.rs"):
+        if artifacts and (url_mode or fragment in ("screenshots/plan-viewer", "reference.rs")):
             image = ImageGrab.grab().convert("RGB")
             colors = dict((color, count) for count, color in image.getcolors(image.width * image.height))
-            for color in ((236, 239, 244), (180, 142, 173), (76, 86, 106)):
+            for color in ((236, 239, 244), (235, 203, 139), (67, 76, 94), (59, 66, 82), (140, 146, 157)):
                 if colors.get(color, 0) < 5:
                     raise AssertionError(f"Missing rendered hint color {color}")
             destination = Path(artifacts)
@@ -144,7 +146,7 @@ signal.pause()
             geometry = dict(line.split("=", 1) for line in command("xdotool", "getwindowgeometry", "--shell", xid).splitlines())
             x, y, width, height = (int(geometry[key]) for key in ("X", "Y", "WIDTH", "HEIGHT"))
             image.crop((x, y, x + width, y + height)).save(destination / (
-                "file-hints.png" if fragment == "reference.rs" else "hints.png"))
+                "url-hints.png" if url_mode else ("file-hints.png" if fragment == "reference.rs" else "hints.png")))
         key(label)
 
     log = work / "kitty.log"
@@ -163,6 +165,12 @@ signal.pause()
             xid = command("xdotool", "search", "--onlyvisible", "--class", "kitty").splitlines()[-1]
             command("xdotool", "windowfocus", "--sync", xid)
             source_colors = remote("get-colors")
+            hint("example.invalid/reference", "Escape", url_mode=True)
+            until("URL hint cancellation restores the source window", lambda:
+                  all(window["title"] != "Choose URL" for os_window in json.loads(remote("ls"))
+                      for tab in os_window["tabs"] for window in tab["windows"]))
+            if remote("get-colors") != source_colors:
+                raise AssertionError("Cancelling URL hints changed the source pane colors")
             hint("screenshots/plan-viewer", "a")
             def preview_has_focus():
                 current = panes()
