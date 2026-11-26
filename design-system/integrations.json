@@ -18,7 +18,7 @@
     "coverage": "Real Gitsigns, lualine and fzf-lua loads plus colorscheme reload checked. Other plugins have mappings or inherit core groups; full interactive coverage remains incomplete. Presentation checks exercise heading emphasis, Gitsigns extmarks, branch gutter symbols and lualine separators; colorscheme reload refreshes the token consumers. Gutter symbols are limited by Neovim to two display cells; actual glyph width depends on the font.",
     "sources": [
       "nvim/lua/dotfiles-theme.lua",
-      "design-system/adapters/neovim.json"
+      "design-system/adapters/neovim.toml"
     ]
   },
   {
@@ -28,7 +28,7 @@
     "reload": "Zellij watches managed config; use a new session if a native theme-file edit is not picked up. Rebuild/install the status plugin once for this migration.",
     "coverage": "Native status/prefix and picker workflow checks exercise the pinned runtime. No synchronized live-switch guarantee.",
     "sources": [
-      "design-system/adapters/zellij.json",
+      "design-system/adapters/zellij.toml",
       "zellij/status/src/theme.rs"
     ]
   },
@@ -41,7 +41,7 @@
     "sources": [
       "design-system/adapters/tmux.conf.in",
       "bin/tmux-claude-state",
-      "design-system/adapters/tmux-states.json"
+      "design-system/adapters/tmux-states.toml"
     ]
   },
   {
@@ -63,7 +63,7 @@
     "reload": "Run make shell once to install the theme link; regenerate and open a new listing or picker",
     "coverage": "Native listings and fzf previews use semantic file and Git roles. Exact bytes and tree depth remain listing policy. Eza owns its Git letter pairs and file icons: glyph tokens cannot replace its status markers, and its single new style cannot color staged-new and untracked states independently; their index/worktree columns remain distinct.",
     "sources": [
-      "design-system/adapters/eza.json",
+      "design-system/adapters/eza.toml",
       "sh/alias",
       "bin/fzf-path-preview"
     ]
@@ -75,7 +75,7 @@
     "reload": "make theme-cache; reopen the pager",
     "coverage": "Both installed applications recognize the generated theme; real code and diff output captured. Syntax grammars differ from Neovim.",
     "sources": [
-      "design-system/adapters/syntax.json",
+      "design-system/adapters/syntax.toml",
       "design-system/generated/delta.gitconfig"
     ]
   },
@@ -86,7 +86,7 @@
     "reload": "Run glow again",
     "coverage": "Real Markdown output captured. Verbatim embedded images and arbitrary upstream ANSI are outside theme ownership.",
     "sources": [
-      "design-system/adapters/glow.json",
+      "design-system/adapters/glow.toml",
       "sh/alias"
     ]
   },
@@ -131,7 +131,7 @@
     "reload": "From ~/src/studio, run bun run configure, then reload Pi. Refresh Studio's bundled theme snapshot after regenerating shared theme changes.",
     "coverage": "Pi 1.4.0 loads the generated theme; task selection, details and the compact footer are checked at narrow and wide terminal sizes. The terminal retains ownership of its canvas background and opacity.",
     "sources": [
-      "design-system/adapters/pi.json"
+      "design-system/adapters/pi.toml"
     ]
   },
   {

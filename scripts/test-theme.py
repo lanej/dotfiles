@@ -145,7 +145,7 @@ class ThemeTests(unittest.TestCase):
             check("delta gutter " + name, c[role], c["surface"], 3 if name in ("left", "right") else 4.5)
         check("tmux inactive pane title", c["text.on.border"], c["border"])
         self.assertIn(f'#[bg={c["border"]}]#[fg={c["text.on.border"]}]', outputs["tmux.conf"])
-        states = theme.expand(theme.read(theme.SOURCE / "adapters/tmux-states.json"), value)
+        states = theme.expand(theme.read(theme.SOURCE / "adapters/tmux-states.toml"), value)
         for name, style in states.items():
             check("tmux state " + name, style["fg"], style["bg"])
         self.assertEqual(states["failed"]["fg"], c["text.inverse"])
@@ -189,7 +189,7 @@ class ThemeTests(unittest.TestCase):
         self.assertEqual(nord["styles"]["widgets"]["selected_text"],
                          {"color": "#ECEFF4", "bg_color": "#434C5E"})
 
-        neovim = theme.read(theme.SOURCE / "adapters/neovim.json")
+        neovim = theme.read(theme.SOURCE / "adapters/neovim.toml")
         for name in ("LineNr", "FoldColumn", "SignColumn", "SpecialKey", "Conceal"):
             style = theme.expand(neovim[name], value)
             for bg in surfaces:
@@ -203,7 +203,7 @@ class ThemeTests(unittest.TestCase):
         check("Neovim scrollbar thumb", value(neovim["PmenuThumb"]["bg"]),
               value(neovim["PmenuSbar"]["bg"]), 3)
 
-        zellij = theme.read(theme.SOURCE / "adapters/zellij.json")
+        zellij = theme.read(theme.SOURCE / "adapters/zellij.toml")
         for name in ("text_selected", "list_selected", "table_cell_selected", "ribbon_selected"):
             style = {k: value("@" + role) for k, role in zellij[name].items()}
             for field in ("base", "emphasis_0", "emphasis_1", "emphasis_2", "emphasis_3"):

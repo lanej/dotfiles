@@ -205,8 +205,8 @@
       "heading"
     ],
     "sources": [
-      "design-system/adapters/neovim.json",
-      "design-system/adapters/syntax.json"
+      "design-system/adapters/neovim.toml",
+      "design-system/adapters/syntax.toml"
     ],
     "description": "Syntax and change states with staged and unstaged distinctions.",
     "implementations": {
@@ -288,7 +288,7 @@
       "git-state"
     ],
     "sources": [
-      "design-system/adapters/eza.json",
+      "design-system/adapters/eza.toml",
       "sh/alias",
       "bin/fzf-path-preview"
     ],
