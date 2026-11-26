@@ -1,0 +1,54 @@
+---
+title: The Studio toolchain
+description: A set of small tools for shaping, executing, reviewing, and publishing work with coding agents.
+---
+
+import StudioWorkflow from '@components/StudioWorkflow.astro';
+
+<p className="eyebrow">Human–agent software work</p>
+
+**Getting code to run is no longer the hard part. Getting the *right* work done, understanding the result, and integrating it safely still are.**
+
+I'm building a workflow around Neovim and coding agents that treats software development as a collaborative production process. A person can shape a problem and change their mind; agents can execute substantial work; neither should have to surrender the ability to inspect, revise, or stop what happens next.
+
+Rather than make one agent own everything, I've separated the system into five recognizable jobs.
+
+<StudioWorkflow />
+
+## One piece of work, several responsibilities
+
+1. **Shape it in Studio.** A conversation becomes questions, decisions, a specification, and a proposed work graph. [Beads](https://github.com/steveyegge/beads) records approved tasks and dependencies. A discussion is not automatically permission to dispatch an agent.
+2. **Produce it without sharing a checkout.** **Producer** is the execution role inside Studio: admit ready tasks, run workers and independent checks, retain evidence, and recover interrupted attempts. **Stagehand** provisions the isolated Git worktrees and protects active or uncertain work from cleanup.
+3. **Edit the artifacts in my editor.** **Copydesk** lets Studio-owned plans and specifications open as ordinary Neovim buffers. I can edit and save a document, or select lines and send a comment to its owning conversation. Studio still owns the document revision, decisions, and approvals.
+4. **Publish with a return path.** **Publisher** turns a verified result into a GitHub PR when the plan calls for one, tracks checks and reviews, and delivers actionable feedback back to the owning work. Publishing, accepting feedback, and merging are separate decisions.
+
+The loop matters more than the individual commands: **intent → execution → evidence → review → revision**. GitHub is not the end of the conversation, and an agent's claim of completion is not evidence that the work is complete.
+
+## First make it work. Then make it readable.
+
+Agents are effective at reaching a passing implementation. That does not mean the code is easy for the next person—or the next agent—to understand. A second, explicit readability review should consider names, boundaries, unnecessary abstraction, and the ease of following control flow. Only then is optimization the right next question.
+
+That's a design principle for this workflow, **not a claim that every run currently executes a fully automated readability pass**. Verification and review need their own evidence; a green test suite and an understandable change answer different questions.
+
+## Boundaries are deliberate
+
+| Tool | Owns | Does not own |
+| --- | --- | --- |
+| **[Studio](https://github.com/lanej/studio)** | Human–agent conversation, specifications, approvals, and the working view | GitHub's authoritative state |
+| **Producer** | Studio's task execution and verification lifecycle | Worktree allocation or publication policy |
+| **[Stagehand](https://github.com/lanej/worktree-manager)** | Isolated worktree creation, registration, protection, and safe cleanup | Which task should run |
+| **[Copydesk](https://github.com/lanej/editor-interop)** | The bridge between host-owned documents and Neovim | Approving or dispatching work |
+| **[Publisher](https://github.com/lanej/octo-manager)** | PR publication, check/review tracking, feedback delivery, and guarded GitHub actions | Deciding what the software should do |
+
+The boundaries are practical: they make it possible to change an agent runtime, editor, or GitHub integration without rebuilding the entire workflow. They also make authority visible. A tool that edits a document shouldn't quietly gain the right to approve it; a tool that manages a checkout shouldn't decide whether its work deserves merging.
+
+## Where the projects stand
+
+**Studio** is the current application. **Producer** names its task runtime rather than a separate published executable. **Stagehand**, **Copydesk**, and **Publisher** are the chosen names for projects that are still being renamed; their repositories and currently installed commands may retain older names.
+
+- [Studio runtime and execution model](https://github.com/lanej/studio/blob/main/RUNTIME.md)
+- [Stagehand rename](https://github.com/lanej/worktree-manager/issues/7) and [current worktree manager guide](./worktree-manager.md)
+- [Copydesk rename](https://github.com/lanej/editor-interop/issues/4) and [current editor integration](https://github.com/lanej/editor-interop)
+- [Publisher rename](https://github.com/lanej/octo-manager/issues/62) and [current publication guide](./octo-manager.md)
+
+This is a direction of travel, not a claim that every component is renamed or that every integration is complete. The aim is a workspace where people own judgment, agents do meaningful work, and the system preserves the context required to tell the difference.
