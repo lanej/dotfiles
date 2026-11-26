@@ -8,7 +8,9 @@ from urllib.parse import unquote, urlsplit
 
 from kittens.hints.main import handle_result as open_native_hint
 from kittens.tui.handler import result_handler
-from kitty.fast_data_types import add_timer, get_options, remove_timer
+from kitty.fast_data_types import add_timer, remove_timer
+
+from hint_overlay import hyperlink_marks, raw_url_marks, source_snapshot
 
 
 EXT = r"\.(?:png|jpe?g|webp|gif|bmp|tiff?|avif|ico|svg|heic|jxl)"
@@ -133,7 +135,7 @@ def pane_text(rows, rect):
     return "".join(chars), positions
 
 
-def picker_input(rows, rect, ticket, files=True):
+def picker_input(rows, rect, ticket, files=True, return_overrides=False):
     left, top, width, height = rect
     choices, marks, tokens = {}, {}, {}
 
@@ -163,7 +165,7 @@ def picker_input(rows, rect, ticket, files=True):
                 break
             marks[point] = token
 
-    lines = []
+    lines, overrides = [], {}
     for y, row in enumerate(rows):
         previous, parts = "", []
         for x, (char, url) in enumerate(row):
@@ -174,6 +176,8 @@ def picker_input(rows, rect, ticket, files=True):
                 if image and (files or IMAGE_END.search(image["path"])):
                     url = mark(image)
             url = marks.get((x, y), url)
+            if url:
+                overrides[(x, y)] = url
             if url != previous:
                 parts.append(OSC8 + url + ST)
                 previous = url
@@ -181,39 +185,28 @@ def picker_input(rows, rect, ticket, files=True):
         if previous:
             parts.append(OSC8 + ST)
         lines.append("".join(parts))
+    if return_overrides:
+        return overrides, choices
     return "\n".join(lines), choices
 
 
-def color_hex(color):
-    return f"#{int(color):06X}"
-
-
-def dim_foreground(foreground, background):
-    """Blend the native picker's uniform foreground toward the configured surface."""
-    fg, bg = int(foreground), int(background)
-    mixed = 0
-    for shift in (16, 8, 0):
-        a, b = (fg >> shift) & 255, (bg >> shift) & 255
-        mixed = (mixed << 8) | round(a * 0.55 + b * 0.45)
-    return color_hex(mixed)
-
-
-def show_hints(boss, window, hint_type="hyperlink", **kwargs):
-    # Reuse the active terminal palette: action color, selected surface, raised
-    # surface and strong text. Do not switch the theme or mutate the source.
-    opts = get_options()
-    overlay = boss.run_kitten_with_metadata(
-        "hints", ["--type", hint_type, "--alphabet", "asdfghjkl", "--hints-offset", "0",
-                  "--ascending", "--prefix-free", "--hints-foreground-color", color_hex(opts.color3),
-                  "--hints-background-color", color_hex(opts.selection_background),
-                  "--hints-text-color", color_hex(opts.color15),
-                  "--hints-text-background-color", color_hex(opts.color0)],
-        window=window, **kwargs)
-    if overlay is not None:
-        # Native hints still strip source SGR and have no independent underline
-        # style. Preserve the dim fallback until the renderer supports #428.
-        overlay.set_dynamic_color(10, dim_foreground(opts.foreground, opts.background))
-
+def show_hints(boss, window, hint_type="hyperlink", *, rows=None, snapshot=None, overrides=None, **kwargs):
+    if rows is None:
+        rows = capture(window.screen)
+    if snapshot is None:
+        snapshot = source_snapshot(window.screen, rows)
+    snapshot = dict(snapshot)
+    snapshot["type"] = hint_type
+    snapshot["marks"] = (raw_url_marks(rows, snapshot["wrapped"]) if hint_type == "url"
+                         else hyperlink_marks(rows, overrides))
+    kwargs.setdefault("default_data", {})
+    if "custom_callback" not in kwargs:
+        def selected(data, window_id, current_boss):
+            if data.get("match"):
+                open_native_hint([], data, window_id, current_boss)
+        kwargs["custom_callback"] = selected
+    return boss.run_kitten_with_metadata(
+        "hint_overlay.py", (), window=window, input_data=json.dumps(snapshot), **kwargs)
 
 def at_cursor(window):
     cursor = window.screen.cursor
@@ -236,10 +229,10 @@ def handle_result(args, answer, target_window_id, boss):
         show_hints(boss, window, hint_type)
         return
 
-    original = window.as_text(as_ansi=True, add_wrap_markers=True)
     rows = capture(window.screen)
+    snapshot = source_snapshot(window.screen, rows)
     if not has_file_hints(rows):
-        show_hints(boss, window)
+        show_hints(boss, window, rows=rows, snapshot=snapshot)
         return
     previous_marker = at_cursor(window)
     window.write_to_child(REQUEST)
@@ -263,14 +256,15 @@ def handle_result(args, answer, target_window_id, boss):
         remove_timer(timer)
         if not ready:
             # Older or unmanaged remote sessions still get Kitty's ordinary hyperlink picker.
-            show_hints(boss, window, input_data=original)
+            show_hints(boss, window, rows=rows, snapshot=snapshot)
             return
         ticket = ready[1]
         left, top, width, height, receiver_x, receiver_y = map(int, ready.groups()[1:])
         # Guest Zellij coordinates can start inside an outer terminal pane.
         cursor = window.screen.cursor
         rect = (max(0, left + cursor.x - receiver_x), max(0, top + cursor.y - receiver_y), width, height)
-        display, choices = picker_input(rows, rect, ticket, files=marker.startswith("dotfiles-hints-v2://"))
+        overrides, choices = picker_input(rows, rect, ticket, files=marker.startswith("dotfiles-hints-v2://"),
+                                          return_overrides=True)
         window.write_to_child(b"!")
 
         def selected(data, window_id, current_boss):
@@ -286,6 +280,7 @@ def handle_result(args, answer, target_window_id, boss):
             if target and image is None:
                 open_native_hint([], data, window_id, current_boss)
 
-        show_hints(boss, window, input_data=display, custom_callback=selected, default_data={})
+        show_hints(boss, window, rows=rows, snapshot=snapshot, overrides=overrides,
+                   custom_callback=selected, default_data={})
 
     add_timer(wait, 0.05, True)
