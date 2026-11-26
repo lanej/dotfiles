@@ -59,20 +59,6 @@ jobs:
           python -m pip install Pillow
       - name: Capture representative normal and URL hint modes
         run: xvfb-run -a -s "-screen 0 1280x900x24" env LIBGL_ALWAYS_SOFTWARE=1 KITTY_HINT_ARTIFACTS="$RUNNER_TEMP/kitty-hint-artifacts" python scripts/test-kitty-hint-review.py
-      - name: Export representative captures for PR review
-        if: github.event_name == 'pull_request' && github.event.pull_request.number == 429
-        shell: python
-        run: |
-          import base64
-          import hashlib
-          import os
-          from pathlib import Path
-          for name in ("review-normal.png", "review-url-hints.png"):
-              data = (Path(os.environ["RUNNER_TEMP"]) / "kitty-hint-artifacts" / name).read_bytes()
-              print(f"REVIEW_SHA {name} {hashlib.sha1(f'blob {len(data)}'.encode() + bytes([0]) + data).hexdigest()}")
-              encoded = base64.b64encode(data).decode("ascii")
-              for i in range(0, len(encoded), 768):
-                  print(f"REVIEW_IMAGE {name} {i:06d} {encoded[i:i+768]}")
       - run: make zellij-helpers
       - run: make test-kitty-last-url
       - run: python scripts/test-zellij-file-hints.py
