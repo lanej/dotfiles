@@ -1110,15 +1110,29 @@ chmod +x "$HOME/.local/bin/worktree"
                 self.assertEqual(unavailable["checkpoint"]["state"], "refused")
         self.assertEqual(log.read_bytes(), before, "An incompatible host received a native lifecycle request")
 
-    def test_registered_scope_includes_beads_and_both_approval_projects(self):
+    def test_update_all_includes_registered_projects(self):
         result = subprocess.run([sys.executable, str(COMMAND), "update", "--all", "--dry-run"],
                                 env=self.env, text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual({row["project"] for row in json.loads(result.stdout)},
-                         {"octo-manager", "zellij", "beads", "bedrock-router", "intent", "keylease", "worktree-manager", "studio"})
-        terminal = next(row for row in json.loads(result.stdout) if row["project"] == "zellij")
+        plan = {row["project"]: row for row in json.loads(result.stdout)}
+        self.assertEqual(set(plan),
+                         {"octo-manager", "zellij", "beads", "bedrock-router", "intent",
+                          "keylease", "worktree-manager", "studio", "copydesk"})
+        terminal = plan["zellij"]
         self.assertEqual(terminal["activation"], "deferred")
         self.assertEqual(terminal["steps"], ["pull", "inventory"])
+
+    def test_copydesk_skips_a_machine_with_neovim_disabled(self):
+        machine = self.base / "machine.toml"
+        machine.write_text("[tools]\nneovim = false\n")
+        data = self.base / "editor-data"
+        env = {**self.env, "DOTFILES_CONFIG": str(machine), "XDG_DATA_HOME": str(data)}
+        for action in ("build", "verify"):
+            result = subprocess.run([sys.executable, str(COMMAND), action, "copydesk"],
+                                    env=env, text=True, capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(result.stdout)[0]["outcome"], "ok")
+        self.assertFalse(data.exists(), "Disabled Neovim still created editor data")
 
     def test_dotfiles_install_clones_and_preserves_both_tools(self):
         for project, directory in (("intent", "intent"), ("keylease", "1password-agent")):

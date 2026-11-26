@@ -1,6 +1,6 @@
 # Update projects through verified activation
 
-[`project-update update --all`](../bin/project-update) activates supported projects through verified native controls. Zellij builds and session replacement are deferred by default; its result explicitly reports `activation: "deferred"` and `activation_verified: false`. Other selected installations must be running, ready, and restored to succeed. Legacy processes without a trustworthy native checkpoint stay intact and return incomplete activation.
+[`project-update update --all`](../bin/project-update) activates supported projects through verified native controls. Zellij builds and session replacement are deferred by default; its result explicitly reports `activation: "deferred"` and `activation_verified: false`. Services and live consumers verify readiness and restoration. Stateless entries verify the installed artifact. Legacy processes without a trustworthy native checkpoint stay intact and return incomplete activation.
 
 Use `make project-updates` (also `make update-projects`) for routine updates, or `make update-zellij` to update the Zellij installation for future sessions while preserving running sessions. Make fails on incomplete activation and reports recipe error 3; use the CLI directly when distinguishing exit codes. uv, Python 3.11+, and Git are required. Invoke `./bin/project-update` directly, or run `make shell` to link it after applying the change to the normal dotfiles source.
 
@@ -30,7 +30,7 @@ Native restoration preserves conversation IDs, Pi transcript paths and checkpoin
 
 The command prints the run UUID and `project-update wait RUN_ID` recovery command. Private operation records live under `${XDG_STATE_HOME:-~/.local/state}/dotfiles/project-update/RUN_ID`, outside target process trees, with owner-only directories and files. `wait` observes the existing operation and returns its recorded result. Later updates reconcile unresolved native requests through read-only inventory; they do not repeat cancellation or launches with uncertain outcomes. A lost original-restore acknowledgement can be reconciled only when no replacement was requested and the exact original incarnation and artifact are healthy, its checkpoint fence is gone, and its sessions and scheduler state are restored. This releases the old operation's recovery block without establishing selected-version completion. Retain recovery records until restoration is verified.
 
-## Eight registered projects
+## Registered projects
 
 | Project | Selected source and native activation |
 | --- | --- |
@@ -40,6 +40,7 @@ The command prints the run UUID and `project-update wait RUN_ID` recovery comman
 | `intent` | `~/src/intent`; native installation plus platform-specific remote staging. Existing profiles discover local and paired remote brokers, including configured `dev` and `dev2` targets. Native ownership deduplicates aliases and preserves routing IDs, stable socket paths, and existing SSH connections. Unreachable targets remain incomplete independently. |
 | `keylease` | `~/src/1password-agent`; native immutable releases and process-bound broker controls. Supported replacement ends the old credential owner and requires fresh approval. Active conversations lacking authoritative admission, input, or checkpoint metadata remain intact. Signing keys and credential values are never written to update records. |
 | `studio` | `~/src/studio`; environment-provided Bun satisfies the project's minimum and builds a versioned extension bundle with its selected Pi host. Native checkpoint metadata captures the transcript/session/branch and recoverable draft. Unowned children, queued input, unsafe active tools, admitted asynchronous commands, or background runtime authority lacking native checkpoints refuse cancellation; managed relaunch verifies the loaded host bytes and bundle. |
+| `copydesk` | Dotfiles pins the Copydesk Neovim plugin in `nvim/lazy-lock.json`. The build action installs that revision through Lazy in the current Neovim profile. Machines with Neovim disabled skip Copydesk. An enabled profile requires Neovim and lazy.nvim. Verification checks the installed revision for new editors. |
 | `zellij` | Dotfiles' curated runtime and compatible plugins. Routine updates defer builds and session replacement while reporting the current session inventory. Explicit installation updates prepare future sessions. Native automatic restoration remains disabled; running sessions stay intact. See [the activation contract](../zellij/ACTIVATION.md). |
 | `worktree-manager` | Dotfiles plus the existing latest-stable Git selection and pinned manager. Both installed binaries must be selected by PATH on subsequent invocation and match the selected artifacts. There is no persistent service to stop. |
 

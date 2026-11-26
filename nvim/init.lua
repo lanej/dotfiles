@@ -763,6 +763,7 @@ vim.opt.rtp:prepend(lazypath)
 require("dotfiles-theme").setup()
 
 require("lazy").setup({
+	require("copydesk-spec"),
 	require("beads.spec"),
 	{
 		"m00qek/baleia.nvim",

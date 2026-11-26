@@ -8,6 +8,7 @@
   "blink.cmp": { "branch": "main", "commit": "78336bc89ee5365633bcf754d93df01678b5c08f" },
   "colorful-menu.nvim": { "branch": "master", "commit": "196ddf16d5f8fec09ba7f20e6b153aa5188e907b" },
   "conform.nvim": { "branch": "master", "commit": "016802de402556da54c36bd7359b441266b01cdd" },
+  "copydesk": { "branch": "main", "commit": "e1c9803b304d250d2c0eb8697e0392172a85c97d" },
   "csharpls-extended-lsp.nvim": { "branch": "master", "commit": "ed20a88af5774319c7eafc7faa45c9fde7314b4e" },
   "dadbod-grip.nvim": { "branch": "main", "commit": "e4325f0fc5c5f5d19d3e4785ec9c4861444352c7" },
   "diffview.nvim": { "branch": "main", "commit": "4516612fe98ff56ae0415a259ff6361a89419b0a" },
