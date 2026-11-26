@@ -233,7 +233,35 @@ def audit_capture(surface, rows, theme, policy):
               {"minimum_colors": primitive["minimum_colors"]},
               {"colors": sorted(colors), "anchors": observed})
 
-    handlers = {"syntax-diversity": syntax_diversity,
+    def history_selection(primitive):
+        # Selection geometry is native to Atuin, not invented by our adapter.
+        signatures = []
+        excessive = []
+        for label in primitive["labels"]:
+            for y, row in enumerate(rows):
+                bounds = span(row, label)
+                if bounds is None:
+                    continue
+                start, end = bounds
+                region = [(inks[y][x], row[x].get("bold", False)) for x in range(start, end)
+                          if row[x]["data"].strip()]
+                if not region:
+                    continue
+                signatures.append({"label": label, "row": y+1,
+                    "ink": sorted({pair[0][0] for pair in region}),
+                    "bold": any(pair[1] for pair in region)})
+                for (fg, bg), _ in region:
+                    if contrast(bg, base) > primitive["maximum_fill_contrast"]:
+                        excessive.append({"row": y+1, "background": bg})
+                break
+        check(surface + ".quiet-history", not excessive and len(signatures) == len(primitive["labels"]),
+              {"maximum_fill_contrast": primitive["maximum_fill_contrast"]},
+              {"excessive": excessive, "rows": signatures})
+        check(surface + ".selection-emphasis",
+              len({(tuple(s["ink"]), s["bold"]) for s in signatures}) > 1,
+              "observable command foreground or weight distinction", signatures)
+
+    handlers = {"history-selection": history_selection, "syntax-diversity": syntax_diversity,
                 "dense-selection": dense_selection, "tab-strip": tab_strip,
                 "marked-selection": marked_selection, "change-markers": change_markers,
                 "plain-heading": plain_heading}

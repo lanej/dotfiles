@@ -269,6 +269,42 @@ def run(surface, work, env, plugins, *, raw_path=None):
             raw_path.write_text(text)
         return ansi_cells(text, columns, lines, review=review)
 
+    if surface == "atuin":
+        if not review:
+            raise ValueError("Atuin capture requires --review-dir")
+        # Use only a disposable history database; never sync or execute commands.
+        config = work / "home/.config/atuin"
+        themes = config / "themes"
+        themes.mkdir(parents=True)
+        shutil.copyfile(GENERATED / "atuin.toml", themes / "dotfiles.toml")
+        data = work / "atuin-data"
+        data.mkdir()
+        (config / "config.toml").write_text(
+            'auto_sync = false\nupdate_check = false\nstyle = "compact"\n'
+            'inline_height = 0\ninvert = true\nshow_preview = true\n'
+            'show_help = false\nprefers_reduced_motion = true\n'
+            'filter_mode = "global"\nsearch_mode = "fuzzy"\n'
+            'keymap_mode = "emacs"\nstore_failed = true\n'
+            'db_path = ' + json.dumps(str(data / "history.db")) + '\n'
+            'key_path = ' + json.dumps(str(data / "key")) + '\n'
+            'record_store_path = ' + json.dumps(str(data / "records.db")) + '\n'
+            '[theme]\nname = "dotfiles"\n')
+        isolated = {**env, "ATUIN_CONFIG_DIR": str(config),
+                    "ATUIN_THEME_DIR": str(themes),
+                    "ATUIN_SESSION": "00000000000000000000000000000001"}
+        fixture = tomllib.loads((ROOT / "design-system/fixtures/atuin.toml").read_text())
+        for entry in fixture["history"]:
+            history_id = subprocess.check_output(
+                ["atuin", "history", "start", "--", entry["command"]],
+                env=isolated, cwd=env["HOME"], text=True).strip()
+            subprocess.run(["atuin", "history", "end", "--exit", str(entry["exit"]),
+                            "--duration", str(entry["duration_ns"]), "--", history_id],
+                           env=isolated, cwd=env["HOME"], check=True, capture_output=True)
+        anchors = ("git status --short", "git diff --stat", "git log --oneline -10", "git fetch --prune")
+        return terminal(["atuin", "search", "--interactive", "--", "git"],
+                        isolated, lambda screen: all(a in "\n".join(screen.display) for a in anchors),
+                        columns=112, lines=25, capture_lines=25, raw_path=raw_path)
+
     if "-code-" in surface:
         if not review:
             raise ValueError("language captures require --review-dir")

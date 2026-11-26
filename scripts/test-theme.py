@@ -231,6 +231,18 @@ class ThemeTests(unittest.TestCase):
         check("Pi tool error output", pi["toolOutput"], pi["toolErrorBg"])
         check("Pi tool error status", pi["error"], pi["toolErrorBg"])
 
+    def test_atuin_semantic_theme(self):
+        adapter = theme.read(theme.SOURCE / "adapters/atuin.toml")
+        for preset in ("nord", "sage"):
+            outputs = theme.compile_theme(theme.SOURCE, preset)
+            colors = json.loads(outputs["colors.json"])["roles"]
+            native = tomllib.loads(outputs["atuin.toml"])
+            self.assertEqual(native["theme"]["name"], "dotfiles")
+            self.assertEqual(native["colors"], {name: colors[role] for name, role in adapter.items()})
+        config = tomllib.loads((ROOT / "sh/atuin.toml").read_text())
+        self.assertEqual(config["theme"]["name"], "dotfiles")
+        self.assertTrue(config["auto_sync"])
+
     def test_universal_role_schema(self):
         shared = theme.read(theme.SOURCE / "tokens.toml")
         expected = set(shared["roles"]) | set(shared["required_roles"])
@@ -531,6 +543,7 @@ class ThemeTests(unittest.TestCase):
                 subprocess.run(["bash", str(ROOT / "scripts/make/config.sh"), target, str(ROOT), str(home), "uv", "Darwin"], check=True, capture_output=True)
             self.assertEqual((home / ".config/dotfiles/theme").resolve(), theme.SOURCE / "generated")
             self.assertEqual((home / ".config/bottom/bottom.toml").resolve(), theme.SOURCE / "generated/bottom.toml")
+            self.assertEqual((home / ".config/atuin/themes/dotfiles.toml").resolve(), theme.SOURCE / "generated/atuin.toml")
             self.assertEqual((home / ".config/eza/theme.yml").resolve(), theme.SOURCE / "generated/eza.yml")
             self.assertTrue((home / ".config/bat/themes/Dotfiles.tmTheme").is_file())
             self.assertEqual((home / ".config/glow/theme.json").resolve(), theme.SOURCE / "generated/glow.json")
