@@ -68,8 +68,8 @@ jobs:
         run: |
           export PATH="$RUNNER_TEMP/theme-tools/bin:$PATH"
           failed=0
-          for definition in design-system/themes/*.json; do
-            preset=$(basename "$definition" .json)
+          for definition in design-system/themes/*.toml; do
+            preset=$(basename "$definition" .toml)
             output="$RUNNER_TEMP/theme-$preset"
             review="$RUNNER_TEMP/theme-review/$preset"
             python3 scripts/theme.py --theme "$preset" --output-dir "$output"

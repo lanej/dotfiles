@@ -245,6 +245,22 @@ class ThemeTests(unittest.TestCase):
             with self.assertRaises(KeyError):
                 value("@text.on.error|text.strong")
 
+    def test_compiler_rejects_invalid_role_schema(self):
+        with tempfile.TemporaryDirectory(prefix="theme-role-schema-") as directory:
+            source = Path(directory) / "source"
+            shutil.copytree(theme.SOURCE, source, ignore=shutil.ignore_patterns("generated", "baselines"))
+            path = source / "themes/nord.toml"
+            original = theme.read(path)
+            for mutation in ("missing", "unknown"):
+                data = copy.deepcopy(original)
+                if mutation == "missing":
+                    del data["roles"]["surface"]
+                else:
+                    data["roles"]["unregistered.role"] = "@text"
+                write_definition(path, data)
+                with self.subTest(mutation=mutation), self.assertRaisesRegex(ValueError, "theme role schema mismatch"):
+                    theme.compile_theme(source, "nord")
+
     def test_semantic_state_review_catalog(self):
         groups = theme.read(theme.SOURCE / "semantic-states.toml")
         self.assertEqual([group["id"] for group in groups],

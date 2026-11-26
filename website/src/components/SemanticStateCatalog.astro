@@ -3,7 +3,7 @@ import semanticStates from '../generated-theme-inputs/semantic-states.json';
 
 interface Preset {
   palette: Record<string, string>;
-  roles: Record<string, string>;
+  resolved_roles: Record<string, string>;
 }
 interface State {
   id: string;
@@ -11,7 +11,6 @@ interface State {
   glyph: string;
   ascii: string;
   role: string;
-  fallback_role?: string;
   description: string;
   example: string;
   bold?: boolean;
@@ -27,9 +26,8 @@ const { preset = 'sage' } = Astro.props;
 const definitions = import.meta.glob<Preset>('../generated-theme-inputs/themes/*.json', { eager: true, import: 'default' });
 const definition = definitions[`../generated-theme-inputs/themes/${preset}.json`];
 if (!definition) throw new Error(`Unknown state catalog preset: ${preset}`);
-function color(role: string, fallback?: string) {
-  const reference = definition.roles[role] ?? (fallback ? definition.roles[fallback] : undefined);
-  const value = definition.palette[reference?.slice(1) ?? ''];
+function color(role: string) {
+  const value = definition.resolved_roles[role];
   if (!value) throw new Error(`Missing color for ${preset}/${role}`);
   return value;
 }
@@ -47,7 +45,7 @@ const style = Object.fromEntries(['surface', 'surface.raised', 'surface.selected
       </header>
       <div class="terminal-example">
         {family.states.map(state => (
-          <div class="state-row" data-semantic-state={`${family.id}.${state.id}`} style={{ '--state-tone': color(state.role, state.fallback_role) }}>
+          <div class="state-row" data-semantic-state={`${family.id}.${state.id}`} style={{ '--state-tone': color(state.role) }}>
             <div class="state-label" style={{ fontWeight: state.bold ? 700 : 400 }}>
               <span class="glyph" aria-hidden="true">{state.glyph}</span>
               <span>{state.label}</span>
@@ -60,7 +58,7 @@ const style = Object.fromEntries(['surface', 'surface.raised', 'surface.selected
         {family.states.map(state => (
           <div>
             <dt>{state.label}</dt>
-            <dd>{state.description}<br/><code>{family.id}.{state.id}</code><br/><code>{state.role}</code> · <code>{color(state.role, state.fallback_role)}</code> · ASCII <code>{state.ascii}</code></dd>
+            <dd>{state.description}<br/><code>{family.id}.{state.id}</code><br/><code>{state.role}</code> · <code>{color(state.role)}</code> · ASCII <code>{state.ascii}</code></dd>
           </div>
         ))}
       </dl>

@@ -2,7 +2,7 @@
 interface Preset {
   name: string;
   palette: Record<string, string>;
-  roles: Record<string, string>;
+  resolved_roles: Record<string, string>;
 }
 const definitions = import.meta.glob<Preset>('../generated-theme-inputs/themes/*.json', { eager: true, import: 'default' });
 const roles = ['surface', 'surface.raised', 'surface.selected', 'text', 'text.strong', 'text.muted',
@@ -12,7 +12,7 @@ const presets = ['nord', 'sage'].map(name => {
   const definition = definitions[`../generated-theme-inputs/themes/${name}.json`];
   if (!definition) throw new Error(`Unknown comparison preset: ${name}`);
   const style = Object.fromEntries(roles.map(role => {
-    const color = definition.palette[definition.roles[role]?.slice(1)];
+    const color = definition.resolved_roles[role];
     if (!color) throw new Error(`Missing comparison palette color: ${name}/${role}`);
     return [`--preview-${role.replaceAll('.', '-')}`, color];
   }));

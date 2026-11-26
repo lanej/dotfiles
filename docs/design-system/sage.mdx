@@ -19,7 +19,7 @@ The same composition uses each preset's input colors. This is an illustrative HT
 
 The selected Midnight treatment uses the website’s exact near-black canvas (`#0D1513`), a raised surface (`#17231E`), and a selected surface (`#26352D`). The three surface colors stay fixed after variant selection; the contrast review refines the border, error and subtle-text tones. Pale sage identifies headings, links and navigation. Lavender identifies focus; a blue/cyan, sand and lichen syntax palette maintains distinctions between keywords, functions, types and strings. Success uses yellow-green, warnings amber, errors a more saturated rose (`#F18C96`), and attention copper. ANSI slots retain their conventional semantic families.
 
-The [preset input](../../design-system/themes/sage.json) defines the base palette and role assignments. Shared presentation defaults and ANSI-derived Git roles are inherited. Sage overrides emphasized add/delete diff tinting from 30% to 20%; ordinary diffs retain 16% tinting. Ordinary foreground roles, including comments and diagnostics, target at least 4.5:1 contrast on the solid base, raised and selected surfaces. Regression tests also require 3:1 for borders on the three solid surfaces and 4.5:1 for syntax/error foregrounds on diff backgrounds. The native contrast contract also tests 4.5:1 for dim Git file counts and inactive labels, and 3:1 for staged/branch gutter symbols. Transparent compositing remains a separate native review.
+The [preset input](../../design-system/themes/sage.toml) defines the base palette and role assignments. Shared presentation defaults and ANSI-derived Git roles are inherited. Sage overrides emphasized add/delete diff tinting from 30% to 20%; ordinary diffs retain 16% tinting. Ordinary foreground roles, including comments and diagnostics, target at least 4.5:1 contrast on the solid base, raised and selected surfaces. Regression tests also require 3:1 for borders on the three solid surfaces and 4.5:1 for syntax/error foregrounds on diff backgrounds. The native contrast contract also tests 4.5:1 for dim Git file counts and inactive labels, and 3:1 for staged/branch gutter symbols. Transparent compositing remains a separate native review.
 
 <PresetPalette preset="sage" />
 
@@ -27,11 +27,11 @@ The [preset input](../../design-system/themes/sage.json) defines the base palett
 
 The [candidate state vocabulary](../../design-system/semantic-states.json) separates configuration, log severity, execution, system health, interaction, connectivity, data freshness/validity, and access/approval. It defines 39 stable tokens across eight families. The same color can express related emphasis across families without making the states interchangeable. The previews show labels and glyphs, not color alone.
 
-On uses the primary sage accent; off and trace use the new subtle text tone (`#909F95`), which is darker than debug (`#A3B1A7`) while retaining at least 4.5:1 contrast on selected rows. The proposed state vocabulary falls back to muted text for presets without the subtle role. Info and running share cyan, warning and blocked share amber, attention uses copper, and failed or unavailable use rose. Fatal adds weight rather than a new color. A canceled task or unknown service observation is neutral.
+On uses the primary sage accent; off and trace use the new subtle text tone (`#909F95`), which is darker than debug (`#A3B1A7`) while retaining at least 4.5:1 contrast on selected rows. The shared role schema defaults subtle text to muted text; Sage overrides that role. Info and running share cyan, warning and blocked share amber, attention uses copper, and failed or unavailable use rose. Fatal adds weight rather than a new color. A canceled task or unknown service observation is neutral.
 
 The new families deliberately distinguish a connected transport from a healthy service, fresh evidence from valid data, a focused input from a selected item, and read-only access from a denied operation, and approval granted from execution succeeded. `access.approved` uses a sage checkmark, while `execution.succeeded` retains the success-green checkmark. Paused, retrying and skipped extend the execution lifecycle without treating every non-running state as a failure.
 
-Every state is emitted under `semantic_states` in the generated [token metadata](../../design-system/generated/tokens.json) for every preset. Use the family-qualified key (for example `connectivity.connected` or `access.approval`) to retrieve its label, resolved foreground, selected glyph, Unicode and ASCII variants, weight, color role and description. Glyph selection follows the existing `--symbols` option. The color role is resolved using that preset and the declared fallback; the default Nord metadata expands without changing its palette or native adapter styling.
+Every state is emitted under `semantic_states` in the generated [token metadata](../../design-system/generated/tokens.json) for every preset. Use the family-qualified key (for example `connectivity.connected` or `access.approval`) to retrieve its label, resolved foreground, selected glyph, Unicode and ASCII variants, weight, color role and description. Glyph selection follows the existing `--symbols` option. The color role is resolved using the same semantic role for every preset; the default Nord metadata expands without changing its palette or native adapter styling.
 
 <SemanticStateCatalog preset="sage" />
 
@@ -39,7 +39,7 @@ The reviewed color hierarchy uses a leading accent marker in the selected-row ex
 
 ## Contrast contract
 
-The [native contrast regression test](../../scripts/test-theme.py) checks the declared foreground/background pairings, not arbitrary combinations of palette swatches. Normal text must meet 4.5:1 and essential non-text controls and state indicators 3:1. State colors may have similar luminance if labels or glyphs distinguish them; a pairwise 3:1 requirement between unrelated state hues would not be an accessibility requirement. Preset-specific adapter roles use an explicit fallback (for example `@text.on.error|text.strong`) so the existing Nord-generated configuration remains unchanged.
+The [native contrast regression test](../../scripts/test-theme.py) checks the declared foreground/background pairings, not arbitrary combinations of palette swatches. Normal text must meet 4.5:1 and essential non-text controls and state indicators 3:1. State colors may have similar luminance if labels or glyphs distinguish them; a pairwise 3:1 requirement between unrelated state hues would not be an accessibility requirement. Universal role defaults preserve Nord’s native appearance; Sage overrides the roles and typed presentation tokens it needs. Native adapters consume only resolved roles.
 
 These are solid sRGB measurements, not a claim of WCAG conformance for all native applications. ANSI black retains its conventional dark-fill role; third-party foreground overrides, arbitrary ANSI combinations, native compositing, terminal/font rendering, and application-owned controls outside the adapters need separate review. The native fixtures remain necessary to establish actual rendered behavior.
 
@@ -53,7 +53,7 @@ python3 scripts/theme.py --theme sage --output-dir /tmp/sage-preset --check
 DOTFILES_THEME_DIR=/tmp/sage-preset bin/dotfiles-theme --color=always
 ```
 
-For a full local trial, select `"theme": "sage"` in [preset selection](../../design-system/config.json), run `make theme-generate` and follow the [configuration and reload instructions](../design-system.mdx#generate-configure-and-reload). Restore Nord by selecting `"theme": "nord"` and regenerating/reloading. An isolated output alone does not switch every running application.
+For a full local trial, select `theme = "sage"` in [preset selection](../../design-system/config.toml), run `make theme-generate` and follow the [configuration and reload instructions](../design-system.mdx#generate-configure-and-reload). Restore Nord by selecting `theme = "nord"` and regenerating/reloading. An isolated output alone does not switch every running application.
 
 ## Native review
 

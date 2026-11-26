@@ -19,13 +19,16 @@ const repo = resolve(site, '..');
 const themeInputs = resolve(site, 'src/generated-theme-inputs');
 await rm(themeInputs, { recursive: true, force: true });
 await mkdir(resolve(themeInputs, 'themes'), { recursive: true });
-execFileSync('python3', ['-c', `import json, pathlib, sys, tomllib
+execFileSync('python3', ['-c', `import json, pathlib, sys
 source, target = map(pathlib.Path, sys.argv[1:])
-for p in [*source.glob("themes/*.toml"), *(source / (name + ".toml") for name in ("catalog", "integrations", "semantic-states"))]:
-    data = tomllib.loads(p.read_text())
-    if set(data) == {"items"}:
-        data = data["items"]
+sys.path.insert(0, str(source.parent / "scripts"))
+from theme import read, compile_theme
+for p in source.glob("themes/*.toml"):
+    data = read(p)
+    data["resolved_roles"] = json.loads(compile_theme(source, p.stem)["colors.json"])["roles"]
     (target / p.relative_to(source).with_suffix(".json")).write_text(json.dumps(data, ensure_ascii=False))
+for name in ("catalog", "integrations", "semantic-states"):
+    (target / (name + ".json")).write_text(json.dumps(read(source / (name + ".toml")), ensure_ascii=False))
 `, resolve(repo, 'design-system'), themeInputs]);
 const github = 'https://github.com/lanej/dotfiles';
 // All authored content lives in README.md and docs/. This is a route map, not a second manual.
