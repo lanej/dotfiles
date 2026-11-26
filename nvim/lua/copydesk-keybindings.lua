@@ -14,7 +14,11 @@ vim.api.nvim_create_autocmd("User", {
 		bind("n", "d", copydesk.changes, "Jump to Copydesk changes")
 		bind("n", "v", copydesk.compare, "Compare Copydesk revisions")
 		bind("n", "m", copydesk.resolve, "Adopt the incoming Copydesk revision")
-		bind("n", "l", copydesk.reload, "Reload the Copydesk document")
+		bind("n", "l", function()
+			if vim.fn.confirm("Reload the Copydesk document and discard local edits?", "&Cancel\n&Reload", 1) == 2 then
+				copydesk.reload(true)
+			end
+		end, "Reload the Copydesk document")
 		bind("n", "x", copydesk.reconnect, "Reconnect Copydesk")
 	end,
 })
