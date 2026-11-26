@@ -8,7 +8,7 @@ from urllib.parse import unquote, urlsplit
 
 from kittens.hints.main import handle_result as open_native_hint
 from kittens.tui.handler import result_handler
-from kitty.fast_data_types import add_timer, remove_timer
+from kitty.fast_data_types import add_timer, get_options, remove_timer
 
 
 EXT = r"\.(?:png|jpe?g|webp|gif|bmp|tiff?|avif|ico|svg|heic|jxl)"
@@ -184,14 +184,35 @@ def picker_input(rows, rect, ticket, files=True):
     return "\n".join(lines), choices
 
 
+def color_hex(color):
+    return f"#{int(color):06X}"
+
+
+def dim_foreground(foreground, background):
+    """Blend the native picker's uniform foreground toward the configured surface."""
+    fg, bg = int(foreground), int(background)
+    mixed = 0
+    for shift in (16, 8, 0):
+        a, b = (fg >> shift) & 255, (bg >> shift) & 255
+        mixed = (mixed << 8) | round(a * 0.55 + b * 0.45)
+    return color_hex(mixed)
+
+
 def show_hints(boss, window, hint_type="hyperlink", **kwargs):
+    # Reuse the active terminal palette: action color, selected surface, raised
+    # surface and strong text. Do not switch the theme or mutate the source.
+    opts = get_options()
     overlay = boss.run_kitten_with_metadata(
         "hints", ["--type", hint_type, "--alphabet", "asdfghjkl", "--hints-offset", "0",
-                  "--ascending", "--prefix-free", "--hints-foreground-color", "#2E3440",
-                  "--hints-background-color", "#B48EAD", "--hints-text-color", "#ECEFF4"],
+                  "--ascending", "--prefix-free", "--hints-foreground-color", color_hex(opts.color3),
+                  "--hints-background-color", color_hex(opts.selection_background),
+                  "--hints-text-color", color_hex(opts.color15),
+                  "--hints-text-background-color", color_hex(opts.color0)],
         window=window, **kwargs)
     if overlay is not None:
-        overlay.set_dynamic_color(10, "#4C566A")
+        # Native hints still strip source SGR and have no independent underline
+        # style. Preserve the dim fallback until the renderer supports #428.
+        overlay.set_dynamic_color(10, dim_foreground(opts.foreground, opts.background))
 
 
 def at_cursor(window):
