@@ -11,8 +11,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const tools = path.join(root, '.typescript-quality');
+const toolManifest = path.join(tools, 'package.json');
 const baselinePath = '.typescript-quality-baseline.json';
-const require = createRequire(path.join(tools, 'package.json'));
+const require = createRequire(toolManifest);
 const [mode = 'all', ...args] = process.argv.slice(2);
 const modes = new Set(['all', 'alpha', 'lint', 'typecheck', 'fmt', 'test', 'audit', 'tools', 'baseline', 'ratchet']);
 const sourcePattern = /\.(?:ts|tsx|mts|cts)$/u;
@@ -185,11 +186,13 @@ async function lint(files, built) {
 
 async function formatting(files, write = false) {
   const prettier = require('prettier');
+  const defaults = readJSON(toolManifest).prettier;
   const findings = [];
   for (const file of files) {
     const absolute = safePath(file);
     const text = readFileSync(absolute, 'utf8');
-    const options = { ...(await prettier.resolveConfig(absolute, { editorconfig: true })), filepath: absolute };
+    const projectOptions = await prettier.resolveConfig(absolute, { editorconfig: true });
+    const options = { ...defaults, ...projectOptions, filepath: absolute };
     if (write) {
       writeFileSync(absolute, await prettier.format(text, options));
     } else if (!await prettier.check(text, options)) {

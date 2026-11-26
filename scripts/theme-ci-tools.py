@@ -21,6 +21,7 @@ def main():
     targets = {("Linux", "x86_64"): ("x86_64-unknown-linux-gnu", "linux_amd64", "Linux_x86_64", "linux-x86_64"), ("Darwin", "arm64"): ("aarch64-apple-darwin", "darwin_arm64", "Darwin_arm64", "macos-arm64"), ("Darwin", "x86_64"): ("x86_64-apple-darwin", "darwin_amd64", "Darwin_x86_64", "macos-x86_64")}
     triple, fzf_platform, glow_platform, nvim_platform = targets[system, machine]
     releases = [
+        ("atuinsh/atuin", "v18.24.8", f"atuin-{triple}.tar.gz", "atuin"),
         ("sharkdp/bat", "v0.26.1", f"bat-v0.26.1-{triple}.tar.gz", "bat"),
         ("dandavison/delta", "0.20.1", f"delta-0.20.1-{triple}.tar.gz", "delta"),
         ("ClementTsang/bottom", "0.15.0", f"bottom_{triple}.tar.gz", "btm"),

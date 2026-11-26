@@ -18,6 +18,8 @@ on:
       - 'nvim/lazy-lock.json'
       - 'bin/dotfiles-*'
       - 'bin/fzf-path-preview'
+      - 'sh/atuin.toml'
+      - 'scripts/make/config.sh'
       - 'sh/alias'
       - 'zsh/zlogin'
       - 'bin/tmux-claude-state'

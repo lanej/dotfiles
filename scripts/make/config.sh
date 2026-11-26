@@ -79,6 +79,8 @@ case "$target" in
         ln -fs "${dotfiles}/sh/starship.toml" "${setup_home}/.config/starship.toml"
         mkdir -p "${setup_home}/.config/atuin"
         ln -fs "${dotfiles}/sh/atuin.toml" "${setup_home}/.config/atuin/config.toml"
+        mkdir -p "${setup_home}/.config/atuin/themes"
+        ln -fs "${dotfiles}/design-system/generated/atuin.toml" "${setup_home}/.config/atuin/themes/dotfiles.toml"
         ln -fs "${dotfiles}/sh/dircolors" "${setup_home}/.dir_colors"
         mkdir -p "${setup_home}/.config/eza"
         ln -fs "${dotfiles}/design-system/generated/eza.yml" "${setup_home}/.config/eza/theme.yml"

@@ -1384,18 +1384,38 @@ def go_adoption(root: Path, state: Installation, rollout: str | None) -> tuple[s
     return rollout, legacy
 
 
-def bun_ci_setup(root: Path) -> str | None:
-    entry = inspect(root, "package.json")
-    if entry is None or entry["kind"] != "file":
+BUN_LOCKFILES = ("bun.lock", "bun.lockb")
+
+
+def project_package_manager(root: Path, declaration: object) -> str:
+    if not isinstance(declaration, str):
+        raise ValueError("packageManager in package.json must be a string")
+    if declaration:
+        return declaration.split("@", 1)[0]
+    lockfiles = {
+        "bun": BUN_LOCKFILES,
+        "pnpm": ("pnpm-lock.yaml",),
+        "yarn": ("yarn.lock",),
+        "npm": ("package-lock.json",),
+    }
+    found = [name for name, locks in lockfiles.items() if any((root / lock).is_file() for lock in locks)]
+    if len(found) > 1:
+        raise ValueError("multiple package managers; declare packageManager in package.json first")
+    return found[0] if found else "npm"
+
+
+def bun_ci_setup(root: Path, declaration: object) -> str | None:
+    if not declaration and not any((root / lock).is_file() for lock in BUN_LOCKFILES):
         return None
-    project = json.loads((root / "package.json").read_text())
-    manager = project.get("packageManager", "")
-    if not isinstance(manager, str) or not manager.startswith("bun@"):
+    if project_package_manager(root, declaration) != "bun":
         return None
-    version = manager.removeprefix("bun@")
+    setup = "      - uses: oven-sh/setup-bun@v2\n"
+    if not declaration:
+        return setup
+    version = str(declaration).removeprefix("bun@")
     if not VERSION_RE.fullmatch(version):
         raise ValueError("Bun CI requires an exact packageManager version, such as bun@1.4.4")
-    return f"      - uses: oven-sh/setup-bun@v2\n        with:\n          bun-version: '{version}'\n"
+    return setup + f"        with:\n          bun-version: '{version}'\n"
 
 
 def go_configuration(
@@ -1403,7 +1423,11 @@ def go_configuration(
 ) -> tuple[str, str | None, tuple[str, Snapshot | None] | None]:
     """Layer the profile beside project policy rather than rewriting it."""
     rollout, legacy = go_adoption(root, state, rollout)
-    setup = bun_ci_setup(root)
+    entry = inspect(root, "package.json")
+    setup = None
+    if entry is not None and entry["kind"] == "file":
+        project = json.loads((root / "package.json").read_text())
+        setup = bun_ci_setup(root, project.get("packageManager", ""))
     if setup is not None:
         workflow_path = ".github/workflows/go-quality.yml"
         workflow = payloads[workflow_path].decode()
@@ -1465,7 +1489,8 @@ def typescript_configuration(
     if not package_entry or package_entry["kind"] != "file":
         raise ValueError("TypeScript adoption requires a regular package.json; initialize the project first")
     project = json.loads((root / "package.json").read_text())
-    setup = bun_ci_setup(root)
+    declaration = project.get("packageManager", "")
+    setup = bun_ci_setup(root, declaration)
     if setup is not None:
         workflow_path = ".github/workflows/typescript-quality.yml"
         workflow = payloads[workflow_path].decode()
@@ -1490,13 +1515,7 @@ def typescript_configuration(
             raise ValueError("invalid existing TypeScript quality policy")
     else:
         settings = json.loads(payloads[settings_path])
-        manager = project.get("packageManager", "").split("@", 1)[0]
-        if not manager:
-            locks = [("pnpm", "pnpm-lock.yaml"), ("yarn", "yarn.lock"), ("npm", "package-lock.json")]
-            found = [name for name, lock in locks if (root / lock).exists()]
-            if len(found) > 1:
-                raise ValueError("multiple package managers; declare packageManager in package.json first")
-            manager = found[0] if found else "npm"
+        manager = project_package_manager(root, declaration)
         if manager not in ("npm", "pnpm", "yarn", "bun"):
             raise ValueError(
                 "TypeScript command defaults support npm, pnpm, yarn, or bun; configure the project explicitly"

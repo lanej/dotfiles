@@ -15,7 +15,7 @@ max_base_contrast = 4
 max_base_contrast = 2
 
 [profiles]
-theme = ["neovim","neovim-frame","tmux","cli","fzf","bat","delta","glow","bottom","neovim-code-rust","bat-code-rust","neovim-code-go","bat-code-go","neovim-code-typescript","bat-code-typescript","neovim-code-python","bat-code-python","neovim-code-ruby","bat-code-ruby","neovim-code-lua","bat-code-lua","neovim-code-bash","bat-code-bash","neovim-code-json","bat-code-json","neovim-code-toml","bat-code-toml"]
+theme = ["neovim","neovim-frame","tmux","cli","fzf","bat","delta","glow","bottom","neovim-code-rust","bat-code-rust","neovim-code-go","bat-code-go","neovim-code-typescript","bat-code-typescript","neovim-code-python","bat-code-python","neovim-code-ruby","bat-code-ruby","neovim-code-lua","bat-code-lua","neovim-code-bash","bat-code-bash","neovim-code-json","bat-code-json","neovim-code-toml","bat-code-toml","atuin"]
 zellij = ["zellij"]
 
 [surfaces]
@@ -188,3 +188,8 @@ primitives = [{ kind = "syntax-diversity", anchors = ["[policy]","delays_ms = [1
 anchors = ["retry.toml","[policy]","delays_ms =","[policy.fallback]","[[policy.rules]]"]
 forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
 primitives = [{ kind = "syntax-diversity", anchors = ["[policy]","delays_ms = [100, 200, 400]","enabled = true","state = \"blocked\"","reason = \"budget exhausted\"","code = 503"], minimum_colors = 3 }]
+
+[surfaces.atuin]
+anchors = ["git status --short", "git diff --stat", "git log --oneline -10", "git fetch --prune", "git push origin HEAD"]
+forbidden = ["Error:", "Failed to load theme", "panic"]
+primitives = [{ kind = "history-selection", labels = ["git status --short", "git diff --stat", "git log --oneline -10", "git fetch --prune"], maximum_fill_contrast = 2.0 }]
