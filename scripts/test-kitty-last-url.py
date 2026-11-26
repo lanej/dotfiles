@@ -29,6 +29,8 @@ def check_image_hints(root):
     picker = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(picker)
     from kittens.hints.main import parse_hints_args
+    # Exercise the current generated palette rather than Kitty factory defaults.
+    set_options(load_config(str(root / "design-system/generated/kitty.conf")))
     source = SimpleNamespace(screen=Screen(None, 4, 60, 4))
     overlay = SimpleNamespace(screen=Screen(None, 4, 60, 4))
     overlay.set_dynamic_color = lambda code, value: Window.set_dynamic_color(overlay, code, value)
@@ -46,12 +48,13 @@ def check_image_hints(root):
         if (name != "hints" or options.type != kind or options.alphabet != "asdfghjkl"
                 or options.hints_offset != 0 or not options.ascending or not options.prefix_free or extra
                 or options.hints_text_color != "#ECEFF4"
-                or options.hints_background_color != "#B48EAD"
-                or options.hints_foreground_color != "#2E3440" or kwargs["window"] is not source):
+                or options.hints_background_color != "#434C5E"
+                or options.hints_foreground_color != "#EBCB8B"
+                or options.hints_text_background_color != "#3B4252" or kwargs["window"] is not source):
             raise AssertionError("Native hints did not receive the home-row and Nord style")
-        if int(overlay.screen.color_profile.default_fg) != 0x4C566A:
+        if int(overlay.screen.color_profile.default_fg) != 0x8C929D:
             raise AssertionError("Non-link text did not dim on the native overlay")
-        if int(source.screen.color_profile.default_fg) == 0x4C566A:
+        if int(source.screen.color_profile.default_fg) == 0x8C929D:
             raise AssertionError("Hint styling changed the source pane")
     picker.handle_result(["select_hint.py", "url"], None, 7, boss)
     if calls[-1][1].type != "url":
