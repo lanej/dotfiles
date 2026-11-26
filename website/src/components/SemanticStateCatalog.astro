@@ -1,5 +1,5 @@
 ---
-import semanticStates from '../../../design-system/semantic-states.json';
+import semanticStates from '../generated-theme-inputs/semantic-states.json';
 
 interface Preset {
   palette: Record<string, string>;
@@ -24,8 +24,8 @@ interface Family {
 }
 
 const { preset = 'sage' } = Astro.props;
-const definitions = import.meta.glob<Preset>('../../../design-system/themes/*.json', { eager: true, import: 'default' });
-const definition = definitions[`../../../design-system/themes/${preset}.json`];
+const definitions = import.meta.glob<Preset>('../generated-theme-inputs/themes/*.json', { eager: true, import: 'default' });
+const definition = definitions[`../generated-theme-inputs/themes/${preset}.json`];
 if (!definition) throw new Error(`Unknown state catalog preset: ${preset}`);
 function color(role: string, fallback?: string) {
   const reference = definition.roles[role] ?? (fallback ? definition.roles[fallback] : undefined);

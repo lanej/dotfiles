@@ -1,4 +1,5 @@
 import { readFile, writeFile, mkdir, cp, rm } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
 import { dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { unified } from 'unified';
@@ -14,6 +15,18 @@ import { zellijPages } from '../zellij.config.mjs';
 
 const site = fileURLToPath(new URL('../', import.meta.url));
 const repo = resolve(site, '..');
+// Project authored TOML to machine-readable website inputs using the standard library.
+const themeInputs = resolve(site, 'src/generated-theme-inputs');
+await rm(themeInputs, { recursive: true, force: true });
+await mkdir(resolve(themeInputs, 'themes'), { recursive: true });
+execFileSync('python3', ['-c', `import json, pathlib, sys, tomllib
+source, target = map(pathlib.Path, sys.argv[1:])
+for p in [*source.glob("themes/*.toml"), *(source / (name + ".toml") for name in ("catalog", "integrations", "semantic-states"))]:
+    data = tomllib.loads(p.read_text())
+    if set(data) == {"items"}:
+        data = data["items"]
+    (target / p.relative_to(source).with_suffix(".json")).write_text(json.dumps(data, ensure_ascii=False))
+`, resolve(repo, 'design-system'), themeInputs]);
 const github = 'https://github.com/lanej/dotfiles';
 // All authored content lives in README.md and docs/. This is a route map, not a second manual.
 const pages = [

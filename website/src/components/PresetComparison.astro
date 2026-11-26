@@ -4,12 +4,12 @@ interface Preset {
   palette: Record<string, string>;
   roles: Record<string, string>;
 }
-const definitions = import.meta.glob<Preset>('../../../design-system/themes/*.json', { eager: true, import: 'default' });
+const definitions = import.meta.glob<Preset>('../generated-theme-inputs/themes/*.json', { eager: true, import: 'default' });
 const roles = ['surface', 'surface.raised', 'surface.selected', 'text', 'text.strong', 'text.muted',
   'accent', 'focus', 'syntax.comment', 'syntax.keyword', 'syntax.function', 'syntax.type',
   'syntax.string', 'status.success', 'status.warning', 'status.error', 'status.attention'];
 const presets = ['nord', 'sage'].map(name => {
-  const definition = definitions[`../../../design-system/themes/${name}.json`];
+  const definition = definitions[`../generated-theme-inputs/themes/${name}.json`];
   if (!definition) throw new Error(`Unknown comparison preset: ${name}`);
   const style = Object.fromEntries(roles.map(role => {
     const color = definition.palette[definition.roles[role]?.slice(1)];
