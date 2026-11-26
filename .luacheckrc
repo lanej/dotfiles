@@ -5,4 +5,5 @@ self = false
 
 files["nvim/**/*.lua"] = { globals = { "vim" } }
 files["scripts/bootstrap-nvim.lua"] = { globals = { "vim" } }
+files["scripts/project_update_copydesk.lua"] = { globals = { "vim" } }
 files["wezterm.lua"] = { std = "lua54" }
