@@ -1127,12 +1127,47 @@ chmod +x "$HOME/.local/bin/worktree"
         machine.write_text("[tools]\nneovim = false\n")
         data = self.base / "editor-data"
         env = {**self.env, "DOTFILES_CONFIG": str(machine), "XDG_DATA_HOME": str(data)}
+        (self.base / "src/copydesk").mkdir(parents=True)
         for action in ("build", "verify"):
             result = subprocess.run([sys.executable, str(COMMAND), action, "copydesk"],
                                     env=env, text=True, capture_output=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(json.loads(result.stdout)[0]["outcome"], "ok")
         self.assertFalse(data.exists(), "Disabled Neovim still created editor data")
+
+    def test_copydesk_selects_its_fetched_main_revision(self):
+        machine = self.base / "machine.toml"
+        machine.write_text("[tools]\nneovim = true\n")
+        data = self.base / "editor-data"
+        env = {**self.env, "DOTFILES_CONFIG": str(machine), "XDG_DATA_HOME": str(data)}
+        source = self.base / "src/copydesk"
+        source.parent.mkdir()
+        self.checkout.rename(source)
+        self.git(source, "remote", "set-url", "origin", "https://github.com/lanej/copydesk.git")
+        self.git(source, "update-ref", "refs/remotes/origin/main", "HEAD")
+        selected = self.git(source, "rev-parse", "refs/remotes/origin/main")
+        result = subprocess.run([sys.executable, str(COMMAND), "status", "copydesk"],
+                                env=env, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        status = json.loads(result.stdout)[0]["runtime"]
+        self.assertEqual(status["selected_revision"], selected)
+        self.assertIsNone(status["installed_revision"])
+        self.assertFalse(data.exists(), "Status created editor data")
+
+    def test_copydesk_refuses_to_pull_an_unrelated_checkout(self):
+        source = self.base / "src/copydesk"
+        source.parent.mkdir()
+        self.checkout.rename(source)
+        before = self.git(source, "rev-parse", "HEAD")
+        self.commit("second")
+        self.git(self.source, "push", "origin", "trunk")
+        for args in (("pull", "copydesk"), ("status", "copydesk", "--fetch")):
+            result = subprocess.run([sys.executable, str(COMMAND), *args],
+                                    env=self.env, text=True, capture_output=True)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("does not match the registered repository URL", result.stdout + result.stderr)
+        self.assertEqual(self.git(source, "rev-parse", "HEAD"), before)
+        self.assertEqual(self.git(source, "rev-parse", "origin/trunk"), before)
 
     def test_dotfiles_install_clones_and_preserves_both_tools(self):
         for project, directory in (("intent", "intent"), ("keylease", "1password-agent")):
