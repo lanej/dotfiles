@@ -4,17 +4,13 @@
 package hints
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"math"
-	"os"
 	"regexp"
 	"sort"
 	"strings"
 
-	"github.com/kovidgoyal/kitty/tools/tui"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/tui/sgr"
 	"github.com/kovidgoyal/kitty/tools/wcswidth"
@@ -311,14 +307,10 @@ func (f *styledFrame) render(prefix string) string {
 	b.Grow(len(f.text.plain)*2)
 	b.WriteString("\x1b[0m")
 	spans:=f.spans(prefix)
-	ri,si,pos,lastMark:=0,0,0,-1
+	ri,si,pos:=0,0,0
 	var last paint
 	havePaint:=false
-	setMark:=func(mark int) {
-		if mark==lastMark{return}
-		if mark>=0{fmt.Fprintf(&b,"\x1b]8;;mark:%d\x1b\\",f.marks[mark].Index)}else{b.WriteString("\x1b]8;;\x1b\\")}
-		lastMark=mark
-	}
+
 	put:=func(p paint,text string) {
 		if p.decoration==0 {p.underline=0}
 		if !havePaint || p!=last {writePaint(&b,p);last=p;havePaint=true}
@@ -330,16 +322,14 @@ func (f *styledFrame) render(prefix string) string {
 		for si<len(spans)&&spans[si].end<=pos {si++}
 		next:=r.end
 		p:=r.style
-		mark:=-1
 		kind:=byte('c')
 		if si<len(spans){
 			s:=spans[si]
 			if pos<s.start {next=min(next,s.start)} else {
-				next=min(next,s.end);kind=s.kind;mark=s.mark
+				next=min(next,s.end);kind=s.kind
 				if kind=='k' {
 					// A badge replaces the whole span, regardless of SGR
 					// boundaries inside the consumed scheme/graphemes.
-					setMark(mark)
 					amber:=true
 					for _,ch:=range s.text {
 						fg:=f.req.Foreground
@@ -354,7 +344,7 @@ func (f *styledFrame) render(prefix string) string {
 		text:=f.text.plain[pos:next]
 		switch kind {
 		case 'h':
-			mark=-1;text=strings.Repeat(" ",len(text));p.attrs=0;p.decoration=0
+			text=strings.Repeat(" ",len(text));p.attrs=0;p.decoration=0
 		case 't':
 			if p.bg==f.req.Background {p.bg=f.req.Target}else{p.bg=blend(f.req.Target,p.bg,.65)}
 			p.fg=f.cache.correct(p.fg,p.bg,4.5,false)
@@ -364,11 +354,10 @@ func (f *styledFrame) render(prefix string) string {
 			p.fg=f.cache.correct(p.fg,p.bg,4.5,true)
 			if p.decoration!=0{p.underline=f.cache.correct(p.underline,p.bg,3,true)}
 		}
-		setMark(mark)
 		put(p,cleanRows.Replace(text))
 		pos=next
 	}
-	setMark(-1);b.WriteString("\x1b[0m")
+	b.WriteString("\x1b[0m")
 	return b.String()
 }
 
@@ -391,26 +380,10 @@ func (f *styledFrame) hit(prefix string,x,y int) int {
 
 // Entry called by the separately built, opt-in native helper. No modification
 // to installed Kitty binaries, and no resident process.
-func RunStyledHints(mode string) error {
-	data,err:=io.ReadAll(os.Stdin);if err!=nil{return err}
-	var req StyledRequest
-	if err=json.Unmarshal(data,&req);err!=nil{return err}
-	if req.Cols<1||req.Cols>10000||(req.Type!="url"&&req.Type!="hyperlink"){return fmt.Errorf("invalid styled hint snapshot")}
-	if req.Pane!=nil&&(req.Pane.Left<0||req.Pane.Top<0||req.Pane.Width<1||req.Pane.Height<1){return fmt.Errorf("invalid pane geometry")}
-	f,err:=newStyledFrame(&req);if err!=nil{return err}
-	switch mode {
-	case "probe":
-		marks:=make([]Mark,0,len(f.marks))
-		for _,m:=range f.marks {marks=append(marks,m.Mark)}
-		return json.NewEncoder(os.Stdout).Encode(hasFileMarks(marks))
-	case "render":
-		_,err=io.WriteString(os.Stdout,f.render(""));return err
-	case "select":
-	default:
-		return fmt.Errorf("unsupported native hints mode %q",mode)
-	}
-	if len(f.marks)==0{return nil}
-	lp,err:=loop.New(loop.NoAlternateScreen,loop.OnlyDisambiguateKeys);if err!=nil{return err}
+// pick uses Kitty's native event loop and returns the exact selected mark.
+func (f *styledFrame) pick() (*Mark,error) {
+	if len(f.marks)==0{return nil,nil}
+	lp,err:=loop.New(loop.NoAlternateScreen,loop.OnlyDisambiguateKeys);if err!=nil{return nil,err}
 	lp.MouseTrackingMode(loop.BUTTONS_ONLY_MOUSE_TRACKING)
 	prefix:=""
 	chosen:=-1
@@ -426,18 +399,21 @@ func RunStyledHints(mode string) error {
 	}
 	lp.OnFinalize=func()string{lp.SetCursorVisible(true);return ""}
 	lp.OnResize=func(_, current loop.ScreenSize)error{
-		if int(current.WidthCells)!=req.Cols || (req.Rows>0&&int(current.HeightCells)!=req.Rows){lp.Quit(1)}
+		if int(current.WidthCells)!=f.req.Cols || int(current.HeightCells)!=f.req.Rows {lp.Quit(1)}
 		return nil
 	}
 	lp.OnText=func(text string,_,paste bool)error{
 		if paste{return nil}
 		changed:=false
 		for _,ch:=range text{
-			candidate:=prefix+string(ch);matches:=0;last:=-1
-			for i,m:=range f.marks{if strings.HasPrefix(m.label,candidate){matches++;last=i}}
-			if matches==0{continue}
+			candidate:=prefix+string(ch)
+			found:=-1
+			for i,m:=range f.marks{
+				if strings.HasPrefix(m.label,candidate){found=i}
+			}
+			if found<0{continue}
 			prefix=candidate;changed=true
-			if f.marks[last].label==prefix{choose(last);return nil}
+			if f.marks[found].label==prefix{choose(found);return nil}
 		}
 		if changed{draw()};return nil
 	}
@@ -446,29 +422,13 @@ func RunStyledHints(mode string) error {
 		if ev.MatchesPressOrRepeat("backspace"){ev.Handled=true;if len(prefix)>0{prefix=prefix[:len(prefix)-1];draw()}}
 		return nil
 	}
-	lp.OnRCResponse=func(data []byte)error{
-		var msg struct{Type string;Mark int}
-		if json.Unmarshal(data,&msg)==nil&&msg.Type=="mark_activated"{
-			for i,m:=range f.marks{if m.Index==msg.Mark&&strings.HasPrefix(m.label,prefix){choose(i);break}}
-		}
-		return nil
-	}
 	lp.OnMouseEvent=func(ev *loop.MouseEvent)error{
 		if ev.Event_type==loop.MOUSE_CLICK && ev.Buttons&loop.LEFT_MOUSE_BUTTON!=0 {
 			if i:=f.hit(prefix,ev.Cell.X,ev.Cell.Y);i>=0{choose(i)}
 		}
 		return nil
 	}
-	if err=lp.Run();err!=nil{return err}
-	if chosen>=0{
-		m:=f.marks[chosen]
-		cwd,err:=os.Getwd();if err!=nil{return err}
-		r:=Result{Match:[]string{m.Text},Groupdicts:[]map[string]any{m.Groupdict},Type:req.Type,
-			Multiple_joiner:"auto",Cwd:cwd}
-		output,err:=tui.KittenOutputSerializer()(r);if err!=nil{return err}
-		_,err=fmt.Print(output)
-		return err
-	}
-	return nil
+	if err=lp.Run();err!=nil{return nil,err}
+	if chosen>=0{return &f.marks[chosen].Mark,nil}
+	return nil,nil
 }
-

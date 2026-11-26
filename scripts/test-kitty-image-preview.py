@@ -74,6 +74,7 @@ def exercise(work):
            "PATH": str(work / "bin") + os.pathsep + os.environ["PATH"]}
     (work / "run").mkdir(mode=0o700)
     (work / "bin").mkdir()
+    (work / "bin/hint-native").symlink_to(Path(os.environ["KITTY_NATIVE_HINTS_BIN"]).resolve())
     (work / "bin/zellij-image-hints").symlink_to(ROOT / "bin/zellij-image-hints")
     (work / "bin/zellij-helper").symlink_to(ROOT / "bin/zellij-helper")
     subprocess.run(["make", "-s", "kitty-config", "zellij-config"], cwd=ROOT, env=env, check=True)
@@ -122,13 +123,9 @@ signal.pause()
                 for tab in os_window["tabs"]:
                     for window in tab["windows"]:
                         if window["title"] == title:
-                            output = remote("get-text", "--ansi", "--match", f'id:{window["id"]}')
-                            output = re.sub(r"\x1b\[[0-9;:]*m", "", output)
-                            for line in output.splitlines():
-                                if fragment in line:
-                                    marks = re.findall(r"\x1b\]8;[^;]*;mark:(\d+)", line.split(fragment)[0])
-                                    if marks:
-                                        return window["id"]
+                            output = remote("get-text", "--match", f'id:{window["id"]}')
+                            if fragment in output:
+                                return window["id"]
             return None
         key("ctrl+shift+e" if url_mode else "super+shift+u")
         overlay_id = until("a native Kitty hint for " + fragment, find)
@@ -136,7 +133,7 @@ signal.pause()
         if expected_helper:
             active = next(w for ow in json.loads(remote("ls")) for tab in ow["tabs"]
                           for w in tab["windows"] if w["id"] == overlay_id)
-            if not active.get("cmdline") or active["cmdline"][0] != expected_helper:
+            if not active.get("cmdline") or Path(active["cmdline"][0]).resolve() != Path(expected_helper).resolve():
                 raise AssertionError(f"Expected native Go picker, found {active.get('cmdline')}")
         # The overlay dims individual cells rather than changing the window palette.
         colors = remote("get-colors", "--match", f"id:{overlay_id}")

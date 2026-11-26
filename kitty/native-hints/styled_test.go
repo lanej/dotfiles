@@ -2,6 +2,7 @@
 package hints
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"math/rand"
@@ -80,4 +81,26 @@ func TestDotfilesFilePane(t *testing.T) {
 	f,err=newStyledFrame(r)
 	if err!=nil {t.Fatal(err)}
 	for _,m:=range f.marks{if target,ok:=m.Groupdict["file"].(fileTarget);ok&&target.Path=="src/main.rs"{t.Fatal("offered a source file to an image-only receiver")}}
+}
+
+// Exercise marker identity and translated remote pane coordinates against the
+// screen cursor, not merely the presence of a marker somewhere in the text.
+func TestDotfilesReceiverCursor(t *testing.T) {
+	marker:="dotfiles-hints-v2://"+strings.Repeat("a",32)+"/2/3/50/10/4/5"
+	snapshot:="ordinary\n  \x1b]8;;"+marker+"\x1b\\Choose a link\x1b]8;;\x1b\\\x1b[?25h\x1b[2;3H"
+	state,err:=markerAtCursor(snapshot,80)
+	if err!=nil||state.marker!=marker||state.ticket!=strings.Repeat("a",32)||!state.pane.Files||state.pane.Width!=50{
+		t.Fatalf("wrong receiver: %#v, %v",state,err)
+	}
+	state,err=markerAtCursor(strings.ReplaceAll(snapshot,"[2;3H","[1;1H"),80)
+	if err!=nil||state.ticket!=""{t.Fatalf("stale marker accepted: %#v, %v",state,err)}
+}
+func TestDotfilesLaunchSnapshot(t *testing.T) {
+	var b strings.Builder
+	for i:=range 256{fmt.Fprintf(&b,"color%d #a3be8c\n",i)}
+	b.WriteString("foreground #d8dee9\nbackground #2e3440\nselection_background #434c5e\nurl_color #88c0d0\n")
+	req,err:=paletteRequest("https://example.org/path","url","0:1,1:27,82",b.String())
+	if err!=nil||req.Rows!=27||req.Cols!=82||req.Background!=0x2e3440||req.Colors[255]!=0xa3be8c{
+		t.Fatalf("wrong launch data: %#v, %v",req,err)
+	}
 }

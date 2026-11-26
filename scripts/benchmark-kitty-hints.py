@@ -4,7 +4,6 @@ import math
 import os
 from pathlib import Path
 import platform
-import runpy
 import signal
 import socket as unix_socket
 import statistics
@@ -56,70 +55,6 @@ def fixture(cols, rows, links, truecolor=False):
     return "\n".join(lines)
 
 
-def micro():
-    sys.path.insert(0, str(ROOT / "kitty"))
-    from kitty.fast_data_types import Screen, set_options
-    from kitty.config import load_config
-    import hint_overlay as overlay
-    from select_hint import capture
-    implementation = "optimized"
-    baseline = os.environ.get("KITTY_BENCH_BASELINE")
-    if baseline:
-        import importlib.util
-        spec = importlib.util.spec_from_file_location("baseline_hint_overlay", baseline)
-        overlay = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(overlay)
-        implementation = "baseline"
-
-    set_options(load_config(str(ROOT / "design-system/generated/kitty.conf")))
-    representative = runpy.run_path(str(ROOT / "scripts/fixtures/kitty-hint-review.py"))["fixture"]()
-    for name, cols, rows, links, ansi in (
-        ("representative", 82, 27, 4, representative),
-        ("large_sparse", 160, 50, 4, fixture(160, 50, 4)),
-        ("large_dense", 160, 50, 48, fixture(160, 50, 48)),
-        ("stress_many_colors", 240, 80, 70, fixture(240, 80, 70, True)),
-    ):
-        screen = Screen(None, rows, cols, 0)
-        data = memoryview(ansi.replace("\n", "\r\n").encode())
-        while data:
-            written = screen.test_commit_write_buffer(data, screen.test_create_write_buffer())
-            data = data[written:]
-            screen.test_parse_written_data()
-        timings = {k: [] for k in ("capture", "snapshot", "match", "serialize", "deserialize",
-                                    "cold_render", "warm_redraw", "total_cpu")}
-        size = output_size = actual_links = 0
-        for i in range(REPS):
-            # Every invocation launches a new overlay process, hence cold contrast caches.
-            for fn in (overlay.mix, overlay.luminance, overlay.readable, overlay.dimmed, overlay.sgr):
-                if hasattr(fn, "cache_clear"):
-                    fn.cache_clear()
-            source, a = clock(lambda: capture(screen))
-            model, b = clock(lambda: overlay.source_snapshot(screen, source))
-            model["marks"], c = clock(lambda: overlay.raw_url_marks(source, model["wrapped"]))
-            model["type"] = "url"
-            encode = getattr(overlay, "encode_session", getattr(overlay, "encode_snapshot", json.dumps))
-            decode = getattr(overlay, "decode_session", getattr(overlay, "decode_snapshot", json.loads))
-            payload, d = clock(lambda: encode(model))
-            loaded, e = clock(lambda: decode(payload))
-            if hasattr(overlay, "FrameRenderer"):
-                renderer, init = clock(lambda: overlay.FrameRenderer(loaded))
-                frame, f = clock(renderer.draw)
-                f += init
-            else:
-                renderer = None
-                frame, f = clock(lambda: overlay.render(loaded))
-            prefix = overlay.labels(len(loaded["marks"]))[0][:1] if len(loaded["marks"]) > 9 else ""
-            # Small single-key screens have no prefix redraw; measure a full warm
-            # frame there for a conservative like-for-like comparison.
-            _, g = clock(lambda: renderer.draw(prefix) if renderer and prefix else overlay.render(loaded, prefix))
-            for key, v in zip(timings, (a, b, c, d, e, f, g, a+b+c+d+e+f)):
-                timings[key].append(v)
-            size, output_size, actual_links = len(payload.encode() if isinstance(payload, str) else payload), len(frame.encode()), len(loaded["marks"])
-        report({"kind":"micro","implementation":implementation,"case":name,"cols":cols,"rows":rows,"links":actual_links,
-                "expected_links":links,"snapshot_bytes":size,"frame_bytes":output_size,
-                "timings":{k:summarize(v) for k,v in timings.items()}})
-
-
 def gui():
     for name, cols, rows, links, target, command in (
         ("representative", 82, 27, 4, "github.com/lanej/dotfiles/pull/429",
@@ -134,11 +69,16 @@ def gui():
             env = {**os.environ, "HOME":str(home), "XDG_CONFIG_HOME":str(home / ".config"),
                    "XDG_CACHE_HOME":str(home / ".cache"), "XDG_DATA_HOME":str(home / ".local/share")}
             subprocess.run(["make", "-s", "kitty-config"], cwd=ROOT, env=env, check=True)
+            helper = Path(os.environ["KITTY_NATIVE_HINTS_BIN"]).resolve()
+            installed = home / ".local/bin/hint-native"
+            installed.parent.mkdir(parents=True, exist_ok=True)
+            installed.symlink_to(helper)
+            env["PATH"] = str(installed.parent) + os.pathsep + env["PATH"]
             # Copy, rather than editing the symlink into the checked-out config.
             conf = home / ".config/kitty/kitty.conf"
             original = conf.read_text()
             conf.unlink()
-            conf.write_text(original + "\nmap ctrl+shift+g kitten hints --type url --alphabet asdfghjkl --hints-offset 0 --ascending --prefix-free\nmap ctrl+shift+j kitten select_hint.py url --embedded\nmap ctrl+shift+k kitten select_hint.py url --python\n")
+            conf.write_text(original + "\nmap ctrl+shift+g kitten hints --type url --alphabet asdfghjkl --hints-offset 0 --ascending --prefix-free\n")
             socket = "unix:" + str(work / "kitty.sock")
 
             def run(*args):
@@ -194,7 +134,7 @@ def gui():
                 if overlay is None:
                     return False
                 out = remote("get-text", "--ansi", "--match", f"id:{overlay['id']}")
-                return target in re.sub(r"\x1b\[[0-9;:]*m", "", out) and "mark:" in out
+                return target in re.sub(r"\x1b\[[0-9;:]*m", "", out) and ("mark:" in out or "59;66;82" in out or "59:66:82" in out)
 
             def source_ready():
                 return all(w["title"] != "Choose URL" for ow in json.loads(remote("ls"))
@@ -212,16 +152,14 @@ def gui():
                     time.sleep(.2)
                     geometry = json.loads(remote("ls"))[0]["tabs"][0]["windows"][0]
                     # Warm filesystem/font caches; the picker child still starts each time.
-                    cases = [("native", "ctrl+shift+g"), ("styled", "ctrl+shift+e"), ("embedded", "ctrl+shift+j")]
-                    if os.environ.get("KITTY_NATIVE_HINTS_BIN"):
-                        cases.append(("python", "ctrl+shift+k"))
+                    cases = [("native", "ctrl+shift+g"), ("styled", "ctrl+shift+e")]
                     for _, shortcut in cases:
                         key(shortcut)
                         ready(overlay_ready, "warm overlay " + shortcut)
                         if shortcut == "ctrl+shift+e" and os.environ.get("KITTY_NATIVE_HINTS_BIN"):
                             current = next(w for ow in json.loads(remote("ls")) for tab in ow["tabs"]
                                            for w in tab["windows"] if w["title"] == "Choose URL")
-                            if not current.get("cmdline") or current["cmdline"][0] != os.environ["KITTY_NATIVE_HINTS_BIN"]:
+                            if not current.get("cmdline") or Path(current["cmdline"][0]).resolve() != helper:
                                 raise AssertionError(f"Native helper was not activated: {current.get('cmdline')}")
                         key("Escape")
                         ready(source_ready, "warm cancellation")
@@ -242,9 +180,7 @@ def gui():
                     report({"kind":"gui","case":name,"cols":cols,"rows":rows,"links":links,
                             "actual_cols":geometry.get("columns"),"actual_rows":geometry.get("lines"),
                             "observer":summarize(poll),
-                            "native":summarize(values["native"]), "styled":summarize(values["styled"]),
-                            "embedded":summarize(values["embedded"]),
-                            **({"python": summarize(values["python"])} if "python" in values else {})})
+                            "native":summarize(values["native"]), "styled":summarize(values["styled"])})
                 except Exception:
                     print((work / "kitty.log").read_text()[-4000:], file=sys.stderr)
                     try:
@@ -271,4 +207,4 @@ if __name__ == "__main__":
         report({"kind":"environment","platform":platform.platform(),"cpu_count":os.cpu_count()})
         gui()
     else:
-        micro()
+        raise SystemExit("Use --gui to measure activation")

@@ -34,6 +34,11 @@ def main():
         env = {**os.environ, "HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config"),
                "XDG_CACHE_HOME": str(home / ".cache"), "XDG_DATA_HOME": str(home / ".local/share")}
         subprocess.run(["make", "-s", "kitty-config"], cwd=ROOT, env=env, check=True)
+        helper = Path(os.environ["KITTY_NATIVE_HINTS_BIN"]).resolve()
+        installed = home / ".local/bin/hint-native"
+        installed.parent.mkdir(parents=True, exist_ok=True)
+        installed.symlink_to(helper)
+        env["PATH"] = str(installed.parent) + os.pathsep + env["PATH"]
         socket = "unix:" + str(work / "kitty.sock")
 
         def command(*args):
@@ -78,7 +83,7 @@ def main():
                 expected_helper = os.environ.get("KITTY_NATIVE_HINTS_BIN")
                 if expected_helper:
                     actual = next(w for w in windows() if w["id"] == overlay_id)
-                    if not actual.get("cmdline") or actual["cmdline"][0] != expected_helper:
+                    if not actual.get("cmdline") or Path(actual["cmdline"][0]).resolve() != Path(expected_helper).resolve():
                         raise AssertionError(f"Expected native Go helper, found {actual.get('cmdline')}")
                 image = capture("review-url-hints.png", xid)
                 counts = dict((color, count) for count, color in image.getcolors(image.width * image.height))
