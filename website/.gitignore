@@ -6,3 +6,4 @@ public/source/
 playwright-report/
 test-results/
 .ui-review/runs/
+/src/generated-theme-inputs/

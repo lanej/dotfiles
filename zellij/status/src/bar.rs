@@ -33,6 +33,7 @@ struct Tab {
     name: String,
     lock: &'static str,
     mark: &'static str,
+    mark_style: Option<Ribbon>,
     zoom: &'static str,
     style: Ribbon,
 }
@@ -54,27 +55,39 @@ impl Tab {
         previous: PaletteColor,
         edge: PaletteColor,
         ascii: bool,
-    ) -> usize {
+    ) -> (usize, PaletteColor) {
         if budget == 0 {
-            return 0;
+            return (0, previous);
         }
         join(previous, self.style.bg, edge, ascii);
         if budget == 1 {
-            return 1;
+            return (1, self.style.bg);
         }
         let fixed = self.width() - self.name.width();
         if budget < fixed {
+            // Preserve the failure mark even when only a compact label fits.
+            if let Some(mark_style) = self.mark_style {
+                let mark = clipped(self.mark.trim(), budget - 1);
+                mark_style.paint(&mark);
+                return (1 + mark.width(), mark_style.bg);
+            }
             let position = clipped(&self.position.to_string(), budget - 1);
             self.style.paint(&position);
-            return 1 + position.width();
+            return (1 + position.width(), self.style.bg);
         }
         let name = clipped(&self.name, budget - fixed);
+        let inline_mark = if self.mark_style.is_some() { "" } else { self.mark };
         let label = format!(
             " {}{}{}{}:{} ",
-            self.lock, self.mark, self.zoom, self.position, name
+            self.lock, inline_mark, self.zoom, self.position, name
         );
         self.style.paint(&label);
-        label.width() + 1
+        if let Some(mark_style) = self.mark_style {
+            mark_style.paint(self.mark);
+            (label.width() + self.mark.width() + 1, mark_style.bg)
+        } else {
+            (label.width() + 1, self.style.bg)
+        }
     }
 }
 
@@ -182,7 +195,8 @@ impl State {
                     Done => colors.exit_code_success.base,
                     _ => colors.ribbon_unselected.base,
                 },
-                bg: colors.text_selected.background,
+                // Inactive tabs use the quiet pane surface, not the native selection fill.
+                bg: colors.frame_selected.background,
                 bold: false,
             },
         };
@@ -203,6 +217,17 @@ impl State {
                 ""
             },
             mark,
+            // A failed selected tab keeps its focus fill; render the failure
+            // in its own dark segment rather than over the light focus fill.
+            mark_style: if tab.active && status == Failed {
+                Some(Ribbon {
+                    fg: colors.exit_code_error.base,
+                    bg: surface,
+                    bold: true,
+                })
+            } else {
+                None
+            },
             zoom: if !tab.is_fullscreen_active {
                 ""
             } else if self.mode.capabilities.arrow_fonts {
@@ -268,20 +293,29 @@ impl State {
             available.saturating_sub(active_width.max(12) + 1).min(30),
         );
         let ascii = self.mode.capabilities.arrow_fonts;
-        let accent = colors.text_unselected.emphasis_1;
         let edge = colors.ribbon_unselected.base;
         print!("\x1b[{}m", if dimmed { 3 } else { 23 });
         let mut used = 0;
         let mut previous = surface;
         if !heading.is_empty() {
+            // Mode and session are independent: only the mode gets a fill.
+            let mode_width = if mode.is_empty() { 0 } else { (1 + mode.width()).min(heading.width()) };
+            let mode_end = heading.char_indices().nth(mode_width).map_or(heading.len(), |(i, _)| i);
+            if mode_width > 0 {
+                Ribbon {
+                    fg: surface,
+                    bg: colors.text_unselected.emphasis_1,
+                    bold: true,
+                }
+                .paint(&heading[..mode_end]);
+            }
             Ribbon {
-                fg: surface,
-                bg: accent,
+                fg: colors.text_unselected.base,
+                bg: surface,
                 bold: true,
             }
-            .paint(&heading);
+            .paint(&heading[mode_end..]);
             used = heading.width();
-            previous = accent;
         }
         let tab_space = available.saturating_sub(used + 1);
         let active_budget = active_width.min(tab_space);
@@ -303,12 +337,12 @@ impl State {
             } else {
                 limit
             };
-            let width = tab.draw(budget, previous, edge, ascii);
+            let (width, trailing_bg) = tab.draw(budget, previous, edge, ascii);
             if width > 0 {
                 self.clicks
                     .push((used, used + width, tab.position as u32 + 1));
                 used += width;
-                previous = tab.style.bg;
+                previous = trailing_bg;
             }
         }
         if used > 0 && used < available {
@@ -342,9 +376,23 @@ mod tests {
         let mut tab = TabInfo::default();
         tab.attention.status = AttentionStatus::Failed;
         assert_eq!(background(state.bar_tab(&tab).style.bg), "48;2;11;22;33");
+        assert!(state.bar_tab(&tab).mark_style.is_none());
         tab.active = true;
-        assert_eq!(foreground(state.bar_tab(&tab).style.fg), "38;5;17");
-        assert_eq!(state.bar_tab(&tab).mark.trim(), "×");
+        let active = state.bar_tab(&tab);
+        assert_eq!(foreground(active.style.fg), "38;5;17");
+        assert_eq!(active.mark.trim(), "×");
+        let failure = active.mark_style.expect("active failure has separate ink");
+        assert_eq!(foreground(failure.fg), "38;2;11;22;33");
+        assert_eq!(failure.bg, state.mode.style.colors.text_unselected.background);
+        assert!(failure.bold);
+        let (width, trailing_bg) = active.draw(active.width(), failure.bg, failure.fg, true);
+        assert_eq!(width, active.width());
+        assert_eq!(trailing_bg, failure.bg);
+        let (compact_width, compact_bg) = active.draw(2, failure.bg, failure.fg, true);
+        assert_eq!(compact_width, 2);
+        assert_eq!(compact_bg, failure.bg);
+        tab.attention.status = AttentionStatus::Done;
+        assert!(state.bar_tab(&tab).mark_style.is_none());
     }
 
     #[test]

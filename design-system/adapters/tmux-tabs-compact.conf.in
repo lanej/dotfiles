@@ -1,0 +1,23 @@
+# Compact tab labels and a single focus fill. Semantic marks never inherit the
+# active fill, and inactive tabs never become full-width status-colored ribbons.
+setw -g window-status-separator "  "
+setw -g window-status-style bg={{surface}},fg={{text.muted}}
+setw -g window-status-last-style bg={{surface}},fg={{text.muted}}
+setw -g window-status-activity-style bg={{surface}},fg={{status.warning}}
+setw -g window-status-bell-style bg={{surface}},fg={{status.attention}}
+set -g status-left "#[bg={{surface}}]#[fg={{accent}}]#[bold] #S #[fg={{border}}]#[nobold]{{symbol.separator.component.left}} "
+set -g status-right "#{prefix_highlight}\
+#(~/.files/bin/tmux-claude-sweep)#(~/.files/bin/tmux-ssh-status)#(~/.files/bin/tmux-battery-status)\
+#[bg={{surface}}]#[fg={{text.muted}}]#[nobold]#[noitalics]#[nodim] %Y-%m-%d %H:%M #[fg={{border}}]{{symbol.separator.component.right}} #[fg={{text.muted}}]#H "
+
+set-window-option -g window-status-current-format "\
+#[bg={{tab.active.bg}}]#[fg={{tab.active.fg}}]#[bold]#[noitalics]#[nodim] #I:#W \
+#[bg={{surface}}]#[fg={{text.muted}}]#[nobold]\
+#{?window_zoomed_flag, #[fg={{status.warning}}]Z,}\
+#{?#{@claude-state}, #[fg={{agent.marker}}]#[bold]#{?#{@claude-glyph},#{@claude-glyph},?},#{?window_bell_flag, #[fg={{status.attention}}]!,#{?window_activity_flag, #[fg={{status.warning}}].,}}}\
+#[fg={{text.muted}}]#[nobold]"
+
+set-window-option -g window-status-format "\
+#[bg={{surface}}]#[fg={{text.muted}}]#[nobold]#[noitalics]#[nodim] #I:#W\
+#{?#{@claude-state}, #[fg={{agent.marker}}]#[bold]#{?#{@claude-glyph},#{@claude-glyph},?},#{?window_bell_flag, #[fg={{status.attention}}]!,#{?window_activity_flag, #[fg={{status.warning}}].,}}}\
+#[fg={{text.muted}}]#[nobold] "

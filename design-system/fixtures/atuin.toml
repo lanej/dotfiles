@@ -1,0 +1,29 @@
+[[history]]
+command = "git fetch --prune"
+exit = 0
+duration_ns = 620000000
+
+[[history]]
+command = "git push origin HEAD"
+exit = 1
+duration_ns = 840000000
+
+[[history]]
+command = "git rebase origin/master"
+exit = 0
+duration_ns = 1200000000
+
+[[history]]
+command = "git log --oneline -10"
+exit = 0
+duration_ns = 32000000
+
+[[history]]
+command = "git diff --stat"
+exit = 0
+duration_ns = 18000000
+
+[[history]]
+command = "git status --short"
+exit = 0
+duration_ns = 12000000

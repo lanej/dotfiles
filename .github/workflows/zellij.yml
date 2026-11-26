@@ -9,6 +9,10 @@ on:
       - 'design-system/generated/zellij.kdl'
       - 'design-system/generated/fzf.txt'
       - 'scripts/test-theme-native.py'
+      - 'scripts/theme_review.py'
+      - 'scripts/theme_review_contract.py'
+      - 'design-system/native-review-contract.toml'
+      - 'design-system/themes/**'
       - 'bin/zellij-*'
       - '!bin/zellij-attach'
       - '!bin/zellij-agent'
@@ -224,6 +228,29 @@ jobs:
       - name: Build native attention bar
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
         run: make zellij-status
+      - name: Capture both Zellij presets for native visual review
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && runner.os == 'Linux' && steps.zellij_install.outcome == 'success' }}
+        shell: bash
+        run: |
+          trap 'git restore -- design-system/generated' EXIT
+          failed=0
+          for definition in design-system/themes/*.toml; do
+            preset=$(basename "$definition" .toml)
+            # The native make target links the checkout's generated KDL.
+            python3 scripts/theme.py --theme "$preset"
+            review="$RUNNER_TEMP/zellij-theme-review/$preset"
+            uv run --script scripts/test-theme-native.py --review-dir "$review" --surface zellij || failed=1
+            python3 scripts/theme_review_contract.py --verify-dir "$review" --profile zellij --commit "$(git rev-parse HEAD)" --preset "$preset" --colors design-system/generated/colors.json --summary "$GITHUB_STEP_SUMMARY" || failed=1
+          done
+          exit "$failed"
+      - name: Upload unapproved Zellij native review
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && runner.os == 'Linux' && steps.zellij_install.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-zellij-review
+          path: ${{ runner.temp }}/zellij-theme-review
+          if-no-files-found: error
+          retention-days: 14
       - name: Check disposable plugin installations
         run: python3 scripts/test-zellij-artifacts.py
       - name: Exercise fixed tab title controls

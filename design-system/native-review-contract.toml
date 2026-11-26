@@ -1,0 +1,195 @@
+version = 2
+visual_presets = ["sage"]
+structured_only = ["neovim", "kitty"]
+
+[contrast]
+text_min = 4.5
+indicator_min = 3
+
+[dense_selection]
+min_coverage = 0.5
+min_background_contrast = 3
+max_base_contrast = 4
+
+[marked_selection]
+max_base_contrast = 2
+
+[profiles]
+theme = ["neovim","neovim-frame","tmux","cli","fzf","bat","delta","glow","bottom","neovim-code-rust","bat-code-rust","neovim-code-go","bat-code-go","neovim-code-typescript","bat-code-typescript","neovim-code-python","bat-code-python","neovim-code-ruby","bat-code-ruby","neovim-code-lua","bat-code-lua","neovim-code-bash","bat-code-bash","neovim-code-json","bat-code-json","neovim-code-toml","bat-code-toml","atuin"]
+zellij = ["zellij"]
+
+[surfaces]
+
+[surfaces.neovim-frame]
+anchors = ["code.lua", "Review retry budget", "Fixture diagnostic", "print(greet"]
+forbidden = ["E1568:", "Error detected while processing", "Press ENTER or type command"]
+
+[surfaces.tmux]
+anchors = ["Workspace review", "Editor", "Publisher", "Checks", "Shell"]
+primitives = [{ kind = "tab-strip", row = "last", labels = ["0:Editor", "1:Publisher", "2:Checks", "3:Shell"], active = 0, active_ink = "text.inverse", active_fill = "focus", inactive_ink = "text.muted", padding = 1, markers = [{ after = 0, glyph = "◐", ink = "status.info" }, { after = 1, glyph = "×", ink = "status.error" }, { after = 2, glyph = "!", ink = "status.attention" }] }]
+
+[surfaces.cli]
+anchors = ["CONFIGURATION", "SEVERITY", "EXECUTION", "HEALTH", "INTERACTION", "CONNECTIVITY", "DATA", "ACCESS", "CONNECTING", "APPROVED"]
+
+[surfaces.fzf]
+anchors = ["Workspace tasks", "TASK DETAILS", "Publish release", "NEEDS INPUT", "RUNNING", "FAILED", "BLOCKED", "SUCCEEDED", "QUEUED", "Authorization required"]
+primitives = [{ kind = "marked-selection", selected = "NEEDS INPUT", pointers = ["▌", ">", "›"], labels = { "NEEDS INPUT" = "status.attention", RUNNING = "status.info", FAILED = "status.error", BLOCKED = "status.warning", SUCCEEDED = "status.success", QUEUED = "status.idle" } }]
+
+[surfaces.bat]
+anchors = ["code.lua", "local retries = 3", "print(greet"]
+
+[surfaces.delta]
+anchors = ["service.lua", "local retries = 2", "local retries = 3"]
+primitives = [{ kind = "change-markers", patterns = ["-\\s*local retries = 2", "\\+\\s*local retries = 3"] }]
+
+[surfaces.glow]
+anchors = ["Service inspection", "Release checklist", "runbook", "Approval pending", "Evidence", "Missing data remains unknown.", "return retries"]
+
+[surfaces.bottom]
+anchors = ["Name(n)", "CPU%", "Mem%", "PID(p)"]
+primitives = [{ kind = "dense-selection", header = ["Name(n)", "CPU%"], ink = "text.strong", minimum_text_cells = 5 }]
+
+[surfaces.zellij]
+anchors = ["0:Shell", "1:Editor", "2:Publisher", "zellij-ready>"]
+primitives = [{ kind = "plain-heading", row = "first", label = "work", ink = "text", padding = 1 }]
+
+
+[languages.rust]
+file = "design-system/fixtures/languages/retry.rs"
+filetype = "rust"
+bat_language = "Rust"
+
+[surfaces.neovim-code-rust]
+anchors = ["retry.rs","trait Policy","enum Outcome","match p.delay(n)","budget exhausted","Review retry policy"]
+forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
+primitives = [{ kind = "syntax-diversity", anchors = ["trait Policy","enum Outcome","match p.delay(n)","budget exhausted"], minimum_colors = 3 }]
+
+[surfaces.bat-code-rust]
+anchors = ["retry.rs","trait Policy","enum Outcome","match p.delay(n)","budget exhausted"]
+forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
+primitives = [{ kind = "syntax-diversity", anchors = ["trait Policy","enum Outcome","match p.delay(n)","budget exhausted"], minimum_colors = 3 }]
+
+[languages.go]
+file = "design-system/fixtures/languages/retry.go"
+filetype = "go"
+bat_language = "Go"
+
+[surfaces.neovim-code-go]
+anchors = ["retry.go","type Policy interface","type Decision struct","if err != nil","fmt.Errorf","Review retry policy"]
+forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
+primitives = [{ kind = "syntax-diversity", anchors = ["type Policy interface","type Decision struct","if err != nil","fmt.Errorf(\"retry: %w\", err)","import \"fmt\""], minimum_colors = 3 }]
+
+[surfaces.bat-code-go]
+anchors = ["retry.go","type Policy interface","type Decision struct","if err != nil","fmt.Errorf"]
+forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
+primitives = [{ kind = "syntax-diversity", anchors = ["type Policy interface","type Decision struct","if err != nil","fmt.Errorf(\"retry: %w\", err)","import \"fmt\""], minimum_colors = 3 }]
+
+[languages.typescript]
+file = "design-system/fixtures/languages/retry.ts"
+filetype = "typescript"
+bat_language = "TypeScript"
+
+[surfaces.neovim-code-typescript]
+anchors = ["retry.ts","type Result<T>","interface Policy","async function decide","await p.delay(n)","Review retry policy"]
+forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
+primitives = [{ kind = "syntax-diversity", anchors = ["type Result<T>","interface Policy","async function decide","await p.delay(n)"], minimum_colors = 3 }]
+
+[surfaces.bat-code-typescript]
+anchors = ["retry.ts","type Result<T>","interface Policy","async function decide","await p.delay(n)"]
+forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
+primitives = [{ kind = "syntax-diversity", anchors = ["type Result<T>","interface Policy","async function decide","await p.delay(n)"], minimum_colors = 3 }]
+
+[languages.python]
+file = "design-system/fixtures/languages/retry.py"
+filetype = "python"
+bat_language = "Python"
+
+[surfaces.neovim-code-python]
+anchors = ["retry.py","@dataclass","class Policy","def remaining","retry budget:","Review retry policy"]
+forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
+primitives = [{ kind = "syntax-diversity", anchors = ["@dataclass","class Policy","def remaining","retry budget:"], minimum_colors = 3 }]
+
+[surfaces.bat-code-python]
+anchors = ["retry.py","@dataclass","class Policy","def remaining","retry budget:"]
+forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
+primitives = [{ kind = "syntax-diversity", anchors = ["@dataclass","class Policy","def remaining","retry budget:"], minimum_colors = 3 }]
+
+[languages.ruby]
+file = "design-system/fixtures/languages/retry.rb"
+filetype = "ruby"
+bat_language = "Ruby"
+
+[surfaces.neovim-code-ruby]
+anchors = ["retry.rb","class RetryPolicy","def remaining","state: :queued","retry budget:","Review retry policy"]
+forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
+primitives = [{ kind = "syntax-diversity", anchors = ["class RetryPolicy","def remaining","state: :queued","retry budget:"], minimum_colors = 3 }]
+
+[surfaces.bat-code-ruby]
+anchors = ["retry.rb","class RetryPolicy","def remaining","state: :queued","retry budget:"]
+forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
+primitives = [{ kind = "syntax-diversity", anchors = ["class RetryPolicy","def remaining","state: :queued","retry budget:"], minimum_colors = 3 }]
+
+[languages.lua]
+file = "design-system/fixtures/languages/retry.lua"
+filetype = "lua"
+bat_language = "Lua"
+
+[surfaces.neovim-code-lua]
+anchors = ["retry.lua","Policy.__index","setmetatable","function Policy:delay","policy:delay(2)","Review retry policy"]
+forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
+primitives = [{ kind = "syntax-diversity", anchors = ["Policy.__index","setmetatable","function Policy:delay","policy:delay(2)"], minimum_colors = 3 }]
+
+[surfaces.bat-code-lua]
+anchors = ["retry.lua","Policy.__index","setmetatable","function Policy:delay","policy:delay(2)"]
+forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
+primitives = [{ kind = "syntax-diversity", anchors = ["Policy.__index","setmetatable","function Policy:delay","policy:delay(2)"], minimum_colors = 3 }]
+
+[languages.bash]
+file = "design-system/fixtures/languages/retry.sh"
+filetype = "sh"
+bat_language = "sh"
+
+[surfaces.neovim-code-bash]
+anchors = ["retry.sh","set -euo pipefail","delays=(100 200 400)","if (( attempt","budget exhausted","Review retry policy"]
+forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
+primitives = [{ kind = "syntax-diversity", anchors = ["set -euo pipefail","delays=(100 200 400)","if (( attempt","budget exhausted"], minimum_colors = 3 }]
+
+[surfaces.bat-code-bash]
+anchors = ["retry.sh","set -euo pipefail","delays=(100 200 400)","if (( attempt","budget exhausted"]
+forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
+primitives = [{ kind = "syntax-diversity", anchors = ["set -euo pipefail","delays=(100 200 400)","if (( attempt","budget exhausted"], minimum_colors = 3 }]
+
+[languages.json]
+file = "design-system/fixtures/languages/retry.json"
+filetype = "json"
+bat_language = "JSON"
+
+[surfaces.neovim-code-json]
+anchors = ["retry.json","\"enabled\": true","\"delays_ms\"","\"reason\": null","\"labels\"","Review retry policy"]
+forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
+primitives = [{ kind = "syntax-diversity", anchors = ["\"enabled\": true","\"delays_ms\"","\"reason\": null","\"labels\""], minimum_colors = 3 }]
+
+[surfaces.bat-code-json]
+anchors = ["retry.json","\"enabled\": true","\"delays_ms\"","\"reason\": null","\"labels\""]
+forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
+primitives = [{ kind = "syntax-diversity", anchors = ["\"enabled\": true","\"delays_ms\"","\"reason\": null","\"labels\""], minimum_colors = 3 }]
+
+[languages.toml]
+file = "design-system/fixtures/languages/retry.toml"
+filetype = "toml"
+bat_language = "TOML"
+
+[surfaces.neovim-code-toml]
+anchors = ["retry.toml","[policy]","delays_ms =","[policy.fallback]","[[policy.rules]]","Review retry policy"]
+forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
+primitives = [{ kind = "syntax-diversity", anchors = ["[policy]","delays_ms = [100, 200, 400]","enabled = true","state = \"blocked\"","reason = \"budget exhausted\"","code = 503"], minimum_colors = 3 }]
+
+[surfaces.bat-code-toml]
+anchors = ["retry.toml","[policy]","delays_ms =","[policy.fallback]","[[policy.rules]]"]
+forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
+primitives = [{ kind = "syntax-diversity", anchors = ["[policy]","delays_ms = [100, 200, 400]","enabled = true","state = \"blocked\"","reason = \"budget exhausted\"","code = 503"], minimum_colors = 3 }]
+
+[surfaces.atuin]
+anchors = ["git status --short", "git diff --stat", "git log --oneline -10", "git fetch --prune", "git push origin HEAD"]
+forbidden = ["Error:", "Failed to load theme", "panic"]
+primitives = [{ kind = "history-selection", labels = ["git status --short", "git diff --stat", "git log --oneline -10", "git fetch --prune"], maximum_fill_contrast = 2.0 }]

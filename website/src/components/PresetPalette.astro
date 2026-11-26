@@ -1,8 +1,8 @@
 ---
 interface Preset { name: string; palette: Record<string, string> }
 const { preset } = Astro.props;
-const presets = import.meta.glob<Preset>('../../../design-system/themes/*.json', { eager: true, import: 'default' });
-const definition = presets[`../../../design-system/themes/${preset}.json`];
+const presets = import.meta.glob<Preset>('../generated-theme-inputs/themes/*.json', { eager: true, import: 'default' });
+const definition = presets[`../generated-theme-inputs/themes/${preset}.json`];
 if (!definition) throw new Error(`Unknown documented preset: ${preset}`);
 ---
 

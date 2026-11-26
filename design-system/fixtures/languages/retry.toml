@@ -1,0 +1,13 @@
+# Retry policy for transient failures.
+[policy]
+enabled = true
+delays_ms = [100, 200, 400]
+max_attempts = 3
+
+[policy.fallback]
+state = "blocked"
+reason = "budget exhausted"
+
+[[policy.rules]]
+code = 503
+retry = true

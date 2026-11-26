@@ -5,7 +5,7 @@ description: The built-in Nord palette, native examples and regression baseline.
 
 import PresetPalette from '@components/PresetPalette.astro';
 
-Nord is the initial built-in preset for the [terminal design system](../design-system.mdx). It supplies palette values and semantic color assignments; shared tokens, components and native adapters remain reusable across presets. The [preset input](../../design-system/themes/nord.json) identifies its source and defines its ANSI slots. It currently inherits the shared presentation defaults without overrides.
+Nord is the initial built-in preset for the [terminal design system](../design-system.mdx). It supplies palette values and semantic color assignments; shared tokens, components and native adapters remain reusable across presets. The [preset input](../../design-system/themes/nord.toml) identifies its source and defines its ANSI slots. It currently inherits the shared presentation defaults without overrides.
 
 Its sixteen base colors follow the [official Nord palette](https://www.nordtheme.com/docs/colors-and-palettes/): Polar Night for surfaces, Snow Storm for text, Frost for accents and Aurora for status. The application mappings are this repository’s policy. Shared diff recipes blend semantic colors into the surface at 16%, emphasized changed words at 30%, and staged signs at 55%; those recipes belong to the design system rather than the Nord palette.
 
@@ -13,7 +13,7 @@ Its sixteen base colors follow the [official Nord palette](https://www.nordtheme
 
 ## Select this preset
 
-Choose `"theme": "nord"` in [preset selection](../../design-system/config.json), then run `make theme-generate`. For an isolated output, use `python3 scripts/theme.py --theme nord --output-dir /tmp/nord-preset`. Apply configuration and use the native reload instructions in the [design-system guide](../design-system.mdx#generate-configure-and-reload).
+Choose `theme = "nord"` in [preset selection](../../design-system/config.toml), then run `make theme-generate`. For an isolated output, use `python3 scripts/theme.py --theme nord --output-dir /tmp/nord-preset`. Apply configuration and use the native reload instructions in the [design-system guide](../design-system.mdx#generate-configure-and-reload).
 
 ## Native examples
 
