@@ -6,8 +6,14 @@ class RetryPolicy
 
   def remaining(attempt)
     @delays.drop(attempt).map do |ms|
-      { delay: ms, state: :queued }
+      { delay: ms, state: :queued, ready: false }
     end
+  end
+
+  def next_delay(attempt, enabled: true)
+    return nil unless enabled
+
+    @delays[attempt]
   end
 
   def describe

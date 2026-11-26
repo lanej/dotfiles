@@ -241,7 +241,9 @@ bg = "@scroll.track"
 bg = "@accent"
 
 [StatusLine]
-component = "tab.active"
+fg = "@statusline.active.fg"
+bg = "@statusline.active.bg"
+bold = true
 
 [StatusLineNC]
 component = "tab.inactive"
@@ -473,6 +475,39 @@ link = "Constant"
 ["@constant.builtin"]
 link = "Constant"
 
+["@constant.null"]
+fg = "@syntax.null"
+
+["@boolean.true"]
+fg = "@syntax.boolean.true"
+
+["@boolean.false"]
+fg = "@syntax.boolean.false"
+
+["@constant.builtin.go"]
+link = "Number"
+
+["@constant.builtin.lua"]
+link = "Number"
+
+["@property.json"]
+fg = "@syntax.member"
+
+[jsonKeyword]
+fg = "@syntax.member"
+
+[jsonQuote]
+link = "String"
+
+[jsonNull]
+fg = "@syntax.null"
+
+[DotfilesJsonTrue]
+fg = "@syntax.boolean.true"
+
+[DotfilesJsonFalse]
+fg = "@syntax.boolean.false"
+
 ["@constant.macro"]
 link = "Macro"
 
@@ -482,8 +517,44 @@ link = "Identifier"
 ["@variable.builtin"]
 link = "Identifier"
 
+["@variable.builtin.lua"]
+fg = "@syntax.receiver"
+
+["@variable.builtin.python"]
+fg = "@syntax.receiver"
+
+[pythonClassVar]
+fg = "@syntax.receiver"
+
+["@property.lua"]
+fg = "@syntax.member"
+
 ["@variable.member"]
 link = "Identifier"
+
+["@variable.member.ruby"]
+fg = "@syntax.member"
+
+[rubyInstanceVariable]
+fg = "@syntax.member"
+
+[rubyClassVariable]
+fg = "@syntax.member"
+
+[rubyClassName]
+link = "Type"
+
+["@variable.bash"]
+fg = "@syntax.variable.reference"
+
+[shDerefSimple]
+fg = "@syntax.variable.reference"
+
+[shDerefVar]
+fg = "@syntax.variable.reference"
+
+["@markup.heading.toml"]
+fg = "@syntax.section"
 
 ["@variable.parameter"]
 link = "Identifier"
@@ -509,8 +580,14 @@ link = "Macro"
 ["@constructor"]
 link = "Type"
 
+["@constructor.lua"]
+link = "Delimiter"
+
 ["@keyword"]
 link = "Keyword"
+
+["@keyword.directive.bash"]
+link = "Comment"
 
 ["@keyword.function"]
 link = "Keyword"
@@ -547,6 +624,12 @@ link = "Typedef"
 
 ["@module"]
 link = "Type"
+
+["@module.go"]
+link = "Identifier"
+
+["@module.python"]
+link = "Identifier"
 
 ["@label"]
 link = "Label"

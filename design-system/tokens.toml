@@ -18,6 +18,15 @@ match = "@status.success"
 "tab.active.fg" = "@text.inverse"
 "tab.inactive.bg" = "@surface"
 "tab.inactive.fg" = "@text.muted"
+"statusline.active.fg" = "@tab.active.fg"
+"statusline.active.bg" = "@tab.active.bg"
+"syntax.member" = "@syntax.variable"
+"syntax.boolean.true" = "@syntax.number"
+"syntax.boolean.false" = "@syntax.number"
+"syntax.null" = "@syntax.number"
+"syntax.receiver" = "@syntax.variable"
+"syntax.section" = "@text"
+"syntax.variable.reference" = "@syntax.variable"
 "frame.inactive.fg" = { mix = ["@surface", "@text"], amount = 0.62 }
 keyhint = "@accent"
 heading = "@accent"
@@ -72,6 +81,7 @@ prompt = "@accent"
 "selection.content.number" = "@syntax.number"
 
 [presentation]
+"statusline.mode.fill" = { type = "boolean", value = true }
 "emphasis.heading" = { type = "boolean", value = true, note = "Glow h6 remains subdued; other heading consumers use this emphasis." }
 "space.inline" = { type = "dimension", value = 1, unit = "cell" }
 "symbol.separator.section.left" = { type = "string", value = "", ascii = ">" }

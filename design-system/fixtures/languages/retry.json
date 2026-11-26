@@ -6,6 +6,7 @@
   },
   "fallback": {
     "state": "blocked",
+    "retryable": false,
     "reason": null
   },
   "labels": ["delivery", "transient"]

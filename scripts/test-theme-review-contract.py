@@ -23,6 +23,10 @@ THEME = {
         "text.muted": "#A3B1A7", "accent": "#ACC8B7", "focus": "#C4B2D9",
         "status.info": "#8CC5CC", "status.error": "#F18C96",
         "status.attention": "#DDA783",
+        "syntax.member": "#8FB9A8", "syntax.string": "#B7CB91",
+        "syntax.variable": "#D7DFD9", "syntax.type": "#B7BDE3",
+        "syntax.number": "#C4B2D9", "syntax.operator": "#95B5D3", "syntax.special": "#E8C88B",
+        "syntax.keyword": "#95B5D3",
     },
     "ansi": ["#17231E", "#F18C96", "#A6CD82", "#E8C88B", "#95B5D3", "#C4B2D9", "#8CC5CC", "#D7DFD9",
              "#9CAB9F", "#F18C96", "#A6CD82", "#E8C88B", "#95B5D3", "#C4B2D9", "#8FB9A8", "#EEF1EE"],
@@ -127,6 +131,21 @@ class NativeReviewContractTests(unittest.TestCase):
         self.assertIn(surface + ".syntax-diversity", failures(report(surface, specimen)))
         for i, color in enumerate(("#95B5D3", "#8CC5CC", "#B7CB91"), start=1):
             paint(specimen[i], anchors[i], color, "#0D1513")
+        specimen.extend([
+            row("attempt: u32) -> Option<u64>"),
+            row("Some(ms) if n < 3 => Outcome::Retry(ms)"),
+            row("-> Outcome<'a>"),
+        ])
+        for label in ("u32", "Option", "u64"):
+            paint(specimen[-3], label, "#B7BDE3", "#0D1513")
+        for label, color in (("Some", "#B7BDE3"), ("3", "#C4B2D9"), ("=>", "#95B5D3"), ("Outcome", "#B7BDE3")):
+            paint(specimen[-2], label, color, "#0D1513")
+        paint(specimen[-1], "Outcome", "#B7BDE3", "#0D1513")
+        paint(specimen[-1], "'a", "#E8C88B", "#0D1513")
+        trait_bound = row("&impl Policy, n: u32")
+        paint(trait_bound, "impl", "#95B5D3", "#0D1513")
+        paint(trait_bound, "Policy", "#B7BDE3", "#0D1513")
+        specimen.append(trait_bound)
         self.assertEqual(report(surface, specimen)["status"], "pass")
 
     def test_primitives_are_reusable_and_fail_closed(self):
@@ -140,6 +159,44 @@ class NativeReviewContractTests(unittest.TestCase):
         policy["surfaces"]["process-table"]["primitives"].append({"kind": "misspelled"})
         with self.assertRaisesRegex(ValueError, "unknown visual primitive"):
             review.audit_capture("process-table", bottom(), THEME, policy)
+
+    def test_syntax_roles_reject_readable_but_wrong_ink(self):
+        surface = "bat-code-json"
+        rule = POLICY["surfaces"][surface]
+        specimen = [row(anchor) for anchor in rule["anchors"]]
+        for label, fg in (("true", "#C4B2D9"), ("delays_ms", "#8FB9A8"), ("null", "#C4B2D9")):
+            cells = next(cells for cells in specimen if review.span(cells, label))
+            paint(cells, label, fg, "#0D1513")
+        pair = row('"state": "blocked"')
+        paint(pair, "state", "#8FB9A8", "#0D1513")
+        paint(pair, "blocked", "#B7CB91", "#0D1513")
+        specimen.append(pair)
+        self.assertEqual(report(surface, specimen)["status"], "pass")
+        check_id = surface + ".syntax-roles.key-and-value"
+        for bad in (specimen[:-1], specimen + [copy.deepcopy(pair)]):
+            self.assertEqual(failures(report(surface, bad)), {check_id})
+        paint(pair, "state", "#B7CB91", "#0D1513")
+        audit = report(surface, specimen)
+        self.assertEqual(failures(audit), {check_id})
+        check = next(check for check in audit["checks"] if check["id"] == check_id)
+        self.assertEqual(check["expected"]["tokens"]["state"], {"role": "syntax.member", "fg": "#8FB9A8"})
+        self.assertEqual(check["observed"]["tokens"]["state"]["cells"][0], {"column": 2, "fg": "#B7CB91"})
+
+        collapsed = copy.deepcopy(THEME)
+        collapsed["roles"]["syntax.member"] = collapsed["roles"]["syntax.string"]
+        self.assertEqual(failures(review.audit_capture(surface, specimen, collapsed, POLICY)), {check_id})
+
+    def test_treesitter_role_checks_run_only_in_the_requested_engine(self):
+        policy = copy.deepcopy(POLICY)
+        surface = "neovim-code-example"
+        policy["surfaces"][surface] = {"anchors": ["self.value"], "primitives": [{
+            "kind": "syntax-roles", "name": "member", "anchor": "self.value",
+            "tokens": {"value": "syntax.member"}, "treesitter_only": True,
+        }]}
+        cells = [row("self.value")]
+        self.assertEqual(review.audit_capture(surface, cells, THEME, policy)["status"], "pass")
+        self.assertEqual(failures(review.audit_capture(surface, cells, THEME, policy, neovim_syntax="treesitter")),
+                         {surface + ".syntax-roles.member"})
 
     def test_evidence_replay_rejects_altered_or_omitted_images(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -173,6 +230,8 @@ class NativeReviewContractTests(unittest.TestCase):
             def verify(**kwargs):
                 return review.verify_review(root, commit="unit-test-checkout", preset="sage", **kwargs)
             self.assertEqual(verify(), [])
+            with self.assertRaisesRegex(ValueError, "requires Neovim language captures from Tree-sitter"):
+                verify(require_treesitter=True)
             with self.assertRaisesRegex(ValueError, "coverage"):
                 verify(profile="theme")
             gallery = root / "gallery"
