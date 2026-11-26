@@ -26,12 +26,12 @@ jobs:
     timeout-minutes: 5
     steps:
       # workflow_run executes from the default branch with write permission.
-      # Check out the trusted workflow revision and read Actions metadata only.
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
+      # Fetch only the verifier from that trusted revision.
       - name: Verify the tested merge and record a passing result
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 scripts/github-pi-macos-verification.py
+        run: |
+          verifier="$RUNNER_TEMP/pi-macos-verification.py"
+          gh api -H 'Accept: application/vnd.github.raw+json' \
+            "repos/$GITHUB_REPOSITORY/contents/scripts/github-pi-macos-verification.py?ref=$GITHUB_SHA" > "$verifier"
+          python3 "$verifier"
