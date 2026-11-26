@@ -1,0 +1,50 @@
+name: Mac overflow
+
+run-name: Mac overflow for hosted job ${{ inputs.hosted_job }} at ${{ inputs.commit }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      hosted_job:
+        required: true
+        type: string
+      commit:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  pi-resources:
+    if: >-
+      github.repository == 'lanej/dotfiles' &&
+      github.ref == 'refs/heads/master' &&
+      github.actor == github.repository_owner &&
+      github.triggering_actor == github.repository_owner
+    runs-on:
+      - self-hosted
+      - macOS
+      - ARM64
+      - dotfiles-mac-mini
+    timeout-minutes: 10
+    steps:
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with:
+          enable-cache: false
+      - name: Verify native Pi resources
+        shell: bash
+        env:
+          VERIFY_COMMIT: ${{ inputs.commit }}
+          GIT_TERMINAL_PROMPT: '0'
+        run: |
+          [[ "$VERIFY_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          source_dir=$(mktemp -d "$RUNNER_TEMP/overflow-source.XXXXXX")
+          tool_dir=$(mktemp -d "$RUNNER_TEMP/overflow-tools.XXXXXX")
+          git -C "$source_dir" init --quiet
+          git -C "$source_dir" -c credential.helper= fetch --no-tags --depth=1 https://github.com/lanej/dotfiles.git "$VERIFY_COMMIT"
+          git -C "$source_dir" checkout --quiet --detach FETCH_HEAD
+          cd "$source_dir"
+          version=$(uv run --no-project --python 3.11 python -c 'import tomllib; print(tomllib.load(open("bootstrap/tools.toml", "rb"))["tools"]["pi"]["version"])')
+          sh scripts/install-pi "$version" "$tool_dir"
+          PATH="$tool_dir/bin:$PATH" uv run --no-project --python 3.11 python scripts/test-pi-resources.py --native
