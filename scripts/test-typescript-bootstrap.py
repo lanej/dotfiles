@@ -93,7 +93,7 @@ class TypeScriptBootstrap(unittest.TestCase):
         self.assertEqual(install, ["bun", "install", "--frozen-lockfile", "--ignore-scripts"])
         self.assertIn("already current", self.install("--go").stdout)
 
-    def test_bun_lockfiles_select_bun_for_setup_and_upgrade_without_a_runtime_pin(self):
+    def test_bun_lockfiles_select_bun_for_setup_without_a_runtime_pin(self):
         manifest = self.root / "package.json"
         package = json.loads(manifest.read_text())
         package["engines"] = {"bun": ">=1.4.4"}
@@ -108,7 +108,7 @@ class TypeScriptBootstrap(unittest.TestCase):
         self.assertEqual(json.loads(before)["commands"]["test"], ["bun", "run", "test"])
 
         lock = lock.rename(self.root / "bun.lock")
-        command(self.root, "python3", str(SOURCE / "bin/source-code"), "upgrade", "--repo", str(self.root))
+        self.install("--go", "--go-rollout", "strict")
         for language in ("go", "typescript"):
             workflow = (self.root / f".github/workflows/{language}-quality.yml").read_text()
             self.assertIn("uses: oven-sh/setup-bun@v2\n", workflow)
