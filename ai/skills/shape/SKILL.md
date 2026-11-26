@@ -5,7 +5,7 @@ description: Coordinate specification, critique, reconciliation, planning, appro
 
 # Shape
 
-This skill owns orchestration; the linked capabilities own their contracts. Read [the dialogue contract](../socrates/references/dialogue.txt) and apply its session resolver and lifecycle rules. All specification artifacts remain in the same `.socrates/YYYYMMDD-HHMMSS/` directory.
+This skill owns orchestration and the linked capabilities own their contracts. Read [the dialogue contract](../socrates/references/dialogue.txt) and apply its session resolver and lifecycle rules. Keep all artifacts together under the selected `.socrates/` session directory.
 
 When the user explicitly instructs execution of a saved approved plan, resolve that session and start at **Execute and verify** with the current artifacts. Approval alone ends at `Planned`. For a `Verified` session, match the requested spec version and plan revision to the current artifacts and verification evidence before returning that evidence. Report a mismatch without replaying tasks.
 

@@ -10,9 +10,11 @@ agreement, a short conversation, a filled template, or a question quota.
 
 ## Session storage and resolution
 
-Keep `.socrates/YYYYMMDD-HHMMSS/` in the working directory. An explicit spec path or session directory selects that session. Otherwise use the session path already bound in the current conversation, then a reliable host-specific pointer if available, then the picker below. Never select a session just because it is newest.
+Keep sessions under `.socrates/` in the working directory. A new draft starts at `YYYYMMDD-HHMMSS/`. The planning handoff gives a first plan its permanent `YYYYMMDD-short-label/` directory. The old timestamp path becomes an alias to the same session, so existing links and host pointers continue to work. Existing timestamp sessions remain valid. An explicit spec path or session directory selects that session. Otherwise use the path already bound in the current conversation, then a reliable host-specific pointer if available, then the picker below. Never select a session just because it is newest.
 
-In Claude Code, preserve the per-session pointer `.socrates/.current-<CLAUDE_CODE_SESSION_ID>` containing `TIMESTAMP:PID`. Read actual identity values with `printenv`; never substitute a shell's `$$` or invent missing identity. An existing `/tmp/cc-socks/<PID>.sock` can indicate activity; absent sockets mean unknown activity, not safety.
+Resolve an alias only to its real sibling session under the same `.socrates/` root. Use the real directory for current references and list each session once, omitting aliases and entries without `spec.md` from the picker.
+
+In Claude Code, preserve the per-session pointer `.socrates/.current-<CLAUDE_CODE_SESSION_ID>` containing `TIMESTAMP:PID`. Keep its original timestamp token after naming, since the alias still resolves there. When selecting a named directory, use its existing timestamp alias if one can be identified. Otherwise bind the path in conversation. Read actual identity values with `printenv`; never substitute a shell's `$$` or invent missing identity. An existing `/tmp/cc-socks/<PID>.sock` can indicate activity; absent sockets mean unknown activity, not safety.
 
 In Codex, do not read or write Claude pointers or use Claude sockets. Retain the selected session path in conversation context. Without a bound path, use the picker; do not invent a binding or overwrite a session another conversation may be using. Resolve uncertain ownership before editing.
 

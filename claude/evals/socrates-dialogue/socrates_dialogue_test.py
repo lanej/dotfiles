@@ -4,6 +4,7 @@ import hashlib
 import json
 import re
 from pathlib import Path
+import subprocess
 import sys
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -13,6 +14,7 @@ import yaml
 
 
 HERE = Path(__file__).resolve().parent
+NAME_SESSION = HERE.parents[2] / "ai/skills/socrates/scripts/name-session.py"
 spec = importlib.util.spec_from_file_location("dialogue_eval", HERE / "run.py")
 app = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(app)
@@ -165,6 +167,57 @@ def test_shared_scaffold_and_planning_companion_do_not_restore_old_gate():
     phases = (root / "phases-2-3.txt").read_text()
     assert "dialogue.txt" in phases and "Score <" not in phases
     assert "SESSION_DIR/plan.md" in phases and "Once approved" in phases
+
+
+@pytest.mark.parametrize("occupied", [False, True], ids=["interrupted-reservation", "occupied-label"])
+def test_names_first_plan_without_breaking_old_session_links(tmp_path, occupied):
+    root = tmp_path / ".socrates"
+    draft = root / "20261125-183000"
+    draft.mkdir(parents=True)
+    former_inode = draft.stat().st_ino
+    spec = "# Release checklist\n\nStatus: Validated  \nFrozen: true\n"
+    (draft / "spec.md").write_text(spec)
+    (draft / "progress.md").write_text("Readiness reached.\n")
+    pointer = root / ".current-fixture"
+    pointer.write_text(f"{draft.name}:1234\n")
+    preferred = root / "20261125-release-checklist"
+    if occupied:
+        preferred.mkdir()
+        (preferred / "spec.md").write_text("Other session\n")
+    else:
+        (draft / ".naming").symlink_to(preferred.name)
+        preferred.symlink_to(preferred.name)
+
+    command = [sys.executable, str(NAME_SESSION), str(draft)]
+    label = "Release checklist!" if occupied else "Changed label after interruption"
+    result = subprocess.run(command + [label], check=True, capture_output=True, text=True)
+    named = root / "20261125-release-checklist-2" if occupied else preferred
+    assert Path(result.stdout.strip()) == named
+    assert named.stat().st_ino == former_inode
+    assert (named / "spec.md").read_text() == spec
+    assert (draft / "progress.md").read_text() == "Readiness reached.\n"
+    assert draft.readlink() == Path(named.name)
+    assert not (draft / ".naming").is_symlink()
+    assert pointer.read_text() == f"{draft.name}:1234\n"
+    if occupied:
+        assert (preferred / "spec.md").read_text() == "Other session\n"
+    result = subprocess.run(command + ["New label"], check=True, capture_output=True, text=True)
+    assert Path(result.stdout.strip()) == named
+
+
+@pytest.mark.parametrize("has_plan", [False, True], ids=["unfrozen", "saved-plan"])
+def test_session_naming_preserves_drafts_and_existing_plans(tmp_path, has_plan):
+    draft = tmp_path / ".socrates/20261125-183000"
+    draft.mkdir(parents=True)
+    (draft / "spec.md").write_text(
+        "Status: Validated\nFrozen: true\n" if has_plan else "Status: Interrogating\nFrozen: false\n"
+    )
+    if has_plan:
+        (draft / "plan.md").write_text("Already presented for approval\n")
+    result = subprocess.run([sys.executable, str(NAME_SESSION), str(draft), "New label"],
+                            check=True, capture_output=True, text=True)
+    assert Path(result.stdout.strip()) == draft
+    assert list(draft.parent.iterdir()) == [draft]
 
 
 @pytest.fixture

@@ -9,7 +9,7 @@ Read [the shared dialogue procedure](references/dialogue.txt) before initializin
 
 ## Invocation
 
-`$socrates Task title` initializes a session; `$socrates` continues one. An explicit `.socrates/<timestamp>/` path selects that session. Preserve the existing `.socrates/YYYYMMDD-HHMMSS/` artifacts and lifecycle states.
+`$socrates Task title` initializes a session. `$socrates` continues one. An explicit path under `.socrates/` selects that session, including an existing timestamp path. Preserve its artifacts and lifecycle state.
 
 Keep the session's `progress.md` current using the shared dialogue procedure. For a progress-only request, compare the saved checkpoint with the available session artifacts and report the last evidenced milestone and the next action or blocker. Keep the request read-only, even when the checkpoint is absent or stale.
 
