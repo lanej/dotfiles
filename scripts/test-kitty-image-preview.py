@@ -123,6 +123,7 @@ signal.pause()
                     for window in tab["windows"]:
                         if window["title"] == title:
                             output = remote("get-text", "--ansi", "--match", f'id:{window["id"]}')
+                            output = re.sub(r"\x1b\[[0-9;:]*m", "", output)
                             for line in output.splitlines():
                                 if fragment in line:
                                     marks = re.findall(r"\x1b\]8;[^;]*;mark:(\d+)", line.split(fragment)[0])
@@ -131,14 +132,18 @@ signal.pause()
             return None
         key("ctrl+shift+e" if url_mode else "super+shift+u")
         overlay_id = until("a native Kitty hint for " + fragment, find)
+        # The overlay dims individual cells rather than changing the window palette.
         colors = remote("get-colors", "--match", f"id:{overlay_id}")
-        if not re.search(r"foreground\s+#8c929d", colors, re.I):
-            raise AssertionError("Non-link text must use the dim Nord foreground")
+        if not re.search(r"background\s+#2e3440", colors, re.I):
+            raise AssertionError("The overlay changed the source theme")
         artifacts = os.environ.get("KITTY_HINT_ARTIFACTS")
         if artifacts and (url_mode or fragment in ("screenshots/plan-viewer", "reference.rs")):
             image = ImageGrab.grab().convert("RGB")
             colors = dict((color, count) for count, color in image.getcolors(image.width * image.height))
-            for color in ((236, 239, 244), (235, 203, 139), (67, 76, 94), (59, 66, 82), (140, 146, 157)):
+            expected = [(235, 203, 139), (67, 76, 94), (59, 66, 82)]
+            if url_mode:
+                expected.extend([(136, 192, 208), (163, 190, 140), (150, 135, 105)])
+            for color in expected:
                 if colors.get(color, 0) < 5:
                     raise AssertionError(f"Missing rendered hint color {color}")
             destination = Path(artifacts)

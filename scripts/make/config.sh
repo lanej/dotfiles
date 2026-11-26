@@ -291,6 +291,7 @@ case "$target" in
         ln -fs "${dotfiles}/kitty/close_tab_with_confirmation.py" "${setup_home}/.config/kitty/close_tab_with_confirmation.py"
         ln -fs "${dotfiles}/kitty/open_last_url.py" "${setup_home}/.config/kitty/open_last_url.py"
         ln -fs "${dotfiles}/kitty/select_hint.py" "${setup_home}/.config/kitty/select_hint.py"
+        ln -fs "${dotfiles}/kitty/hint_overlay.py" "${setup_home}/.config/kitty/hint_overlay.py"
         ln -fs "${dotfiles}/kitty/tab_bar.py" "${setup_home}/.config/kitty/tab_bar.py"
         ;;
     python)

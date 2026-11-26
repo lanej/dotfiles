@@ -5,6 +5,7 @@ on:
       - 'config/keybindings.toml'
       - 'kitty/kittyconf'
       - 'kitty/select_hint.py'
+      - 'kitty/hint_overlay.py'
       - 'bin/zellij-image-hints'
       - 'scripts/build-zellij-helpers.sh'
       - 'scripts/make/config.sh'

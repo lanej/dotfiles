@@ -208,6 +208,7 @@ def show_hints(boss, window, hint_type="hyperlink", *, rows=None, snapshot=None,
     return boss.run_kitten_with_metadata(
         "hint_overlay.py", (), window=window, input_data=json.dumps(snapshot), **kwargs)
 
+
 def at_cursor(window):
     cursor = window.screen.cursor
     return window.screen.hyperlink_at(cursor.x, cursor.y) or ""
@@ -255,7 +256,7 @@ def handle_result(args, answer, target_window_id, boss):
             return
         remove_timer(timer)
         if not ready:
-            # Older or unmanaged remote sessions still get Kitty's ordinary hyperlink picker.
+            # Older or unmanaged sessions can still select OSC 8 links.
             show_hints(boss, window, rows=rows, snapshot=snapshot)
             return
         ticket = ready[1]

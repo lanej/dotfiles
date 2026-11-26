@@ -3,6 +3,8 @@
 from pathlib import Path
 from types import SimpleNamespace
 import importlib.util
+import json
+import sys
 
 from kitty.fast_data_types import Screen, set_options, GLFW_MOD_SUPER, GLFW_MOD_SHIFT, GLFW_MOD_CONTROL
 from kitty.config import load_config
@@ -25,41 +27,71 @@ def expect_url(opened, expected):
 
 
 def check_image_hints(root):
+    sys.path.insert(0, str(root / "kitty"))
     spec = importlib.util.spec_from_file_location("select_hint", root / "kitty/select_hint.py")
     picker = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(picker)
-    from kittens.hints.main import parse_hints_args
-    # Exercise the current generated palette rather than Kitty factory defaults.
+    import hint_overlay as styling
     set_options(load_config(str(root / "design-system/generated/kitty.conf")))
     source = SimpleNamespace(screen=Screen(None, 4, 60, 4))
-    overlay = SimpleNamespace(screen=Screen(None, 4, 60, 4))
-    overlay.set_dynamic_color = lambda code, value: Window.set_dynamic_color(overlay, code, value)
     calls = []
 
     def run_picker(name, args, **kwargs):
-        options, extra = parse_hints_args(args)
-        calls.append((name, options, extra, kwargs))
-        return overlay
+        model = json.loads(kwargs["input_data"])
+        calls.append((name, SimpleNamespace(type=model["type"]), args, kwargs))
+        return None
 
     boss = SimpleNamespace(run_kitten_with_metadata=run_picker, window_id_map={7: source})
+    parse_bytes(source.screen, b"\x1b[33mwarning\x1b[0m  \x1b[36mhttps://example.org/\x1b[32mreference\x1b[0m")
+    original = picker.capture(source.screen)
+    original_fg = int(source.screen.color_profile.default_fg)
     for kind in ("hyperlink", "url"):
         picker.show_hints(boss, source, kind)
         name, options, extra, kwargs = calls[-1]
-        if (name != "hints" or options.type != kind or options.alphabet != "asdfghjkl"
-                or options.hints_offset != 0 or not options.ascending or not options.prefix_free or extra
-                or options.hints_text_color != "#ECEFF4"
-                or options.hints_background_color != "#434C5E"
-                or options.hints_foreground_color != "#EBCB8B"
-                or options.hints_text_background_color != "#3B4252" or kwargs["window"] is not source):
-            raise AssertionError("Native hints did not receive the home-row and Nord style")
-        if int(overlay.screen.color_profile.default_fg) != 0x8C929D:
-            raise AssertionError("Non-link text did not dim on the native overlay")
-        if int(source.screen.color_profile.default_fg) == 0x8C929D:
+        model = json.loads(kwargs["input_data"])
+        palette = model["palette"]
+        if (name != "hint_overlay.py" or options.type != kind or extra
+                or kwargs["window"] is not source
+                or palette["key_bg"] != 0x434C5E or palette["key_fg"] != 0xEBCB8B
+                or palette["target"] != 0x3B4252 or palette["accent"] != 0x88C0D0):
+            raise AssertionError("Hint overlay did not receive the Nord palette and source")
+        if picker.capture(source.screen) != original or int(source.screen.color_profile.default_fg) != original_fg:
             raise AssertionError("Hint styling changed the source pane")
+        if kind == "url":
+            if [m["target"] for m in model["marks"]] != ["https://example.org/reference"]:
+                raise AssertionError(f"URL detection lost the original URL: {model['marks']}")
+            cells = model["cells"][0]
+            if (cells[0][2], cells[10][2], cells[30][2]) != (0xEBCB8B, 0x88C0D0, 0xA3BE8C):
+                raise AssertionError(f"Original ANSI colors were lost: {cells}")
+            frame = Screen(None, 4, 60, 4)
+            parse_bytes(frame, styling.render(model).encode())
+            profile = frame.color_profile
+            line = frame.line(0)
+            def fg(x):
+                return int(profile.as_color(line.cursor_from(x).fg))
+            if (fg(0), fg(9), fg(10), fg(30)) != (
+                styling.mix(0xEBCB8B, palette["background"], .55), 0xEBCB8B, 0x88C0D0, 0xA3BE8C
+            ):
+                raise AssertionError("Hint frame did not preserve semantic foreground colors")
+            if int(profile.as_color(line.cursor_from(10).bg)) != palette["target"]:
+                raise AssertionError("URL background did not receive the target highlight")
+            if int(profile.as_color(line.cursor_from(10).decoration_fg)) != palette["accent"]:
+                raise AssertionError("URL underline did not receive the independent accent")
+            if line.cursor_from(10).decoration != 1:
+                raise AssertionError("URL underline was not rendered")
     picker.handle_result(["select_hint.py", "url"], None, 7, boss)
     if calls[-1][1].type != "url":
-        raise AssertionError("URL shortcut did not reach the styled native picker")
-
+        raise AssertionError("URL shortcut did not reach the styled picker")
+    if len(set(styling.labels(90))) != 90 or any(len(code) != 3 for code in styling.labels(90)):
+        raise AssertionError("Multi-key hints must be prefix-free")
+    for color in (0xBF616A, 0x81A1C1, 0x88C0D0, 0xA3BE8C):
+        adjusted = styling.readable(color, 0x3B4252)
+        if styling.contrast(adjusted, 0x3B4252) < 4.5:
+            raise AssertionError("Target foreground fell below the contrast floor")
+        if styling.contrast(color, 0x3B4252) >= 4.5 and adjusted != color:
+            raise AssertionError("Readable foreground was recolored")
+    parse_bytes(source.screen, b"\x1b[2J\x1b[H")
+    
     screen = Screen(None, 12, 94, 12)
     width = 60
     first = "(docs/screenshots/plan-viewer/fixture-"
@@ -179,7 +211,7 @@ def check_image_hints(root):
                 raise AssertionError("A build error must remain visible without a hint overlay")
         else:
             callback(17)
-            if removed != [17] or calls[-1][3]["input_data"] != "Preview ./fixture.png":
+            if removed != [17] or json.loads(calls[-1][3]["input_data"])["type"] != "hyperlink":
                 raise AssertionError("Unmanaged sessions lost the original five-second fallback")
 
     parse_bytes(source.screen, b"\x1b[2J\x1b[Hhttps://example.org/release")
