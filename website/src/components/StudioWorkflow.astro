@@ -1,0 +1,164 @@
+<section class="workflow" aria-label="How the Studio tools work together">
+  <p class="caption">The work loop</p>
+  <div class="pipeline">
+    <div class="step">
+      <span class="step-label">01 / Shape and decide</span>
+      <h3>Studio</h3>
+      <p>Conversation, intent, specifications, approvals</p>
+    </div>
+    <span class="arrow" aria-hidden="true">→</span>
+    <div class="step">
+      <span class="step-label">02 / Execute and verify</span>
+      <h3>Producer</h3>
+      <p>Approved tasks, agents, review evidence</p>
+    </div>
+    <span class="arrow" aria-hidden="true">→</span>
+    <div class="step">
+      <span class="step-label">03 / Deliver and respond</span>
+      <h3>Publisher</h3>
+      <p>GitHub PRs, checks, review feedback</p>
+    </div>
+  </div>
+  <div class="companions">
+    <div class="companion">
+      <span class="connector" aria-hidden="true">↕</span>
+      <div>
+        <strong>Copydesk</strong>
+        <span>Neovim edits and annotations</span>
+      </div>
+    </div>
+    <div class="companion">
+      <span class="connector" aria-hidden="true">↕</span>
+      <div>
+        <strong>Stagehand</strong>
+        <span>Isolated and protected worktrees</span>
+      </div>
+    </div>
+    <div class="companion">
+      <span class="connector" aria-hidden="true">↕</span>
+      <div>
+        <strong>GitHub</strong>
+        <span>Published changes and reviews</span>
+      </div>
+    </div>
+  </div>
+  <p class="feedback"><span aria-hidden="true">↶</span> Outcomes and feedback return to the owning Studio conversation.</p>
+</section>
+
+<style>
+  .workflow {
+    color: #e8f0e9;
+    background: #0d1513;
+    border: 1px solid #2b3a34;
+    border-radius: .65rem;
+    padding: clamp(1rem, 3vw, 1.5rem);
+    margin-block: 2rem 2.5rem;
+  }
+  .caption {
+    margin: 0 0 1.1rem;
+    color: #acc8b7;
+    font-size: .76rem;
+    font-weight: 650;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  .pipeline {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 1.3rem minmax(0, 1fr) 1.3rem minmax(0, 1fr);
+    gap: .5rem;
+    align-items: stretch;
+  }
+  .step {
+    min-width: 0;
+    padding: 1rem .85rem;
+    border: 1px solid #3a594a;
+    background: #14231c;
+    border-radius: .35rem;
+  }
+  .step-label {
+    display: block;
+    color: #a5b9ac;
+    font-size: .69rem;
+    letter-spacing: .045em;
+    line-height: 1.5;
+    text-transform: uppercase;
+  }
+  .step h3 {
+    color: #eff6ee;
+    font-size: clamp(1.1rem, 2vw, 1.42rem);
+    line-height: 1.25;
+    margin: .55rem 0 .4rem;
+    letter-spacing: -.02em;
+  }
+  .step p {
+    color: #b6c7bc;
+    font-size: .81rem;
+    line-height: 1.5;
+    margin: 0;
+  }
+  .arrow {
+    align-self: center;
+    justify-self: center;
+    color: #9cbcac;
+    font-size: 1.4rem;
+  }
+  .companions {
+    margin-top: .6rem;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 2.3rem;
+  }
+  .companion {
+    min-width: 0;
+    display: flex;
+    align-items: flex-start;
+    gap: .5rem;
+    padding: .45rem .1rem;
+  }
+  .connector {
+    color: #acc8b7;
+    font-size: 1.1rem;
+    line-height: 1.1;
+  }
+  .companion strong {
+    display: block;
+    font-size: .84rem;
+    font-weight: 600;
+    color: #e8f0e9;
+  }
+  .companion span:not(.connector) {
+    display: block;
+    color: #9bab9f;
+    font-size: .75rem;
+    line-height: 1.5;
+    margin-top: .15rem;
+  }
+  .feedback {
+    display: flex;
+    gap: .65rem;
+    align-items: baseline;
+    border-top: 1px solid #2b3a34;
+    margin: 1rem 0 0;
+    padding-top: .95rem;
+    color: #c5d3c8;
+    font-size: .8rem;
+    line-height: 1.5;
+  }
+  .feedback span {
+    color: #acc8b7;
+    font-size: 1.2rem;
+  }
+  @media (max-width: 42rem) {
+    .pipeline { grid-template-columns: 1fr; gap: .4rem; }
+    .step { padding: .85rem .95rem; }
+    .arrow { transform: rotate(90deg); line-height: 1; }
+    .companions { grid-template-columns: 1fr; gap: 0; margin-top: 1rem; }
+    .companion {
+      padding: .55rem .25rem;
+      border-bottom: 1px solid #24352b;
+    }
+    .companion:last-child { border-bottom: 0; }
+    .companion div { display: flex; flex-wrap: wrap; gap: .25rem .55rem; }
+    .companion span:not(.connector) { margin: 0; }
+  }
+</style>
