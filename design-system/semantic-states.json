@@ -1,0 +1,203 @@
+[
+  {
+    "id": "configuration",
+    "title": "Configuration",
+    "description": "Intentional settings, independent of health or execution outcome.",
+    "states": [
+      {
+        "id": "on",
+        "label": "ON",
+        "glyph": "●",
+        "ascii": "+",
+        "role": "accent.secondary",
+        "description": "Enabled by configuration.",
+        "example": "Auto-publish"
+      },
+      {
+        "id": "off",
+        "label": "OFF",
+        "glyph": "○",
+        "ascii": "-",
+        "role": "text.muted",
+        "description": "Intentionally disabled; not a failure.",
+        "example": "Auto-merge"
+      }
+    ]
+  },
+  {
+    "id": "severity",
+    "title": "Log severity",
+    "description": "Severity communicates the importance of an observation, not the state of a task.",
+    "states": [
+      {
+        "id": "trace",
+        "label": "TRACE",
+        "glyph": "·",
+        "ascii": ".",
+        "role": "text.muted",
+        "description": "Fine-grained execution detail.",
+        "example": "Read configuration"
+      },
+      {
+        "id": "debug",
+        "label": "DEBUG",
+        "glyph": "·",
+        "ascii": ".",
+        "role": "text.muted",
+        "description": "Diagnostic context for investigation.",
+        "example": "Loaded 3 adapters"
+      },
+      {
+        "id": "info",
+        "label": "INFO",
+        "glyph": "i",
+        "ascii": "i",
+        "role": "status.info",
+        "description": "Normal, relevant observation.",
+        "example": "Session started"
+      },
+      {
+        "id": "warning",
+        "label": "WARN",
+        "glyph": "△",
+        "ascii": "!",
+        "role": "status.warning",
+        "description": "Potential problem or degraded condition.",
+        "example": "Retry budget low"
+      },
+      {
+        "id": "error",
+        "label": "ERROR",
+        "glyph": "×",
+        "ascii": "x",
+        "role": "status.error",
+        "description": "An operation failed or a condition is invalid.",
+        "example": "Connection refused"
+      },
+      {
+        "id": "fatal",
+        "label": "FATAL",
+        "glyph": "×",
+        "ascii": "x",
+        "role": "status.error",
+        "bold": true,
+        "description": "Unrecoverable failure of this process.",
+        "example": "Cannot initialize"
+      }
+    ]
+  },
+  {
+    "id": "execution",
+    "title": "Execution",
+    "description": "Work lifecycle; pending and blocked work are not failed work.",
+    "states": [
+      {
+        "id": "queued",
+        "label": "QUEUED",
+        "glyph": "○",
+        "ascii": "o",
+        "role": "status.idle",
+        "description": "Ready or waiting to be scheduled.",
+        "example": "Generate release notes"
+      },
+      {
+        "id": "running",
+        "label": "RUNNING",
+        "glyph": "›",
+        "ascii": ">",
+        "role": "status.info",
+        "description": "Execution in progress.",
+        "example": "Compile workspace"
+      },
+      {
+        "id": "input",
+        "label": "NEEDS INPUT",
+        "glyph": "!",
+        "ascii": "!",
+        "role": "status.attention",
+        "bold": true,
+        "description": "Human decision or input required.",
+        "example": "Approve publication"
+      },
+      {
+        "id": "blocked",
+        "label": "BLOCKED",
+        "glyph": "△",
+        "ascii": "!",
+        "role": "status.warning",
+        "description": "Cannot proceed until a dependency clears.",
+        "example": "Await upstream check"
+      },
+      {
+        "id": "succeeded",
+        "label": "SUCCEEDED",
+        "glyph": "✓",
+        "ascii": "+",
+        "role": "status.success",
+        "description": "Completed with a successful outcome.",
+        "example": "Validate configuration"
+      },
+      {
+        "id": "failed",
+        "label": "FAILED",
+        "glyph": "×",
+        "ascii": "x",
+        "role": "status.error",
+        "description": "Execution ended unsuccessfully.",
+        "example": "Run integration tests"
+      },
+      {
+        "id": "canceled",
+        "label": "CANCELED",
+        "glyph": "–",
+        "ascii": "-",
+        "role": "text.muted",
+        "description": "Intentionally stopped; not necessarily an error.",
+        "example": "Superseded run"
+      }
+    ]
+  },
+  {
+    "id": "health",
+    "title": "System health",
+    "description": "Observed condition of a component, independent of configuration.",
+    "states": [
+      {
+        "id": "healthy",
+        "label": "HEALTHY",
+        "glyph": "●",
+        "ascii": "+",
+        "role": "status.success",
+        "description": "Known healthy.",
+        "example": "Producer"
+      },
+      {
+        "id": "degraded",
+        "label": "DEGRADED",
+        "glyph": "△",
+        "ascii": "!",
+        "role": "status.warning",
+        "description": "Operating with reduced capability.",
+        "example": "Publisher"
+      },
+      {
+        "id": "unavailable",
+        "label": "UNAVAILABLE",
+        "glyph": "×",
+        "ascii": "x",
+        "role": "status.error",
+        "description": "Known unavailable.",
+        "example": "Remote worker"
+      },
+      {
+        "id": "unknown",
+        "label": "UNKNOWN",
+        "glyph": "?",
+        "ascii": "?",
+        "role": "text.muted",
+        "description": "No sufficiently recent observation.",
+        "example": "Stagehand"
+      }
+    ]
+  }
+]

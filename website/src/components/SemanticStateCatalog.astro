@@ -1,0 +1,87 @@
+---
+import semanticStates from '../../../design-system/semantic-states.json';
+
+interface Preset {
+  palette: Record<string, string>;
+  roles: Record<string, string>;
+}
+interface State {
+  id: string;
+  label: string;
+  glyph: string;
+  ascii: string;
+  role: string;
+  description: string;
+  example: string;
+  bold?: boolean;
+}
+interface Family {
+  id: string;
+  title: string;
+  description: string;
+  states: State[];
+}
+
+const { preset = 'sage' } = Astro.props;
+const definitions = import.meta.glob<Preset>('../../../design-system/themes/*.json', { eager: true, import: 'default' });
+const definition = definitions[`../../../design-system/themes/${preset}.json`];
+if (!definition) throw new Error(`Unknown state catalog preset: ${preset}`);
+function color(role: string) {
+  const value = definition.palette[definition.roles[role]?.slice(1)];
+  if (!value) throw new Error(`Missing color for ${preset}/${role}`);
+  return value;
+}
+const families: Family[] = semanticStates;
+const style = Object.fromEntries(['surface', 'surface.raised', 'surface.selected', 'text', 'text.muted', 'accent', 'border']
+  .map(role => [`--state-${role.replaceAll('.', '-')}`, color(role)]));
+---
+
+<div class="state-catalog" data-semantic-catalog={preset} style={style}>
+  {families.map(family => (
+    <section class="family" data-semantic-family={family.id} aria-label={family.title}>
+      <header>
+        <h3>{family.title}</h3>
+        <p>{family.description}</p>
+      </header>
+      <div class="terminal-example">
+        {family.states.map(state => (
+          <div class="state-row" data-semantic-state={`${family.id}.${state.id}`} style={{ '--state-tone': color(state.role) }}>
+            <div class="state-label" style={{ fontWeight: state.bold ? 700 : 400 }}>
+              <span class="glyph" aria-hidden="true">{state.glyph}</span>
+              <span>{state.label}</span>
+            </div>
+            <span class="state-example">{state.example}</span>
+          </div>
+        ))}
+      </div>
+      <dl class="reference">
+        {family.states.map(state => (
+          <div>
+            <dt>{state.label}</dt>
+            <dd>{state.description}<br/><code>{state.role}</code> · <code>{color(state.role)}</code> · ASCII <code>{state.ascii}</code></dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  ))}
+</div>
+
+<style>
+  .state-catalog { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); align-items: start; }
+  .family { min-width: 0; margin: 0; padding: .9rem; border: 1px solid var(--state-surface-selected); border-radius: .45rem; background: var(--state-surface); color: var(--state-text); }
+  .family header { margin: 0 0 .65rem; }
+  .family h3 { margin: 0; color: var(--state-accent); font-size: 1rem; font-weight: 600; }
+  .family header p { margin: .25rem 0 0; color: var(--state-text-muted); font-size: .8rem; line-height: 1.45; }
+  .terminal-example { border: 1px solid var(--state-surface-selected); border-radius: .25rem; overflow: hidden; margin: 0; background: var(--state-surface-raised); font: .78rem/1.5 ui-monospace, monospace; }
+  .state-row { display: grid; grid-template-columns: minmax(7.75rem, auto) minmax(0, 1fr); align-items: baseline; gap: .4rem; padding: .35rem .45rem; margin: 0; }
+  .state-row:nth-child(2) { background: var(--state-surface-selected); }
+  .state-label { display: flex; align-items: baseline; gap: .3rem; color: var(--state-tone); margin: 0; white-space: nowrap; }
+  .glyph { display: inline-block; width: 1ch; text-align: center; }
+  .state-example { color: var(--state-text); margin: 0; overflow-wrap: anywhere; }
+  .reference { display: grid; gap: .45rem; margin: .75rem 0 0; font-size: .74rem; line-height: 1.45; }
+  .reference > div { display: grid; grid-template-columns: minmax(5.5rem, auto) minmax(0, 1fr); gap: .4rem; margin: 0; }
+  .reference dt, .reference dd { margin: 0; }
+  .reference dt { color: var(--state-text); font-size: .7rem; font-weight: 600; }
+  .reference dd { min-width: 0; color: var(--state-text-muted); overflow-wrap: anywhere; }
+  .reference code { color: var(--state-text); background: var(--state-surface-raised); white-space: normal; padding: 0 .12rem; }
+</style>

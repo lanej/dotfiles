@@ -77,6 +77,42 @@ class ThemeTests(unittest.TestCase):
                         with self.subTest(background=background, foreground=foreground):
                             self.assertGreaterEqual(contrast(colors[background], colors[foreground]), 4.5)
                 self.assertGreaterEqual(contrast(colors["tab.active.bg"], colors["tab.active.fg"]), 4.5)
+                for group in theme.read(theme.SOURCE / "semantic-states.json"):
+                    for state in group["states"]:
+                        for background in ("surface", "surface.raised", "surface.selected"):
+                            with self.subTest(state=state["id"], background=background):
+                                self.assertGreaterEqual(contrast(colors[state["role"]], colors[background]), 4.5)
+
+    def test_semantic_state_review_catalog(self):
+        groups = theme.read(theme.SOURCE / "semantic-states.json")
+        self.assertEqual([group["id"] for group in groups],
+                         ["configuration", "severity", "execution", "health"])
+        sage = theme.read(theme.SOURCE / "themes/sage.json")
+        nord = theme.read(theme.SOURCE / "themes/nord.json")
+        seen = set()
+        for group in groups:
+            for state in group["states"]:
+                with self.subTest(group=group["id"], state=state["id"]):
+                    key = (group["id"], state["id"])
+                    self.assertNotIn(key, seen)
+                    seen.add(key)
+                    self.assertIn(state["role"], sage["roles"])
+                    self.assertIn(state["role"], nord["roles"])
+                    self.assertTrue(state["label"] and state["description"] and state["example"])
+                    self.assertEqual(len(state["glyph"]), 1)
+                    self.assertEqual(len(state["ascii"]), 1)
+                    self.assertTrue(32 <= ord(state["ascii"]) <= 126)
+        mapping = {(group["id"], state["id"]): state["role"]
+                   for group in groups for state in group["states"]}
+        self.assertEqual(mapping["configuration", "on"], "accent.secondary")
+        self.assertEqual(mapping["configuration", "off"], "text.muted")
+        self.assertEqual(mapping["severity", "debug"], "text.muted")
+        self.assertEqual(mapping["severity", "info"], "status.info")
+        self.assertEqual(mapping["severity", "warning"], "status.warning")
+        self.assertEqual(mapping["severity", "error"], "status.error")
+        self.assertEqual(mapping["execution", "succeeded"], "status.success")
+        self.assertEqual(mapping["execution", "input"], "status.attention")
+        self.assertEqual(mapping["health", "unknown"], "text.muted")
 
     def test_invalid_definitions(self):
         base = theme.read(theme.SOURCE / "themes/nord.json")

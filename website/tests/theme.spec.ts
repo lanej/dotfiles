@@ -81,3 +81,27 @@ test('Sage is discoverable and compares both presets without changing the defaul
   await sage.scrollIntoViewIfNeeded();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
+
+test('Sage state families distinguish configuration, severity, execution and health', async ({ page }) => {
+  await page.goto('./design-system/sage/');
+  const catalog = page.locator('[data-semantic-catalog="sage"]');
+  await expect(catalog.locator('[data-semantic-family]')).toHaveCount(4);
+  await expect(catalog.locator('[data-semantic-state]')).toHaveCount(19);
+  for (const [id, color] of [
+    ['configuration.on', 'rgb(143, 185, 168)'],
+    ['configuration.off', 'rgb(163, 177, 167)'],
+    ['severity.debug', 'rgb(163, 177, 167)'],
+    ['severity.info', 'rgb(140, 197, 204)'],
+    ['severity.warning', 'rgb(232, 200, 139)'],
+    ['severity.error', 'rgb(230, 154, 160)'],
+    ['execution.input', 'rgb(221, 167, 131)'],
+    ['execution.succeeded', 'rgb(166, 205, 130)'],
+    ['health.unknown', 'rgb(163, 177, 167)'],
+  ]) {
+    await expect(catalog.locator(`[data-semantic-state="${id}"] .state-label`)).toHaveCSS('color', color);
+  }
+  await expect(catalog.locator('[data-semantic-state="severity.fatal"] .state-label')).toHaveCSS('font-weight', '700');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await catalog.scrollIntoViewIfNeeded();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});

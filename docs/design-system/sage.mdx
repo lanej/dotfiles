@@ -5,6 +5,7 @@ description: A near-black midnight green terminal palette with sage accents and 
 
 import PresetPalette from '@components/PresetPalette.astro';
 import PresetComparison from '@components/PresetComparison.astro';
+import SemanticStateCatalog from '@components/SemanticStateCatalog.astro';
 
 Sage is a selectable preset for my [terminal design system](../design-system.mdx), inspired by the deep green surfaces and pale sage accents of [my website](https://lanej.io/). It preserves the separation of palette, semantic roles, components and native adapters established by [Nord](nord.mdx).
 
@@ -21,6 +22,16 @@ The selected Midnight treatment uses the website’s exact near-black canvas (`#
 The [preset input](../../design-system/themes/sage.json) defines the base palette and role assignments. Shared presentation defaults, ANSI-derived Git roles and diff blend recipes are inherited unchanged. Ordinary foreground roles, including comments and diagnostics, target at least 4.5:1 contrast on the solid base, raised and selected surfaces. Borders, intentionally dim glyphs, tinted diff backgrounds and transparent compositing are not covered by that floor.
 
 <PresetPalette preset="sage" />
+
+## Semantic states
+
+The [candidate state vocabulary](../../design-system/semantic-states.json) separates configuration, log severity, execution and system health. The same color can express related emphasis across families without making the states interchangeable. The previews show labels and glyphs, not color alone.
+
+On uses secondary sage rather than the success green; off uses readable muted text rather than an error color or the low-contrast border role. Trace and debug share a quiet tone. Info and running share cyan, warning and blocked share amber, attention uses copper, and failed or unavailable use rose. Fatal adds weight rather than a new color. A canceled task or unknown service observation is neutral.
+
+<SemanticStateCatalog preset="sage" />
+
+This is a proposed presentation contract for review. The glyphs have ASCII alternatives, but their native widths and the application-specific state mappings are not yet validated or adopted by native adapters.
 
 ## Evaluate locally
 
