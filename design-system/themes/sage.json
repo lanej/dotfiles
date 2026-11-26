@@ -2,9 +2,9 @@
   "name": "sage",
   "source": "https://lanej.io/",
   "palette": {
-    "charcoal": "#1D2924",
-    "raised": "#29372F",
-    "selected": "#304039",
+    "charcoal": "#0D1513",
+    "raised": "#17231E",
+    "selected": "#26352D",
     "border": "#607B6C",
     "text": "#D7DFD9",
     "snow": "#EEF1EE",

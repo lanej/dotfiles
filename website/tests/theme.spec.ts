@@ -72,7 +72,9 @@ test('Sage is discoverable and compares both presets without changing the defaul
   await expect(page.locator('section[aria-labelledby="preset-palette"]')).toContainText('#ACC8B7');
   const sage = page.locator('[data-preset-preview="sage"]');
   const nord = page.locator('[data-preset-preview="nord"]');
-  await expect(sage).toHaveCSS('background-color', 'rgb(29, 41, 36)');
+  await expect(sage).toHaveCSS('background-color', 'rgb(13, 21, 19)');
+  await expect(sage.locator('.tabs')).toHaveCSS('background-color', 'rgb(23, 35, 30)');
+  await expect(sage.locator('.selected')).toHaveCSS('background-color', 'rgb(38, 53, 45)');
   await expect(nord).toHaveCSS('background-color', 'rgb(46, 52, 64)');
   await expect(sage.getByText('Failed', { exact: true })).toHaveCSS('color', 'rgb(230, 154, 160)');
   await page.setViewportSize({ width: 390, height: 844 });

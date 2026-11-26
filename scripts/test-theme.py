@@ -54,7 +54,9 @@ class ThemeTests(unittest.TestCase):
                 self.assertEqual(resolved["symbols"], symbols)
                 self.assertEqual(len(resolved["ansi"]), 16)
                 colors = resolved["roles"]
-                self.assertEqual(colors["surface"], "#1D2924")
+                self.assertEqual(colors["surface"], "#0D1513")
+                self.assertEqual(colors["surface.raised"], "#17231E")
+                self.assertEqual(colors["surface.selected"], "#26352D")
                 self.assertEqual(colors["accent"], "#ACC8B7")
                 self.assertEqual(colors["focus"], "#C4B2D9")
                 self.assertEqual(colors["diff.add"], colors["status.success"])
