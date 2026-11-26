@@ -457,6 +457,10 @@ test-kitty-ssh:
 test-yabai-browser-focus:
 	@"$(UV)" run --no-project python "$(DOTFILES)/scripts/test-yabai-browser-focus.py"
 
+.PHONY: kitty-native-hints
+kitty-native-hints:
+	@bash "$(DOTFILES)/scripts/build-kitty-native-hints.sh"
+
 test-kitty-last-url:
 	@kitty +runpy "import runpy; runpy.run_path('$(DOTFILES)/scripts/test-kitty-last-url.py', run_name='__main__')"
 

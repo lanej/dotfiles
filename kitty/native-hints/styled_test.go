@@ -37,3 +37,47 @@ func TestDotfilesNativeHyperlink(t *testing.T){
 	p:=f.spans("")
 	if len(p)<1||p[0].text!="a " {t.Fatalf("wide glyph replacement did not preserve width: %#v",p)}
 }
+
+func TestDotfilesFilePolicy(t *testing.T) {
+	for _, tc := range []struct {
+		text, path string
+		line, column int
+	}{
+		{"src/main.rs:42:7:", "src/main.rs",42,7},
+		{"file:///tmp/source%20file.lua#L8C3","/tmp/source file.lua",8,3},
+		{"file://localhost/tmp/a.py#L9-L12","/tmp/a.py",9,0},
+		{"README","README",0,0},
+		{".zshrc",".zshrc",0,0},
+		{"https://example.org/code.rs:42","",0,0},
+		{"file:///tmp/a%0Ab.rs","",0,0},
+	} {
+		target,ok:=parseFileTarget(tc.text)
+		if ok!=(tc.path!="") || target.Path!=tc.path || target.Line!=tc.line || target.Column!=tc.column {t.Fatalf("%q: %#v, %t",tc.text,target,ok)}
+	}
+}
+func TestDotfilesFilePane(t *testing.T) {
+	r:=testRequest(strings.Repeat(" ",15)+"(docs/screenshots/fixture-   │ other/worktree.png\n"+
+		"  running-overview.png).\n"+
+		"\x1b]8;;https://example.org/exact?q=yes\x1b\\release notes\x1b]8;;\x1b\\\n"+
+		"\x1b]8;;file:///tmp/space%20here.png\x1b\\thumbnail\x1b]8;;\x1b\\\n"+
+		"測 \"screenshots/a b.png\"\n"+
+		"src/main.rs:42:7")
+	r.Cols=80
+	r.Type="hyperlink"
+	// End the first fragment close to the pane's right edge.
+	r.Pane=&FilePane{Width:43,Height:6,Files:true}
+	f,err:=newStyledFrame(r)
+	if err!=nil {t.Fatal(err)}
+	got:=map[string]bool{}
+	for _,m:=range f.marks{
+		if target,ok:=m.Groupdict["file"].(fileTarget);ok{got[target.Path]=true}
+	}
+	for _,path:=range []string{"docs/screenshots/fixture-running-overview.png","/tmp/space here.png","screenshots/a b.png","src/main.rs"} {
+		if !got[path]{t.Fatalf("missing %q from %#v",path,got)}
+	}
+	if got["other/worktree.png"] {t.Fatal("routed a file outside the originating pane")}
+	r.Pane.Files=false
+	f,err=newStyledFrame(r)
+	if err!=nil {t.Fatal(err)}
+	for _,m:=range f.marks{if target,ok:=m.Groupdict["file"].(fileTarget);ok&&target.Path=="src/main.rs"{t.Fatal("offered a source file to an image-only receiver")}}
+}

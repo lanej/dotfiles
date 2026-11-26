@@ -3,6 +3,8 @@ import base64
 import json
 import os
 import re
+import subprocess
+import sys
 import time
 from functools import partial
 from urllib.parse import unquote, urlsplit
@@ -201,41 +203,151 @@ def native_helper():
     return candidate if os.path.isfile(candidate) and os.access(candidate, os.X_OK) else None
 
 
-def native_url_overlay(boss, window, helper):
-    """Use Kitty's C ANSI snapshot and native matching, without per-cell IPC."""
+def native_request(window, hint_type):
+    """Snapshot the actual Kitty configuration and source pane before routing."""
     from kitty.fast_data_types import get_options
-    from kitty.tabs import SpecialWindow
-    from kitty.window import CwdRequest
-    from kitty.constants import config_dir
+
     opts = get_options()
     screen = window.screen
     profile = screen.color_profile
     ansi = window.as_text(as_ansi=True, add_wrap_markers=True)
-    # Sized text and literal tabs need cell geometry not represented by
-    # ordinary ANSI spans; retain the existing exact-cell fallback.
     if "\x1b]66;" in ansi or "\t" in ansi:
         return None
-    req = {"ANSI": ansi, "Cols": screen.columns, "Type": "url",
-           "Foreground": int(profile.default_fg), "Background": int(profile.default_bg),
-           "Target": int(opts.color0), "KeyBG": int(opts.selection_background),
-           "KeyFG": int(opts.color3), "Accent": int(opts.url_color),
-           "Colors": [int(profile.as_color((i << 8) | 1)) for i in range(256)],
-           "DimOpacity": float(opts.dim_opacity)}
+    return {"ANSI": ansi, "Cols": screen.columns, "Rows": screen.lines, "Type": hint_type,
+            "Foreground": int(profile.default_fg), "Background": int(profile.default_bg),
+            "Target": int(opts.color0), "KeyBG": int(opts.selection_background),
+            "KeyFG": int(opts.color3), "Accent": int(opts.url_color),
+            "Colors": [int(profile.as_color((i << 8) | 1)) for i in range(256)],
+            "DimOpacity": float(opts.dim_opacity),
+            "URLPrefixes": ",".join(opts.url_prefixes),
+            "URLExcludedCharacters": "".join(f"\\U{ord(ch):08x}" for ch in opts.url_excluded_characters)}
+
+
+def native_payload(request):
+    return json.dumps(request, separators=(",", ":"), ensure_ascii=False).encode()
+
+
+def native_overlay(boss, window, helper, request, callback=None):
+    from kitty.tabs import SpecialWindow
+    from kitty.window import CwdRequest
+    from kitty.constants import config_dir
+
     tab = window.tabref()
     if tab is None:
         return None
     overlay = tab.new_special_window(
-        SpecialWindow([helper], stdin=json.dumps(req, separators=(",", ":"), ensure_ascii=False).encode(),
+        SpecialWindow([helper], stdin=native_payload(request),
                       cwd=CwdRequest(window).cwd_of_child or window.cwd_of_child,
-                      override_title="Choose URL", overlay_for=window.id, overlay_behind=True,
+                      override_title="Choose URL" if request["Type"] == "url" else "Choose text",
+                      overlay_for=window.id, overlay_behind=True,
                       env={"KITTEN_RUNNING_AS_UI": "1", "KITTY_CONFIG_DIRECTORY": config_dir}),
         copy_colors_from=window)
+
     def selected(data, window_id, current_boss):
-        if data.get("match"):
+        if callback is not None:
+            callback(data, window_id, current_boss)
+        elif data.get("match"):
             open_native_hint([], data, window_id, current_boss)
+        if data.get("error"):
+            current_boss.show_error("Native hints", data["error"])
+
     overlay.actions_on_close.append(partial(boss.on_kitten_finish, window.id, selected, default_data={}))
     overlay.open_url_handler = on_mark_clicked
     return overlay
+
+
+def request_receiver(boss, window, target_window_id, on_ready, on_timeout):
+    """Keep the terminal connection and receiver lifecycle in the Kitty adapter."""
+    previous_marker = at_cursor(window)
+    window.write_to_child(REQUEST)
+    started = time.monotonic()
+    deadline = started + 5
+
+    def wait(timer):
+        nonlocal deadline
+        if boss.window_id_map.get(target_window_id) is not window:
+            remove_timer(timer)
+            return
+        marker = at_cursor(window)
+        if marker == FAILED:
+            remove_timer(timer)
+            return
+        if marker == BUILDING:
+            deadline = started + 300
+        ready = READY.fullmatch(marker) if marker != previous_marker else None
+        if not ready and time.monotonic() < deadline:
+            return
+        remove_timer(timer)
+        if not ready:
+            on_timeout()
+            return
+        ticket = ready[1]
+        left, top, width, height, receiver_x, receiver_y = map(int, ready.groups()[1:])
+        cursor = window.screen.cursor
+        rect = (max(0, left + cursor.x - receiver_x), max(0, top + cursor.y - receiver_y), width, height)
+        window.write_to_child(b"!")
+        on_ready(marker, ticket, rect, marker.startswith("dotfiles-hints-v2://"))
+
+    add_timer(wait, 0.05, True)
+
+
+def deliver_selection(boss, window, window_id, marker, ticket, data, image):
+    """Only send a receiver-scoped selection over the original terminal connection."""
+    matches = data.get("match", [])
+    target = matches[0] if matches else None
+    if boss.window_id_map.get(window_id) is window and at_cursor(window) == marker:
+        payload = base64.urlsafe_b64encode(json.dumps(image).encode()).rstrip(b"=") if image else b""
+        window.write_to_child(ticket.encode() + payload + b".")
+    elif image:
+        boss.show_error("Open file", "The source pane changed. Select the file again.")
+    if target and image is None:
+        open_native_hint([], data, window_id, boss)
+
+
+def try_native(boss, window, target_window_id, hint_type):
+    helper = native_helper()
+    if not helper:
+        return False
+    request = native_request(window, hint_type)
+    if request is None:
+        return False
+    if hint_type == "url" or not in_zellij(window):
+        return native_overlay(boss, window, helper, request) is not None
+
+    # The compiled helper owns file eligibility. The probe avoids waiting for
+    # an unmanaged receiver when the source contains only web links.
+    probe = {**request, "Pane": {"Left": 0, "Top": 0, "Width": request["Cols"],
+                                "Height": request["Rows"], "Files": True}}
+    try:
+        result = subprocess.run([helper, "--probe"], input=native_payload(probe),
+                                capture_output=True, check=True, timeout=2)
+        needs_receiver = json.loads(result.stdout)
+        if type(needs_receiver) is not bool:
+            raise ValueError("Expected native hint eligibility boolean")
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        print(f"Native hint probe failed; using compatibility path: {error}", file=sys.stderr)
+        return False
+    if not needs_receiver:
+        return native_overlay(boss, window, helper, request) is not None
+
+    def fallback():
+        native_overlay(boss, window, helper, request)
+
+    def ready(marker, ticket, rect, files):
+        left, top, width, height = rect
+        routed = {**request, "Pane": {"Left": left, "Top": top, "Width": width,
+                                     "Height": height, "Files": files}}
+
+        def selected(data, window_id, current_boss):
+            groupdicts = data.get("groupdicts") or []
+            image = groupdicts[0].get("file") if groupdicts and isinstance(groupdicts[0], dict) else None
+            deliver_selection(current_boss, window, window_id, marker, ticket, data, image)
+
+        if native_overlay(boss, window, helper, routed, selected) is None:
+            deliver_selection(boss, window, target_window_id, marker, ticket, {}, None)
+
+    request_receiver(boss, window, target_window_id, ready, fallback)
+    return True
 
 
 def launch_overlay(boss, window, snapshot, embedded=False, **kwargs):
@@ -301,9 +413,8 @@ def handle_result(args, answer, target_window_id, boss):
     hint_type = args[1] if len(args) > 1 else "hyperlink"
     if hint_type not in ("hyperlink", "url"):
         raise ValueError("Expected hyperlink or url hint selection")
-    if hint_type == "url" and not any(x in args[2:] for x in ("--embedded", "--python")):
-        helper = native_helper()
-        if helper and native_url_overlay(boss, window, helper) is not None:
+    if not any(x in args[2:] for x in ("--embedded", "--python")):
+        if try_native(boss, window, target_window_id, hint_type):
             return
     if hint_type == "url" or not in_zellij(window):
         show_hints(boss, window, hint_type, embedded="--embedded" in args[2:])
@@ -314,53 +425,18 @@ def handle_result(args, answer, target_window_id, boss):
     if not has_file_hints(rows):
         show_hints(boss, window, rows=rows, snapshot=snapshot)
         return
-    previous_marker = at_cursor(window)
-    window.write_to_child(REQUEST)
-    started = time.monotonic()
-    deadline = started + 5
+    def fallback():
+        show_hints(boss, window, rows=rows, snapshot=snapshot)
 
-    def wait(timer):
-        nonlocal deadline
-        if boss.window_id_map.get(target_window_id) is not window:
-            remove_timer(timer)
-            return
-        marker = at_cursor(window)
-        if marker == FAILED:
-            remove_timer(timer)
-            return
-        if marker == BUILDING:
-            deadline = started + 300
-        ready = READY.fullmatch(marker) if marker != previous_marker else None
-        if not ready and time.monotonic() < deadline:
-            return
-        remove_timer(timer)
-        if not ready:
-            # Older or unmanaged sessions can still select OSC 8 links.
-            show_hints(boss, window, rows=rows, snapshot=snapshot)
-            return
-        ticket = ready[1]
-        left, top, width, height, receiver_x, receiver_y = map(int, ready.groups()[1:])
-        # Guest Zellij coordinates can start inside an outer terminal pane.
-        cursor = window.screen.cursor
-        rect = (max(0, left + cursor.x - receiver_x), max(0, top + cursor.y - receiver_y), width, height)
-        overrides, choices = picker_input(rows, rect, ticket, files=marker.startswith("dotfiles-hints-v2://"),
-                                          return_overrides=True)
-        window.write_to_child(b"!")
+    def ready(marker, ticket, rect, files):
+        overrides, choices = picker_input(rows, rect, ticket, files=files, return_overrides=True)
 
         def selected(data, window_id, current_boss):
             matches = data.get("match", [])
             target = matches[0] if matches else None
-            image = choices.get(target)
-            if current_boss.window_id_map.get(window_id) is window and at_cursor(window) == marker:
-                # Only ASCII data without a command terminator crosses the terminal connection.
-                payload = base64.urlsafe_b64encode(json.dumps(image).encode()).rstrip(b"=") if image else b""
-                window.write_to_child(ticket.encode() + payload + b".")
-            elif image:
-                current_boss.show_error("Open file", "The source pane changed. Select the file again.")
-            if target and image is None:
-                open_native_hint([], data, window_id, current_boss)
+            deliver_selection(current_boss, window, window_id, marker, ticket, data, choices.get(target))
 
         show_hints(boss, window, rows=rows, snapshot=snapshot, overrides=overrides,
                    custom_callback=selected, default_data={})
 
-    add_timer(wait, 0.05, True)
+    request_receiver(boss, window, target_window_id, ready, fallback)

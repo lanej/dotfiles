@@ -88,6 +88,14 @@ def main():
                 command("xdotool", "key", "--clearmodifiers", "Escape")
                 until("unchanged source after cancellation", lambda:
                     all(w["title"] != "Choose URL" for w in windows()) and remote("get-text", "--ansi") == source)
+            except Exception:
+                print((work / "kitty.log").read_text()[-6000:])
+                try:
+                    print("Overlay state:", [(w["id"], w["title"], w.get("cmdline")) for w in windows()])
+                    print("Active screen:", repr(remote("get-text", "--ansi")))
+                except (OSError, subprocess.SubprocessError):
+                    pass
+                raise
             finally:
                 app.terminate()
                 try:

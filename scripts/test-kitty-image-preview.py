@@ -132,6 +132,12 @@ signal.pause()
             return None
         key("ctrl+shift+e" if url_mode else "super+shift+u")
         overlay_id = until("a native Kitty hint for " + fragment, find)
+        expected_helper = os.environ.get("KITTY_NATIVE_HINTS_BIN")
+        if expected_helper:
+            active = next(w for ow in json.loads(remote("ls")) for tab in ow["tabs"]
+                          for w in tab["windows"] if w["id"] == overlay_id)
+            if not active.get("cmdline") or active["cmdline"][0] != expected_helper:
+                raise AssertionError(f"Expected native Go picker, found {active.get('cmdline')}")
         # The overlay dims individual cells rather than changing the window palette.
         colors = remote("get-colors", "--match", f"id:{overlay_id}")
         if not re.search(r"background\s+#2e3440", colors, re.I):

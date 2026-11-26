@@ -24,8 +24,10 @@ const styledAlphabet = "asdfghjkl"
 
 type StyledRequest struct {
 	ANSI string
-	Cols int
+	Cols, Rows int
 	Type string
+	Pane *FilePane
+	URLPrefixes, URLExcludedCharacters string
 	Foreground, Background, Target, KeyBG, KeyFG, Accent uint32
 	Colors [256]uint32
 	DimOpacity float64
@@ -216,16 +218,35 @@ func newStyledFrame(req *StyledRequest) (*styledFrame,error) {
 	input:=convert_text(req.ANSI,req.Cols)
 	styled,err:=parseStyledText(input,req)
 	if err!=nil{return nil,err}
-	opts:=&Options{Type:req.Type,Alphabet:styledAlphabet,Ascending:true,PrefixFree:true,
-		MinimumMatchLength:3,UrlPrefixes:"default",UrlExcludedCharacters:"default"}
-	plain,marks,_,err:=find_marks(input,opts)
-	var none *ErrNoMatches
-	if errors.As(err,&none) {return &styledFrame{req:req,text:styled,cache:make(colorPolicy)},nil}
-	if err!=nil{return nil,err}
-	if plain!=styled.plain {return nil,fmt.Errorf("ANSI and native matcher offsets diverged")}
 	frame:=&styledFrame{req:req,text:styled,cache:make(colorPolicy)}
-	for _,m:=range marks {frame.marks=append(frame.marks,styledMark{m,encode_hint(m.Index,styledAlphabet)})}
-	sort.Slice(frame.marks,func(i,j int)bool{return frame.marks[i].Start<frame.marks[j].Start})
+	plain, links := process_escape_codes(input)
+	if plain!=styled.plain {return nil,fmt.Errorf("ANSI and native matcher offsets diverged")}
+	var marks []Mark
+	if req.Type=="hyperlink" {
+		marks=links
+		if req.Pane!=nil {
+			marks=fileMarks(plain,links,*req.Pane)
+		}
+	} else {
+		prefixes,excluded:=req.URLPrefixes,req.URLExcludedCharacters
+		if prefixes=="" {prefixes="default"}
+		if excluded=="" {excluded="default"}
+		opts:=&Options{Type:req.Type,Alphabet:styledAlphabet,Ascending:true,PrefixFree:true,
+			MinimumMatchLength:3,UrlPrefixes:prefixes,UrlExcludedCharacters:excluded}
+		_,marks,_,err=find_marks(input,opts)
+		var none *ErrNoMatches
+		if errors.As(err,&none) {return frame,nil}
+		if err!=nil{return nil,err}
+	}
+	sort.SliceStable(marks,func(i,j int)bool{return marks[i].Start<marks[j].Start})
+	offset:=hints_to_skip(len(marks),len(styledAlphabet))
+	lastEnd:=0
+	for _,m:=range marks {
+		if m.Start<lastEnd||m.End>len(plain)||m.End<=m.Start {continue}
+		m.Index=len(frame.marks)+offset
+		frame.marks=append(frame.marks,styledMark{m,encode_hint(m.Index,styledAlphabet)})
+		lastEnd=m.End
+	}
 	return frame,nil
 }
 
@@ -370,12 +391,24 @@ func (f *styledFrame) hit(prefix string,x,y int) int {
 
 // Entry called by the separately built, opt-in native helper. No modification
 // to installed Kitty binaries, and no resident process.
-func RunStyledHints() error {
+func RunStyledHints(mode string) error {
 	data,err:=io.ReadAll(os.Stdin);if err!=nil{return err}
 	var req StyledRequest
 	if err=json.Unmarshal(data,&req);err!=nil{return err}
 	if req.Cols<1||req.Cols>10000||(req.Type!="url"&&req.Type!="hyperlink"){return fmt.Errorf("invalid styled hint snapshot")}
+	if req.Pane!=nil&&(req.Pane.Left<0||req.Pane.Top<0||req.Pane.Width<1||req.Pane.Height<1){return fmt.Errorf("invalid pane geometry")}
 	f,err:=newStyledFrame(&req);if err!=nil{return err}
+	switch mode {
+	case "probe":
+		marks:=make([]Mark,0,len(f.marks))
+		for _,m:=range f.marks {marks=append(marks,m.Mark)}
+		return json.NewEncoder(os.Stdout).Encode(hasFileMarks(marks))
+	case "render":
+		_,err=io.WriteString(os.Stdout,f.render(""));return err
+	case "select":
+	default:
+		return fmt.Errorf("unsupported native hints mode %q",mode)
+	}
 	if len(f.marks)==0{return nil}
 	lp,err:=loop.New(loop.NoAlternateScreen,loop.OnlyDisambiguateKeys);if err!=nil{return err}
 	lp.MouseTrackingMode(loop.BUTTONS_ONLY_MOUSE_TRACKING)
@@ -392,7 +425,10 @@ func RunStyledHints() error {
 		lp.SetCursorVisible(false);lp.AllowLineWrapping(false);draw();lp.SendOverlayReady();return "",nil
 	}
 	lp.OnFinalize=func()string{lp.SetCursorVisible(true);return ""}
-	lp.OnResize=func(_, _ loop.ScreenSize)error{lp.Quit(1);return nil}
+	lp.OnResize=func(_, current loop.ScreenSize)error{
+		if int(current.WidthCells)!=req.Cols || (req.Rows>0&&int(current.HeightCells)!=req.Rows){lp.Quit(1)}
+		return nil
+	}
 	lp.OnText=func(text string,_,paste bool)error{
 		if paste{return nil}
 		changed:=false
@@ -426,11 +462,12 @@ func RunStyledHints() error {
 	if err=lp.Run();err!=nil{return err}
 	if chosen>=0{
 		m:=f.marks[chosen]
-		cwd,_:=os.Getwd()
-		r:=Result{Match:[]string{m.Text},Groupdicts:[]map[string]any{{}},Type:req.Type,
+		cwd,err:=os.Getwd();if err!=nil{return err}
+		r:=Result{Match:[]string{m.Text},Groupdicts:[]map[string]any{m.Groupdict},Type:req.Type,
 			Multiple_joiner:"auto",Cwd:cwd}
 		output,err:=tui.KittenOutputSerializer()(r);if err!=nil{return err}
-		fmt.Print(output)
+		_,err=fmt.Print(output)
+		return err
 	}
 	return nil
 }

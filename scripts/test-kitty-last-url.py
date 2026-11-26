@@ -42,6 +42,8 @@ def check_image_hints(root):
         return None
 
     boss = SimpleNamespace(run_kitten_with_metadata=run_picker, window_id_map={7: source})
+    # This detector isolates the compatibility path; native routing is checked in X11.
+    picker.native_helper = lambda: None
     picker.launch_overlay = lambda b, w, model, embedded=False, **kw: b.run_kitten_with_metadata(
         "hint_overlay.py", (), window=w, input_data=styling.encode_snapshot(model), **kw)
     parse_bytes(source.screen, b"\x1b[33mwarning\x1b[0m  \x1b[36mhttps://example.org/\x1b[32mreference\x1b[0m")
