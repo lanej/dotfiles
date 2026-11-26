@@ -25,6 +25,14 @@ BOX_LINES = {
     "╯": "M0 10Q4.5 10 4.5 5V0",
     "\ue0b1": "M0 0L9 10L0 20", "\ue0b3": "M9 0L0 10L9 20",
 }
+# Known one-cell glyphs in the pinned lualine fixture. Keep the recorded
+# codepoint in the SVG metadata; draw a portable semantic outline.
+GLYPH_PATHS = {
+    "\ue0a0": "M2.5 5V15M2.5 10Q6.5 10 6.5 5M2.5 4a1 1 0 1 0 0.01 0M2.5 15a1 1 0 1 0 0.01 0M6.5 4a1 1 0 1 0 0.01 0",
+    "\U000f015a": "M4.5 4a6 6 0 1 0 0.01 0M2.5 8l4 4m0-4l-4 4",
+    "\U000f002a": "M4.5 3L8.3 16H0.7ZM4.5 7V11m0 2v1",
+    "\ue712": "M4.5 3Q7 3 7 8L8 15 6 17H3L1 15 2 8Q2 3 4.5 3ZM3 7h.5m2 0H6M3 10Q4.5 11 6 10M3 17l-2 1m5-1 2 1",
+}
 FILLED = {
     "\ue0b0": "M0 0L9 10L0 20Z", "\ue0b2": "M9 0L0 10L9 20Z",
     "▌": "M0 0H4.5V20H0Z", "▐": "M4.5 0H9V20H4.5Z",
@@ -108,6 +116,9 @@ def render_svg(name, rows, theme, *, trim=True):
             if data in BOX_LINES:
                 result.append(f'<path d="{BOX_LINES[data]}" transform="translate({x} {top})" stroke="{fg}" stroke-width="1.35" fill="none"/>')
                 continue
+            if data in GLYPH_PATHS:
+                result.append(f'<path d="{GLYPH_PATHS[data]}" transform="translate({x} {top})" stroke="{fg}" stroke-width="1.1" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-label="U+{ord(data):04X}"/>')
+                continue
             if data in FILLED:
                 result.append(f'<path d="{FILLED[data]}" transform="translate({x} {top})" fill="{fg}"/>')
                 continue
@@ -122,6 +133,35 @@ def render_svg(name, rows, theme, *, trim=True):
             result.append(f'<text x="{x + span * CELL_WIDTH / 2:g}" y="{top + 15}" text-anchor="middle" fill="{fg}" font-weight="{weight}" font-style="{italic}">{html.escape(data)}</text>')
     result.append("</g></svg>")
     return "\n".join(result) + "\n"
+
+
+class TerminalColorQueries:
+    """Answer OSC 10/11 color queries using the actual selected terminal palette."""
+
+    def __init__(self, theme):
+        self.colors = {"10": theme["roles"]["text"], "11": theme["roles"]["surface"]}
+        self.pending = b""
+
+    def feed(self, data):
+        import re
+        data = self.pending + data
+        pattern = rb"\x1b\](10|11);\?(?:\x07|\x1b\\)"
+        replies = []
+        for match in re.finditer(pattern, data):
+            key = match[1].decode("ascii")
+            color = self.colors[key]
+            rgb = "/".join(color[i:i+2].lower() * 2 for i in (1, 3, 5))
+            replies.append(f"\x1b]{key};rgb:{rgb}\x1b\\".encode("ascii"))
+        # Retain only a suffix that might be the beginning of another query.
+        prefixes = [b"\x1b]10;?\x1b\\", b"\x1b]11;?\x1b\\",
+                    b"\x1b]10;?\x07", b"\x1b]11;?\x07"]
+        self.pending = b""
+        for size in range(min(len(data), 8), 0, -1):
+            suffix = data[-size:]
+            if any(p.startswith(suffix) and len(p) > size for p in prefixes):
+                self.pending = suffix
+                break
+        return replies
 
 
 class TerminalMetadata:

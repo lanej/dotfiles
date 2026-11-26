@@ -29,7 +29,7 @@ import time
 
 import pyte
 
-from theme_review import TerminalMetadata, render_svg
+from theme_review import TerminalColorQueries, TerminalMetadata, render_svg
 import theme_review_contract as review_contract
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -166,6 +166,7 @@ def terminal(command, env, ready, *, columns=76, lines=24, capture_lines=10, raw
     stream = (ReviewStream if raw_path else NativeStream)(screen)
     decoder = codecs.getincrementaldecoder("utf-8")("replace")
     raw = bytearray()
+    queries = TerminalColorQueries(json.loads((GENERATED / "colors.json").read_text())) if raw_path else None
     deadline = time.monotonic() + 15
     ready_since = None
     try:
@@ -178,6 +179,9 @@ def terminal(command, env, ready, *, columns=76, lines=24, capture_lines=10, raw
                 if not chunk:
                     break
                 raw.extend(chunk)
+                if queries:
+                    for reply in queries.feed(chunk):
+                        os.write(fd, reply)
                 stream.feed(decoder.decode(chunk))
             if ready(screen):
                 if not raw_path:

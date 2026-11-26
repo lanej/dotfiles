@@ -184,7 +184,9 @@
       ],
       "amount": 0.51
     },
-    "selection.row.fg": "@text.strong"
+    "selection.row.fg": "@text.strong",
+    "gutter.text": "@text.subtle",
+    "gutter.border": "@border"
   },
   "ansi": [
     "$raised",

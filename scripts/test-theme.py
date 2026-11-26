@@ -133,6 +133,16 @@ class ThemeTests(unittest.TestCase):
         preset = theme.read(theme.SOURCE / "themes/sage.json")
         _, value = theme.resolve(preset, theme.read(theme.SOURCE / "tokens.json")["roles"])
         check("inverse selection text", c["selection.solid.fg"], c["selection.solid.bg"])
+        check("bat gutter text", c["gutter.text"], c["surface"])
+        check("bat gutter geometry", c["gutter.border"], c["surface"], 3)
+        import plistlib
+        settings = plistlib.loads(outputs["Dotfiles.tmTheme"].encode())["settings"][0]["settings"]
+        self.assertEqual(settings["gutterForeground"], c["gutter.text"])
+        self.assertEqual(settings["gutter"], c["surface"])
+        for name, role in (("left", "gutter.border"), ("right", "gutter.border"),
+                           ("zero", "gutter.text"), ("minus", "status.error"), ("plus", "status.success")):
+            self.assertIn(f'line-numbers-{name}-style = "{c[role]}"', outputs["delta.gitconfig"])
+            check("delta gutter " + name, c[role], c["surface"], 3 if name in ("left", "right") else 4.5)
         check("tmux inactive pane title", c["text.on.border"], c["border"])
         self.assertIn(f'#[bg={c["border"]}]#[fg={c["text.on.border"]}]', outputs["tmux.conf"])
         states = theme.expand(theme.read(theme.SOURCE / "adapters/tmux-states.json"), value)
@@ -582,6 +592,15 @@ class ThemeTests(unittest.TestCase):
         full = ET.fromstring(render_svg("full", rows, theme_data, trim=False))
         self.assertEqual(full.get("width"), str(7 * 9 + 24))
         self.assertEqual(full.get("height"), str(2 * 20 + 24))
+
+    def test_terminal_color_queries_across_split_reads(self):
+        from theme_review import TerminalColorQueries
+        query = TerminalColorQueries({"roles": {"text": "#D7DFD9", "surface": "#0D1513"}})
+        self.assertEqual(query.feed(b"hello\x1b]1"), [])
+        self.assertEqual(query.feed(b"1;?\x1b"), [])
+        self.assertEqual(query.feed(b"\\"), [b"\x1b]11;rgb:0d0d/1515/1313\x1b\\"])
+        self.assertEqual(query.feed(b"\x1b]10;?\x07"), [b"\x1b]10;rgb:d7d7/dfdf/d9d9\x1b\\"])
+        self.assertEqual(query.feed(b"ordinary text"), [])
 
     def test_review_metadata_filter_preserves_hyperlink_labels(self):
         from theme_review import TerminalMetadata

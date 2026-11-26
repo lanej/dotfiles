@@ -15,6 +15,8 @@ import unicodedata
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT = ROOT / "design-system/native-review-contract.json"
+from theme_review import GLYPH_PATHS
+
 DECORATIVE_JOINS = set("\ue0b0\ue0b1\ue0b2\ue0b3")
 
 
@@ -101,7 +103,7 @@ def audit_capture(surface, rows, theme, policy):
             data = cell["data"]
             if not data.strip():
                 continue
-            if any(ch == "\ufffd" or (unicodedata.category(ch) == "Co" and ch not in DECORATIVE_JOINS) for ch in data):
+            if any(ch == "\ufffd" or (unicodedata.category(ch) == "Co" and ch not in DECORATIVE_JOINS and ch not in GLYPH_PATHS) for ch in data):
                 glyphs.append({"row": y+1, "column": x+1, "glyph": data})
             # These transitions and Neovim's empty-line tildes convey no state.
             if data in DECORATIVE_JOINS or (surface == "neovim-frame" and lines[y].strip() == "~"):
@@ -157,7 +159,7 @@ def audit_capture(surface, rows, theme, policy):
             fg = primitive["active_ink"] if focused else primitive["inactive_ink"]
             bg = primitive["active_fill"] if focused else "surface"
             bounds = span(rows[y], label)
-            actual = sorted(set(inks[y][bounds[0]:bounds[1]])) if bounds else []
+            actual = [list(pair) for pair in sorted(set(inks[y][bounds[0]:bounds[1]]))] if bounds else []
             check(surface + ".label." + label, styled(y, label, fg, bg),
                   {"fg": roles[fg], "bg": roles[bg]}, {"row": y+1, "label": label, "inks": actual})
         active = span(rows[y], labels[primitive["active"]])
@@ -170,7 +172,7 @@ def audit_capture(surface, rows, theme, policy):
             following = span(rows[y], labels[i+1]) if i+1 < len(labels) else (len(rows[y]), len(rows[y]))
             matches = [] if not (current and following) else [x for x in range(current[1], following[0]) if rows[y][x]["data"] == glyph]
             check(surface + ".marker." + role, len(matches) == 1 and inks[y][matches[0]] == (roles[role], base),
-                  "one " + glyph + " on the base after " + labels[i], {"row": y+1, "columns": [x+1 for x in matches], "inks": [inks[y][x] for x in matches]})
+                  "one " + glyph + " on the base after " + labels[i], {"row": y+1, "columns": [x+1 for x in matches], "inks": [list(inks[y][x]) for x in matches]})
 
     def marked_selection(primitive):
         for label, role in primitive["labels"].items():

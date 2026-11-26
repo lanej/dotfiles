@@ -172,7 +172,8 @@ assert(vim.trim(vim.api.nvim_buf_get_extmarks(0, ns, 0, -1, {details = true})[1]
         root = self.work / "recording"
         (root / "scripts").mkdir(parents=True)
         (root / "bin").mkdir()
-        shutil.copy2(ROOT / "scripts/test-theme-native.py", root / "scripts/test-theme-native.py")
+        for name in ("test-theme-native.py", "theme_review.py", "theme_review_contract.py"):
+            shutil.copy2(ROOT / "scripts" / name, root / "scripts" / name)
         shutil.copy2(ROOT / "bin/dotfiles-theme", root / "bin/dotfiles-theme")
         baseline = root / "design-system/baselines/variant/cli.json"
         capture = root / "docs/design-system/presets/variant/cli.svg"

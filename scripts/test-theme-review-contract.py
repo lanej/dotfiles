@@ -81,7 +81,9 @@ class NativeReviewContractTests(unittest.TestCase):
 
     def test_inactive_status_ribbon_and_wrong_marker_are_rejected(self):
         specimen = tmux()
-        self.assertEqual(report("tmux", specimen)["status"], "pass")
+        audit = report("tmux", specimen)
+        self.assertEqual(audit["status"], "pass")
+        self.assertEqual(json.loads(json.dumps(audit)), audit, "audit must replay from JSON without type changes")
         paint(specimen[-1], "1:Publisher", "#0D1513", "#F18C96")
         bad = failures(report("tmux", specimen))
         self.assertIn("tmux.no-inactive-ribbons", bad)
