@@ -232,15 +232,14 @@ jobs:
         if: ${{ !cancelled() && github.event_name == 'pull_request' && runner.os == 'Linux' && steps.zellij_install.outcome == 'success' }}
         shell: bash
         run: |
-          trap 'git restore -- design-system/generated' EXIT
           failed=0
           for definition in design-system/themes/*.toml; do
             preset=$(basename "$definition" .toml)
-            # The native make target links the checkout's generated KDL.
-            python3 scripts/theme.py --theme "$preset"
+            output="$RUNNER_TEMP/zellij-theme-$preset"
+            python3 scripts/theme.py --theme "$preset" --output-dir "$output"
             review="$RUNNER_TEMP/zellij-theme-review/$preset"
-            uv run --script scripts/test-theme-native.py --review-dir "$review" --surface zellij || failed=1
-            python3 scripts/theme_review_contract.py --verify-dir "$review" --profile zellij --commit "$(git rev-parse HEAD)" --preset "$preset" --colors design-system/generated/colors.json --summary "$GITHUB_STEP_SUMMARY" || failed=1
+            DOTFILES_THEME_DIR="$output" uv run --script scripts/test-theme-native.py --review-dir "$review" --surface zellij || failed=1
+            python3 scripts/theme_review_contract.py --verify-dir "$review" --profile zellij --commit "$(git rev-parse HEAD)" --preset "$preset" --colors "$output/colors.json" --summary "$GITHUB_STEP_SUMMARY" || failed=1
           done
           exit "$failed"
       - name: Upload unapproved Zellij native review
@@ -301,9 +300,13 @@ jobs:
       - name: Exercise native attention, status bar and detached-session triage
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
         run: make test-zellij-status
-      - name: Compare native theme frame
+      - name: Compare Sage and Nord native theme frames
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
-        run: uv run --script scripts/test-theme-native.py --surface zellij
+        run: |
+          uv run --script scripts/test-theme-native.py --surface zellij
+          nord="$RUNNER_TEMP/zellij-theme-nord-baselines"
+          python3 scripts/theme.py --theme nord --output-dir "$nord"
+          DOTFILES_THEME_DIR="$nord" uv run --script scripts/test-theme-native.py --surface zellij
       - run: make test-zellij-clipboard
         if: ${{ !cancelled() && steps.zellij_install.outcome == 'success' }}
       - name: Preserve failed workflow diagnostics

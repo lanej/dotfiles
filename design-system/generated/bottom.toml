@@ -176,31 +176,31 @@ columns = ["name", "cpu%", "mem%", "pid", "read", "write", "Tread", "twrite", "s
 [styles]
 theme = "default"
 [styles.tables]
-headers = { color = "#88C0D0", bold = true }
+headers = { color = "#ACC8B7", bold = true }
 [styles.widgets]
-border_color = "#4C566A"
-selected_border_color = "#B48EAD"
-widget_title = { color = "#88C0D0" }
-text = { color = "#D8DEE9" }
-selected_text = { color = "#ECEFF4", bg_color = "#434C5E" }
-disabled_text = { color = "#81A1C1" }
+border_color = "#6B8575"
+selected_border_color = "#C4B2D9"
+widget_title = { color = "#ACC8B7" }
+text = { color = "#D7DFD9" }
+selected_text = { color = "#EEF1EE", bg_color = "#5E7067" }
+disabled_text = { color = "#A3B1A7" }
 [styles.graphs]
-graph_color = "#4C566A"
-legend_text = { color = "#D8DEE9" }
+graph_color = "#6B8575"
+legend_text = { color = "#D7DFD9" }
 [styles.cpu]
-all_entry_color = "#88C0D0"
-avg_entry_color = "#EBCB8B"
-cpu_core_colors = ["#88C0D0", "#8FBCBB", "#B48EAD", "#A3BE8C", "#EBCB8B", "#D08770"]
+all_entry_color = "#ACC8B7"
+avg_entry_color = "#E8C88B"
+cpu_core_colors = ["#ACC8B7", "#8FB9A8", "#C4B2D9", "#A6CD82", "#E8C88B", "#DDA783"]
 [styles.memory]
-ram_color = "#88C0D0"
-cache_color = "#8FBCBB"
-swap_color = "#EBCB8B"
+ram_color = "#ACC8B7"
+cache_color = "#8FB9A8"
+swap_color = "#E8C88B"
 [styles.network]
-rx_color = "#88C0D0"
-tx_color = "#A3BE8C"
-rx_total_color = "#88C0D0"
-tx_total_color = "#A3BE8C"
+rx_color = "#ACC8B7"
+tx_color = "#A6CD82"
+rx_total_color = "#ACC8B7"
+tx_total_color = "#A6CD82"
 [styles.battery]
-high_battery_color = "#A3BE8C"
-medium_battery_color = "#EBCB8B"
-low_battery_color = "#BF616A"
+high_battery_color = "#A6CD82"
+medium_battery_color = "#E8C88B"
+low_battery_color = "#F18C96"

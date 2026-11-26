@@ -62,7 +62,11 @@ jobs:
         shell: bash
         run: |
           export PATH="$RUNNER_TEMP/theme-tools/bin:$PATH"
-          uv run --script scripts/test-theme-native.py --plugins-dir "$RUNNER_TEMP/theme-tools/plugins" --surface neovim --surface neovim-frame --surface tmux --surface cli --surface fzf --surface bat --surface delta --surface glow --surface bottom
+          nord="$RUNNER_TEMP/theme-nord-baselines"
+          python3 scripts/theme.py --theme nord --output-dir "$nord"
+          for theme in "$PWD/design-system/generated" "$nord"; do
+            DOTFILES_THEME_DIR="$theme" uv run --script scripts/test-theme-native.py --plugins-dir "$RUNNER_TEMP/theme-tools/plugins" --surface neovim --surface neovim-frame --surface tmux --surface cli --surface fzf --surface bat --surface delta --surface glow --surface bottom
+          done
           uv run --script scripts/test-theme-presentation.py --plugins-dir "$RUNNER_TEMP/theme-tools/plugins"
       - name: Capture both presets for native visual review
         if: ${{ !cancelled() && github.event_name == 'pull_request' && runner.os == 'Linux' && steps.fixture_tools.outcome == 'success' }}

@@ -22,6 +22,7 @@ require("lualine").setup({
 	},
 })
 local function workflow()
+	local colors = require("dotfiles-theme").colors()
 	vim.o.columns = 150
 	vim.bo.filetype = "sql.bigquery"
 	local buf = vim.api.nvim_get_current_buf()
@@ -84,13 +85,13 @@ local function workflow()
 	assert(rendered().str:find(icon .. " 󰅚", 1, true), "Launch failure is missing its error glyph")
 	local id = assert(vim.lsp.start(config))
 	assert(rendered().str:find(icon .. " 󰔟", 1, true), "Booting server is missing its glyph pair")
-	assert(glyph_color("󰔟") == tonumber("ebcb8b", 16), "Boot glyph is not yellow")
+	assert(glyph_color("󰔟") == tonumber(colors["status.warning"]:sub(2), 16), "Boot glyph lost its warning color")
 	initialize(nil, { capabilities = {} })
 	assert(rendered().str:match("^%s*" .. icon .. "%s*$"), "Running server has extra text or status")
 	assert(glyph_color(icon) == tonumber(color:sub(2), 16), "Language glyph lost its Webdevicons color")
 	transport.on_error(vim.lsp.rpc.client_errors.INVALID_SERVER_MESSAGE, "fixture RPC error")
 	assert(rendered().str:find(icon .. " 󰅚", 1, true), "RPC failure is missing its error glyph")
-	assert(glyph_color("󰅚") == tonumber("bf616a", 16), "Error glyph is not red")
+	assert(glyph_color("󰅚") == tonumber(colors["status.error"]:sub(2), 16), "Error glyph lost its error color")
 	transport.on_exit(1, 0)
 	assert(
 		vim.wait(1000, function()

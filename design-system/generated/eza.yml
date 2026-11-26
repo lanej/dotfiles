@@ -2,237 +2,237 @@
 {
   "filekinds": {
     "normal": {
-      "foreground": "#D8DEE9"
+      "foreground": "#D7DFD9"
     },
     "directory": {
-      "foreground": "#81A1C1"
+      "foreground": "#A3B1A7"
     },
     "symlink": {
-      "foreground": "#88C0D0"
+      "foreground": "#ACC8B7"
     },
     "pipe": {
-      "foreground": "#EBCB8B"
+      "foreground": "#E8C88B"
     },
     "block_device": {
-      "foreground": "#D08770"
+      "foreground": "#DDA783"
     },
     "char_device": {
-      "foreground": "#D08770"
+      "foreground": "#DDA783"
     },
     "socket": {
-      "foreground": "#B48EAD"
+      "foreground": "#C4B2D9"
     },
     "special": {
-      "foreground": "#B48EAD"
+      "foreground": "#C4B2D9"
     },
     "executable": {
-      "foreground": "#A3BE8C"
+      "foreground": "#A6CD82"
     },
     "mount_point": {
-      "foreground": "#81A1C1"
+      "foreground": "#A3B1A7"
     }
   },
   "perms": {
     "user_read": {
-      "foreground": "#A3BE8C"
+      "foreground": "#A6CD82"
     },
     "user_write": {
-      "foreground": "#EBCB8B"
+      "foreground": "#E8C88B"
     },
     "user_execute_file": {
-      "foreground": "#BF616A"
+      "foreground": "#F18C96"
     },
     "user_execute_other": {
-      "foreground": "#BF616A"
+      "foreground": "#F18C96"
     },
     "group_read": {
-      "foreground": "#A3BE8C"
+      "foreground": "#A6CD82"
     },
     "group_write": {
-      "foreground": "#EBCB8B"
+      "foreground": "#E8C88B"
     },
     "group_execute": {
-      "foreground": "#BF616A"
+      "foreground": "#F18C96"
     },
     "other_read": {
-      "foreground": "#A3BE8C"
+      "foreground": "#A6CD82"
     },
     "other_write": {
-      "foreground": "#EBCB8B"
+      "foreground": "#E8C88B"
     },
     "other_execute": {
-      "foreground": "#BF616A"
+      "foreground": "#F18C96"
     },
     "special_user_file": {
-      "foreground": "#B48EAD"
+      "foreground": "#C4B2D9"
     },
     "special_other": {
-      "foreground": "#B48EAD"
+      "foreground": "#C4B2D9"
     },
     "attribute": {
-      "foreground": "#4C566A"
+      "foreground": "#909F95"
     }
   },
   "size": {
     "major": {
-      "foreground": "#88C0D0"
+      "foreground": "#ACC8B7"
     },
     "minor": {
-      "foreground": "#8FBCBB"
+      "foreground": "#8FB9A8"
     },
     "number_byte": {
-      "foreground": "#D8DEE9"
+      "foreground": "#D7DFD9"
     },
     "number_kilo": {
-      "foreground": "#A3BE8C"
+      "foreground": "#A6CD82"
     },
     "number_mega": {
-      "foreground": "#EBCB8B"
+      "foreground": "#E8C88B"
     },
     "number_giga": {
-      "foreground": "#D08770"
+      "foreground": "#DDA783"
     },
     "number_huge": {
-      "foreground": "#BF616A"
+      "foreground": "#F18C96"
     },
     "unit_byte": {
-      "foreground": "#4C566A"
+      "foreground": "#909F95"
     },
     "unit_kilo": {
-      "foreground": "#A3BE8C"
+      "foreground": "#A6CD82"
     },
     "unit_mega": {
-      "foreground": "#EBCB8B"
+      "foreground": "#E8C88B"
     },
     "unit_giga": {
-      "foreground": "#D08770"
+      "foreground": "#DDA783"
     },
     "unit_huge": {
-      "foreground": "#BF616A"
+      "foreground": "#F18C96"
     }
   },
   "users": {
     "user_you": {
-      "foreground": "#D8DEE9"
+      "foreground": "#D7DFD9"
     },
     "user_root": {
-      "foreground": "#BF616A"
+      "foreground": "#F18C96"
     },
     "user_other": {
-      "foreground": "#EBCB8B"
+      "foreground": "#E8C88B"
     },
     "group_yours": {
-      "foreground": "#D8DEE9"
+      "foreground": "#D7DFD9"
     },
     "group_other": {
-      "foreground": "#EBCB8B"
+      "foreground": "#E8C88B"
     },
     "group_root": {
-      "foreground": "#BF616A"
+      "foreground": "#F18C96"
     }
   },
   "links": {
     "normal": {
-      "foreground": "#88C0D0"
+      "foreground": "#ACC8B7"
     },
     "multi_link_file": {
-      "foreground": "#8FBCBB"
+      "foreground": "#8FB9A8"
     }
   },
   "git": {
     "new": {
-      "foreground": "#A3BE8C"
+      "foreground": "#A6CD82"
     },
     "modified": {
-      "foreground": "#EBCB8B"
+      "foreground": "#E8C88B"
     },
     "deleted": {
-      "foreground": "#BF616A"
+      "foreground": "#F18C96"
     },
     "renamed": {
-      "foreground": "#88C0D0"
+      "foreground": "#8CC5CC"
     },
     "ignored": {
-      "foreground": "#4C566A"
+      "foreground": "#909F95"
     },
     "conflicted": {
-      "foreground": "#BF616A"
+      "foreground": "#F18C96"
     }
   },
   "git_repo": {
     "branch_main": {
-      "foreground": "#D8DEE9"
+      "foreground": "#D7DFD9"
     },
     "branch_other": {
-      "foreground": "#B48EAD"
+      "foreground": "#C4B2D9"
     },
     "git_clean": {
-      "foreground": "#A3BE8C"
+      "foreground": "#A6CD82"
     },
     "git_dirty": {
-      "foreground": "#EBCB8B"
+      "foreground": "#E8C88B"
     }
   },
   "file_type": {
     "image": {
-      "foreground": "#B48EAD"
+      "foreground": "#C4B2D9"
     },
     "video": {
-      "foreground": "#B48EAD"
+      "foreground": "#C4B2D9"
     },
     "music": {
-      "foreground": "#8FBCBB"
+      "foreground": "#8FB9A8"
     },
     "crypto": {
-      "foreground": "#A3BE8C"
+      "foreground": "#A6CD82"
     },
     "document": {
-      "foreground": "#D8DEE9"
+      "foreground": "#D7DFD9"
     },
     "compressed": {
-      "foreground": "#D08770"
+      "foreground": "#DDA783"
     },
     "temp": {
-      "foreground": "#4C566A"
+      "foreground": "#909F95"
     },
     "compiled": {
-      "foreground": "#88C0D0"
+      "foreground": "#ACC8B7"
     },
     "build": {
-      "foreground": "#EBCB8B"
+      "foreground": "#E8C88B"
     },
     "source": {
-      "foreground": "#88C0D0"
+      "foreground": "#ACC8B7"
     }
   },
   "punctuation": {
-    "foreground": "#4C566A"
+    "foreground": "#909F95"
   },
   "date": {
-    "foreground": "#81A1C1"
+    "foreground": "#A3B1A7"
   },
   "inode": {
-    "foreground": "#4C566A"
+    "foreground": "#909F95"
   },
   "blocks": {
-    "foreground": "#4C566A"
+    "foreground": "#909F95"
   },
   "header": {
-    "foreground": "#ECEFF4"
+    "foreground": "#EEF1EE"
   },
   "octal": {
-    "foreground": "#B48EAD"
+    "foreground": "#C4B2D9"
   },
   "flags": {
-    "foreground": "#B48EAD"
+    "foreground": "#C4B2D9"
   },
   "control_char": {
-    "foreground": "#BF616A"
+    "foreground": "#F18C96"
   },
   "broken_symlink": {
-    "foreground": "#BF616A"
+    "foreground": "#F18C96"
   },
   "broken_path_overlay": {
-    "foreground": "#BF616A"
+    "foreground": "#F18C96"
   }
 }

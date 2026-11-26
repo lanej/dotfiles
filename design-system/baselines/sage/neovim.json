@@ -1,0 +1,91 @@
+{
+  "@variable.member": {
+    "fg": 14147545
+  },
+  "Comment": {
+    "fg": 10267551
+  },
+  "DiagnosticError": {
+    "fg": 15830166
+  },
+  "DiagnosticWarn": {
+    "fg": 15255691
+  },
+  "DiffAdd": {
+    "bg": 2437669,
+    "fg": 10931586
+  },
+  "DiffDelete": {
+    "bg": 3221544,
+    "fg": 15830166
+  },
+  "Function": {
+    "fg": 9225676
+  },
+  "FzfLuaBorder": {
+    "fg": 7046517
+  },
+  "FzfLuaCursorLine": {
+    "bg": 2503981,
+    "bold": true,
+    "cterm": {
+      "bold": true
+    },
+    "fg": 15659502
+  },
+  "FzfLuaFzfCursorLine": {
+    "bg": 2503981,
+    "bold": true,
+    "cterm": {
+      "bold": true
+    },
+    "fg": 15659502
+  },
+  "FzfLuaFzfMatch": {
+    "bold": true,
+    "cterm": {
+      "bold": true
+    },
+    "fg": 10931586
+  },
+  "FzfLuaFzfPointer": {
+    "fg": 11323575
+  },
+  "FzfLuaNormal": {
+    "bg": 857363,
+    "fg": 14147545
+  },
+  "GitSignsAdd": {
+    "fg": 10931586
+  },
+  "GitSignsAddInline": {
+    "bg": 2437669
+  },
+  "GitSignsStagedAdd": {
+    "fg": 8890476
+  },
+  "Normal": {
+    "fg": 14147545
+  },
+  "NormalFloat": {
+    "bg": 1516318,
+    "fg": 14147545
+  },
+  "String": {
+    "fg": 12045201
+  },
+  "Type": {
+    "fg": 12041699
+  },
+  "Visual": {
+    "bg": 11323575,
+    "fg": 857363
+  },
+  "lualine_a_normal": {
+    "bg": 1516318,
+    "bold": true,
+    "fg": 11323575,
+    "nocombine": true
+  },
+  "terminal_color_4": "#95B5D3"
+}

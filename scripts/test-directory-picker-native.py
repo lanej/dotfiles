@@ -9,6 +9,7 @@ import codecs
 import fcntl
 import html
 import importlib.util
+import json
 import os
 from pathlib import Path
 import pty
@@ -24,6 +25,8 @@ import tempfile
 import termios
 import time
 
+from theme_review import palette_lookup
+
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("native", ROOT / "scripts/test-theme-native.py")
 native = importlib.util.module_from_spec(spec)
@@ -33,6 +36,10 @@ spec.loader.exec_module(native)
 def main():
     destination = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "docs/images/directory-picker"
     destination.mkdir(parents=True, exist_ok=True)
+    palette = json.loads((ROOT / "design-system/generated/colors.json").read_text())
+    roles = palette["roles"]
+    surface = roles["surface"]
+    effective_ink, _ = palette_lookup(palette)
     with tempfile.TemporaryDirectory(prefix="picker-native-") as directory:
         home = Path(directory).resolve()
         repo, topic = home / "src/payments", home / "worktrees/payment-retries"
@@ -150,23 +157,17 @@ def main():
                 if select.select([fd], [], [], .03)[0]:
                     stream.feed(decoder.decode(os.read(fd, 65536)))
                     quiet = time.monotonic() + .15
-            colors = {"default": "#D8DEE9", "black": "#3B4252", "red": "#BF616A", "green": "#A3BE8C", "brown": "#EBCB8B", "blue": "#81A1C1", "magenta": "#B48EAD", "cyan": "#88C0D0", "white": "#E5E9F0"}
-            def color(value, fallback):
-                return colors.get(value, "#" + value if len(value) == 6 else fallback)
             top = next(i for i, line in enumerate(screen.display) if line.lstrip().startswith(("Directories >", "Worktrees >"))) if just_panel else 0
             bottom = max(i for i, line in enumerate(screen.display) if line.strip()) + 1
             svg = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{screen.columns*9+24}" height="{(bottom-top)*20+24}">',
-                   '<rect width="100%" height="100%" fill="#2E3440"/>',
+                   f'<rect width="100%" height="100%" fill="{surface}"/>',
                    '<g font-family="Hack Nerd Font Mono" font-size="14">']
             for row in range(top, bottom):
                 for column in range(screen.columns):
                     cell = screen.buffer[row][column]
-                    fg = color(cell.fg, "#D8DEE9")
-                    bg = "#2E3440" if cell.bg == "default" else color(cell.bg, "#2E3440")
-                    if cell.reverse:
-                        fg, bg = bg, fg
+                    fg, bg = effective_ink(cell._asdict())
                     x, y = column*9+12, (row-top)*20+12
-                    if bg != "#2E3440":
+                    if bg != surface:
                         svg.append(f'<rect x="{x}" y="{y}" width="9" height="20" fill="{bg}"/>')
                     if cell.underscore:
                         svg.append(f'<path d="M{x} {y+17}h9" stroke="{fg}"/>')
@@ -210,8 +211,9 @@ def main():
             if shutil.which("glow"):
                 assert "```" not in text() and "# Payments" not in text(), "README Markdown was not rendered"
             assert "\uf418" in text() and r"\uf418" not in text()
-            for attribute, value in (("bg", "a3be8c"), ("fg", "88c0d0"), ("bg", "434c5e"), ("fg", "ebcb8b")):
-                assert any(getattr(cell, attribute) == value for row in screen.buffer.values() for cell in row.values()), value
+            for attribute, role in (("bg", "status.success"), ("fg", "accent"), ("bg", "selection.bg"), ("fg", "status.warning")):
+                value = roles[role][1:].lower()
+                assert any(getattr(cell, attribute) == value for row in screen.buffer.values() for cell in row.values()), (role, value)
             assert "ctrl-" not in text()
             capture("wide", just_panel=True)
             os.write(fd, b"\x15")

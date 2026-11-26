@@ -15,7 +15,7 @@ The source chain is **palette → semantic roles → component roles → native 
 
 The theme distinguishes selected rows, active tabs, warnings, errors, success, attention and unknown observations. The shared schema defines required base roles and defaults for every additional semantic role. Every preset resolves the same role set; the compiler rejects missing base roles and undeclared overrides. Adapters reference exactly one semantic role and never choose a fallback based on the preset. Presentation choices, including explicit gutter styling, are typed tokens. Adding a preset requires only its TOML definition. Status retains a label or glyph. The [semantic state vocabulary](design-system/sage.mdx#semantic-states) defines explicit families for configuration, log severity, execution, health, interaction, connectivity, data and access. The compiler exports all states as resolved `semantic_states` entries in `tokens.json`; the family-qualified IDs are stable, and Unicode/ASCII selection follows the preset's symbol representation. Native adoption remains separate from compiling the vocabulary. Syntax grammars can differ across hosts; matching semantic roles does not promise identical token classification.
 
-Kitty opacity remains `0.97`; Neovim's main background remains inherited. The theme defines solid surfaces for popups, selections and other native components. Transparent compositing depends on the terminal and desktop behind it; preset captures show the solid theme backing.
+Kitty uses an opaque background, and Neovim inherits the terminal background. The theme defines solid surfaces for popups, selections and other native components. Hosts with custom transparency composite those colors against their desktop background.
 
 ## Foundation contracts
 
@@ -91,7 +91,7 @@ For an isolated theme experiment, run `python3 scripts/theme.py --theme nord --o
 
 ## Presets
 
-The built-in [Nord preset](design-system/nord.mdx) owns its palette reference, native examples and initial regression baseline. [Sage](design-system/sage.mdx) is available for evaluation with its own palette, semantic contrast tests and a comparative composition preview. Nord remains the default until native Sage captures are reviewed. Presets use the same token contract and native adapters; preset-specific captures stay with their preset.
+[Sage](design-system/sage.mdx) is the default terminal preset. [Nord](design-system/nord.mdx) remains available through `theme = "nord"` in the preset selection. Both presets use the same token contract and native adapters and have their own regression baselines.
 
 <ThemeCatalog />
 

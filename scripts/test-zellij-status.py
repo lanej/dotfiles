@@ -52,6 +52,8 @@ for line in sys.stdin:
 def main():
     for name in ("zellij", "cargo", "python3"):
         assert shutil.which(name), f"Install {name} before testing native attention"
+    palette = json.loads((ROOT / "design-system/generated/colors.json").read_text())["roles"]
+    roles = {name: color[1:].lower() for name, color in palette.items()}
     with tempfile.TemporaryDirectory(prefix="zj-status-", dir="/tmp") as directory:
         work = Path(directory).resolve()
         home, runtime, temporary = work / "home", work / "run", work / "tmp"
@@ -140,16 +142,16 @@ def main():
             display(client).resize(lines=32, columns=cols)
             fcntl.ioctl(client.fd, termios.TIOCSWINSZ, struct.pack("HHHH", 32, cols, 0, 0))
 
-        orange = "d08770"  # Nord's attention color.
+        attention = roles["status.attention"]
 
         def window_frame(client):
             screen = display(client)
             right, bottom = screen.columns - 1, screen.lines - 1
-            return (all(screen.buffer[0][x].underscore and screen.buffer[0][x].underline_color == orange
+            return (all(screen.buffer[0][x].underscore and screen.buffer[0][x].underline_color == attention
                         for x in range(screen.columns))
-                    and all(screen.buffer[y][x].fg == orange
+                    and all(screen.buffer[y][x].fg == attention
                             for y in range(2, bottom) for x in (0, right))
-                    and all(screen.buffer[bottom][x].fg == orange for x in range(screen.columns)))
+                    and all(screen.buffer[bottom][x].fg == attention for x in range(screen.columns)))
 
         terminal = StatusTerminal(binary, env, first)
         clients.append(terminal)
@@ -162,9 +164,9 @@ def main():
                            and "!?" not in top_line(terminal))
             assert "!0" not in top_line(terminal) and "●0" not in top_line(terminal)
             session_cell = display(terminal).buffer[0][top_line(terminal).index(first[:18])]
-            assert (session_cell.fg, session_cell.bg, session_cell.bold) == ("d8dee9", "2e3440", True)
+            assert (session_cell.fg, session_cell.bg, session_cell.bold) == (roles["text"], roles["surface"], True)
             active_cell = display(terminal).buffer[0][top_line(terminal).index("0:Tab #0")]
-            assert (active_cell.fg, active_cell.bg, active_cell.bold) == ("2e3440", "b48ead", True)
+            assert (active_cell.fg, active_cell.bg, active_cell.bold) == (roles["tab.active.fg"], roles["tab.active.bg"], True)
             terminal.send(b"\x06")
             terminal.until("prefix outlines the window and keeps the selected tab readable", lambda:
                            window_frame(terminal) and first[:18] in top_line(terminal)
@@ -182,7 +184,7 @@ def main():
             terminal.send(b"\x1b")
             terminal.until("Escape clears the frame", lambda:
                            not display(terminal).buffer[0][5].underscore
-                           and display(terminal).buffer[8][0].fg == "b48ead"
+                           and display(terminal).buffer[8][0].fg == roles["focus"]
                            and "0:Tab #0" in top_line(terminal))
             resize(terminal, 120)
             terminal.send(b"\x06")
@@ -190,9 +192,9 @@ def main():
             terminal.send(b"\x12")
             terminal.until("a command consumes the prefix and labels the resulting mode", lambda:
                            "RESIZE" in top_line(terminal) and not window_frame(terminal)
-                           and display(terminal).buffer[0][top_line(terminal).index("RESIZE")].bg == "88c0d0"
+                           and display(terminal).buffer[0][top_line(terminal).index("RESIZE")].bg == roles["accent"]
                            and first[:18] in top_line(terminal)
-                           and display(terminal).buffer[0][top_line(terminal).index(first[:18])].bg == "2e3440"
+                           and display(terminal).buffer[0][top_line(terminal).index(first[:18])].bg == roles["surface"]
                            and display(terminal).buffer[0][top_line(terminal).index(first[:18])].bold)
             terminal.send(b"\r")
             terminal.until("leaving resize restores the ordinary bar", lambda:
@@ -203,16 +205,16 @@ def main():
             split = max(pane["pane_x"] for pane in terminal.terminals())
             terminal.send(b"\x06")
             terminal.until("prefix surrounds both panes and leaves the divider alone", lambda:
-                           window_frame(terminal) and display(terminal).buffer[8][split].fg != orange)
+                           window_frame(terminal) and display(terminal).buffer[8][split].fg != attention)
             terminal.send(b"[")
             terminal.until("copy frames only the right-hand pane", lambda:
-                           display(terminal).buffer[8][split].fg == orange
-                           and display(terminal).buffer[8][119].fg == orange
-                           and display(terminal).buffer[8][0].fg != orange
+                           display(terminal).buffer[8][split].fg == attention
+                           and display(terminal).buffer[8][119].fg == attention
+                           and display(terminal).buffer[8][0].fg != attention
                            and not display(terminal).buffer[0][5].underscore)
             terminal.send(b"q")
             terminal.until("leaving copy restores the focused pane color", lambda:
-                           display(terminal).buffer[8][split].fg == "b48ead")
+                           display(terminal).buffer[8][split].fg == roles["focus"])
             terminal.prefix(b"x")
             terminal.until("original pane focused again", lambda: len(terminal.terminals()) == 1)
             first_pane = terminal.terminals()[0]["id"]
