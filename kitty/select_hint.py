@@ -192,6 +192,52 @@ def picker_input(rows, rect, ticket, files=True, return_overrides=False):
     return "\n".join(lines), choices
 
 
+def native_helper():
+    from kitty.constants import config_dir, version
+    # This helper is compiled against the pinned upstream native APIs.
+    if tuple(version)[:3] != (0, 50, 0):
+        return None
+    candidate = os.environ.get("KITTY_NATIVE_HINTS_BIN", os.path.join(config_dir, "hint-native"))
+    return candidate if os.path.isfile(candidate) and os.access(candidate, os.X_OK) else None
+
+
+def native_url_overlay(boss, window, helper):
+    """Use Kitty's C ANSI snapshot and native matching, without per-cell IPC."""
+    from kitty.fast_data_types import get_options
+    from kitty.tabs import SpecialWindow
+    from kitty.window import CwdRequest
+    from kitty.constants import config_dir
+    opts = get_options()
+    screen = window.screen
+    profile = screen.color_profile
+    ansi = window.as_text(as_ansi=True, add_wrap_markers=True)
+    # Sized text and literal tabs need cell geometry not represented by
+    # ordinary ANSI spans; retain the existing exact-cell fallback.
+    if "\x1b]66;" in ansi or "\t" in ansi:
+        return None
+    req = {"ANSI": ansi, "Cols": screen.columns, "Type": "url",
+           "Foreground": int(profile.default_fg), "Background": int(profile.default_bg),
+           "Target": int(opts.color0), "KeyBG": int(opts.selection_background),
+           "KeyFG": int(opts.color3), "Accent": int(opts.url_color),
+           "Colors": [int(profile.as_color((i << 8) | 1)) for i in range(256)],
+           "DimOpacity": float(opts.dim_opacity)}
+    tab = window.tabref()
+    if tab is None:
+        return None
+    overlay = tab.new_special_window(
+        SpecialWindow([helper], stdin=json.dumps(req, separators=(",", ":"), ensure_ascii=False).encode(),
+                      cwd=CwdRequest(window).cwd_of_child or window.cwd_of_child,
+                      override_title="Choose URL", overlay_for=window.id, overlay_behind=True,
+                      env={"KITTEN_RUNNING_AS_UI": "1", "KITTY_CONFIG_DIRECTORY": config_dir}),
+        copy_colors_from=window)
+    def selected(data, window_id, current_boss):
+        if data.get("match"):
+            open_native_hint([], data, window_id, current_boss)
+    overlay.actions_on_close.append(partial(boss.on_kitten_finish, window.id, selected, default_data={}))
+    overlay.open_url_handler = on_mark_clicked
+    return overlay
+
+
 def launch_overlay(boss, window, snapshot, embedded=False, **kwargs):
     """Use a lightweight local session; retain Kitty's embedded kitten fallback."""
     from kitty.utils import which
@@ -255,6 +301,10 @@ def handle_result(args, answer, target_window_id, boss):
     hint_type = args[1] if len(args) > 1 else "hyperlink"
     if hint_type not in ("hyperlink", "url"):
         raise ValueError("Expected hyperlink or url hint selection")
+    if hint_type == "url" and not any(x in args[2:] for x in ("--embedded", "--python")):
+        helper = native_helper()
+        if helper and native_url_overlay(boss, window, helper) is not None:
+            return
     if hint_type == "url" or not in_zellij(window):
         show_hints(boss, window, hint_type, embedded="--embedded" in args[2:])
         return
