@@ -1,0 +1,86 @@
+name = "sage"
+source = "https://lanej.io/"
+ansi = ["$raised", "$rose", "$success", "$amber", "$blue", "$lavender", "$cyan", "$text", "$comment", "$rose", "$success", "$amber", "$blue", "$lavender", "$teal", "$snow"]
+
+[palette]
+charcoal = "#0D1513"
+raised = "#17231E"
+selected = "#26352D"
+border = "#6B8575"
+text = "#D7DFD9"
+snow = "#EEF1EE"
+muted = "#A3B1A7"
+comment = "#9CAB9F"
+sage = "#ACC8B7"
+teal = "#8FB9A8"
+blue = "#95B5D3"
+cyan = "#8CC5CC"
+sand = "#D5C298"
+lichen = "#B7CB91"
+lavender = "#C4B2D9"
+success = "#A6CD82"
+amber = "#E8C88B"
+rose = "#F18C96"
+copper = "#DDA783"
+subtle = "#909F95"
+
+[roles]
+surface = "$charcoal"
+"surface.raised" = "$raised"
+"surface.selected" = "$selected"
+border = "$border"
+text = "$text"
+"text.strong" = "$snow"
+"text.muted" = "$muted"
+"text.inverse" = "$charcoal"
+accent = "$sage"
+"accent.secondary" = "$teal"
+focus = "$lavender"
+"status.success" = "$success"
+"status.warning" = "$amber"
+"status.error" = "$rose"
+"status.info" = "$cyan"
+"status.attention" = "$copper"
+"status.idle" = "$muted"
+"status.off" = "$subtle"
+"syntax.comment" = "$comment"
+"syntax.keyword" = "$blue"
+"syntax.function" = "$cyan"
+"syntax.string" = "$lichen"
+"syntax.type" = "$sand"
+"syntax.number" = "$lavender"
+"syntax.constant" = "$text"
+"syntax.operator" = "$blue"
+"syntax.special" = "$amber"
+"syntax.variable" = "$text"
+"text.subtle" = "$subtle"
+"diff.add.emph.bg" = { mix = ["@surface", "@diff.add"], amount = 0.2 }
+"diff.delete.emph.bg" = { mix = ["@surface", "@diff.delete"], amount = 0.2 }
+"text.on.error" = "@text.inverse"
+"text.on.border" = "@text.inverse"
+"selection.solid.fg" = "@text.inverse"
+"selection.solid.bg" = "@accent"
+"scroll.track" = "@surface.raised"
+"diff.add.dim" = { mix = ["@surface", "@diff.add"], amount = 0.8 }
+"diff.change.dim" = { mix = ["@surface", "@diff.change"], amount = 0.8 }
+"diff.delete.dim" = { mix = ["@surface", "@diff.delete"], amount = 0.8 }
+"git.file.conflicted.dim" = { mix = ["@surface", "@git.file.conflicted"], amount = 0.92 }
+"git.file.stashed.dim" = { mix = ["@surface", "@git.file.stashed"], amount = 0.7 }
+"git.file.deleted.dim" = { mix = ["@surface", "@git.file.deleted"], amount = 0.92 }
+"git.file.renamed.dim" = { mix = ["@surface", "@git.file.renamed"], amount = 0.82 }
+"git.file.modified.dim" = { mix = ["@surface", "@git.file.modified"], amount = 0.75 }
+"git.file.staged.dim" = { mix = ["@surface", "@git.file.staged"], amount = 0.79 }
+"git.file.untracked.dim" = { mix = ["@surface", "@git.file.untracked"], amount = 0.87 }
+"git.file.typechanged.dim" = { mix = ["@surface", "@git.file.typechanged"], amount = 0.83 }
+"git.file.ahead.dim" = { mix = ["@surface", "@git.file.ahead"], amount = 0.79 }
+"git.file.behind.dim" = { mix = ["@surface", "@git.file.behind"], amount = 0.75 }
+"git.file.branch.dim" = { mix = ["@surface", "@git.file.branch"], amount = 0.87 }
+"frame.inactive.fg" = { mix = ["@surface", "@text"], amount = 0.72 }
+"selection.row.bg" = { mix = ["@surface", "@accent"], amount = 0.51 }
+"selection.row.fg" = "@text.strong"
+"gutter.text" = "@text.subtle"
+"gutter.border" = "@border"
+
+[presentation]
+"diff.markers" = true
+"tmux.tabs.compact" = true

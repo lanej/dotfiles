@@ -249,13 +249,13 @@ def compile_semantic_states(groups, colors, symbols):
 def compile_theme(source, theme_name, symbols="unicode"):
     if not re.fullmatch(r"[a-z][a-z0-9-]*", theme_name):
         raise ValueError("invalid theme name")
-    theme = read(source / "themes" / f"{theme_name}.json")
+    theme = read(source / "themes" / f"{theme_name}.toml")
     if theme["name"] != theme_name:
         raise ValueError("theme name disagrees with filename")
-    shared = read(source / "tokens.json")
+    shared = read(source / "tokens.toml")
     tokens = Presentation(shared["presentation"], theme.get("presentation", {}), symbols)
     colors, value = resolve(theme, shared["roles"])
-    components = expand(read(source / "components.json"), value, tokens, "components")
+    components = expand(read(source / "components.toml"), value, tokens, "components")
     for style in components.values():
         validate_style(style, symbolic=True)
         if style.get("dim"):
@@ -291,7 +291,7 @@ def compile_theme(source, theme_name, symbols="unicode"):
     highlights = read(source / "adapters/neovim.toml")
     for name, style in highlights.items():
         if "component" in style:
-            expand(read(source / "components.json")[style["component"]], value, tokens, "neovim")
+            expand(read(source / "components.toml")[style["component"]], value, tokens, "neovim")
             style = {**{k: v for k, v in components[style["component"]].items() if k != "symbol"}, **{k: v for k, v in style.items() if k != "component"}}
         if "link" in style and style["link"] not in highlights:
             raise ValueError(f"unresolved highlight link: {name}")
@@ -358,7 +358,7 @@ def compile_theme(source, theme_name, symbols="unicode"):
     output("glow.json", json.dumps(glow, indent=2, ensure_ascii=False))
     starship = (source / "adapters/starship.toml.in").read_text()
     git_states = {}
-    declarations = read(source / "components.json")
+    declarations = read(source / "components.toml")
     for name, style in components.items():
         if name.startswith("git."):
             if not isinstance(declarations[name]["fg"], str) or not declarations[name]["fg"].startswith("@"):
@@ -495,14 +495,14 @@ def validate_catalog(source):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--theme", help="Override the preset selected by source/config.json")
-    parser.add_argument("--symbols", choices=("unicode", "ascii"), help="Override the glyph representation selected by source/config.json")
+    parser.add_argument("--theme", help="Override the preset selected by source/config.toml")
+    parser.add_argument("--symbols", choices=("unicode", "ascii"), help="Override the glyph representation selected by source/config.toml")
     parser.add_argument("--source", type=Path, default=SOURCE)
     parser.add_argument("--output-dir", type=Path, default=SOURCE / "generated")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     try:
-        config = read(args.source / "config.json")
+        config = read(args.source / "config.toml")
         outputs = compile_theme(args.source, args.theme or config["theme"], args.symbols or config.get("symbols", "unicode"))
         stale = []
         for name, content in outputs.items():

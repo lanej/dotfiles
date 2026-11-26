@@ -4,8 +4,8 @@
     "level": "foundation",
     "composes": [],
     "sources": [
-      "design-system/config.json",
-      "design-system/tokens.json"
+      "design-system/config.toml",
+      "design-system/tokens.toml"
     ],
     "description": "Canonical palette, semantic roles, ANSI slots and explicit blend recipes.",
     "implementations": {
@@ -22,7 +22,7 @@
       "theme"
     ],
     "sources": [
-      "design-system/components.json"
+      "design-system/components.toml"
     ],
     "description": "Readable normal, strong and muted text.",
     "implementations": {
@@ -39,8 +39,8 @@
       "theme"
     ],
     "sources": [
-      "design-system/components.json",
-      "design-system/tokens.json"
+      "design-system/components.toml",
+      "design-system/tokens.toml"
     ],
     "description": "Heading color and shared emphasis, with native exceptions documented per consumer.",
     "implementations": {
@@ -55,8 +55,8 @@
       "theme"
     ],
     "sources": [
-      "design-system/components.json",
-      "design-system/tokens.json",
+      "design-system/components.toml",
+      "design-system/tokens.toml",
       "design-system/adapters/starship.toml.in",
       "nvim/lua/gitsignsconfig.lua",
       "nvim/lua/git-branch-signs.lua"
@@ -74,7 +74,7 @@
       "theme"
     ],
     "sources": [
-      "design-system/components.json"
+      "design-system/components.toml"
     ],
     "description": "Success, warning, error, attention, idle and unknown states retain labels or glyphs.",
     "implementations": {
@@ -91,7 +91,7 @@
       "theme"
     ],
     "sources": [
-      "design-system/components.json"
+      "design-system/components.toml"
     ],
     "description": "Focused selection and inactive state.",
     "implementations": {
@@ -108,7 +108,7 @@
       "theme"
     ],
     "sources": [
-      "design-system/components.json"
+      "design-system/components.toml"
     ],
     "description": "Native key notation with shared emphasis.",
     "implementations": {

@@ -8,6 +8,7 @@
 import argparse
 import importlib.util
 import json
+import tomllib
 import os
 from pathlib import Path
 import re
@@ -25,6 +26,20 @@ PLUGINS = Path.home() / ".local/share/nvim/lazy"
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
 
+
+def write_definition(path, data):
+    """Write fixture TOML without introducing a production writer dependency."""
+    def encode(value):
+        if isinstance(value, dict):
+            return "{ " + ", ".join(json.dumps(k) + " = " + encode(v) for k, v in value.items()) + " }"
+        if isinstance(value, list):
+            return "[" + ", ".join(encode(v) for v in value) + "]"
+        if value is None:
+            return "false"  # TOML has no null; this is still invalid for a string token.
+        return json.dumps(value, ensure_ascii=False)
+    path.write_text("".join(json.dumps(k) + " = " + encode(v) + "\n" for k, v in data.items()))
+
+
 class PresentationTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="theme-presentation-", dir="/tmp")
@@ -40,10 +55,10 @@ class PresentationTests(unittest.TestCase):
         self.generate({})
 
     def generate(self, overrides, roles=None, symbols="unicode"):
-        preset = json.loads((self.source / "themes/nord.json").read_text())
+        preset = tomllib.loads((self.source / "themes/nord.toml").read_text())
         preset.update(name="variant", presentation=overrides)
         preset["roles"].update(roles or {})
-        (self.source / "themes/variant.json").write_text(json.dumps(preset, ensure_ascii=False))
+        write_definition(self.source / "themes/variant.toml", preset)
         subprocess.run(["python3", str(ROOT / "scripts/theme.py"), "--source", str(self.source), "--theme", "variant", "--symbols", symbols, "--output-dir", str(self.output)], check=True)
 
     def git(self, path, *args, check=True):
@@ -86,9 +101,9 @@ class PresentationTests(unittest.TestCase):
         self.assertEqual(modified["fg"], "ebcb8b")
         self.assertFalse(modified["bold"])
         self.assertIn(" main", self.module(path, "git_branch"))
-        components = json.loads((self.source / "components.json").read_text())
+        components = tomllib.loads((self.source / "components.toml").read_text())
         components["git.file.branch"]["symbol"] = {"token": "symbol.git.file.modified"}
-        (self.source / "components.json").write_text(json.dumps(components))
+        write_definition(self.source / "components.toml", components)
         self.generate({"symbol.git.file.untracked": '$[]()\\"', "symbol.git.file.modified": "M", "symbol.git.file.staged": "+", "symbol.git.file.branch": "B", "emphasis.git.file.modified.bold": True}, roles={"git.file.modified": "@status.error"})
         variant = self.module(path)
         self.assertIn('$[]()\\"1', variant)

@@ -19,7 +19,7 @@ The same composition uses each preset's input colors. This is an illustrative HT
 
 The selected Midnight treatment uses the website’s exact near-black canvas (`#0D1513`), a raised surface (`#17231E`), and a selected surface (`#26352D`). The three surface colors stay fixed after variant selection; the contrast review refines the border, error and subtle-text tones. Pale sage identifies headings, links and navigation. Lavender identifies focus; a blue/cyan, sand and lichen syntax palette maintains distinctions between keywords, functions, types and strings. Success uses yellow-green, warnings amber, errors a more saturated rose (`#F18C96`), and attention copper. ANSI slots retain their conventional semantic families.
 
-The [preset input](../../design-system/themes/sage.json) defines the base palette and role assignments. Shared presentation defaults and ANSI-derived Git roles are inherited. Sage overrides emphasized add/delete diff tinting from 30% to 20%; ordinary diffs retain 16% tinting. Ordinary foreground roles, including comments and diagnostics, target at least 4.5:1 contrast on the solid base, raised and selected surfaces. Regression tests also require 3:1 for borders on the three solid surfaces and 4.5:1 for syntax/error foregrounds on diff backgrounds. The native contrast contract also tests 4.5:1 for dim Git file counts and inactive labels, and 3:1 for staged/branch gutter symbols. Transparent compositing remains a separate native review.
+The [preset input](../../design-system/themes/sage.toml) defines the base palette and role assignments. Shared presentation defaults and ANSI-derived Git roles are inherited. Sage overrides emphasized add/delete diff tinting from 30% to 20%; ordinary diffs retain 16% tinting. Ordinary foreground roles, including comments and diagnostics, target at least 4.5:1 contrast on the solid base, raised and selected surfaces. Regression tests also require 3:1 for borders on the three solid surfaces and 4.5:1 for syntax/error foregrounds on diff backgrounds. The native contrast contract also tests 4.5:1 for dim Git file counts and inactive labels, and 3:1 for staged/branch gutter symbols. Transparent compositing remains a separate native review.
 
 <PresetPalette preset="sage" />
 
@@ -53,7 +53,7 @@ python3 scripts/theme.py --theme sage --output-dir /tmp/sage-preset --check
 DOTFILES_THEME_DIR=/tmp/sage-preset bin/dotfiles-theme --color=always
 ```
 
-For a full local trial, select `"theme": "sage"` in [preset selection](../../design-system/config.json), run `make theme-generate` and follow the [configuration and reload instructions](../design-system.mdx#generate-configure-and-reload). Restore Nord by selecting `"theme": "nord"` and regenerating/reloading. An isolated output alone does not switch every running application.
+For a full local trial, select `"theme": "sage"` in [preset selection](../../design-system/config.toml), run `make theme-generate` and follow the [configuration and reload instructions](../design-system.mdx#generate-configure-and-reload). Restore Nord by selecting `"theme": "nord"` and regenerating/reloading. An isolated output alone does not switch every running application.
 
 ## Native review
 

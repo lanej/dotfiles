@@ -120,8 +120,8 @@
     "coverage": "Native Git fixtures exercise file states, stash, conflicts, counts, branch and tracking status. Git components generate semantic foregrounds and bold/dim flags; shared defaults use ANSI slots to preserve the original colors. Independent overrides of glyph, color and emphasis are exercised. Other prompt module symbols remain application specific.",
     "sources": [
       "design-system/adapters/starship.toml.in",
-      "design-system/tokens.json",
-      "design-system/components.json"
+      "design-system/tokens.toml",
+      "design-system/components.toml"
     ]
   },
   {

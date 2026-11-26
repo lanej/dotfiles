@@ -234,8 +234,8 @@ jobs:
         run: |
           trap 'git restore -- design-system/generated' EXIT
           failed=0
-          for definition in design-system/themes/*.json; do
-            preset=$(basename "$definition" .json)
+          for definition in design-system/themes/*.toml; do
+            preset=$(basename "$definition" .toml)
             # The native make target links the checkout's generated KDL.
             python3 scripts/theme.py --theme "$preset"
             review="$RUNNER_TEMP/zellij-theme-review/$preset"

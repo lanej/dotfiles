@@ -21,10 +21,24 @@ theme = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(theme)
 
 
+
+def write_definition(path, data):
+    """Write fixture TOML without introducing a production writer dependency."""
+    def encode(value):
+        if isinstance(value, dict):
+            return "{ " + ", ".join(json.dumps(k) + " = " + encode(v) for k, v in value.items()) + " }"
+        if isinstance(value, list):
+            return "[" + ", ".join(encode(v) for v in value) + "]"
+        if value is None:
+            return "false"  # TOML has no null; this is still invalid for a string token.
+        return json.dumps(value, ensure_ascii=False)
+    path.write_text("".join(json.dumps(k) + " = " + encode(v) + "\n" for k, v in data.items()))
+
+
 class ThemeTests(unittest.TestCase):
     def test_canonical_palette_and_aliases(self):
-        data = theme.read(theme.SOURCE / "themes/nord.json")
-        colors, value = theme.resolve(data, theme.read(theme.SOURCE / "tokens.json")["roles"])
+        data = theme.read(theme.SOURCE / "themes/nord.toml")
+        colors, value = theme.resolve(data, theme.read(theme.SOURCE / "tokens.toml")["roles"])
         self.assertEqual(colors["surface"], "#2E3440")
         self.assertEqual(colors["accent"], "#88C0D0")
         self.assertEqual(colors["focus"], "#B48EAD")
@@ -130,8 +144,8 @@ class ThemeTests(unittest.TestCase):
                 if role.startswith("diff.") and role.endswith(".dim"):
                     check(role, color, bg, 3)
 
-        preset = theme.read(theme.SOURCE / "themes/sage.json")
-        _, value = theme.resolve(preset, theme.read(theme.SOURCE / "tokens.json")["roles"])
+        preset = theme.read(theme.SOURCE / "themes/sage.toml")
+        _, value = theme.resolve(preset, theme.read(theme.SOURCE / "tokens.toml")["roles"])
         check("inverse selection text", c["selection.solid.fg"], c["selection.solid.bg"])
         check("bat gutter text", c["gutter.text"], c["surface"])
         check("bat gutter geometry", c["gutter.border"], c["surface"], 3)
@@ -218,9 +232,9 @@ class ThemeTests(unittest.TestCase):
         check("Pi tool error status", pi["error"], pi["toolErrorBg"])
 
     def test_optional_role_fallbacks(self):
-        shared = theme.read(theme.SOURCE / "tokens.json")["roles"]
+        shared = theme.read(theme.SOURCE / "tokens.toml")["roles"]
         for name in ("nord", "sage"):
-            data = theme.read(theme.SOURCE / "themes" / f"{name}.json")
+            data = theme.read(theme.SOURCE / "themes" / f"{name}.toml")
             colors, value = theme.resolve(data, shared)
             expected = colors.get("text.on.error", colors["text.strong"])
             self.assertEqual(value("@text.on.error|text.strong"), expected)
@@ -229,7 +243,7 @@ class ThemeTests(unittest.TestCase):
                 value("@text.on.error|missing")
             with self.assertRaises(KeyError):
                 value("@missing")
-        data = theme.read(theme.SOURCE / "themes/sage.json")
+        data = theme.read(theme.SOURCE / "themes/sage.toml")
         data["roles"]["text.on.error"] = "@text.on.error|text.strong"
         with self.assertRaises(ValueError):
             theme.resolve(data, shared)
@@ -239,8 +253,8 @@ class ThemeTests(unittest.TestCase):
         self.assertEqual([group["id"] for group in groups],
                          ["configuration", "severity", "execution", "health",
                           "interaction", "connectivity", "data", "access"])
-        sage = theme.read(theme.SOURCE / "themes/sage.json")
-        nord = theme.read(theme.SOURCE / "themes/nord.json")
+        sage = theme.read(theme.SOURCE / "themes/sage.toml")
+        nord = theme.read(theme.SOURCE / "themes/nord.toml")
         seen = set()
         for group in groups:
             for state in group["states"]:
@@ -287,9 +301,9 @@ class ThemeTests(unittest.TestCase):
 
     def test_semantic_state_tokens_are_exported_for_every_preset_and_symbol_mode(self):
         groups = theme.read(theme.SOURCE / "semantic-states.json")
-        shared = theme.read(theme.SOURCE / "tokens.json")["roles"]
+        shared = theme.read(theme.SOURCE / "tokens.toml")["roles"]
         for name in ("nord", "sage"):
-            preset = theme.read(theme.SOURCE / "themes" / f"{name}.json")
+            preset = theme.read(theme.SOURCE / "themes" / f"{name}.toml")
             colors, _ = theme.resolve(preset, shared)
             for symbols in ("unicode", "ascii"):
                 with self.subTest(preset=name, symbols=symbols):
@@ -312,8 +326,8 @@ class ThemeTests(unittest.TestCase):
 
     def test_semantic_state_token_validation_rejects_invalid_declarations(self):
         groups = theme.read(theme.SOURCE / "semantic-states.json")
-        colors, _ = theme.resolve(theme.read(theme.SOURCE / "themes/sage.json"),
-                                  theme.read(theme.SOURCE / "tokens.json")["roles"])
+        colors, _ = theme.resolve(theme.read(theme.SOURCE / "themes/sage.toml"),
+                                  theme.read(theme.SOURCE / "tokens.toml")["roles"])
         duplicate = copy.deepcopy(groups)
         duplicate[0]["states"].append(copy.deepcopy(duplicate[0]["states"][0]))
         with self.assertRaisesRegex(ValueError, "duplicate semantic state"):
@@ -336,12 +350,12 @@ class ThemeTests(unittest.TestCase):
                 theme.compile_semantic_states(bad, colors, "unicode")
 
     def test_invalid_definitions(self):
-        base = theme.read(theme.SOURCE / "themes/nord.json")
+        base = theme.read(theme.SOURCE / "themes/nord.toml")
         for changes in ({"accent": {"ansi": 16}}, {"accent": {"ansi": True}}, {"accent": "@missing"}, {"accent": "@accent"}, {"accent": "#123456"}, {"accent": {"mix": ["@surface", "@text"], "amount": 2}}):
             data = copy.deepcopy(base)
             data["roles"].update(changes)
             with self.subTest(changes=changes), self.assertRaises((KeyError, ValueError)):
-                theme.resolve(data, theme.read(theme.SOURCE / "tokens.json")["roles"])
+                theme.resolve(data, theme.read(theme.SOURCE / "tokens.toml")["roles"])
 
     def test_deterministic_check_and_no_writes_on_invalid_source(self):
         with tempfile.TemporaryDirectory(prefix="theme-compile-") as directory:
@@ -358,9 +372,9 @@ class ThemeTests(unittest.TestCase):
             self.assertEqual((output / "kitty.conf").read_text(), "broken\n")
             subprocess.run(command, check=True)
             self.assertEqual(before, {p.name: p.read_bytes() for p in output.iterdir()})
-            data = theme.read(source / "themes/nord.json")
+            data = theme.read(source / "themes/nord.toml")
             data["roles"]["accent"] = "@missing"
-            (source / "themes/nord.json").write_text(json.dumps(data))
+            write_definition(source / "themes/nord.toml", data)
             self.assertNotEqual(subprocess.run(command, capture_output=True).returncode, 0)
             self.assertEqual(before, {p.name: p.read_bytes() for p in output.iterdir()})
 
@@ -371,12 +385,12 @@ class ThemeTests(unittest.TestCase):
             command = ["python3", str(ROOT / "scripts/theme.py"), "--source", str(source), "--output-dir", str(output)]
             subprocess.run(command, check=True)
             before = {p.name: p.read_bytes() for p in output.iterdir()}
-            original = theme.read(source / "themes/nord.json")
+            original = theme.read(source / "themes/nord.toml")
             for slots in ({3: {"ansi": 3}}, {3: {"ansi": 4}, 4: {"ansi": 3}}, {3: "@git.file.modified"}):
                 data = copy.deepcopy(original)
                 for slot, definition in slots.items():
                     data["ansi"][slot] = definition
-                (source / "themes/nord.json").write_text(json.dumps(data))
+                write_definition(source / "themes/nord.toml", data)
                 result = subprocess.run(command, capture_output=True, text=True)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertRegex(result.stderr, "cyclic (ANSI slot|role)")
@@ -388,15 +402,15 @@ class ThemeTests(unittest.TestCase):
             work = Path(directory)
             source, output = work / "source", work / "output"
             shutil.copytree(theme.SOURCE, source, ignore=shutil.ignore_patterns("generated", "baselines"))
-            original = source / "themes/nord.json"
-            data = json.loads(original.read_text().replace("$nord", "$swatch"))
+            original = source / "themes/nord.toml"
+            data = json.loads(json.dumps(theme.read(original)).replace("$nord", "$swatch"))
             data["name"] = "forest"
             data["palette"] = {key.replace("nord", "swatch"): value for key, value in data["palette"].items()}
             data["palette"]["swatch8"] = "#74B87A"
             data["palette"]["swatch12"] = "#C3A568"
-            (source / "themes/forest.json").write_text(json.dumps(data))
+            write_definition(source / "themes/forest.toml", data)
             original.unlink()
-            (source / "config.json").write_text(json.dumps({"theme": "forest"}))
+            write_definition(source / "config.toml", {"theme": "forest"})
             command = ["python3", str(ROOT / "scripts/theme.py"), "--source", str(source), "--output-dir", str(output)]
             subprocess.run(command, check=True)
             subprocess.run([*command, "--check"], check=True)
@@ -416,7 +430,7 @@ class ThemeTests(unittest.TestCase):
             source, output = Path(directory) / "source", Path(directory) / "output"
             shutil.copytree(theme.SOURCE, source, ignore=shutil.ignore_patterns("generated", "baselines"))
             command = ["python3", str(ROOT / "scripts/theme.py"), "--source", str(source), "--output-dir", str(output)]
-            (source / "config.json").write_text(json.dumps({"theme": "nord", "symbols": "ascii"}))
+            write_definition(source / "config.toml", {"theme": "nord", "symbols": "ascii"})
             subprocess.run(command, check=True)
             catalog = theme.read(output / "tokens.json")
             self.assertEqual(catalog["symbols"], "ascii")
@@ -424,10 +438,10 @@ class ThemeTests(unittest.TestCase):
             self.assertEqual(catalog["git_states"]["git.file.staged"]["symbol"], "")
             self.assertTrue(all(token["resolved"].isascii() and len(token["resolved"]) <= 1 for name, token in catalog["presentation"].items() if name.startswith("symbol.")))
             before = {p.name: p.read_bytes() for p in output.iterdir()}
-            shared = theme.read(source / "tokens.json")
+            shared = theme.read(source / "tokens.toml")
             for invalid in (None, "wide", "é", "\n"):
                 shared["presentation"]["symbol.git.file.modified"]["ascii"] = invalid
-                (source / "tokens.json").write_text(json.dumps(shared))
+                write_definition(source / "tokens.toml", shared)
                 result = subprocess.run(command, capture_output=True, text=True)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("ASCII fallback", result.stderr)
@@ -471,16 +485,16 @@ class ThemeTests(unittest.TestCase):
             command = ["python3", str(ROOT / "scripts/theme.py"), "--source", str(source), "--output-dir", str(output)]
             subprocess.run(command, check=True)
             before = {p.name: p.read_bytes() for p in output.iterdir()}
-            preset = theme.read(source / "themes/nord.json")
+            preset = theme.read(source / "themes/nord.toml")
             for override in ({"symbol.separator.section.left": "%Y"}, {"missing": True}, {"emphasis.heading": 1}, {"space.inline": True}, {"space.inline": -1}, {"symbol.git.file.modified": "bad\nline"}, {"emphasis.heading": {"token": "space.inline"}}, {"emphasis.heading": {"token": "emphasis.heading"}}, {"emphasis.heading": {"token": "missing"}}):
                 with self.subTest(override=override):
-                    (source / "themes/nord.json").write_text(json.dumps({**preset, "presentation": override}))
+                    write_definition(source / "themes/nord.toml", {**preset, "presentation": override})
                     self.assertNotEqual(subprocess.run(command, capture_output=True).returncode, 0)
                     self.assertEqual(before, {p.name: p.read_bytes() for p in output.iterdir()})
-            (source / "themes/nord.json").write_text(json.dumps(preset))
-            shared = theme.read(source / "tokens.json")
+            write_definition(source / "themes/nord.toml", preset)
+            shared = theme.read(source / "tokens.toml")
             shared["presentation"]["space.inline"]["unit"] = "row"
-            (source / "tokens.json").write_text(json.dumps(shared))
+            write_definition(source / "tokens.toml", shared)
             result = subprocess.run(command, capture_output=True, text=True)
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("expected unit cell", result.stderr)
@@ -512,10 +526,10 @@ class ThemeTests(unittest.TestCase):
             work = Path(directory)
             source, output, home = work / "source", work / "output", work / "home"
             shutil.copytree(theme.SOURCE, source, ignore=shutil.ignore_patterns("generated", "baselines"))
-            preset = theme.read(source / "themes/nord.json")
+            preset = theme.read(source / "themes/nord.toml")
             preset["roles"]["file.directory"] = "@status.attention"
             preset["roles"]["git.file.modified"] = "@accent.secondary"
-            (source / "themes/nord.json").write_text(json.dumps(preset))
+            write_definition(source / "themes/nord.toml", preset)
             subprocess.run(["python3", str(ROOT / "scripts/theme.py"), "--source", str(source), "--output-dir", str(output)], check=True)
             configuration = home / ".config/eza"
             configuration.mkdir(parents=True)
