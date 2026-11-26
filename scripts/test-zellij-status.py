@@ -161,6 +161,8 @@ def main():
                            first[:18] in top_line(terminal) and "0:Tab #0" in top_line(terminal)
                            and "!?" not in top_line(terminal))
             assert "!0" not in top_line(terminal) and "●0" not in top_line(terminal)
+            session_cell = display(terminal).buffer[0][top_line(terminal).index(first[:18])]
+            assert (session_cell.fg, session_cell.bg, session_cell.bold) == ("d8dee9", "2e3440", True)
             active_cell = display(terminal).buffer[0][top_line(terminal).index("0:Tab #0")]
             assert (active_cell.fg, active_cell.bg, active_cell.bold) == ("2e3440", "b48ead", True)
             terminal.send(b"\x06")
@@ -188,7 +190,10 @@ def main():
             terminal.send(b"\x12")
             terminal.until("a command consumes the prefix and labels the resulting mode", lambda:
                            "RESIZE" in top_line(terminal) and not window_frame(terminal)
-                           and display(terminal).buffer[0][0].bg == "88c0d0")
+                           and display(terminal).buffer[0][top_line(terminal).index("RESIZE")].bg == "88c0d0"
+                           and first[:18] in top_line(terminal)
+                           and display(terminal).buffer[0][top_line(terminal).index(first[:18])].bg == "2e3440"
+                           and display(terminal).buffer[0][top_line(terminal).index(first[:18])].bold)
             terminal.send(b"\r")
             terminal.until("leaving resize restores the ordinary bar", lambda:
                            "RESIZE" not in top_line(terminal) and "0:Tab #0" in top_line(terminal))
