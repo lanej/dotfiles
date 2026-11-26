@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="924" height="384" viewBox="0 0 924 384" role="img" aria-label="bottom: Sage Midnight native terminal capture">
+<!-- Observed cell geometry from native CI capture a5bde7aa76031541d1167d044eef25dc3d589953; no palette substitution. -->
+<rect width="100%" height="100%" fill="#0D1513"/>
+<g font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="14" xml:space="preserve">
+<rect x="21" y="152" width="873" height="20" fill="#ACC8B7"/>
+<path d="M4.5 0V20" transform="translate(12 112)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(903 112)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(12 132)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(903 132)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(12 152)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(903 152)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(12 172)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(903 172)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(12 192)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(903 192)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(12 212)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(903 212)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(12 232)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(903 232)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(12 252)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(903 252)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(12 272)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(903 272)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(12 292)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(903 292)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(12 312)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(903 312)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(12 332)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(903 332)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(12 352)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(903 352)" fill="none" stroke="#C4B2D9" stroke-width="1.35"/>
+<path d="M0 0H9V20H0Z" transform="translate(894 172)" fill="#D7DFD9"/>
+<text x="25.5 52.5 205.5 214.5 223.5" y="27" fill="#ACC8B7" text-anchor="middle" font-weight="normal" font-style="normal">0[1%]</text>
+<text x="250.5 277.5 430.5 439.5 448.5" y="27" fill="#8FB9A8" text-anchor="middle" font-weight="normal" font-style="normal">1[3%]</text>
+<text x="475.5 502.5 655.5 664.5 673.5" y="27" fill="#C4B2D9" text-anchor="middle" font-weight="normal" font-style="normal">2[1%]</text>
+<text x="700.5 727.5 880.5 889.5 898.5" y="27" fill="#A6CD82" text-anchor="middle" font-weight="normal" font-style="normal">3[0%]</text>
+<text x="25.5 34.5 43.5 52.5 61.5 70.5 322.5 331.5 340.5 349.5 358.5 367.5 376.5 385.5 394.5 403.5 412.5 421.5 430.5 439.5 448.5 475.5 484.5 493.5 511.5 520.5 529.5 538.5 547.5 700.5 709.5 718.5 727.5 736.5 754.5 763.5 772.5 790.5 799.5 808.5 817.5 826.5 835.5 844.5" y="47" fill="#ACC8B7" text-anchor="middle" font-weight="normal" font-style="normal">RAM[||1.0GiB/15.6GiB]RX:0.0/sTotalRX:184.0MB</text>
+<text x="25.5 34.5 43.5 52.5 331.5 340.5 349.5 358.5 367.5 376.5 385.5 394.5 403.5 412.5 421.5 430.5 439.5 448.5" y="67" fill="#E8C88B" text-anchor="middle" font-weight="normal" font-style="normal">SWP[0.0GiB/3.0GiB]</text>
+<text x="475.5 484.5 493.5 511.5 520.5 529.5 538.5 547.5 700.5 709.5 718.5 727.5 736.5 754.5 763.5 772.5 790.5 799.5 808.5 817.5 826.5" y="67" fill="#A6CD82" text-anchor="middle" font-weight="normal" font-style="normal">TX:0.0/sTotalTX:3.3MB</text>
+<text x="25.5 43.5 52.5 61.5 70.5 79.5 790.5 799.5 808.5 817.5 826.5 835.5 844.5 853.5 862.5 871.5 880.5 898.5" y="107" fill="#C4B2D9" text-anchor="middle" font-weight="normal" font-style="normal">◄DisksTemperature►</text>
+<text x="25.5 34.5 43.5 52.5 61.5 70.5 79.5 313.5 322.5 331.5 340.5 349.5 358.5 367.5 376.5 403.5 412.5 421.5 430.5 439.5 448.5 457.5 493.5 502.5 511.5 520.5 529.5 538.5 574.5 583.5 592.5 655.5 664.5 673.5 736.5 745.5 754.5 763.5 772.5 781.5 817.5 826.5 835.5 844.5 853.5 862.5 871.5" y="127" fill="#ACC8B7" text-anchor="middle" font-weight="bold" font-style="normal">Name(n)CPU%(c)▼Mem%(m)PID(p)R/sW/sT.ReadT.Write</text>
+<text x="25.5 34.5 43.5 52.5 61.5 70.5 79.5 88.5 97.5 106.5 115.5 124.5 133.5 142.5 151.5 160.5 169.5 178.5 187.5 196.5 205.5 214.5 223.5 232.5 241.5 250.5 259.5 268.5 313.5 322.5 331.5 340.5 403.5 412.5 421.5 430.5 493.5 502.5 574.5 583.5 592.5 601.5 655.5 664.5 673.5 682.5 736.5 745.5 817.5 826.5" y="167" fill="#0D1513" text-anchor="middle" font-weight="normal" font-style="normal">kworker/u16:4-events_unbound0.5%0.0%890B/s0B/s0B0B</text>
+<text x="898.5" y="167" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">▲</text>
+<text x="25.5 34.5 43.5 52.5 61.5 70.5 79.5 88.5 97.5 106.5 115.5 124.5 133.5 142.5 151.5 160.5 169.5 178.5 187.5 196.5 205.5 214.5 223.5 232.5 241.5 250.5 259.5 268.5 313.5 322.5 331.5 340.5 403.5 412.5 421.5 430.5 493.5 502.5 574.5 583.5 592.5 601.5 655.5 664.5 673.5 682.5 736.5 745.5 817.5 826.5" y="187" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">kworker/u16:0-events_unbound0.3%0.0%120B/s0B/s0B0B</text>
+<text x="25.5 34.5 43.5 52.5 61.5 70.5 79.5 88.5 97.5 106.5 115.5 124.5 133.5 313.5 322.5 331.5 340.5 403.5 412.5 421.5 430.5 493.5 502.5 511.5 520.5 574.5 583.5 592.5 601.5 655.5 664.5 673.5 682.5 736.5 745.5 754.5 763.5 772.5 817.5 826.5 835.5 844.5 853.5" y="207" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">Runner.Worker0.3%0.9%21330B/s0B/s317MB837MB</text>
+<text x="25.5 34.5 43.5 52.5 61.5 70.5 79.5 88.5 97.5 106.5 115.5 124.5 133.5 142.5 151.5 160.5 169.5 178.5 187.5 196.5 205.5 214.5 223.5 232.5 241.5 250.5 259.5 268.5 277.5 286.5 295.5 313.5 322.5 331.5 340.5 403.5 412.5 421.5 430.5 493.5 502.5 511.5 520.5 574.5 583.5 592.5 601.5 655.5 664.5 673.5 682.5 736.5 745.5 817.5 826.5" y="227" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">kworker/u16:1-events_power_eff…0.3%0.0%23520B/s0B/s0B0B</text>
+<text x="25.5 34.5 43.5 52.5 61.5 70.5 313.5 322.5 331.5 340.5 403.5 412.5 421.5 430.5 493.5 502.5 511.5 520.5 574.5 583.5 592.5 601.5 655.5 664.5 673.5 682.5 736.5 745.5 817.5 826.5 835.5" y="247" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">python0.3%0.2%35470B/s0B/s0B3MB</text>
+<text x="25.5 34.5 43.5 313.5 322.5 331.5 340.5 403.5 412.5 421.5 430.5 493.5 502.5 511.5 520.5 574.5 583.5 592.5 601.5 655.5 664.5 673.5 682.5 736.5 745.5 817.5 826.5" y="267" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">btm0.3%0.0%36410B/s0B/s0B0B</text>
+<text x="25.5 34.5 43.5 52.5 61.5 70.5 79.5 313.5 322.5 331.5 340.5 403.5 412.5 421.5 430.5 493.5 574.5 583.5 592.5 601.5 655.5 664.5 673.5 682.5 736.5 745.5 817.5 826.5" y="287" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">systemd0.0%0.1%10B/s0B/s0B0B</text>
+<text x="25.5 34.5 43.5 52.5 61.5 70.5 79.5 88.5 313.5 322.5 331.5 340.5 403.5 412.5 421.5 430.5 493.5 574.5 583.5 592.5 601.5 655.5 664.5 673.5 682.5 736.5 745.5 817.5 826.5" y="307" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">kthreadd0.0%0.0%20B/s0B/s0B0B</text>
+<text x="25.5 34.5 43.5 52.5 61.5 70.5 79.5 88.5 97.5 106.5 115.5 124.5 133.5 142.5 151.5 160.5 169.5 178.5 187.5 196.5 205.5 214.5 313.5 322.5 331.5 340.5 403.5 412.5 421.5 430.5 493.5 574.5 583.5 592.5 601.5 655.5 664.5 673.5 682.5 736.5 745.5 817.5 826.5" y="327" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">pool_workqueue_release0.0%0.0%30B/s0B/s0B0B</text>
+<text x="25.5 34.5 43.5 52.5 61.5 70.5 79.5 88.5 97.5 106.5 115.5 124.5 133.5 142.5 151.5 160.5 313.5 322.5 331.5 340.5 403.5 412.5 421.5 430.5 493.5 574.5 583.5 592.5 601.5 655.5 664.5 673.5 682.5 736.5 745.5 817.5 826.5" y="347" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">kworker/R-rcu_gp0.0%0.0%40B/s0B/s0B0B</text>
+<text x="25.5 34.5 43.5 52.5 61.5 70.5 79.5 88.5 97.5 106.5 115.5 124.5 133.5 142.5 151.5 160.5 169.5 313.5 322.5 331.5 340.5 403.5 412.5 421.5 430.5 493.5 574.5 583.5 592.5 601.5 655.5 664.5 673.5 682.5 736.5 745.5 817.5 826.5 898.5" y="367" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">kworker/R-sync_wq0.0%0.0%50B/s0B/s0B0B▼</text>
+</g></svg>

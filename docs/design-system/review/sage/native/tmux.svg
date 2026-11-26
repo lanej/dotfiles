@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="924" height="344" viewBox="0 0 924 344" role="img" aria-label="tmux: Sage Midnight native terminal capture">
+<!-- Observed cell geometry from native CI capture a5bde7aa76031541d1167d044eef25dc3d589953; no palette substitution. -->
+<rect width="100%" height="100%" fill="#0D1513"/>
+<g font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="14" xml:space="preserve">
+<rect x="12" y="312" width="81" height="20" fill="#ACC8B7"/>
+<rect x="102" y="312" width="126" height="20" fill="#C4B2D9"/>
+<rect x="246" y="312" width="135" height="20" fill="#F18C96"/>
+<rect x="399" y="312" width="108" height="20" fill="#DDA783"/>
+<rect x="588" y="312" width="189" height="20" fill="#17231E"/>
+<rect x="777" y="312" width="135" height="20" fill="#ACC8B7"/>
+<path d="M0 0L9 10L0 20Z" transform="translate(93 312)" fill="#ACC8B7"/>
+<path d="M0 0L9 10L0 20Z" transform="translate(102 312)" fill="#0D1513"/>
+<path d="M0 0L9 10L0 20Z" transform="translate(246 312)" fill="#0D1513"/>
+<path d="M0 0L9 10L0 20Z" transform="translate(399 312)" fill="#0D1513"/>
+<path d="M0 0L9 10L0 20" transform="translate(147 312)" fill="none" stroke="#0D1513" stroke-width="1.35"/>
+<path d="M0 0L9 10L0 20Z" transform="translate(228 312)" fill="#C4B2D9"/>
+<path d="M0 0L9 10L0 20Z" transform="translate(381 312)" fill="#F18C96"/>
+<path d="M0 0L9 10L0 20Z" transform="translate(507 312)" fill="#DDA783"/>
+<path d="M9 0L0 10L9 20Z" transform="translate(579 312)" fill="#17231E"/>
+<path d="M9 0L0 10L9 20" transform="translate(696 312)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M9 0L0 10L9 20Z" transform="translate(768 312)" fill="#ACC8B7"/>
+<text x="16.5 25.5 34.5 43.5 52.5 61.5 70.5 79.5 88.5 106.5 115.5 124.5 133.5 142.5 151.5" y="27" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">Workspacereview</text>
+<text x="16.5 25.5 34.5 43.5 52.5 70.5 79.5 97.5 106.5 115.5 124.5 133.5 142.5 151.5 169.5 178.5 187.5 196.5 205.5 214.5 223.5 232.5" y="67" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">Readytoinspectchanges.</text>
+<text x="25.5 34.5 43.5 52.5 61.5 70.5 79.5 124.5 133.5 169.5 178.5 187.5 196.5 205.5 214.5" y="327" fill="#0D1513" text-anchor="middle" font-weight="bold" font-style="normal">fixture0*Editor</text>
+<text x="268.5 286.5 304.5 313.5 322.5 331.5 340.5 349.5 358.5 367.5 376.5 421.5 439.5 457.5 466.5 475.5 484.5 493.5 502.5" y="327" fill="#0D1513" text-anchor="middle" font-weight="normal" font-style="normal">×1Publisher!2Checks</text>
+<text x="601.5 610.5 619.5 628.5 637.5 646.5 655.5 664.5 673.5 682.5 718.5 727.5 736.5 745.5 754.5" y="327" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">2026-11-2605:36</text>
+<text x="790.5 799.5 808.5 817.5 826.5 835.5 844.5 853.5 862.5 871.5 880.5 889.5 898.5" y="327" fill="#0D1513" text-anchor="middle" font-weight="bold" font-style="normal">runnervm0hi8g</text>
+</g></svg>

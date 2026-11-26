@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="654" height="484" viewBox="0 0 654 484" role="img" aria-label="glow: Sage Midnight native terminal capture">
+<!-- Observed cell geometry from native CI capture a5bde7aa76031541d1167d044eef25dc3d589953; no palette substitution. -->
+<rect width="100%" height="100%" fill="#0D1513"/>
+<g font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="14" xml:space="preserve">
+<rect x="30" y="32" width="180" height="20" fill="#ACC8B7"/>
+<rect x="273" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="282" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="291" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="300" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="309" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="318" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="327" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="336" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="345" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="354" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="363" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="372" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="381" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="390" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="399" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="408" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="417" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="426" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="435" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="444" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="453" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="462" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="471" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="480" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="489" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="498" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="507" y="90" width="9" height="1" fill="#ACC8B7"/>
+<rect x="219" y="372" width="81" height="20" fill="#26352D"/>
+<path d="M4.5 0V20" transform="translate(228 232)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(435 232)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(228 272)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(435 272)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(228 292)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(435 292)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M4.5 0V20" transform="translate(30 332)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(30 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(39 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(48 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(57 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(66 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(75 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(84 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(93 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(102 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(111 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(120 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(129 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(138 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(147 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(156 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(165 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(174 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(183 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(192 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(201 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(210 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(219 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(237 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(246 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(255 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(264 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(273 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(282 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(291 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(300 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(309 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(318 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(327 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(336 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(345 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(354 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(363 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(372 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(381 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(390 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(399 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(408 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(417 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(426 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(444 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(453 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(462 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(471 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(480 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(489 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(498 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(507 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(516 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(525 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(534 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(543 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(552 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(561 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(570 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(579 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(588 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(597 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(606 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(615 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(624 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9" transform="translate(633 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9M4.5 0V20" transform="translate(228 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<path d="M0 10H9M4.5 0V20" transform="translate(435 252)" fill="none" stroke="#D7DFD9" stroke-width="1.35"/>
+<text x="43.5 52.5 61.5 70.5 79.5 88.5 97.5 115.5 124.5 133.5 142.5 151.5 160.5 169.5 178.5 187.5 196.5" y="47" fill="#0D1513" text-anchor="middle" font-weight="bold" font-style="normal">Serviceinspection</text>
+<text x="34.5 43.5 52.5 61.5 70.5 79.5" y="87" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">Review</text>
+<text x="97.5 106.5 115.5" y="87" fill="#D7DFD9" text-anchor="middle" font-weight="bold" font-style="normal">api</text>
+<text x="133.5 142.5 151.5 169.5 178.5 187.5" y="87" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">andits</text>
+<text x="205.5 214.5 223.5 232.5 241.5 250.5 259.5" y="87" fill="#ACC8B7" text-anchor="middle" font-weight="bold" font-style="normal">runbook</text>
+<text x="277.5 286.5 295.5 304.5 313.5 322.5 331.5 340.5 349.5 358.5 367.5 376.5 385.5 394.5 403.5 412.5 421.5 430.5 439.5 448.5 457.5 466.5 475.5 484.5 493.5 502.5 511.5" y="87" fill="#ACC8B7" text-anchor="middle" font-weight="normal" font-style="normal">https://example.com/runbook</text>
+<text x="529.5 538.5 547.5 556.5 565.5 574.5" y="87" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">before</text>
+<text x="34.5 43.5 52.5 61.5 70.5 79.5 88.5 97.5 106.5 115.5 124.5" y="107" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">publishing.</text>
+<text x="34.5 43.5 61.5 70.5 79.5 88.5 97.5 106.5 115.5 133.5 142.5 151.5 160.5 169.5 178.5 187.5 196.5 205.5" y="147" fill="#ACC8B7" text-anchor="middle" font-weight="bold" font-style="normal">##Releasechecklist</text>
+<text x="34.5 43.5 52.5 70.5 79.5 88.5 97.5 106.5 115.5 124.5 133.5 142.5 151.5 160.5 169.5 178.5 196.5 205.5 214.5 223.5 232.5 241.5 250.5 259.5 268.5" y="187" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">[✓]Configurationvalidated</text>
+<text x="34.5 52.5 70.5 79.5 88.5 97.5 106.5 115.5 124.5 133.5 151.5 160.5 169.5 178.5 187.5 196.5 205.5" y="207" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">[]Approvalpending</text>
+<text x="43.5 52.5 61.5 70.5 79.5 88.5 97.5 250.5 259.5 268.5 277.5 286.5 295.5 457.5 466.5 475.5 484.5 493.5 502.5 511.5 520.5" y="247" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">ServiceStatusEvidence</text>
+<text x="43.5 52.5 61.5 250.5 259.5 268.5 277.5 286.5 457.5 466.5 475.5 484.5 493.5 502.5 511.5" y="287" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">apiReadyCurrent</text>
+<text x="43.5 52.5 61.5 70.5 79.5 88.5 250.5 259.5 268.5 277.5 286.5 295.5 457.5 466.5 475.5 484.5 493.5" y="307" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">workerFailedStale</text>
+<text x="52.5 61.5 70.5 79.5 88.5 97.5 106.5 124.5 133.5 142.5 151.5 169.5 178.5 187.5 196.5 205.5 214.5 223.5 241.5 250.5 259.5 268.5 277.5 286.5 295.5 304.5" y="347" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">Missingdataremainsunknown.</text>
+<text x="34.5 43.5 52.5 61.5 70.5 79.5 88.5 106.5 115.5 124.5 142.5 151.5 160.5 169.5 178.5 196.5 205.5" y="387" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">Inspectthevalueof</text>
+<text x="232.5 241.5 250.5 259.5 268.5 277.5 286.5" y="387" fill="#B7CB91" text-anchor="middle" font-weight="normal" font-style="normal">retries</text>
+<text x="304.5" y="387" fill="#D7DFD9" text-anchor="middle" font-weight="normal" font-style="normal">:</text>
+<text x="52.5 61.5 79.5 88.5 97.5 106.5 115.5 133.5 142.5 151.5 160.5 178.5 187.5 196.5 205.5 223.5 232.5 241.5 259.5 268.5 277.5 286.5 295.5 304.5 313.5 322.5 331.5 340.5 358.5 367.5 385.5 394.5 403.5 412.5 421.5 430.5 439.5 448.5 457.5 466.5" y="427" fill="#A8A8A8" text-anchor="middle" font-weight="normal" font-style="normal">--Retryonlywhentheconnectionistransient.</text>
+<text x="52.5 61.5 70.5 79.5 88.5" y="447" fill="#87AFD7" text-anchor="middle" font-weight="normal" font-style="normal">local</text>
+<text x="106.5 115.5 124.5 133.5 142.5 151.5 160.5" y="447" fill="#DADADA" text-anchor="middle" font-weight="normal" font-style="normal">retries</text>
+<text x="178.5" y="447" fill="#87AFD7" text-anchor="middle" font-weight="normal" font-style="normal">=</text>
+<text x="196.5" y="447" fill="#D7AFD7" text-anchor="middle" font-weight="normal" font-style="normal">3</text>
+<text x="52.5 61.5 70.5 79.5 88.5 97.5" y="467" fill="#87AFD7" text-anchor="middle" font-weight="normal" font-style="normal">return</text>
+<text x="115.5 124.5 133.5 142.5 151.5 160.5 169.5" y="467" fill="#DADADA" text-anchor="middle" font-weight="normal" font-style="normal">retries</text>
+</g></svg>
