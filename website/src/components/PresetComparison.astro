@@ -24,7 +24,7 @@ const presets = ['nord', 'sage'].map(name => {
   {presets.map(({ name, style }) => (
     <figure style={style} data-preset-preview={name}>
       <figcaption>{name === 'nord' ? 'Nord · baseline' : 'Sage · Midnight'}</figcaption>
-      <div class="tabs"><span class="active">1 studio</span><span>2 editor</span><span>3 shell</span></div>
+      <div class="tabs"><span class="active">1 studio</span>{name === 'sage' && <span class="tab-error">× 1</span>}<span>2 editor</span><span>3 shell</span></div>
       <div class="terminal">
         <div class="path">producer / task.rs</div>
         <div class="source">
@@ -54,11 +54,13 @@ const presets = ['nord', 'sage'].map(name => {
   .tabs, .footer { display: flex; gap: .5rem; align-items: center; margin: 0; background: var(--preview-surface-raised); color: var(--preview-text-muted); }
   .tabs span, .footer span { padding: .25rem .5rem; }
   .active { color: var(--preview-surface); background: var(--preview-focus); font-weight: 600; }
+  .tab-error { color: var(--preview-status-error); background: var(--preview-surface); font-weight: 600; margin-inline-start: -.5rem; }
   .terminal { padding: .75rem; margin: 0; }
   .path { color: var(--preview-accent); }
   .source { overflow-x: auto; white-space: pre; padding-block: .5rem; }
   .source div { margin: 0; min-width: max-content; }
   .selected { background: var(--preview-surface-selected); color: var(--preview-text-strong); }
+  [data-preset-preview="sage"] .selected { box-shadow: inset 3px 0 var(--preview-accent); }
   .comment { color: var(--preview-syntax-comment); }
   .keyword { color: var(--preview-syntax-keyword); }
   .function { color: var(--preview-syntax-function); }

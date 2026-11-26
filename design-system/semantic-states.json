@@ -9,7 +9,7 @@
         "label": "ON",
         "glyph": "●",
         "ascii": "+",
-        "role": "accent.secondary",
+        "role": "accent",
         "description": "Enabled by configuration.",
         "example": "Auto-publish"
       },
@@ -18,9 +18,10 @@
         "label": "OFF",
         "glyph": "○",
         "ascii": "-",
-        "role": "text.muted",
+        "role": "text.subtle",
         "description": "Intentionally disabled; not a failure.",
-        "example": "Auto-merge"
+        "example": "Auto-merge",
+        "fallback_role": "text.muted"
       }
     ]
   },
@@ -34,9 +35,10 @@
         "label": "TRACE",
         "glyph": "·",
         "ascii": ".",
-        "role": "text.muted",
+        "role": "text.subtle",
         "description": "Fine-grained execution detail.",
-        "example": "Read configuration"
+        "example": "Read configuration",
+        "fallback_role": "text.muted"
       },
       {
         "id": "debug",

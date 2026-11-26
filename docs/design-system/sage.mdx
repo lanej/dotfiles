@@ -17,9 +17,9 @@ The same composition uses each preset's input colors. This is an illustrative HT
 
 ## Design
 
-The selected Midnight treatment uses the website’s exact near-black canvas (`#0D1513`), a raised surface (`#17231E`), and a selected surface (`#26352D`). Only the three surface colors changed during variant review; the foreground palette stays fixed. Pale sage identifies headings, links and navigation. Lavender identifies focus; a blue/cyan, sand and lichen syntax palette maintains distinctions between keywords, functions, types and strings. Success uses yellow-green, warnings amber, errors rose, and attention copper. ANSI slots retain their conventional semantic families.
+The selected Midnight treatment uses the website’s exact near-black canvas (`#0D1513`), a raised surface (`#17231E`), and a selected surface (`#26352D`). The three surface colors stay fixed after variant selection; the contrast review refines the border, error and subtle-text tones. Pale sage identifies headings, links and navigation. Lavender identifies focus; a blue/cyan, sand and lichen syntax palette maintains distinctions between keywords, functions, types and strings. Success uses yellow-green, warnings amber, errors a more saturated rose (`#F18C96`), and attention copper. ANSI slots retain their conventional semantic families.
 
-The [preset input](../../design-system/themes/sage.json) defines the base palette and role assignments. Shared presentation defaults, ANSI-derived Git roles and diff blend recipes are inherited unchanged. Ordinary foreground roles, including comments and diagnostics, target at least 4.5:1 contrast on the solid base, raised and selected surfaces. Borders, intentionally dim glyphs, tinted diff backgrounds and transparent compositing are not covered by that floor.
+The [preset input](../../design-system/themes/sage.json) defines the base palette and role assignments. Shared presentation defaults and ANSI-derived Git roles are inherited. Sage overrides emphasized add/delete diff tinting from 30% to 20%; ordinary diffs retain 16% tinting. Ordinary foreground roles, including comments and diagnostics, target at least 4.5:1 contrast on the solid base, raised and selected surfaces. Regression tests also require 3:1 for borders on the three solid surfaces and 4.5:1 for syntax/error foregrounds on diff backgrounds. Intentionally dim glyphs and transparent compositing remain separate.
 
 <PresetPalette preset="sage" />
 
@@ -27,11 +27,11 @@ The [preset input](../../design-system/themes/sage.json) defines the base palett
 
 The [candidate state vocabulary](../../design-system/semantic-states.json) separates configuration, log severity, execution and system health. The same color can express related emphasis across families without making the states interchangeable. The previews show labels and glyphs, not color alone.
 
-On uses secondary sage rather than the success green; off uses readable muted text rather than an error color or the low-contrast border role. Trace and debug share a quiet tone. Info and running share cyan, warning and blocked share amber, attention uses copper, and failed or unavailable use rose. Fatal adds weight rather than a new color. A canceled task or unknown service observation is neutral.
+On uses the primary sage accent; off and trace use the new subtle text tone (`#909F95`), which is darker than debug (`#A3B1A7`) while retaining at least 4.5:1 contrast on selected rows. The proposed state vocabulary falls back to muted text for presets without the subtle role. Info and running share cyan, warning and blocked share amber, attention uses copper, and failed or unavailable use rose. Fatal adds weight rather than a new color. A canceled task or unknown service observation is neutral.
 
 <SemanticStateCatalog preset="sage" />
 
-This is a proposed presentation contract for review. The glyphs have ASCII alternatives, but their native widths and the application-specific state mappings are not yet validated or adopted by native adapters.
+The reviewed color hierarchy uses a leading accent marker in the selected-row examples and an error marker on a separate dark segment beside a focused tab. The native fzf pointer already supplies a leading indicator. Zellij's owned status bar separates active failure marks from the focus fill; native ribbons use inverse ink where their API cannot specify a separate mark background. Other native list controls retain their existing supported selection affordances. The full state vocabulary and ASCII alternatives remain a reference for application adoption; the catalog does not itself change Studio or Publisher runtime state mapping.
 
 ## Evaluate locally
 

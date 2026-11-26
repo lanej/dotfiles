@@ -5,7 +5,7 @@
     "charcoal": "#0D1513",
     "raised": "#17231E",
     "selected": "#26352D",
-    "border": "#607B6C",
+    "border": "#6B8575",
     "text": "#D7DFD9",
     "snow": "#EEF1EE",
     "muted": "#A3B1A7",
@@ -19,8 +19,9 @@
     "lavender": "#C4B2D9",
     "success": "#A6CD82",
     "amber": "#E8C88B",
-    "rose": "#E69AA0",
-    "copper": "#DDA783"
+    "rose": "#F18C96",
+    "copper": "#DDA783",
+    "subtle": "#909F95"
   },
   "roles": {
     "surface": "$charcoal",
@@ -40,7 +41,7 @@
     "status.info": "$cyan",
     "status.attention": "$copper",
     "status.idle": "$muted",
-    "status.off": "$border",
+    "status.off": "$subtle",
     "syntax.comment": "$comment",
     "syntax.keyword": "$blue",
     "syntax.function": "$cyan",
@@ -50,7 +51,22 @@
     "syntax.constant": "$text",
     "syntax.operator": "$blue",
     "syntax.special": "$amber",
-    "syntax.variable": "$text"
+    "syntax.variable": "$text",
+    "text.subtle": "$subtle",
+    "diff.add.emph.bg": {
+      "mix": [
+        "@surface",
+        "@diff.add"
+      ],
+      "amount": 0.2
+    },
+    "diff.delete.emph.bg": {
+      "mix": [
+        "@surface",
+        "@diff.delete"
+      ],
+      "amount": 0.2
+    }
   },
   "ansi": [
     "$raised",

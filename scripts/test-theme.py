@@ -59,6 +59,12 @@ class ThemeTests(unittest.TestCase):
                 self.assertEqual(colors["surface.selected"], "#26352D")
                 self.assertEqual(colors["accent"], "#ACC8B7")
                 self.assertEqual(colors["focus"], "#C4B2D9")
+                self.assertEqual(colors["status.error"], "#F18C96")
+                self.assertEqual(colors["text.subtle"], "#909F95")
+                self.assertEqual(colors["status.off"], colors["text.subtle"])
+                self.assertEqual(colors["border"], "#6B8575")
+                self.assertEqual(colors["diff.add.emph.bg"], "#2C3A29")
+                self.assertEqual(colors["diff.delete.emph.bg"], "#3B2D2D")
                 self.assertEqual(colors["diff.add"], colors["status.success"])
                 self.assertEqual(colors["diff.delete"], colors["status.error"])
                 self.assertEqual(colors["git.file.staged"], colors["status.success"])
@@ -77,6 +83,17 @@ class ThemeTests(unittest.TestCase):
                         with self.subTest(background=background, foreground=foreground):
                             self.assertGreaterEqual(contrast(colors[background], colors[foreground]), 4.5)
                 self.assertGreaterEqual(contrast(colors["tab.active.bg"], colors["tab.active.fg"]), 4.5)
+                self.assertGreaterEqual(contrast(colors["status.error"], colors["surface"]), 4.5)
+                self.assertGreaterEqual(contrast(colors["accent"], colors["surface.selected"]), 3)
+                self.assertGreaterEqual(contrast(colors["accent"], colors["text.subtle"]), 1.5)
+                self.assertGreater(contrast(colors["text.muted"], colors["text.subtle"]), 1)
+                for background in ("surface", "surface.raised", "surface.selected"):
+                    self.assertGreaterEqual(contrast(colors["border"], colors[background]), 3)
+                for background in ("diff.add.bg", "diff.delete.bg", "diff.change.bg",
+                                   "diff.add.emph.bg", "diff.delete.emph.bg"):
+                    for foreground in ("text", "status.error", *(r for r in colors if r.startswith("syntax."))):
+                        with self.subTest(diff_background=background, foreground=foreground):
+                            self.assertGreaterEqual(contrast(colors[background], colors[foreground]), 4.5)
                 for group in theme.read(theme.SOURCE / "semantic-states.json"):
                     for state in group["states"]:
                         for background in ("surface", "surface.raised", "surface.selected"):
@@ -97,15 +114,17 @@ class ThemeTests(unittest.TestCase):
                     self.assertNotIn(key, seen)
                     seen.add(key)
                     self.assertIn(state["role"], sage["roles"])
-                    self.assertIn(state["role"], nord["roles"])
+                    self.assertIn(state["role"] if state["role"] in nord["roles"]
+                                  else state["fallback_role"], nord["roles"])
                     self.assertTrue(state["label"] and state["description"] and state["example"])
                     self.assertEqual(len(state["glyph"]), 1)
                     self.assertEqual(len(state["ascii"]), 1)
                     self.assertTrue(32 <= ord(state["ascii"]) <= 126)
         mapping = {(group["id"], state["id"]): state["role"]
                    for group in groups for state in group["states"]}
-        self.assertEqual(mapping["configuration", "on"], "accent.secondary")
-        self.assertEqual(mapping["configuration", "off"], "text.muted")
+        self.assertEqual(mapping["configuration", "on"], "accent")
+        self.assertEqual(mapping["configuration", "off"], "text.subtle")
+        self.assertEqual(mapping["severity", "trace"], "text.subtle")
         self.assertEqual(mapping["severity", "debug"], "text.muted")
         self.assertEqual(mapping["severity", "info"], "status.info")
         self.assertEqual(mapping["severity", "warning"], "status.warning")

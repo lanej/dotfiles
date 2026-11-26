@@ -26,7 +26,7 @@
   "ribbon_selected": {
     "base": "tab.active.fg",
     "background": "tab.active.bg",
-    "emphasis_0": "status.error",
+    "emphasis_0": "tab.active.fg",
     "emphasis_1": "tab.active.fg",
     "emphasis_2": "tab.active.fg",
     "emphasis_3": "tab.active.fg"
