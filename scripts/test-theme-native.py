@@ -682,7 +682,8 @@ def main():
             (home / name).mkdir(parents=True, exist_ok=True)
         (home / ".config/dotfiles/theme").symlink_to(GENERATED)
         shutil.copyfile(GENERATED / "Dotfiles.tmTheme", home / ".config/bat/themes/Dotfiles.tmTheme")
-        shutil.copytree(ROOT / "bat/syntaxes", home / ".config/bat/syntaxes")
+        if any(surface in ("bat", "delta") or surface.startswith("bat-code-") for surface in surfaces):
+            shutil.copytree(ROOT / "bat/syntaxes", home / ".config/bat/syntaxes")
         (home / ".gitconfig").write_text('[include]\npath = ' + str(GENERATED / 'delta.gitconfig') + '\n[delta]\nfeatures = dotfiles\n')
         locale = "C.UTF-8" if sys.platform.startswith("linux") else "en_US.UTF-8"
         env = {**os.environ, "HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config"), "XDG_CACHE_HOME": str(home / ".cache"), "XDG_DATA_HOME": str(home / ".local/share"), "BAT_CONFIG_DIR": str(home / ".config/bat"), "BAT_CACHE_PATH": str(home / ".cache/bat"), "TERM": "xterm-256color", "COLORTERM": "truecolor", "CLICOLOR_FORCE": "1", "DOTFILES_THEME_DIR": str(GENERATED), "LANG": locale, "LC_ALL": locale}

@@ -103,7 +103,7 @@ contexts:
         - include: statements-block
 
     - match: \b(let|const|static)\b
-      scope: storage.type.rust
+      scope: storage.modifier.rust
 
     - match: \*const\b
       scope: storage.type.rust

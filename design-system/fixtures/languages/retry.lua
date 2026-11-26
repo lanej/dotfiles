@@ -7,7 +7,9 @@ function Policy.new(delays, enabled)
 end
 
 function Policy:delay(attempt)
-  if not self.enabled then return nil, "retry disabled" end
+  if not self.enabled then
+    return nil, "retry disabled"
+  end
   local delay = self.delays[attempt]
   if delay == nil then
     return nil, "retry budget exhausted"

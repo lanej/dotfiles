@@ -12,8 +12,9 @@ fn decide<'a>(p: &impl Policy, n: u32) -> Outcome<'a> {
 }
 
 fn should_retry(outcome: &Outcome<'_>) -> bool {
-    match outcome {
+    let retry = match outcome {
         Outcome::Retry(_) => true,
         Outcome::Stop(_) => false,
-    }
+    };
+    retry
 }

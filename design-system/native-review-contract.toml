@@ -74,6 +74,7 @@ forbidden = ["E1568:","Error detected while processing","Press ENTER or type com
 primitives = [
   { kind = "syntax-roles", name = "signature", anchor = 'attempt: u32) -> Option<u64>', tokens = { attempt = "syntax.variable", u32 = "syntax.type", Option = "syntax.type", u64 = "syntax.type" } },
   { kind = "syntax-roles", name = "impl-trait", anchor = '&impl Policy, n: u32', tokens = { impl = "syntax.keyword", Policy = "syntax.type", "n:" = "syntax.variable" }, distinct = true, treesitter_only = true },
+  { kind = "syntax-roles", name = "let-keyword", anchor = 'let retry = match outcome', tokens = { let = "syntax.keyword", retry = "syntax.variable" }, distinct = true },
   { kind = "syntax-roles", name = "match-arm", anchor = 'Some(ms) if n < 3 => Outcome::Retry(ms)', tokens = { Some = "syntax.type", "3" = "syntax.number", "=>" = "syntax.operator", Outcome = "syntax.type", "::" = "syntax.variable" }, treesitter_only = true },
   { kind = "syntax-roles", name = "generic-return-type", anchor = "-> Outcome<'a>", tokens = { Outcome = "syntax.type", "'a" = "syntax.special", "<" = "syntax.variable" }, treesitter_only = true },
   { kind = "syntax-roles", name = "true-literal", anchor = 'Outcome::Retry(_) => true', tokens = { true = "syntax.boolean.true" }, treesitter_only = true },
@@ -87,6 +88,7 @@ forbidden = ["E1568:","Error detected while processing","Press ENTER or type com
 primitives = [
   { kind = "syntax-roles", name = "signature", anchor = 'attempt: u32) -> Option<u64>', tokens = { attempt = "syntax.variable", u32 = "syntax.type", Option = "syntax.type", u64 = "syntax.type" } },
   { kind = "syntax-roles", name = "impl-trait", anchor = '&impl Policy, n: u32', tokens = { impl = "syntax.keyword", Policy = "syntax.type", "n:" = "syntax.variable" }, distinct = true },
+  { kind = "syntax-roles", name = "let-keyword", anchor = 'let retry = match outcome', tokens = { let = "syntax.keyword", retry = "syntax.variable" }, distinct = true },
   { kind = "syntax-roles", name = "match-arm", anchor = 'Some(ms) if n < 3 => Outcome::Retry(ms)', tokens = { Some = "syntax.type", "3" = "syntax.number", "=>" = "syntax.operator", Outcome = "syntax.type", "::" = "syntax.variable" } },
   { kind = "syntax-roles", name = "generic-return-type", anchor = "-> Outcome<'a>", tokens = { Outcome = "syntax.type", "'a" = "syntax.special", "<" = "syntax.variable" } },
   { kind = "syntax-diversity", anchors = ["trait Policy","enum Outcome","match p.delay(n)","budget exhausted"], minimum_colors = 3 },

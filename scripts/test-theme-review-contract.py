@@ -146,6 +146,9 @@ class NativeReviewContractTests(unittest.TestCase):
         paint(trait_bound, "impl", "#95B5D3", "#0D1513")
         paint(trait_bound, "Policy", "#B7BDE3", "#0D1513")
         specimen.append(trait_bound)
+        declaration = row("let retry = match outcome")
+        paint(declaration, "let", "#95B5D3", "#0D1513")
+        specimen.append(declaration)
         self.assertEqual(report(surface, specimen)["status"], "pass")
 
     def test_primitives_are_reusable_and_fail_closed(self):
