@@ -495,6 +495,8 @@ return retries
             assert observations == {key: tmux("show-options", "-gv", key).strip() for key in observations}
             if review:
                 tmux("rename-window", "Editor")
+                tmux("set-option", "-w", "@claude-state", "thinking")
+                tmux("set-option", "-w", "@claude-glyph", "◐")
                 tmux("respawn-pane", "-k", "printf 'Workspace review\\n\\nReady to inspect changes.\\n'; sleep 60")
                 tmux("new-window", "-d", "-n", "Publisher", "sleep 60")
                 tmux("set-option", "-w", "-t", "fixture:Publisher", "@claude-state", "failed")
@@ -502,10 +504,38 @@ return retries
                 tmux("new-window", "-d", "-n", "Checks", "sleep 60")
                 tmux("set-option", "-w", "-t", "fixture:Checks", "@claude-state", "approval")
                 tmux("set-option", "-w", "-t", "fixture:Checks", "@claude-glyph", "!")
+                tmux("new-window", "-d", "-n", "Shell", "sleep 60")
+                metadata = json.loads((GENERATED / "tokens.json").read_text())
+                compact_tabs = metadata["presentation"]["tmux.tabs.compact"]["resolved"]
+                roles = json.loads((GENERATED / "colors.json").read_text())["roles"]
+
+                def tabs_ready(screen):
+                    if not all(label in "\n".join(screen.display)
+                               for label in ("Workspace review", "Editor", "Publisher", "Checks", "Shell")):
+                        return False
+                    if not compact_tabs:
+                        return True
+                    row = screen.display[-1]
+                    def has_style(label, fg, bg):
+                        x = row.find(label)
+                        if x < 0:
+                            return False
+                        return all((cell.fg.lower(), cell.bg.lower()) ==
+                                   (roles[fg][1:].lower(), roles[bg][1:].lower())
+                                   and not cell.reverse
+                                   for cell in (screen.buffer[screen.lines - 1][i]
+                                                for i in range(x, x + len(label))))
+                    return (has_style("Editor", "tab.active.fg", "tab.active.bg")
+                            and has_style("Publisher", "text.muted", "surface")
+                            and has_style("Checks", "text.muted", "surface")
+                            and has_style("Shell", "text.muted", "surface")
+                            and has_style("◐", "status.info", "surface")
+                            and has_style("×", "status.error", "surface")
+                            and has_style("!", "status.attention", "surface"))
+
                 return terminal(["tmux", "-S", socket, "attach-session", "-t", "fixture"], env,
-                                lambda screen: all(label in "\n".join(screen.display)
-                                                   for label in ("Workspace review", "Editor", "Publisher", "Checks")),
-                                columns=100, lines=16, capture_lines=16, raw_path=raw_path)
+                                tabs_ready, columns=112, lines=16,
+                                capture_lines=16, raw_path=raw_path)
             return observations
         finally:
             subprocess.run(["tmux", "-S", socket, "kill-server"], env=env, capture_output=True)

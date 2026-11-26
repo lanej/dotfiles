@@ -323,7 +323,10 @@ def compile_theme(source, theme_name, symbols="unicode"):
         kdl += [f"        {name} {{"] + [f"            {field} {rgb(role)}" for field, role in fields.items()] + ["        }"]
     kdl += ["    }", "}"]
     output("zellij.kdl", "\n".join(kdl))
+    compact_tabs = tokens.get("tmux.tabs.compact", "tmux", "boolean")
     template = (source / "adapters/tmux.conf.in").read_text()
+    tab_template = "tmux-tabs-compact.conf.in" if compact_tabs else "tmux-tabs.conf.in"
+    template += (source / "adapters" / tab_template).read_text()
     mappings = dict(c)
     for name in tokens.definitions:
         if "{{" + name + "}}" in template:
@@ -339,6 +342,12 @@ def compile_theme(source, theme_name, symbols="unicode"):
         for name, style in reversed(list(states.items())):
             selected = "#{?#{==:#{@claude-state}," + name + "}," + style[field].replace("#", "##") + "," + selected + "}"
         mappings["agent." + field] = selected
+    if compact_tabs:
+        selected = c["text.muted"].replace("#", "##")
+        for name, style in reversed(list(states.items())):
+            marker = style["fg"] if name in ("idle", "dormant") else style["bg"]
+            selected = "#{?#{==:#{@claude-state}," + name + "}," + marker.replace("#", "##") + "," + selected + "}"
+        mappings["agent.marker"] = selected
     rendered = render_roles(template, mappings)
     if "{{" in rendered:
         raise ValueError("unresolved tmux template placeholder")

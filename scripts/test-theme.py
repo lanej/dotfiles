@@ -139,6 +139,18 @@ class ThemeTests(unittest.TestCase):
         for name, style in states.items():
             check("tmux state " + name, style["fg"], style["bg"])
         self.assertEqual(states["failed"]["fg"], c["text.inverse"])
+        # Only the active tab label is filled; state markers are separate
+        # readable foreground colors on the dark status surface.
+        for name, style in states.items():
+            marker = style["fg"] if name in ("idle", "dormant") else style["bg"]
+            check("tmux compact state marker " + name, marker, c["surface"])
+        check("tmux active label", c["tab.active.fg"], c["tab.active.bg"])
+        check("tmux active fill", c["tab.active.bg"], c["surface"], 3)
+        check("tmux inactive label", c["text.muted"], c["surface"])
+        self.assertIn("window-status-separator \"  \"", outputs["tmux.conf"])
+        self.assertIn(" #I:#W ", outputs["tmux.conf"])
+        self.assertIn("window-status-format", outputs["tmux.conf"])
+        self.assertTrue(json.loads(outputs["tokens.json"])["presentation"]["tmux.tabs.compact"]["resolved"])
 
         glow = json.loads(outputs["glow.json"])
         for label, style in (("Glow h1", glow["h1"]), ("Glow inline code", glow["code"]),

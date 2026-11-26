@@ -1170,6 +1170,7 @@ return {
 ["symbol.file.regular"] = "",
 ["symbol.file.directory"] = "",
 ["diff.markers"] = false,
+["tmux.tabs.compact"] = false,
 },
 ["components"] = {
 ["text"] = {
