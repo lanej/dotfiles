@@ -77,12 +77,12 @@ bat_language = "Go"
 [surfaces.neovim-code-go]
 anchors = ["retry.go","type Policy interface","type Decision struct","if err != nil","fmt.Errorf","Review retry policy"]
 forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
-primitives = [{ kind = "syntax-diversity", anchors = ["type Policy interface","type Decision struct","if err != nil","fmt.Errorf"], minimum_colors = 3 }]
+primitives = [{ kind = "syntax-diversity", anchors = ["type Policy interface","type Decision struct","if err != nil","fmt.Errorf(\"retry: %w\", err)","import \"fmt\""], minimum_colors = 3 }]
 
 [surfaces.bat-code-go]
 anchors = ["retry.go","type Policy interface","type Decision struct","if err != nil","fmt.Errorf"]
 forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
-primitives = [{ kind = "syntax-diversity", anchors = ["type Policy interface","type Decision struct","if err != nil","fmt.Errorf"], minimum_colors = 3 }]
+primitives = [{ kind = "syntax-diversity", anchors = ["type Policy interface","type Decision struct","if err != nil","fmt.Errorf(\"retry: %w\", err)","import \"fmt\""], minimum_colors = 3 }]
 
 [languages.typescript]
 file = "design-system/fixtures/languages/retry.ts"
@@ -147,7 +147,7 @@ primitives = [{ kind = "syntax-diversity", anchors = ["Policy.__index","setmetat
 [languages.bash]
 file = "design-system/fixtures/languages/retry.sh"
 filetype = "sh"
-bat_language = "Bourne Again Shell"
+bat_language = "sh"
 
 [surfaces.neovim-code-bash]
 anchors = ["retry.sh","set -euo pipefail","delays=(100 200 400)","if (( attempt","budget exhausted","Review retry policy"]
@@ -182,9 +182,9 @@ bat_language = "TOML"
 [surfaces.neovim-code-toml]
 anchors = ["retry.toml","[policy]","delays_ms =","[policy.fallback]","[[policy.rules]]","Review retry policy"]
 forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
-primitives = [{ kind = "syntax-diversity", anchors = ["[policy]","delays_ms =","[policy.fallback]","[[policy.rules]]"], minimum_colors = 3 }]
+primitives = [{ kind = "syntax-diversity", anchors = ["[policy]","delays_ms = [100, 200, 400]","enabled = true","state = \"blocked\"","reason = \"budget exhausted\"","code = 503"], minimum_colors = 3 }]
 
 [surfaces.bat-code-toml]
 anchors = ["retry.toml","[policy]","delays_ms =","[policy.fallback]","[[policy.rules]]"]
 forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
-primitives = [{ kind = "syntax-diversity", anchors = ["[policy]","delays_ms =","[policy.fallback]","[[policy.rules]]"], minimum_colors = 3 }]
+primitives = [{ kind = "syntax-diversity", anchors = ["[policy]","delays_ms = [100, 200, 400]","enabled = true","state = \"blocked\"","reason = \"budget exhausted\"","code = 503"], minimum_colors = 3 }]
