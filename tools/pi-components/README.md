@@ -97,6 +97,10 @@ Give foldable groups stable IDs and set `collapsed: true` to start folded or `fa
 
 Run `bun tools/pi-components/examples/status-board.ts` for a native, interactive two-column recovery rehearsal. Type in the editor, press Alt+s to expand or minimize the dock, and Ctrl+o to inspect the checks and implementation work. `--render` prints a static dock; add `--expanded`, `--inspect`, or `--narrow` to inspect dimensions without a TTY.
 
+## Status pills
+
+`renderStatusPill({ label: "To be decided", tone: "warning" }, theme)` renders a compact label with a rounded outline and the theme’s selection fill. Pass the label and tone that describe the state in your application.
+
 ## Checks
 
 ```sh

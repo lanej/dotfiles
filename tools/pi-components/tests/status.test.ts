@@ -10,6 +10,7 @@ import {
   conditionStatus,
   conditionSummary,
   createConditionsPanel,
+  renderStatusPill,
   type Condition,
   type StatusTheme,
 } from "../index.ts";
@@ -257,4 +258,16 @@ test("ASCII and static presentations preserve semantic labels without requiring 
   assert.match(rendered, /Paused/u);
   assert.match(rendered, /Not assessed/u);
   assert.match(rendered, /Recheck/u);
+});
+
+test("status pills preserve readable labels and apply tone and fill", () => {
+  const colored = {
+    ...theme,
+    warning: (text: string) => `\x1b[33m${text}\x1b[39m`,
+  };
+  const pending = { label: " To\nbe decided ", tone: "warning" } as const;
+  const pill = renderStatusPill(pending, colored);
+  assert.equal(pill, "\x1b[7m\x1b[33m( To be decided )\x1b[39m\x1b[0m");
+  assert.equal(visibleWidth(pill), 17);
+  assert.equal(stripTerminalSequences(pill), "( To be decided )");
 });
