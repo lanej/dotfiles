@@ -18,6 +18,7 @@ const github = 'https://github.com/lanej/dotfiles';
 // All authored content lives in README.md and docs/. This is a route map, not a second manual.
 const pages = [
   { file: 'docs/index.mdx', slug: '' },
+  { file: 'docs/studio-toolchain.mdx', slug: 'studio' },
   { file: 'docs/architecture.mdx', slug: 'architecture' },
   { file: 'docs/components.mdx', slug: 'components' },
   { file: 'docs/design-system.mdx', slug: 'design-system' },
