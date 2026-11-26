@@ -71,3 +71,24 @@ DOTFILES_THEME_DIR=/tmp/sage-preset uv run --script scripts/test-theme-native.py
 Zellij uses the checkout's generated KDL and installed status plugin. Run its review in a disposable checkout with `make zellij-status` and the selected generated theme. CI captures both presets and publishes `native-theme-review` and `native-zellij-review` artifacts. Each includes the checkout commit, per-surface success or failure, compact observed cells, raw terminal output where applicable, and rendered SVGs. The richer fixtures include native diagnostics and lualine, a colored task picker with preview, Markdown code/table/link rendering, full tmux/bottom views, and multiple Zellij tabs. Sage retains explicit plus/minus markers in its actual generated Delta configuration; the review additionally enables Delta line numbers.
 
 The renderer uses terminal cell coordinates, including wide glyph continuations and combining text, and draws standard Powerline and box geometry independently of the browser's installed fonts. It does not substitute colors or fabricate missing text. Inspect failures and raw ANSI rather than approving a defective capture. All captured views are unapproved evidence; neither CI nor `--review-dir` overwrites regression baselines. Acceptance still requires the explicit `--record` workflow after inspection. Studio, Publisher, Kitty transparency and other application-owned behavior need their own actual runtime review.
+
+## Native visual acceptance
+
+A capture is not a verdict. The [independent contract](../../design-system/native-review-contract.json) specifies required fixture content and limits on text contrast, non-text contrast and visual emphasis, rather than merely comparing a native application with its own generated configuration.
+
+- Sage text cells must meet 4.5:1; meaningful geometry and markers must meet 3:1. Decorative Powerline joins and empty Neovim filler tildes are explicitly excluded. Missing content, startup errors, replacement glyphs and unsupported private-use glyphs in SVG evidence are failures.
+- A dense bottom selection must occupy one process row, use strong light ink, and have fill contrast of 3:1 or greater on base and raised surfaces but at most 4:1 against base. A marked fzf selection retains a quiet fill (at most 2:1 against base) and a contrasting pointer.
+- The tmux fixture has one filled focused label, muted inactive labels and separate semantic marks. Non-active colored ribbons fail even when their text contrast is excellent.
+- Every required surface is present in the manifest. The gate verifies the checkout, preset, generated palette, contract and renderer hashes; it re-renders each SVG from the full observed cell grid and recomputes each audit. CI retains failed evidence, reports the violated predicate and observed coordinates/colors, and exits nonzero. Nord retains structural checks as a reference; it is not certified against Sage's visual thresholds.
+
+Run the contract verifier against a review directory with the same source checkout and generated palette:
+
+```sh
+python3 scripts/theme_review_contract.py --verify-dir /tmp/theme-review/sage \
+  --profile theme --commit "$(git rev-parse HEAD)" --preset sage \
+  --colors /tmp/theme-sage/colors.json
+```
+
+Add `--gallery-dir docs/design-system/review/sage/native` to require all published images in that profile to match the captured SVG bytes. Do not edit, recolor, or omit a defective capture to make it pass. Fix the underlying adapter or fixture and replace the image from verified evidence. Changes to acceptance thresholds are design changes and require review, not automatic baseline updates.
+
+Passing the contract does **not** approve the design. The evidence is reconstructed from terminal cells, not an OS-level screenshot; font rasterization, opacity, real terminal behavior and subjective composition still require an independent visual sign-off. A structured observation without pixels is marked not-visual. Approval remains pending even when all automated checks pass.

@@ -7,6 +7,7 @@ on:
       - 'scripts/theme.py'
       - 'scripts/theme-ci-tools.py'
       - 'scripts/theme_review.py'
+      - 'scripts/theme_review_contract.py'
       - 'scripts/test-theme*.py'
       - 'nvim/colors/dotfiles.lua'
       - 'nvim/lua/dotfiles-theme.lua'
@@ -73,6 +74,7 @@ jobs:
             review="$RUNNER_TEMP/theme-review/$preset"
             python3 scripts/theme.py --theme "$preset" --output-dir "$output"
             DOTFILES_THEME_DIR="$output" uv run --script scripts/test-theme-native.py --review-dir "$review" --plugins-dir "$RUNNER_TEMP/theme-tools/plugins" --surface neovim --surface neovim-frame --surface tmux --surface cli --surface fzf --surface bat --surface delta --surface glow --surface bottom || failed=1
+            python3 scripts/theme_review_contract.py --verify-dir "$review" --profile theme --commit "$(git rev-parse HEAD)" --preset "$preset" --colors "$output/colors.json" || failed=1
           done
           exit "$failed"
       - name: Upload unapproved native visual review

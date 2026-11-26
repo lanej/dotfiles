@@ -9,6 +9,10 @@ on:
       - 'design-system/generated/zellij.kdl'
       - 'design-system/generated/fzf.txt'
       - 'scripts/test-theme-native.py'
+      - 'scripts/theme_review.py'
+      - 'scripts/theme_review_contract.py'
+      - 'design-system/native-review-contract.json'
+      - 'design-system/themes/**'
       - 'bin/zellij-*'
       - '!bin/zellij-attach'
       - '!bin/zellij-agent'
@@ -236,6 +240,7 @@ jobs:
             python3 scripts/theme.py --theme "$preset"
             review="$RUNNER_TEMP/zellij-theme-review/$preset"
             uv run --script scripts/test-theme-native.py --review-dir "$review" --surface zellij || failed=1
+            python3 scripts/theme_review_contract.py --verify-dir "$review" --profile zellij --commit "$(git rev-parse HEAD)" --preset "$preset" --colors design-system/generated/colors.json || failed=1
           done
           exit "$failed"
       - name: Upload unapproved Zellij native review

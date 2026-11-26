@@ -31,6 +31,7 @@ import tomllib
 import pyte
 
 from theme_review import TerminalMetadata, render_svg
+import theme_review_contract as review_contract
 
 ROOT = Path(__file__).resolve().parents[1]
 GENERATED = Path(os.environ.get("DOTFILES_THEME_DIR", ROOT / "design-system/generated"))
@@ -121,17 +122,7 @@ def ansi_cells(text, columns=76, lines=10, *, review=False):
 
 
 def compact(rows):
-    result = []
-    for row in rows:
-        spans = []
-        for cell in row:
-            style = {key: value for key, value in cell.items() if key != "data"}
-            if spans and all(spans[-1][key] == value for key, value in style.items()):
-                spans[-1]["data"] += cell["data"]
-            else:
-                spans.append({**cell})
-        result.append(spans)
-    return result
+    return review_contract.compact_grid(rows)
 
 
 def stop_child_group(pid):
@@ -566,6 +557,19 @@ def main():
                 "run_id": os.environ.get("GITHUB_RUN_ID"), "mode": "native-review", "surfaces": {}}
     failures = []
     surfaces = args.surface or ["kitty", "neovim", "neovim-frame", "zellij", "tmux", "cli", "fzf", "bat", "delta", "glow", "bottom"]
+    if args.review_dir:
+        if len(set(surfaces)) != len(surfaces):
+            parser.error("review surfaces must be unique")
+        policy = json.loads(review_contract.CONTRACT.read_text())
+        shutil.copyfile(review_contract.CONTRACT, args.review_dir / "review-contract.json")
+        shutil.copyfile(GENERATED / "colors.json", args.review_dir / "colors.json")
+        evidence.update(
+            schema=2, approval="unreviewed", required_surfaces=surfaces,
+            contract_sha256=review_contract.sha256(review_contract.CONTRACT),
+            colors_sha256=review_contract.sha256(GENERATED / "colors.json"),
+            auditor_sha256=review_contract.sha256(Path(review_contract.__file__)),
+            renderer_sha256=review_contract.sha256(Path(__file__).with_name("theme_review.py")),
+        )
     with tempfile.TemporaryDirectory(prefix="theme-native-", dir="/tmp") as temporary:
         work = Path(temporary).resolve()
         home = work / "home"
@@ -586,7 +590,10 @@ def main():
                 if not args.review_dir:
                     raise
                 failures.append(surface)
-                evidence["surfaces"][surface] = {"status": "failed", "error": str(error)}
+                detail = {"status": "failed", "error": str(error), "contract_status": "fail"}
+                if raw_path.exists():
+                    detail.update(ansi=raw_path.name, sha256={raw_path.name: review_contract.sha256(raw_path)})
+                evidence["surfaces"][surface] = detail
                 print(f"REVIEW FAILED {surface}: {error}", file=sys.stderr)
                 continue
             terminal_rows = isinstance(observed, list) and observed and isinstance(observed[0], list)
@@ -595,20 +602,35 @@ def main():
             if args.review_dir:
                 snapshot_name = surface + ".json"
                 (args.review_dir / snapshot_name).write_text(json.dumps(snapshot, indent=2, sort_keys=True) + "\n")
-                detail = {"status": "captured", "cells": snapshot_name}
+                detail = {"status": "captured", "cells": snapshot_name, "contract_status": "not-visual"}
                 if raw_path.exists():
                     detail["ansi"] = raw_path.name
                 if terminal_rows:
+                    grid = args.review_dir / (surface + ".grid.json")
+                    grid.write_text(json.dumps(observed, separators=(",", ":"), ensure_ascii=False) + "\n")
+                    detail.update(grid=grid.name, rows=len(observed), columns=len(observed[0]))
                     capture = args.review_dir / (surface + ".svg")
+                    report_path = args.review_dir / (surface + ".audit.json")
                     try:
+                        audit = review_contract.audit_capture(surface, observed, metadata, policy)
+                        report_path.write_text(json.dumps(audit, indent=2, ensure_ascii=False) + "\n")
+                        detail.update(audit=report_path.name, contract_status=audit["status"])
+                        for check in audit["checks"]:
+                            if not check["passed"]:
+                                print(f"REVIEW FAIL {surface}/{check['id']}: {json.dumps(check['observed'], ensure_ascii=False)}", file=sys.stderr)
+                        if audit["status"] != "pass":
+                            failures.append(surface)
+                        # Preserve the failed image for diagnosis, rather than dropping it.
                         capture.write_text(svg(surface, observed, trim=surface not in ("zellij", "bottom", "tmux")))
-                        detail.update(svg=capture.name, rows=len(observed), columns=len(observed[0]))
+                        detail["svg"] = capture.name
                     except Exception as error:
                         failures.append(surface)
-                        detail.update(status="render-failed", error=str(error))
-                        print(f"REVIEW RENDER FAILED {surface}: {error}", file=sys.stderr)
+                        detail.update(status="render-failed", contract_status="fail", error=str(error))
+                        print(f"REVIEW EVIDENCE FAILED {surface}: {error}", file=sys.stderr)
+                detail["sha256"] = {detail[key]: review_contract.sha256(args.review_dir / detail[key])
+                                    for key in ("cells", "grid", "ansi", "svg", "audit") if key in detail}
                 evidence["surfaces"][surface] = detail
-                print(f"REVIEW {surface}: unapproved native capture")
+                print(f"REVIEW {surface}: captured, contract={detail['contract_status']}, visual approval=pending")
             elif args.record:
                 baselines.mkdir(parents=True, exist_ok=True)
                 baseline.write_text(json.dumps(snapshot, indent=2, sort_keys=True) + "\n")
@@ -626,7 +648,7 @@ def main():
     if args.review_dir:
         (args.review_dir / "manifest.json").write_text(json.dumps(evidence, indent=2) + "\n")
         if failures:
-            raise SystemExit("Native visual review failed: " + ", ".join(failures))
+            raise SystemExit("Native visual review failed: " + ", ".join(dict.fromkeys(failures)))
 
 
 if __name__ == "__main__":
