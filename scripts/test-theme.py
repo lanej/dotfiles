@@ -599,7 +599,11 @@ class ThemeTests(unittest.TestCase):
         self.assertEqual(query.feed(b"hello\x1b]1"), [])
         self.assertEqual(query.feed(b"1;?\x1b"), [])
         self.assertEqual(query.feed(b"\\"), [b"\x1b]11;rgb:0d0d/1515/1313\x1b\\"])
-        self.assertEqual(query.feed(b"\x1b]10;?\x07"), [b"\x1b]10;rgb:d7d7/dfdf/d9d9\x1b\\"])
+        self.assertEqual(query.feed(b"\x1b]10;?\x07"), [b"\x1b]10;rgb:d7d7/dfdf/d9d9\x07"])
+        self.assertEqual(query.feed(b"\x1b]11;?\x07\x1b["), [b"\x1b]11;rgb:0d0d/1515/1313\x07"])
+        self.assertEqual(query.feed(b"5"), [])
+        self.assertEqual(query.feed(b"n"), [b"\x1b[0n"])
+        self.assertEqual(query.feed(b"\x1b[5n\x1b]11;?\x07"), [b"\x1b[0n", b"\x1b]11;rgb:0d0d/1515/1313\x07"])
         self.assertEqual(query.feed(b"ordinary text"), [])
 
     def test_review_metadata_filter_preserves_hyperlink_labels(self):
