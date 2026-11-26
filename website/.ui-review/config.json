@@ -49,6 +49,11 @@
       "ready": "main h1"
     },
     {
+      "name": "sage-preset",
+      "path": "/dotfiles/design-system/sage/",
+      "ready": "main h1"
+    },
+    {
       "name": "radar",
       "path": "/dotfiles/reference/radar/",
       "ready": ".tech-radar"

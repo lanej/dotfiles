@@ -1,0 +1,112 @@
+
+[text_unselected]
+base = "text"
+background = "surface"
+emphasis_0 = "status.warning"
+emphasis_1 = "accent"
+emphasis_2 = "status.success"
+emphasis_3 = "syntax.number"
+
+[text_selected]
+base = "selection.content.fg"
+background = "selection.content.bg"
+emphasis_0 = "selection.content.attention"
+emphasis_1 = "selection.content.accent"
+emphasis_2 = "selection.content.success"
+emphasis_3 = "selection.content.number"
+
+[ribbon_unselected]
+base = "text.muted"
+background = "surface"
+emphasis_0 = "status.attention"
+emphasis_1 = "accent"
+emphasis_2 = "status.success"
+emphasis_3 = "syntax.number"
+
+[ribbon_selected]
+base = "tab.active.fg"
+background = "tab.active.bg"
+emphasis_0 = "tab.active.fg"
+emphasis_1 = "tab.active.fg"
+emphasis_2 = "tab.active.fg"
+emphasis_3 = "tab.active.fg"
+
+[table_title]
+base = "accent"
+background = "surface"
+emphasis_0 = "status.attention"
+emphasis_1 = "accent"
+emphasis_2 = "status.success"
+emphasis_3 = "syntax.number"
+
+[table_cell_unselected]
+base = "text"
+background = "surface"
+emphasis_0 = "status.attention"
+emphasis_1 = "accent"
+emphasis_2 = "status.success"
+emphasis_3 = "syntax.number"
+
+[table_cell_selected]
+base = "selection.content.fg"
+background = "selection.content.bg"
+emphasis_0 = "selection.content.attention"
+emphasis_1 = "selection.content.accent"
+emphasis_2 = "selection.content.success"
+emphasis_3 = "selection.content.number"
+
+[list_unselected]
+base = "text"
+background = "surface"
+emphasis_0 = "status.attention"
+emphasis_1 = "accent"
+emphasis_2 = "status.success"
+emphasis_3 = "syntax.number"
+
+[list_selected]
+base = "selection.content.fg"
+background = "selection.content.bg"
+emphasis_0 = "selection.content.attention"
+emphasis_1 = "selection.content.accent"
+emphasis_2 = "selection.content.success"
+emphasis_3 = "selection.content.number"
+
+[frame_unselected]
+base = "surface"
+background = "surface"
+emphasis_0 = "status.attention"
+emphasis_1 = "accent"
+emphasis_2 = "status.success"
+emphasis_3 = "syntax.number"
+
+[frame_selected]
+base = "focus"
+background = "surface.selected"
+emphasis_0 = "status.attention"
+emphasis_1 = "accent"
+emphasis_2 = "status.success"
+emphasis_3 = "syntax.number"
+
+[frame_highlight]
+base = "focus"
+background = "surface"
+emphasis_0 = "status.attention"
+emphasis_1 = "accent"
+emphasis_2 = "status.success"
+emphasis_3 = "syntax.number"
+
+[exit_code_success]
+base = "status.success"
+background = "surface"
+emphasis_0 = "status.attention"
+emphasis_1 = "accent"
+emphasis_2 = "status.success"
+emphasis_3 = "syntax.number"
+
+[exit_code_error]
+base = "status.error"
+background = "surface"
+emphasis_0 = "status.attention"
+emphasis_1 = "accent"
+emphasis_2 = "status.success"
+emphasis_3 = "syntax.number"

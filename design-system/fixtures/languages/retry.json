@@ -1,0 +1,12 @@
+{
+  "policy": {
+    "enabled": true,
+    "delays_ms": [100, 200, 400],
+    "max_attempts": 3
+  },
+  "fallback": {
+    "state": "blocked",
+    "reason": null
+  },
+  "labels": ["delivery", "transient"]
+}

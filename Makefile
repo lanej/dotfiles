@@ -132,6 +132,7 @@ theme-cache:
 	@bat cache --build
 test-theme:
 	@python3 "$(DOTFILES)/scripts/test-theme.py"
+	@python3 "$(DOTFILES)/scripts/test-theme-review-contract.py"
 test-theme-presentation:
 	@"$(UV)" run --script "$(DOTFILES)/scripts/test-theme-presentation.py"
 test-theme-native:

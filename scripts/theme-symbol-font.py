@@ -6,13 +6,12 @@
 """Subset an explicitly supplied Nerd Font for the catalog's default symbols."""
 
 import argparse
-import json
 from pathlib import Path
 
 from fontTools import subset
 from fontTools.ttLib import TTFont
 
-from theme import Presentation
+from theme import Presentation, read
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -21,7 +20,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("font", type=Path)
     args = parser.parse_args()
-    tokens = json.loads((ROOT / "design-system/tokens.json").read_text())["presentation"]
+    tokens = read(ROOT / "design-system/tokens.toml")["presentation"]
     resolved = Presentation(tokens, {}).values
     characters = {ord(c) for name, spec in tokens.items() if spec["type"] == "string" for c in resolved[name]}
     font = TTFont(args.font, recalcTimestamp=False)

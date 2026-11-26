@@ -1,0 +1,98 @@
+---
+title: Sage preset
+description: A near-black midnight green terminal palette with sage accents and independently readable semantic colors.
+---
+
+import PresetPalette from '@components/PresetPalette.astro';
+import PresetComparison from '@components/PresetComparison.astro';
+import SemanticStateCatalog from '@components/SemanticStateCatalog.astro';
+
+Sage is a selectable preset for my [terminal design system](../design-system.mdx), inspired by the deep green surfaces and pale sage accents of [my website](https://lanej.io/). It preserves the separation of palette, semantic roles, components and native adapters established by [Nord](nord.mdx).
+
+## Compare with Nord
+
+The same composition uses each preset's input colors. This is an illustrative HTML preview, not a captured native terminal. Real application highlighting, transparency, glyphs and diff rendering require a separate review.
+
+<PresetComparison />
+
+## Design
+
+The selected Midnight treatment uses the website’s exact near-black canvas (`#0D1513`), a raised surface (`#17231E`), and a selected surface (`#26352D`). The three surface colors stay fixed after variant selection; the contrast review refines the border, error and subtle-text tones. Pale sage identifies headings, links and navigation. Lavender identifies focus; a blue/cyan, sand and lichen syntax palette maintains distinctions between keywords, functions, types and strings. Success uses yellow-green, warnings amber, errors a more saturated rose (`#F18C96`), and attention copper. ANSI slots retain their conventional semantic families.
+
+The [preset input](../../design-system/themes/sage.toml) defines the base palette and role assignments. Shared presentation defaults and ANSI-derived Git roles are inherited. Sage overrides emphasized add/delete diff tinting from 30% to 20%; ordinary diffs retain 16% tinting. Ordinary foreground roles, including comments and diagnostics, target at least 4.5:1 contrast on the solid base, raised and selected surfaces. Regression tests also require 3:1 for borders on the three solid surfaces and 4.5:1 for syntax/error foregrounds on diff backgrounds. The native contrast contract also tests 4.5:1 for dim Git file counts and inactive labels, and 3:1 for staged/branch gutter symbols. Transparent compositing remains a separate native review.
+
+<PresetPalette preset="sage" />
+
+## Semantic states
+
+The [candidate state vocabulary](../../design-system/semantic-states.json) separates configuration, log severity, execution, system health, interaction, connectivity, data freshness/validity, and access/approval. It defines 39 stable tokens across eight families. The same color can express related emphasis across families without making the states interchangeable. The previews show labels and glyphs, not color alone.
+
+On uses the primary sage accent; off and trace use the new subtle text tone (`#909F95`), which is darker than debug (`#A3B1A7`) while retaining at least 4.5:1 contrast on selected rows. The shared role schema defaults subtle text to muted text; Sage overrides that role. Info and running share cyan, warning and blocked share amber, attention uses copper, and failed or unavailable use rose. Fatal adds weight rather than a new color. A canceled task or unknown service observation is neutral.
+
+The new families deliberately distinguish a connected transport from a healthy service, fresh evidence from valid data, a focused input from a selected item, and read-only access from a denied operation, and approval granted from execution succeeded. `access.approved` uses a sage checkmark, while `execution.succeeded` retains the success-green checkmark. Paused, retrying and skipped extend the execution lifecycle without treating every non-running state as a failure.
+
+Every state is emitted under `semantic_states` in the generated [token metadata](../../design-system/generated/tokens.json) for every preset. Use the family-qualified key (for example `connectivity.connected` or `access.approval`) to retrieve its label, resolved foreground, selected glyph, Unicode and ASCII variants, weight, color role and description. Glyph selection follows the existing `--symbols` option. The color role is resolved using the same semantic role for every preset; the default Nord metadata expands without changing its palette or native adapter styling.
+
+<SemanticStateCatalog preset="sage" />
+
+The reviewed color hierarchy uses a leading accent marker in the selected-row examples and an error marker on a separate dark segment beside a focused tab. The native fzf pointer already supplies a leading indicator. Zellij's owned status bar separates active failure marks from the focus fill; native ribbons use inverse ink where their API cannot specify a separate mark background. For managed native controls without an independent marker, the solid-selection role uses a sage fill with inverse text: Kitty text selection, Neovim Visual/completion/quickfix, and Zellij selected text/list/table cells. Dense full-width bottom process rows instead use a medium sage selection fill (`selection.row.bg`, `#5E7067`) with strong light text (`#EEF1EE`), keeping 4.63:1 text contrast and at least 3:1 fill contrast on base and raised surfaces. The review fixture verifies the actual selected row colors before capture. Native fzf and the review components retain the quieter selected surface with a leading marker. Tmux uses compact window labels on the dark status surface, a lavender focus fill only on the active tab label, and separate semantic foreground markers for failure, attention and activity. The inactive pane title uses inverse ink on its border fill. Glow's filled error style uses inverse ink. Neovim line numbers use readable subtle text; the scrollbar thumb contrasts with a dark track. Dim Git roles retain reduced intensity subject to their contrast floor. The full state vocabulary is compiled for application adoption; the catalog does not itself change Studio or Publisher runtime state mapping.
+
+## Contrast contract
+
+The [native contrast regression test](../../scripts/test-theme.py) checks the declared foreground/background pairings, not arbitrary combinations of palette swatches. Normal text must meet 4.5:1 and essential non-text controls and state indicators 3:1. State colors may have similar luminance if labels or glyphs distinguish them; a pairwise 3:1 requirement between unrelated state hues would not be an accessibility requirement. Universal role defaults preserve Nord’s native appearance; Sage overrides the roles and typed presentation tokens it needs. Native adapters consume only resolved roles.
+
+These are solid sRGB measurements, not a claim of WCAG conformance for all native applications. ANSI black retains its conventional dark-fill role; third-party foreground overrides, arbitrary ANSI combinations, native compositing, terminal/font rendering, and application-owned controls outside the adapters need separate review. The native fixtures remain necessary to establish actual rendered behavior.
+
+## Evaluate locally
+
+Nord remains the selected default. Generate Sage in isolation without modifying installed configurations:
+
+```sh
+python3 scripts/theme.py --theme sage --output-dir /tmp/sage-preset
+python3 scripts/theme.py --theme sage --output-dir /tmp/sage-preset --check
+DOTFILES_THEME_DIR=/tmp/sage-preset bin/dotfiles-theme --color=always
+```
+
+For a full local trial, select `theme = "sage"` in [preset selection](../../design-system/config.toml), run `make theme-generate` and follow the [configuration and reload instructions](../design-system.mdx#generate-configure-and-reload). Restore Nord by selecting `theme = "nord"` and regenerating/reloading. An isolated output alone does not switch every running application.
+
+## Native review
+
+The browser preview and older projected comparisons are design illustrations, not native screenshots. Review evidence must come from running each preset with the same native application versions and fixture at the same checkout.
+
+Generate and review the isolated preset without recording a new regression baseline:
+
+```sh
+python3 scripts/theme.py --theme sage --output-dir /tmp/sage-preset
+DOTFILES_THEME_DIR=/tmp/sage-preset uv run --script scripts/test-theme-native.py --review-dir /tmp/sage-review \
+  --surface neovim --surface neovim-frame --surface tmux --surface cli --surface fzf \
+  --surface bat --surface delta --surface glow --surface bottom
+```
+
+Zellij uses the checkout's generated KDL and installed status plugin. Run its review in a disposable checkout with `make zellij-status` and the selected generated theme. CI captures both presets and publishes `native-theme-review` and `native-zellij-review` artifacts. Each includes the checkout commit, per-surface success or failure, compact observed cells, raw terminal output where applicable, and rendered SVGs. The richer fixtures include native diagnostics and lualine, a colored task picker with preview, Markdown code/table/link rendering, full tmux/bottom views, and multiple Zellij tabs. Sage retains explicit plus/minus markers in its actual generated Delta configuration; the review additionally enables Delta line numbers.
+
+The renderer uses terminal cell coordinates, including wide glyph continuations and combining text, and draws standard Powerline and box geometry independently of the browser's installed fonts. It does not substitute colors or fabricate missing text. Inspect failures and raw ANSI rather than approving a defective capture. All captured views are unapproved evidence; neither CI nor `--review-dir` overwrites regression baselines. Acceptance still requires the explicit `--record` workflow after inspection. Studio, Publisher, Kitty transparency and other application-owned behavior need their own actual runtime review.
+
+## Native visual acceptance
+
+A capture is not a verdict. The [independent contract](../../design-system/native-review-contract.toml) specifies required fixture content and limits on text contrast, non-text contrast and visual emphasis, rather than merely comparing a native application with its own generated configuration. Named visual primitives (`dense-selection`, `tab-strip`, `marked-selection`, `change-markers`) are configured by semantic anchors, expected ink roles and independent bounds. A new surface can reuse them without changing the evaluator. Readiness checks wait for fixture content, not correct styles; incomplete frames with observed cells still produce evidence and fail the gate. The Actions step summary shows measured minima and failed predicates, while the artifact retains the exact counterexample.
+
+- Sage text cells must meet 4.5:1; meaningful geometry and markers must meet 3:1. Decorative Powerline joins and empty Neovim filler tildes are explicitly excluded. Missing content, startup errors, replacement glyphs and unsupported private-use glyphs in SVG evidence are failures.
+- A dense bottom selection must occupy one process row, use strong light ink, and have fill contrast of 3:1 or greater on base and raised surfaces but at most 4:1 against base. A marked fzf selection retains a quiet fill (at most 2:1 against base) and a contrasting pointer.
+- The tmux fixture has one filled focused label, muted inactive labels and separate semantic marks. Non-active colored ribbons fail even when their text contrast is excellent.
+- Every required surface is present in the manifest. The gate verifies the checkout, preset, generated palette, contract and renderer hashes; it re-renders each SVG from the full observed cell grid and recomputes each audit. CI retains failed evidence, reports the violated predicate and observed coordinates/colors, and exits nonzero. Nord retains structural checks as a reference; it is not certified against Sage's visual thresholds.
+
+Run the contract verifier against a review directory with the same source checkout and generated palette:
+
+```sh
+python3 scripts/theme_review_contract.py --verify-dir /tmp/theme-review/sage \
+  --profile theme --commit "$(git rev-parse HEAD)" --preset sage \
+  --colors /tmp/theme-sage/colors.json
+```
+
+Add `--gallery-dir docs/design-system/review/sage/native` to require all published images in that profile to match the captured SVG bytes. After a complete passing run, `--export-gallery docs/design-system/review/sage/native` copies the exact verified SVGs; it refuses to publish an incomplete or failing profile. Do not edit, recolor, or omit a defective capture to make it pass. Fix the underlying adapter or fixture and replace the image from verified evidence. Changes to acceptance thresholds are design changes and require review, not automatic baseline updates.
+
+Passing the contract does **not** approve the design. The evidence is reconstructed from terminal cells, not an OS-level screenshot; font rasterization, opacity, real terminal behavior and subjective composition still require an independent visual sign-off. A structured observation without pixels is marked not-visual. Approval remains pending even when all automated checks pass.
+
+### Language syntax evidence
+
+The theme review profile requires separate native Neovim and bat captures for Rust, Go, TypeScript, Python, Ruby, Lua, Bash, JSON and TOML, using the same checked-in sources. Each verifies representative source anchors, readable observed cells and a minimum of three distinct foreground colors across source anchors; Neovim also includes an injected warning diagnostic. Each surface produces its own raw output, grid, SVG and audit. Missing or monochrome samples fail the Sage profile. The original regression baselines remain unchanged. Use `--profile theme` with `--review-dir` to capture the entire profile, or `--surface neovim-code-rust` for a single sample.

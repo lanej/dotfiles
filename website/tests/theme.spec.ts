@@ -63,3 +63,74 @@ test('Nord is documented as a preset with its own palette and native captures', 
   await page.locator('#preset-palette').scrollIntoViewIfNeeded();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
+
+test('Sage is discoverable and compares both presets without changing the default', async ({ page }) => {
+  await page.goto('./design-system/');
+  await page.getByRole('link', { name: 'Sage preset', exact: true }).first().click();
+  await expect(page).toHaveURL(/\/design-system\/sage\/$/);
+  await expect(page.getByRole('heading', { name: 'Sage preset', exact: true })).toBeVisible();
+  await expect(page.locator('section[aria-labelledby="preset-palette"]')).toContainText('#ACC8B7');
+  const sage = page.locator('[data-preset-preview="sage"]');
+  const nord = page.locator('[data-preset-preview="nord"]');
+  await expect(sage).toHaveCSS('background-color', 'rgb(13, 21, 19)');
+  await expect(sage.locator('.tabs')).toHaveCSS('background-color', 'rgb(23, 35, 30)');
+  await expect(sage.locator('.selected')).toHaveCSS('background-color', 'rgb(38, 53, 45)');
+  await expect(nord).toHaveCSS('background-color', 'rgb(46, 52, 64)');
+  await expect(sage.getByText('Failed', { exact: true })).toHaveCSS('color', 'rgb(241, 140, 150)');
+  await expect(sage.locator('.tab-error')).toHaveCSS('color', 'rgb(241, 140, 150)');
+  await expect(sage.locator('.tab-error')).toHaveCSS('background-color', 'rgb(13, 21, 19)');
+  await expect(sage.locator('.selected')).toHaveCSS('box-shadow', 'rgb(172, 200, 183) 3px 0px 0px 0px inset');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await sage.scrollIntoViewIfNeeded();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test('Sage exposes all semantic token families with distinct meanings', async ({ page }) => {
+  await page.goto('./design-system/sage/');
+  const catalog = page.locator('[data-semantic-catalog="sage"]');
+  await expect(catalog.locator('[data-semantic-family]')).toHaveCount(8);
+  await expect(catalog.locator('[data-semantic-state]')).toHaveCount(39);
+  for (const [id, color] of [
+    ['configuration.on', 'rgb(172, 200, 183)'],
+    ['configuration.off', 'rgb(144, 159, 149)'],
+    ['severity.trace', 'rgb(144, 159, 149)'],
+    ['severity.debug', 'rgb(163, 177, 167)'],
+    ['severity.info', 'rgb(140, 197, 204)'],
+    ['severity.warning', 'rgb(232, 200, 139)'],
+    ['severity.error', 'rgb(241, 140, 150)'],
+    ['execution.input', 'rgb(221, 167, 131)'],
+    ['execution.succeeded', 'rgb(166, 205, 130)'],
+    ['health.unknown', 'rgb(163, 177, 167)'],
+    ['execution.paused', 'rgb(163, 177, 167)'],
+    ['execution.retrying', 'rgb(232, 200, 139)'],
+    ['execution.skipped', 'rgb(144, 159, 149)'],
+    ['interaction.focused', 'rgb(196, 178, 217)'],
+    ['interaction.selected', 'rgb(172, 200, 183)'],
+    ['interaction.disabled', 'rgb(144, 159, 149)'],
+    ['connectivity.connecting', 'rgb(140, 197, 204)'],
+    ['connectivity.connected', 'rgb(143, 185, 168)'],
+    ['connectivity.disconnected', 'rgb(144, 159, 149)'],
+    ['connectivity.reconnecting', 'rgb(232, 200, 139)'],
+    ['connectivity.lost', 'rgb(241, 140, 150)'],
+    ['data.fresh', 'rgb(143, 185, 168)'],
+    ['data.stale', 'rgb(232, 200, 139)'],
+    ['data.missing', 'rgb(163, 177, 167)'],
+    ['data.invalid', 'rgb(241, 140, 150)'],
+    ['access.readwrite', 'rgb(172, 200, 183)'],
+    ['access.readonly', 'rgb(163, 177, 167)'],
+    ['access.approval', 'rgb(221, 167, 131)'],
+    ['access.approved', 'rgb(172, 200, 183)'],
+    ['access.denied', 'rgb(241, 140, 150)'],
+  ]) {
+    await expect(catalog.locator(`[data-semantic-state="${id}"] .state-label`)).toHaveCSS('color', color);
+  }
+  await expect(catalog.locator('[data-semantic-state="severity.fatal"] .state-label')).toHaveCSS('font-weight', '700');
+  await expect(catalog.locator('[data-semantic-state="access.approval"] .state-label')).toHaveCSS('font-weight', '700');
+  await expect(catalog.locator('[data-semantic-state="access.approved"] .glyph')).toHaveText('✓');
+  await expect(catalog.getByText('connectivity.connected', { exact: true })).toBeVisible();
+  await expect(catalog.locator('[data-semantic-state="connectivity.connecting"] .glyph')).toHaveText('◐');
+  await expect(catalog.locator('[data-semantic-state="configuration.off"]')).toHaveCSS('box-shadow', 'rgb(172, 200, 183) 3px 0px 0px 0px inset');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await catalog.scrollIntoViewIfNeeded();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});

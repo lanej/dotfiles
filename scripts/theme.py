@@ -16,7 +16,15 @@ HEX = re.compile(r"#[0-9a-fA-F]{6}\Z")
 
 
 def read(path):
+    if path.suffix == ".toml":
+        data = tomllib.loads(path.read_text())
+        return data["items"] if set(data) == {"items"} else data
     return json.loads(path.read_text())
+
+
+def render_roles(template, mapping):
+    return re.sub(r"\{\{([a-z.]+)\}\}",
+                  lambda m: mapping[m[1]], template)
 
 
 def resolve(theme, defaults=None):
@@ -176,16 +184,76 @@ def validate_style(style, symbolic=False):
             raise ValueError(f"unsupported style attribute: {key}")
 
 
+def compile_semantic_states(groups, colors, symbols):
+    """Resolve the shared state vocabulary to consumable, theme-local tokens."""
+    if symbols not in ("unicode", "ascii") or not isinstance(groups, list):
+        raise ValueError("invalid semantic state catalog")
+    result = {}
+    family_ids = set()
+    for family in groups:
+        family_id = family["id"]
+        if not isinstance(family_id, str) or not re.fullmatch(r"[a-z][a-z0-9_]*", family_id):
+            raise ValueError(f"invalid semantic family: {family_id!r}")
+        if family_id in family_ids:
+            raise ValueError(f"duplicate semantic family: {family_id}")
+        family_ids.add(family_id)
+        for state in family["states"]:
+            state_id = state["id"]
+            if not isinstance(state_id, str) or not re.fullmatch(r"[a-z][a-z0-9_]*", state_id):
+                raise ValueError(f"invalid semantic state: {state_id!r}")
+            token = f"{family_id}.{state_id}"
+            if token in result:
+                raise ValueError(f"duplicate semantic state: {token}")
+            for field in ("label", "description", "example"):
+                value = state[field]
+                if not isinstance(value, str) or not value.strip() or any(
+                        unicodedata.category(char).startswith("C") for char in value):
+                    raise ValueError(f"{token}: invalid {field}")
+            glyph, ascii_glyph = state["glyph"], state["ascii"]
+            if (not isinstance(glyph, str) or len(glyph) != 1
+                    or unicodedata.category(glyph)[0] in ("C", "M", "Z")
+                    or unicodedata.east_asian_width(glyph) in ("W", "F")):
+                raise ValueError(f"{token}: expected a printable narrow glyph")
+            if not isinstance(ascii_glyph, str) or len(ascii_glyph) != 1 or not 33 <= ord(ascii_glyph) <= 126:
+                raise ValueError(f"{token}: expected a printable ASCII glyph")
+            bold = state.get("bold", False)
+            if type(bold) is not bool:
+                raise ValueError(f"{token}: invalid bold emphasis")
+            role = state["role"]
+            if not isinstance(role, str) or "fallback_role" in state:
+                raise ValueError(f"{token}: invalid color role; defaults belong to the shared schema")
+            fg = colors[role]
+            if not HEX.fullmatch(fg):
+                raise ValueError(f"{token}: state foreground must be a solid color")
+            result[token] = {
+                "label": state["label"],
+                "symbol": ascii_glyph if symbols == "ascii" else glyph,
+                "glyph": glyph,
+                "ascii": ascii_glyph,
+                "fg": fg,
+                "bold": bold,
+                "color_role": "@" + role,
+                "description": state["description"],
+            }
+    return result
+
+
 def compile_theme(source, theme_name, symbols="unicode"):
     if not re.fullmatch(r"[a-z][a-z0-9-]*", theme_name):
         raise ValueError("invalid theme name")
-    theme = read(source / "themes" / f"{theme_name}.json")
+    theme = read(source / "themes" / f"{theme_name}.toml")
     if theme["name"] != theme_name:
         raise ValueError("theme name disagrees with filename")
-    shared = read(source / "tokens.json")
+    shared = read(source / "tokens.toml")
     tokens = Presentation(shared["presentation"], theme.get("presentation", {}), symbols)
+    required = set(shared["required_roles"])
+    allowed = required | set(shared["roles"])
+    missing = required - set(theme["roles"])
+    unknown = set(theme["roles"]) - allowed
+    if missing or unknown:
+        raise ValueError(f"theme role schema mismatch: missing={sorted(missing)}, unknown={sorted(unknown)}")
     colors, value = resolve(theme, shared["roles"])
-    components = expand(read(source / "components.json"), value, tokens, "components")
+    components = expand(read(source / "components.toml"), value, tokens, "components")
     for style in components.values():
         validate_style(style, symbolic=True)
         if style.get("dim"):
@@ -195,7 +263,7 @@ def compile_theme(source, theme_name, symbols="unicode"):
     ansi = [value(v) for v in theme["ansi"]]
     if len(ansi) != 16 or "default" in ansi:
         raise ValueError("ANSI palette requires sixteen literal colors")
-    states = expand(read(source / "adapters/tmux-states.json"), value)
+    states = expand(read(source / "adapters/tmux-states.toml"), value)
     for style in states.values():
         validate_style(style)
     outputs = {}
@@ -204,8 +272,8 @@ def compile_theme(source, theme_name, symbols="unicode"):
         outputs[name] = content.rstrip() + "\n"
 
     c = colors
-    output("eza.yml", "# Generated by scripts/theme.py.\n" + json.dumps(expand(read(source / "adapters/eza.json"), value), indent=2))
-    pi = expand(read(source / "adapters/pi.json"), value)
+    output("eza.yml", "# Generated by scripts/theme.py.\n" + json.dumps(expand(read(source / "adapters/eza.toml"), value), indent=2))
+    pi = expand(read(source / "adapters/pi.toml"), value)
     pi["colors"] = {name: "" if color == "default" else color for name, color in pi["colors"].items()}
     pi["export"] = {name: "" if color == "default" else color for name, color in pi["export"].items()}
     output("pi.json", json.dumps(pi, indent=2))
@@ -215,13 +283,13 @@ def compile_theme(source, theme_name, symbols="unicode"):
     fzf_color = "dark," + ",".join(k + ":" + c[v] for k, v in fzf.items())
     output("fzf.txt", "--color=" + fzf_color)
     output("shell.sh", '# Generated by scripts/theme.py; source after application defaults.\nexport BAT_THEME=Dotfiles\nexport DOTFILES_FZF_COLOR=' + "'" + fzf_color + "'\ncase \" ${FZF_DEFAULT_OPTS-} \" in\n    *\" --color=$DOTFILES_FZF_COLOR \"*) ;;\n    *) export FZF_DEFAULT_OPTS=\"${FZF_DEFAULT_OPTS:+$FZF_DEFAULT_OPTS }--color=$DOTFILES_FZF_COLOR\" ;;\nesac")
-    kitty = {"foreground": "text", "background": "surface", "selection_foreground": "selection.fg", "selection_background": "selection.bg", "cursor": "accent", "cursor_text_color": "surface", "active_tab_foreground": "tab.active.fg", "active_tab_background": "tab.active.bg", "inactive_tab_foreground": "tab.inactive.fg", "inactive_tab_background": "tab.inactive.bg", "active_border_color": "focus", "inactive_border_color": "border", "url_color": "link"}
-    output("kitty.conf", "# Generated by scripts/theme.py.\n" + "\n".join(f"{k} {c[v]}" for k, v in kitty.items()) + "\n" + "\n".join(f"color{i} {v}" for i, v in enumerate(ansi)))
+    kitty = {"foreground": "text", "background": "surface", "selection_foreground": "selection.solid.fg", "selection_background": "selection.solid.bg", "cursor": "accent", "cursor_text_color": "surface", "active_tab_foreground": "tab.active.fg", "active_tab_background": "tab.active.bg", "inactive_tab_foreground": "tab.inactive.fg", "inactive_tab_background": "tab.inactive.bg", "active_border_color": "focus", "inactive_border_color": "border", "url_color": "link"}
+    output("kitty.conf", "# Generated by scripts/theme.py.\n" + "\n".join(f"{k} {value('@' + v)}" for k, v in kitty.items()) + "\n" + "\n".join(f"color{i} {v}" for i, v in enumerate(ansi)))
 
-    highlights = read(source / "adapters/neovim.json")
+    highlights = read(source / "adapters/neovim.toml")
     for name, style in highlights.items():
         if "component" in style:
-            expand(read(source / "components.json")[style["component"]], value, tokens, "neovim")
+            expand(read(source / "components.toml")[style["component"]], value, tokens, "neovim")
             style = {**{k: v for k, v in components[style["component"]].items() if k != "symbol"}, **{k: v for k, v in style.items() if k != "component"}}
         if "link" in style and style["link"] not in highlights:
             raise ValueError(f"unresolved highlight link: {name}")
@@ -244,15 +312,19 @@ def compile_theme(source, theme_name, symbols="unicode"):
     output("neovim.lua", "-- Generated by scripts/theme.py.\n-- stylua: ignore\nreturn " + lua({"highlights": highlights, "ansi": ansi, "roles": c, "tokens": tokens.values, "components": components, "separators": separators}))
 
     def rgb(role):
-        return " ".join(str(int(c[role][i:i+2], 16)) for i in (1, 3, 5))
+        color = value("@" + role)
+        return " ".join(str(int(color[i:i+2], 16)) for i in (1, 3, 5))
 
-    styles = read(source / "adapters/zellij.json")
+    styles = read(source / "adapters/zellij.toml")
     kdl = ["// Generated by scripts/theme.py.", "themes {", "    dotfiles {"]
     for name, fields in styles.items():
         kdl += [f"        {name} {{"] + [f"            {field} {rgb(role)}" for field, role in fields.items()] + ["        }"]
     kdl += ["    }", "}"]
     output("zellij.kdl", "\n".join(kdl))
+    compact_tabs = tokens.get("tmux.tabs.compact", "tmux", "boolean")
     template = (source / "adapters/tmux.conf.in").read_text()
+    tab_template = "tmux-tabs-compact.conf.in" if compact_tabs else "tmux-tabs.conf.in"
+    template += (source / "adapters" / tab_template).read_text()
     mappings = dict(c)
     for name in tokens.definitions:
         if "{{" + name + "}}" in template:
@@ -268,17 +340,23 @@ def compile_theme(source, theme_name, symbols="unicode"):
         for name, style in reversed(list(states.items())):
             selected = "#{?#{==:#{@claude-state}," + name + "}," + style[field].replace("#", "##") + "," + selected + "}"
         mappings["agent." + field] = selected
-    rendered = re.sub(r"\{\{([a-z.]+)\}\}", lambda m: mappings[m[1]], template)
+    if compact_tabs:
+        selected = c["text.muted"].replace("#", "##")
+        for name, style in reversed(list(states.items())):
+            marker = style["fg"] if name in ("idle", "dormant") else style["bg"]
+            selected = "#{?#{==:#{@claude-state}," + name + "}," + marker.replace("#", "##") + "," + selected + "}"
+        mappings["agent.marker"] = selected
+    rendered = render_roles(template, mappings)
     if "{{" in rendered:
         raise ValueError("unresolved tmux template placeholder")
     output("tmux.conf", rendered)
-    glow = expand(read(source / "adapters/glow.json"), value, tokens, "glow")
+    glow = expand(read(source / "adapters/glow.toml"), value, tokens, "glow")
     if type(glow["heading"]["bold"]) is not bool or type(glow["h1"]["bold"]) is not bool:
         raise ValueError("Glow heading emphasis must be boolean")
     output("glow.json", json.dumps(glow, indent=2, ensure_ascii=False))
     starship = (source / "adapters/starship.toml.in").read_text()
     git_states = {}
-    declarations = read(source / "components.json")
+    declarations = read(source / "components.toml")
     for name, style in components.items():
         if name.startswith("git."):
             if not isinstance(declarations[name]["fg"], str) or not declarations[name]["fg"].startswith("@"):
@@ -314,9 +392,20 @@ def compile_theme(source, theme_name, symbols="unicode"):
         raise ValueError("unresolved Starship template placeholder")
     tomllib.loads(starship)
     output("starship.toml", starship)
+    markers = tokens.get("diff.markers", "delta", "boolean")
+    marker_option = "\n    keep-plus-minus-markers = true" if markers else ""
+    explicit_gutter = tokens.get("gutter.explicit", "delta", "boolean")
+    if explicit_gutter:
+        marker_option += (
+            f'\n    line-numbers-left-style = "{c["gutter.border"]}"'
+            f'\n    line-numbers-right-style = "{c["gutter.border"]}"'
+            f'\n    line-numbers-zero-style = "{c["gutter.text"]}"'
+            f'\n    line-numbers-minus-style = "{c["status.error"]}"'
+            f'\n    line-numbers-plus-style = "{c["status.success"]}"'
+        )
     output("delta.gitconfig", f'''# Generated by scripts/theme.py.
 [delta "dotfiles"]
-    syntax-theme = Dotfiles
+    syntax-theme = Dotfiles{marker_option}
     plus-style = syntax "{c['diff.add.bg']}"
     plus-non-emph-style = syntax "{c['diff.add.bg']}"
     plus-emph-style = bold syntax "{c['diff.add.emph.bg']}"
@@ -335,7 +424,7 @@ def compile_theme(source, theme_name, symbols="unicode"):
     entry(dictionary, "name", "Dotfiles")
     ET.SubElement(dictionary, "key").text = "settings"
     settings = ET.SubElement(dictionary, "array")
-    scopes = read(source / "adapters/syntax.json")
+    scopes = read(source / "adapters/syntax.toml")
     for scope, role in {"": "text", **scopes}.items():
         item = ET.SubElement(settings, "dict")
         if scope:
@@ -346,10 +435,14 @@ def compile_theme(source, theme_name, symbols="unicode"):
         if not scope:
             entry(attributes, "background", c["surface"])
             entry(attributes, "selection", c["selection.bg"])
+            if tokens.get("gutter.explicit", "bat", "boolean"):
+                # syntect exposes these TextMate settings to bat's native gutter.
+                entry(attributes, "gutter", c["surface"])
+                entry(attributes, "gutterForeground", c["gutter.text"])
     ET.indent(syntax)
     output("Dotfiles.tmTheme", '<?xml version="1.0" encoding="UTF-8"?>\n' + ET.tostring(syntax, encoding="unicode"))
     bottom = (source / "adapters/bottom.toml.in").read_text()
-    rendered = re.sub(r"\{\{([a-z.]+)\}\}", lambda m: c[m[1]], bottom)
+    rendered = render_roles(bottom, c)
     if "{{" in rendered:
         raise ValueError("unresolved bottom template placeholder")
     output("bottom.toml", rendered)
@@ -360,13 +453,14 @@ def compile_theme(source, theme_name, symbols="unicode"):
     file_symbols = {name: tokens.get(f"symbol.file.{name}", "zellij", "string") for name in ("regular", "directory")}
     file_symbols["branch"] = tokens.get("symbol.git.file.branch", "zellij", "string")
     output("zellij-symbols.rs", "// Generated by scripts/theme.py.\n" + "\n".join(f"pub const {name.upper()}: &str = {json.dumps(symbol, ensure_ascii=False)};" for name, symbol in file_symbols.items()))
-    output("tokens.json", json.dumps({"theme": theme_name, "symbols": symbols, "presentation": tokens.catalog(), "git_states": git_states}, indent=2, ensure_ascii=False))
+    semantic_states = compile_semantic_states(read(source / "semantic-states.toml"), c, symbols)
+    output("tokens.json", json.dumps({"theme": theme_name, "symbols": symbols, "presentation": tokens.catalog(), "git_states": git_states, "semantic_states": semantic_states}, indent=2, ensure_ascii=False))
     validate_catalog(source)
     return outputs
 
 
 def validate_catalog(source):
-    catalog = read(source / "catalog.json")
+    catalog = read(source / "catalog.toml")
     levels = ["foundation", "atom", "molecule", "organism", "template", "interface"]
     by_id = {item["id"]: item for item in catalog}
     if len(by_id) != len(catalog):
@@ -392,7 +486,7 @@ def validate_catalog(source):
 
     for key in by_id:
         visit(key)
-    for integration in read(source / "integrations.json"):
+    for integration in read(source / "integrations.toml"):
         for path in integration["sources"]:
             if not (ROOT / path).is_file() and not (ROOT / path).is_symlink():
                 raise ValueError(f"missing integration source: {path}")
@@ -400,14 +494,14 @@ def validate_catalog(source):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--theme", help="Override the preset selected by source/config.json")
-    parser.add_argument("--symbols", choices=("unicode", "ascii"), help="Override the glyph representation selected by source/config.json")
+    parser.add_argument("--theme", help="Override the preset selected by source/config.toml")
+    parser.add_argument("--symbols", choices=("unicode", "ascii"), help="Override the glyph representation selected by source/config.toml")
     parser.add_argument("--source", type=Path, default=SOURCE)
     parser.add_argument("--output-dir", type=Path, default=SOURCE / "generated")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     try:
-        config = read(args.source / "config.json")
+        config = read(args.source / "config.toml")
         outputs = compile_theme(args.source, args.theme or config["theme"], args.symbols or config.get("symbols", "unicode"))
         stale = []
         for name, content in outputs.items():

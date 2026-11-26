@@ -1,4 +1,5 @@
 import { readFile, writeFile, mkdir, cp, rm } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
 import { dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { unified } from 'unified';
@@ -14,6 +15,21 @@ import { zellijPages } from '../zellij.config.mjs';
 
 const site = fileURLToPath(new URL('../', import.meta.url));
 const repo = resolve(site, '..');
+// Project authored TOML to machine-readable website inputs using the standard library.
+const themeInputs = resolve(site, 'src/generated-theme-inputs');
+await rm(themeInputs, { recursive: true, force: true });
+await mkdir(resolve(themeInputs, 'themes'), { recursive: true });
+execFileSync('python3', ['-c', `import json, pathlib, sys
+source, target = map(pathlib.Path, sys.argv[1:])
+sys.path.insert(0, str(source.parent / "scripts"))
+from theme import read, compile_theme
+for p in source.glob("themes/*.toml"):
+    data = read(p)
+    data["resolved_roles"] = json.loads(compile_theme(source, p.stem)["colors.json"])["roles"]
+    (target / p.relative_to(source).with_suffix(".json")).write_text(json.dumps(data, ensure_ascii=False))
+for name in ("catalog", "integrations", "semantic-states"):
+    (target / (name + ".json")).write_text(json.dumps(read(source / (name + ".toml")), ensure_ascii=False))
+`, resolve(repo, 'design-system'), themeInputs]);
 const github = 'https://github.com/lanej/dotfiles';
 // All authored content lives in README.md and docs/. This is a route map, not a second manual.
 const pages = [
@@ -23,6 +39,7 @@ const pages = [
   { file: 'docs/components.mdx', slug: 'components' },
   { file: 'docs/design-system.mdx', slug: 'design-system' },
   { file: 'docs/design-system/nord.mdx', slug: 'design-system/nord' },
+  { file: 'docs/design-system/sage.mdx', slug: 'design-system/sage' },
   { file: 'docs/terminal-workflows.mdx', slug: 'terminal' },
   { file: 'docs/intent-ssh.md', slug: 'reference/intent-ssh', title: 'Mac approval over SSH' },
   { file: 'docs/keylease-ssh.md', slug: 'reference/keylease-ssh', title: 'Keylease and SSH approval' },
