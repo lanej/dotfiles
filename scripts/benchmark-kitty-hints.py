@@ -138,7 +138,7 @@ def gui():
             conf = home / ".config/kitty/kitty.conf"
             original = conf.read_text()
             conf.unlink()
-            conf.write_text(original + "\nmap ctrl+shift+g kitten hints --type url --alphabet asdfghjkl --hints-offset 0 --ascending --prefix-free\nmap ctrl+shift+j kitten select_hint.py url --embedded\n")
+            conf.write_text(original + "\nmap ctrl+shift+g kitten hints --type url --alphabet asdfghjkl --hints-offset 0 --ascending --prefix-free\nmap ctrl+shift+j kitten select_hint.py url --embedded\nmap ctrl+shift+k kitten select_hint.py url --python\n")
             socket = "unix:" + str(work / "kitty.sock")
 
             def run(*args):
@@ -212,19 +212,22 @@ def gui():
                     time.sleep(.2)
                     geometry = json.loads(remote("ls"))[0]["tabs"][0]["windows"][0]
                     # Warm filesystem/font caches; the picker child still starts each time.
-                    for shortcut in ("ctrl+shift+g", "ctrl+shift+e", "ctrl+shift+j"):
+                    cases = [("native", "ctrl+shift+g"), ("styled", "ctrl+shift+e"), ("embedded", "ctrl+shift+j")]
+                    if os.environ.get("KITTY_NATIVE_HINTS_BIN"):
+                        cases.append(("python", "ctrl+shift+k"))
+                    for _, shortcut in cases:
                         key(shortcut)
                         ready(overlay_ready, "warm overlay " + shortcut)
                         key("Escape")
                         ready(source_ready, "warm cancellation")
-                    values = {"native": [], "styled": [], "embedded": []}
+                    values = {label: [] for label, _ in cases}
                     def observer():
                         remote("ls")
                         remote("get-text")
                     poll = [clock(observer)[1] for _ in range(REPS)]
                     for i in range(REPS):
-                        cases = (("native", "ctrl+shift+g"), ("styled", "ctrl+shift+e"), ("embedded", "ctrl+shift+j"))
-                        for label, shortcut in cases[i%3:] + cases[:i%3]:
+                        offset = i % len(cases)
+                        for label, shortcut in cases[offset:] + cases[:offset]:
                             start = time.perf_counter_ns()
                             key(shortcut)
                             ready(overlay_ready, label)
@@ -235,7 +238,8 @@ def gui():
                             "actual_cols":geometry.get("columns"),"actual_rows":geometry.get("lines"),
                             "observer":summarize(poll),
                             "native":summarize(values["native"]), "styled":summarize(values["styled"]),
-                            "embedded":summarize(values["embedded"])})
+                            "embedded":summarize(values["embedded"]),
+                            **({"python": summarize(values["python"])} if "python" in values else {})})
                 except Exception:
                     print((work / "kitty.log").read_text()[-4000:], file=sys.stderr)
                     try:
