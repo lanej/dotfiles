@@ -72,7 +72,7 @@ def check_image_hints(root):
             if (fg(0), fg(9), fg(10), fg(30)) != (
                 styling.mix(0xEBCB8B, palette["background"], .55), 0xEBCB8B, 0x88C0D0, 0xA3BE8C
             ):
-                raise AssertionError("Hint frame did not preserve semantic foreground colors")
+                raise AssertionError(f"Hint frame colors: {[hex(fg(x)) for x in (0, 9, 10, 30)]}; mark starts {model['marks'][0]['cells'][:4]}; source row {str(line)!r}")
             if int(profile.as_color(line.cursor_from(10).bg)) != palette["target"]:
                 raise AssertionError("URL background did not receive the target highlight")
             if int(profile.as_color(line.cursor_from(10).decoration_fg)) != palette["accent"]:
