@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tomllib
 
 import pytest
@@ -12,21 +13,36 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 
 
-@pytest.mark.parametrize(("stage", "expected"), [("under development", True), ("removed", None)])
-def test_structured_question_default_uses_client_feature_support(tmp_path, stage, expected):
+@pytest.mark.parametrize(
+    ("stage", "configured", "expected"),
+    [
+        ("under development", None, True),
+        ("under development", False, False),
+        ("removed", None, None),
+        (None, None, None),
+    ],
+    ids=("supported", "opt-out", "removed", "unlaunchable"),
+)
+def test_structured_question_default_respects_client_and_config(tmp_path, stage, configured, expected):
     tools = tmp_path / "bin"
     tools.mkdir()
     codex = tools / "codex"
-    codex.write_text(
-        '#!/bin/sh\n[ "$*" = "features list" ] && [ -d "$CODEX_HOME" ] || exit 1\ncat "$0.features"\n'
-    )
+    if stage is None:
+        codex.write_text("Invalid executable\n")
+    else:
+        codex.write_text(
+            '#!/bin/sh\n[ "$*" = "features list" ] && [ -d "$CODEX_HOME" ] || exit 1\n'
+            f"printf '%s\\n' 'default_mode_request_user_input  {stage}  false'\n"
+        )
     codex.chmod(0o755)
-    (tools / "codex.features").write_text(f"default_mode_request_user_input  {stage}  false\n")
     codex_home = tmp_path / "codex"
     config = codex_home / "config.toml"
-    env = dict(os.environ, CODEX_HOME=str(codex_home), PATH=f"{tools}{os.pathsep}{os.environ['PATH']}")
+    if configured is not None:
+        codex_home.mkdir()
+        config.write_text(f"[features]\ndefault_mode_request_user_input = {str(configured).lower()}\n")
+    env = dict(os.environ, CODEX_HOME=str(codex_home), PATH=str(tools))
     command = [
-        "uv", "run", "--script", str(ROOT / "bin/sync-codex-permissions"),
+        shutil.which("uv"), "run", "--python", sys.executable, "--script", str(ROOT / "bin/sync-codex-permissions"),
         "--github-enabled", "false", "--easypost", "false",
     ]
 

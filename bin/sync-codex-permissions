@@ -53,7 +53,7 @@ def supports_default_questions():
         result = subprocess.run(
             ["codex", "features", "list"], capture_output=True, text=True, timeout=5,
         )
-    except (FileNotFoundError, subprocess.TimeoutExpired):
+    except (OSError, subprocess.TimeoutExpired):
         return False
     return result.returncode == 0 and any(
         len(columns) >= 3 and columns[0] == DEFAULT_QUESTION_FEATURE and columns[1] != "removed"
