@@ -162,6 +162,21 @@ def current_pull(number, head):
     return None
 
 
+def pull_for_run(run):
+    branch = run["head_branch"]
+    head = run["head_sha"]
+    if not branch or not SHA.fullmatch(head):
+        return None
+    associations = run["pull_requests"]
+    if not associations:
+        source = quote(f"{OWNER}:{branch}", safe="")
+        associations = github(f"repos/{REPO}/pulls?state=open&head={source}&per_page=2")
+    if len(associations) != 1:
+        return None
+    pr = current_pull(associations[0]["number"], head)
+    return pr if pr and pr["head"]["ref"] == branch else None
+
+
 def queue_hint(minimum_age):
     now = datetime.now(timezone.utc)
     cutoff = now - timedelta(hours=3)
@@ -209,10 +224,9 @@ def select_job(minimum_age, candidate_ids=None):
             or run["actor"]["login"] != OWNER
             or run["triggering_actor"]["login"] != OWNER
             or (run.get("head_repository") or {}).get("full_name") != REPO
-            or len(run["pull_requests"]) != 1
         ):
             continue
-        pr = current_pull(run["pull_requests"][0]["number"], run["head_sha"])
+        pr = pull_for_run(run)
         if not pr:
             continue
         jobs = github(f"repos/{REPO}/actions/runs/{run['id']}/jobs")["jobs"]

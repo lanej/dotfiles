@@ -1,7 +1,7 @@
 """Exercise watcher cooldown and dispatch reservations using recorded HTTP shapes."""
 
 from contextlib import ExitStack
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from email.utils import formatdate
 import io
 import json
@@ -92,6 +92,42 @@ class OverflowBackoffTest(unittest.TestCase):
         self.assertEqual(paths[0], "graphql")
         self.assertIn("/actions/workflows/pi-resources.yml/runs?", paths[1])
         self.assertFalse(self.backoff.exists())
+
+    def test_queued_run_without_pull_association_uses_exact_same_repo_branch(self):
+        owner, repo = WATCHER["OWNER"], WATCHER["REPO"]
+        branch = "ci/native pi"
+        base, head, tested = "a" * 40, "b" * 40, "c" * 40
+        actor = {"login": owner}
+        repository = {"full_name": repo}
+        run = {
+            "id": 7, "head_branch": branch, "head_sha": head, "pull_requests": [],
+            "status": "queued", "actor": actor, "triggering_actor": actor,
+            "head_repository": repository,
+        }
+        pr = {
+            "number": 42, "state": "open", "user": actor, "merge_commit_sha": tested,
+            "head": {"ref": branch, "sha": head, "repo": repository},
+            "base": {"ref": "master", "repo": repository},
+        }
+        job = {
+            "name": WATCHER["HOSTED_JOB"], "status": "queued", "labels": ["macos-latest"],
+            "runner_name": None,
+            "created_at": (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat(),
+        }
+        with patch.dict(WATCHER, {"workflow_runs": lambda *_: [run]}):
+            self.gh.side_effect = [
+                response("200 OK", [{"number": 42}]), response("200 OK", pr),
+                response("200 OK", {"jobs": [job]}),
+                response("200 OK", {"parents": [{"sha": base}, {"sha": head}]}),
+                response("200 OK", {"object": {"sha": base}}),
+            ]
+            self.assertEqual(list(WATCHER["select_job"](180, {7})), [(job, pr)])
+            query = self.gh.call_args_list[0].args[0][3]
+            self.assertIn(f"/pulls?state=open&head={owner}%3Aci%2Fnative%20pi", query)
+            self.gh.reset_mock(side_effect=True)
+            self.gh.return_value = response("200 OK", [{"number": 42}, {"number": 43}])
+            self.assertEqual(list(WATCHER["select_job"](180, {7})), [])
+            self.gh.assert_called_once()
 
     def test_throttled_dispatch_retries_once_after_cooldown_and_keeps_receipt(self):
         commit, head = "a" * 40, "b" * 40
