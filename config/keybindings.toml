@@ -18,14 +18,14 @@ description = "Open the last web link, including Codex's padded output."
 id = "kitty.select-url"
 app = "kitty"
 chord = "ctrl+shift+e"
-action = "kitten select_hint.py url"
+action = "launch --type=overlay --copy-colors --stdin-source=@screen --stdin-add-formatting --stdin-add-line-wrap-markers --window-title='Choose URL' hint-native url @active-kitty-window-id"
 description = "Select a visible URL with home-row hints."
 
 [[binding]]
 id = "kitty.select-hyperlink"
 app = "kitty"
 chord = "cmd+shift+u"
-action = "kitten select_hint.py"
+action = "launch --type=overlay --copy-colors --stdin-source=@screen --stdin-add-formatting --stdin-add-line-wrap-markers --window-title='Choose text' hint-native hyperlink @active-kitty-window-id"
 description = "Select a hyperlink or open a file from the current Zellij pane."
 
 [[binding]]

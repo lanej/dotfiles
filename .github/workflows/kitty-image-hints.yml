@@ -4,11 +4,18 @@ on:
     paths: &image-hint-paths
       - 'config/keybindings.toml'
       - 'kitty/kittyconf'
-      - 'kitty/select_hint.py'
+      - 'kitty/native-hints/**'
+      - 'scripts/build-kitty-native-hints.sh'
+      - 'scripts/benchmark-kitty-hints.py'
+      - 'source-code.toml'
+      - 'design-system/**'
+      - 'scripts/theme.py'
       - 'bin/zellij-image-hints'
       - 'scripts/build-zellij-helpers.sh'
       - 'scripts/make/config.sh'
       - 'scripts/test-kitty-image-preview.py'
+      - 'scripts/test-kitty-hint-review.py'
+      - 'scripts/fixtures/kitty-hint-review.py'
       - 'scripts/test-kitty-last-url.py'
       - 'scripts/test-zellij-file-hints.py'
       - 'scripts/test-zellij.py'
@@ -36,12 +43,23 @@ permissions:
 jobs:
   preview:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+      - name: Hydrate and validate configured source-code policy
+        run: |
+          python -m pip install PyYAML==6.0.3
+          python bin/source-code hydrate --repo "$GITHUB_WORKSPACE" --dry-run
+          python bin/source-code hydrate --repo "$GITHUB_WORKSPACE"
+          python bin/source-code validate --repo "$GITHUB_WORKSPACE"
+          git diff --exit-code -- source-code.toml
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.10'
+          cache: false
       - name: Install terminal runtimes and virtual display
         run: |
           mkdir -p "$RUNNER_TEMP/kitty" "$RUNNER_TEMP/zellij"
@@ -54,11 +72,19 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y xvfb xauth xdotool libgl1-mesa-dri libxcb-xkb1 libxkbcommon-x11-0 libxcursor1 fzf file
           python -m pip install Pillow
+      - name: Build Go hint picker
+        run: bash scripts/build-kitty-native-hints.sh "$RUNNER_TEMP/hint-native"
+      - name: Capture representative normal and URL hint modes
+        run: xvfb-run -a -s "-screen 0 1280x900x24" env LIBGL_ALWAYS_SOFTWARE=1 KITTY_NATIVE_HINTS_BIN="$RUNNER_TEMP/hint-native" KITTY_HINT_ARTIFACTS="$RUNNER_TEMP/kitty-hint-artifacts" python scripts/test-kitty-hint-review.py
+      - name: Capture Sage Midnight hint mode
+        run: xvfb-run -a -s "-screen 0 1280x900x24" env LIBGL_ALWAYS_SOFTWARE=1 KITTY_NATIVE_HINTS_BIN="$RUNNER_TEMP/hint-native" KITTY_HINT_THEME=sage KITTY_HINT_ARTIFACTS="$RUNNER_TEMP/kitty-hint-artifacts/sage" python scripts/test-kitty-hint-review.py
       - run: make zellij-helpers
       - run: make test-kitty-last-url
       - run: python scripts/test-zellij-file-hints.py
       - name: Select a wrapped image in Kitty and inspect its Zellij pane
-        run: xvfb-run -a -s "-screen 0 1280x900x24" env LIBGL_ALWAYS_SOFTWARE=1 KITTY_HINT_ARTIFACTS="$RUNNER_TEMP/kitty-hint-artifacts" python scripts/test-kitty-image-preview.py
+        run: xvfb-run -a -s "-screen 0 1280x900x24" env LIBGL_ALWAYS_SOFTWARE=1 KITTY_NATIVE_HINTS_BIN="$RUNNER_TEMP/hint-native" KITTY_HINT_ARTIFACTS="$RUNNER_TEMP/kitty-hint-artifacts" python scripts/test-kitty-image-preview.py
+      - name: Compare native and Go styled picker activation
+        run: xvfb-run -a -s "-screen 0 1920x1200x24" env LIBGL_ALWAYS_SOFTWARE=1 KITTY_NATIVE_HINTS_BIN="$RUNNER_TEMP/hint-native" python scripts/benchmark-kitty-hints.py --gui
       - name: Preserve rendered hint preview
         if: always()
         uses: actions/upload-artifact@v4

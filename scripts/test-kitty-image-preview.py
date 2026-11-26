@@ -74,6 +74,7 @@ def exercise(work):
            "PATH": str(work / "bin") + os.pathsep + os.environ["PATH"]}
     (work / "run").mkdir(mode=0o700)
     (work / "bin").mkdir()
+    (work / "bin/hint-native").symlink_to(Path(os.environ["KITTY_NATIVE_HINTS_BIN"]).resolve())
     (work / "bin/zellij-image-hints").symlink_to(ROOT / "bin/zellij-image-hints")
     (work / "bin/zellij-helper").symlink_to(ROOT / "bin/zellij-helper")
     subprocess.run(["make", "-s", "kitty-config", "zellij-config"], cwd=ROOT, env=env, check=True)
@@ -97,6 +98,7 @@ print("  running-overview.png).")
 print("\\033]8;;''' + URL + '''\\033\\\\release notes\\033]8;;\\033\\\\", flush=True)
 print("\\033]8;;https://sw.kovidgoyal.net/kitty/\\033\\\\Kitty documentation\\033]8;;\\033\\\\", flush=True)
 print("src/reference.rs:42:7", flush=True)
+print("\\033[33mwarning\\033[0m  \\033[36mhttps://example.invalid/\\033[32mreference\\033[0m", flush=True)
 signal.pause()
 ''')
     layout = work / "layout.kdl"
@@ -114,29 +116,37 @@ signal.pause()
         return json.loads(command("zellij", "--session", session, "action", "list-panes", "--json"))
     def key(name):
         command("xdotool", "key", "--clearmodifiers", name)
-    def hint(fragment, label):
+    def hint(fragment, label, url_mode=False):
+        title = "Choose URL" if url_mode else "Choose text"
         def find():
             for os_window in json.loads(remote("ls")):
                 for tab in os_window["tabs"]:
                     for window in tab["windows"]:
-                        if window["title"] == "Choose text":
-                            output = remote("get-text", "--ansi", "--match", f'id:{window["id"]}')
-                            for line in output.splitlines():
-                                if fragment in line:
-                                    marks = re.findall(r"\x1b\]8;[^;]*;mark:(\d+)", line.split(fragment)[0])
-                                    if marks:
-                                        return window["id"]
+                        if window["title"] == title:
+                            output = remote("get-text", "--match", f'id:{window["id"]}')
+                            if fragment in output:
+                                return window["id"]
             return None
-        key("super+shift+u")
+        key("ctrl+shift+e" if url_mode else "super+shift+u")
         overlay_id = until("a native Kitty hint for " + fragment, find)
+        expected_helper = os.environ.get("KITTY_NATIVE_HINTS_BIN")
+        if expected_helper:
+            active = next(w for ow in json.loads(remote("ls")) for tab in ow["tabs"]
+                          for w in tab["windows"] if w["id"] == overlay_id)
+            if not active.get("cmdline") or Path(active["cmdline"][0]).resolve() != Path(expected_helper).resolve():
+                raise AssertionError(f"Expected native Go picker, found {active.get('cmdline')}")
+        # The overlay dims individual cells rather than changing the window palette.
         colors = remote("get-colors", "--match", f"id:{overlay_id}")
-        if not re.search(r"foreground\s+#4c566a", colors, re.I):
-            raise AssertionError("Non-link text must use the dim Nord foreground")
+        if not re.search(r"background\s+#2e3440", colors, re.I):
+            raise AssertionError("The overlay changed the source theme")
         artifacts = os.environ.get("KITTY_HINT_ARTIFACTS")
-        if artifacts and fragment in ("screenshots/plan-viewer", "reference.rs"):
+        if artifacts and (url_mode or fragment in ("screenshots/plan-viewer", "reference.rs")):
             image = ImageGrab.grab().convert("RGB")
             colors = dict((color, count) for count, color in image.getcolors(image.width * image.height))
-            for color in ((236, 239, 244), (180, 142, 173), (76, 86, 106)):
+            expected = [(235, 203, 139), (67, 76, 94), (59, 66, 82)]
+            if url_mode:
+                expected.extend([(136, 192, 208), (163, 190, 140), (173, 153, 114)])
+            for color in expected:
                 if colors.get(color, 0) < 5:
                     raise AssertionError(f"Missing rendered hint color {color}")
             destination = Path(artifacts)
@@ -144,7 +154,7 @@ signal.pause()
             geometry = dict(line.split("=", 1) for line in command("xdotool", "getwindowgeometry", "--shell", xid).splitlines())
             x, y, width, height = (int(geometry[key]) for key in ("X", "Y", "WIDTH", "HEIGHT"))
             image.crop((x, y, x + width, y + height)).save(destination / (
-                "file-hints.png" if fragment == "reference.rs" else "hints.png"))
+                "url-hints.png" if url_mode else ("file-hints.png" if fragment == "reference.rs" else "hints.png")))
         key(label)
 
     log = work / "kitty.log"
@@ -163,6 +173,12 @@ signal.pause()
             xid = command("xdotool", "search", "--onlyvisible", "--class", "kitty").splitlines()[-1]
             command("xdotool", "windowfocus", "--sync", xid)
             source_colors = remote("get-colors")
+            hint("example.invalid/reference", "Escape", url_mode=True)
+            until("URL hint cancellation restores the source window", lambda:
+                  all(window["title"] != "Choose URL" for os_window in json.loads(remote("ls"))
+                      for tab in os_window["tabs"] for window in tab["windows"]))
+            if remote("get-colors") != source_colors:
+                raise AssertionError("Cancelling URL hints changed the source pane colors")
             hint("screenshots/plan-viewer", "a")
             def preview_has_focus():
                 current = panes()

@@ -33,6 +33,7 @@ shellcheck -x \
 	"$dotfiles/bin/fix-ssh" \
 	"$dotfiles/bin/zellij-image-hints" \
 	"$dotfiles/scripts/build-zellij-helpers.sh" \
+	"$dotfiles/scripts/build-kitty-native-hints.sh" \
 	"$dotfiles/sh/ssh-rc" \
 	"$dotfiles/bin/fzf-path-preview" \
 	"$dotfiles/bin/git-ssh" \
