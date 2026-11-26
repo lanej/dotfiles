@@ -95,7 +95,19 @@ Passing the contract does **not** approve the design. The evidence is reconstruc
 
 ### Language syntax evidence
 
-The theme review profile requires separate native Neovim and bat captures for Rust, Go, TypeScript, Python, Ruby, Lua, Bash, JSON and TOML, using the same checked-in sources. Each verifies representative source anchors, readable observed cells and a minimum of three distinct foreground colors across source anchors; Neovim also includes an injected warning diagnostic. Each surface produces its own raw output, grid, SVG and audit. Missing or monochrome samples fail the Sage profile. The original regression baselines remain unchanged. Use `--profile theme` with `--review-dir` to capture the entire profile, or `--surface neovim-code-rust` for a single sample.
+Sage gives booleans, null, and strings separate syntax roles. `true` uses the muted blue so it stands apart from lichen strings, `false` uses lavender, and `null` uses dusty rose. Native adapters map the grammar’s token scopes to those roles wherever the grammar distinguishes them. Diagnostics use their own status roles.
+
+Neovim’s Tree-sitter queries apply the same roles to equivalent literals, including Go, Lua, and Ruby `nil` and Python `None`. Rust’s `None` keeps its enum-variant styling, TypeScript’s `undefined` keeps its builtin styling, and Bash’s `true` and `false` retain command styling. The pinned bat grammar exposes separate scopes for TypeScript expression literals and for Lua `nil`. Other bat scopes that group several literals retain a common foreground.
+
+The palette test requires an Oklab distance of at least `0.060` between each pair of `true`, `false`, and `null`, and between `true` and strings. The closest pair in the reviewed palette measures `0.064`. This is a Sage regression threshold. Text contrast against the rendered background and native token-role checks are evaluated separately. [Oklab conversion reference](https://bottosson.github.io/posts/oklab/#converting-from-linear-srgb-to-oklab)
+
+The theme review profile requires separate native Neovim and bat captures for Rust, Go, TypeScript, Python, Ruby, Lua, Bash, JSON and TOML, using the same checked-in sources. Each verifies representative source anchors, readable observed cells and a minimum of three distinct foreground colors across source anchors; Neovim also includes an injected warning diagnostic. Each surface produces its own raw output, grid, SVG and audit. Missing or monochrome samples fail the Sage profile. Use `--profile theme` with `--review-dir` to capture the entire profile, or `--surface neovim-code-rust` for a single sample. Review captures write outside the regression baselines.
+
+The bundled [bat Rust grammar](../../bat/syntaxes/Rust.sublime-syntax) scopes `impl Trait` bounds so the theme can distinguish the keyword from the trait name. Run `make theme-cache` after updating an existing installation to load the grammar and generated theme.
+
+The `syntax-roles` checks in the [native review contract](../../design-system/native-review-contract.toml) bind a token within a uniquely identified source excerpt to its expected semantic foreground. For example, in `"state": "blocked"`, `state` must use the member role and `blocked` must use the string role. The two foregrounds must differ. Audit JSON records the expected role and RGB alongside the actual row and columns. A readable capture can therefore fail when a semantic distinction disappears.
+
+Pass `--treesitter-site "$HOME/.local/share/nvim/site"` to the capture runner to use installed Tree-sitter parsers and queries for Neovim language surfaces. The runner records the engine in the manifest, and `--require-treesitter` makes the verifier reject evidence from Vim syntax. The Lua receiver and metatable checks in Neovim require the Tree-sitter capture mode. Shared checks such as the JSON key and value pair run in either mode.
 
 ### Atuin history
 

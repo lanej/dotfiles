@@ -36,7 +36,43 @@
       </dict>
       <dict>
         <key>scope</key>
+        <string>meta.mapping.key.json string.quoted.double.json</string>
+        <key>settings</key>
+        <dict>
+          <key>foreground</key>
+          <string>#D8DEE9</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>scope</key>
         <string>constant.numeric, constant.language</string>
+        <key>settings</key>
+        <dict>
+          <key>foreground</key>
+          <string>#B48EAD</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>scope</key>
+        <string>constant.language.boolean.true.json, constant.language.boolean.true.ts, constant.language.boolean.true.rust</string>
+        <key>settings</key>
+        <dict>
+          <key>foreground</key>
+          <string>#B48EAD</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>scope</key>
+        <string>constant.language.boolean.false.json, constant.language.boolean.false.ts, constant.language.boolean.false.rust</string>
+        <key>settings</key>
+        <dict>
+          <key>foreground</key>
+          <string>#B48EAD</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>scope</key>
+        <string>constant.language.null.json, constant.language.null.lua, constant.language.null.ts</string>
         <key>settings</key>
         <dict>
           <key>foreground</key>
@@ -63,11 +99,182 @@
       </dict>
       <dict>
         <key>scope</key>
+        <string>variable.function.go, variable.function.lua</string>
+        <key>settings</key>
+        <dict>
+          <key>foreground</key>
+          <string>#88C0D0</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>scope</key>
         <string>entity.name.type, support.type, support.class</string>
         <key>settings</key>
         <dict>
           <key>foreground</key>
           <string>#8FBCBB</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>scope</key>
+        <string>entity.name.class.python, entity.name.class.ruby</string>
+        <key>settings</key>
+        <dict>
+          <key>foreground</key>
+          <string>#8FBCBB</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>scope</key>
+        <string>entity.name.enum.rust, entity.name.trait.rust, storage.type.go</string>
+        <key>settings</key>
+        <dict>
+          <key>foreground</key>
+          <string>#8FBCBB</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>scope</key>
+        <string>storage.type.rust</string>
+        <key>settings</key>
+        <dict>
+          <key>foreground</key>
+          <string>#8FBCBB</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>scope</key>
+        <string>meta.generic.rust, meta.path.rust, storage.type.source.rust</string>
+        <key>settings</key>
+        <dict>
+          <key>foreground</key>
+          <string>#8FBCBB</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>scope</key>
+        <string>punctuation.definition.generic.begin.rust, punctuation.definition.generic.end.rust, punctuation.accessor.rust</string>
+        <key>settings</key>
+        <dict>
+          <key>foreground</key>
+          <string>#D8DEE9</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>scope</key>
+        <string>storage.modifier.lifetime.rust</string>
+        <key>settings</key>
+        <dict>
+          <key>foreground</key>
+          <string>#EBCB8B</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>scope</key>
+        <string>support.type.builtin.ts</string>
+        <key>settings</key>
+        <dict>
+          <key>foreground</key>
+          <string>#B48EAD</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>scope</key>
+        <string>string.unquoted.key.lua, support.function.metamethod.lua</string>
+        <key>settings</key>
+        <dict>
+          <key>foreground</key>
+          <string>#D8DEE9</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>scope</key>
+        <string>variable.language.this.lua, variable.language.python, variable.language.this.python</string>
+        <key>settings</key>
+        <dict>
+          <key>foreground</key>
+          <string>#D8DEE9</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>scope</key>
+        <string>constant.language.lua</string>
+        <key>settings</key>
+        <dict>
+          <key>foreground</key>
+          <string>#EBCB8B</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>scope</key>
+        <string>variable.other.readwrite.instance.ruby, variable.other.readwrite.class.ruby</string>
+        <key>settings</key>
+        <dict>
+          <key>foreground</key>
+          <string>#D8DEE9</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>scope</key>
+        <string>variable.other.readwrite.shell, variable.other.readwrite.assignment.shell</string>
+        <key>settings</key>
+        <dict>
+          <key>foreground</key>
+          <string>#D8DEE9</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>scope</key>
+        <string>entity.name.table.toml, punctuation.separator.table.toml</string>
+        <key>settings</key>
+        <dict>
+          <key>foreground</key>
+          <string>#D8DEE9</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>scope</key>
+        <string>source.python variable.annotation, punctuation.definition.annotation.python</string>
+        <key>settings</key>
+        <dict>
+          <key>foreground</key>
+          <string>#EBCB8B</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>scope</key>
+        <string>constant.other.symbol.ruby, punctuation.definition.constant.ruby</string>
+        <key>settings</key>
+        <dict>
+          <key>foreground</key>
+          <string>#EBCB8B</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>scope</key>
+        <string>punctuation.section.interpolation.begin.ruby, punctuation.section.interpolation.end.ruby</string>
+        <key>settings</key>
+        <dict>
+          <key>foreground</key>
+          <string>#EBCB8B</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>scope</key>
+        <string>punctuation.definition.template-expression.begin.ts, punctuation.definition.template-expression.end.ts</string>
+        <key>settings</key>
+        <dict>
+          <key>foreground</key>
+          <string>#EBCB8B</string>
+        </dict>
+      </dict>
+      <dict>
+        <key>scope</key>
+        <string>punctuation.definition.variable.shell</string>
+        <key>settings</key>
+        <dict>
+          <key>foreground</key>
+          <string>#EBCB8B</string>
         </dict>
       </dict>
       <dict>

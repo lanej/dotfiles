@@ -50,10 +50,10 @@ def effective_ink(theme, cell):
     return (bg, fg) if cell.get("reverse") else (fg, bg)
 
 
-def span(row, label):
+def span(row, label, start_at=0):
     """Translate a text match to actual columns, even after a wide/combined glyph."""
     columns = [i for i, cell in enumerate(row) for _ in cell["data"]]
-    start = "".join(cell["data"] for cell in row).find(label)
+    start = "".join(cell["data"] for cell in row).find(label, start_at)
     return None if start < 0 else (columns[start], columns[start+len(label)-1] + 1)
 
 
@@ -71,7 +71,7 @@ def compact_grid(rows):
     return result
 
 
-def audit_capture(surface, rows, theme, policy):
+def audit_capture(surface, rows, theme, policy, *, neovim_syntax="vim"):
     checks = []
     def check(name, passed, expected, observed):
         checks.append(dict(id=name, passed=bool(passed), expected=expected, observed=observed))
@@ -233,6 +233,35 @@ def audit_capture(surface, rows, theme, policy):
               {"minimum_colors": primitive["minimum_colors"]},
               {"colors": sorted(colors), "anchors": observed})
 
+    def syntax_roles(primitive):
+        if primitive.get("treesitter_only", False):
+            if not surface.startswith("neovim-code-"):
+                raise ValueError(f"{surface}: Tree-sitter syntax roles require a Neovim language surface")
+            if neovim_syntax != "treesitter":
+                return
+        anchor = primitive["anchor"]
+        tokens = primitive["tokens"]
+        distinct = primitive.get("distinct", False)
+        if not anchor or not tokens or any(not token.strip() or anchor.count(token) != 1 for token in tokens):
+            raise ValueError(f"{surface}: each syntax role token must occur once in its context")
+        expected = {token: {"role": role, "fg": roles[role]} for token, role in tokens.items()}
+        matches = [(y, match.start()) for y, line in enumerate(lines)
+                   for match in re.finditer(re.escape(anchor), line)]
+        evidence = {"anchor_matches": len(matches), "tokens": {}}
+        passed = len(matches) == 1
+        if passed:
+            y, offset = matches[0]
+            for token, style in expected.items():
+                start, end = span(rows[y], token, offset + anchor.index(token))
+                cells = [{"column": x + 1, "fg": inks[y][x][0]}
+                         for x in range(start, end) if rows[y][x]["data"].strip()]
+                evidence["tokens"][token] = {"row": y + 1, "cells": cells}
+                passed = passed and bool(cells) and all(cell["fg"] == style["fg"] for cell in cells)
+        if distinct:
+            passed = passed and len({style["fg"] for style in expected.values()}) == len(expected)
+        check(surface + ".syntax-roles." + primitive["name"], passed,
+              {"anchor": anchor, "tokens": expected, "distinct": distinct}, evidence)
+
     def history_selection(primitive):
         # Selection geometry is native to Atuin, not invented by our adapter.
         signatures = []
@@ -261,7 +290,7 @@ def audit_capture(surface, rows, theme, policy):
               len({(tuple(s["ink"]), s["bold"]) for s in signatures}) > 1,
               "observable command foreground or weight distinction", signatures)
 
-    handlers = {"history-selection": history_selection, "syntax-diversity": syntax_diversity,
+    handlers = {"history-selection": history_selection, "syntax-diversity": syntax_diversity, "syntax-roles": syntax_roles,
                 "dense-selection": dense_selection, "tab-strip": tab_strip,
                 "marked-selection": marked_selection, "change-markers": change_markers,
                 "plain-heading": plain_heading}
@@ -273,7 +302,8 @@ def audit_capture(surface, rows, theme, policy):
     return finish()
 
 
-def verify_review(directory, policy_path=CONTRACT, *, profile=None, commit=None, preset=None, colors=None, gallery=None):
+def verify_review(directory, policy_path=CONTRACT, *, profile=None, commit=None, preset=None, colors=None,
+                  gallery=None, require_treesitter=False):
     """Verify evidence against the current independent contract; fail closed.
 
     Exact replay prevents hand-recolored or stale SVGs from passing. This is
@@ -300,6 +330,11 @@ def verify_review(directory, policy_path=CONTRACT, *, profile=None, commit=None,
     expected = set(policy["profiles"][profile]) if profile else set(manifest["required_surfaces"])
     if set(manifest["surfaces"]) != expected or set(manifest["required_surfaces"]) != expected:
         raise ValueError("review coverage differs from required surfaces")
+    neovim_syntax = manifest.get("neovim_syntax", "vim")
+    if neovim_syntax not in {"vim", "treesitter"}:
+        raise ValueError("unknown Neovim syntax engine in review evidence")
+    if require_treesitter and (neovim_syntax != "treesitter" or not any(s.startswith("neovim-code-") for s in expected)):
+        raise ValueError("review evidence requires Neovim language captures from Tree-sitter")
     errors = []
     for surface, item in manifest["surfaces"].items():
         if item["status"] != "captured":
@@ -329,7 +364,7 @@ def verify_review(directory, policy_path=CONTRACT, *, profile=None, commit=None,
         rendered = render_svg(surface, rows, theme, trim=surface not in ("zellij", "bottom", "tmux"))
         if (directory / (surface + ".svg")).read_text() != rendered:
             raise ValueError(surface + ": SVG does not replay from the observed grid")
-        audit = audit_capture(surface, rows, theme, policy)
+        audit = audit_capture(surface, rows, theme, policy, neovim_syntax=neovim_syntax)
         expected_status = "fail" if item["status"] != "captured" else audit["status"]
         if json.loads((directory / (surface + ".audit.json")).read_text()) != audit or item.get("contract_status") != expected_status:
             raise ValueError(surface + ": audit report does not replay")
@@ -364,6 +399,7 @@ def write_summary(path, directory, verdict, errors):
     manifest = json.loads((directory / "manifest.json").read_text())
     lines = [f'### Native review — {manifest["preset"]} / {verdict}',
              "", f'Checkout: {manifest["commit"]}. Human approval: pending.', "",
+             f'Neovim language syntax engine: {manifest.get("neovim_syntax", "vim")}.', "",
              "| Surface | Capture | Contract | Min text | Min indicator | Failed predicates |",
              "| --- | --- | --- | ---: | ---: | --- |"]
     for surface, item in manifest["surfaces"].items():
@@ -389,13 +425,15 @@ if __name__ == "__main__":
     parser.add_argument("--commit", required=True)
     parser.add_argument("--preset", required=True)
     parser.add_argument("--colors", type=Path)
+    parser.add_argument("--require-treesitter", action="store_true", help="Require actual Neovim language captures in Tree-sitter mode")
     parser.add_argument("--gallery-dir", type=Path, help="Require every published SVG to match the verified artifact bytes")
     parser.add_argument("--summary", type=Path, help="Append measured results to a review summary")
     parser.add_argument("--export-gallery", type=Path, help="Copy exact SVGs only after every required check passes")
     args = parser.parse_args()
     try:
         failures = verify_review(args.verify_dir, profile=args.profile, commit=args.commit,
-                                 preset=args.preset, colors=args.colors, gallery=args.gallery_dir)
+                                 preset=args.preset, colors=args.colors, gallery=args.gallery_dir,
+                                 require_treesitter=args.require_treesitter)
     except (ValueError, OSError, KeyError, TypeError) as error:
         if args.summary and (args.verify_dir / "manifest.json").is_file():
             write_summary(args.summary, args.verify_dir, "evidence invalid", [error])

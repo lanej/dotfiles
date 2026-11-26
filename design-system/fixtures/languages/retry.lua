@@ -1,14 +1,22 @@
 -- A policy with an explicit method table.
 local Policy = {}
-Policy.__index = Policy
+local policy_metatable = { __index = Policy }
 
-function Policy.new(delays)
-  return setmetatable({ delays = delays }, Policy)
+function Policy.new(delays, enabled)
+  return setmetatable({ delays = delays, enabled = enabled ~= false }, policy_metatable)
 end
 
 function Policy:delay(attempt)
-  return self.delays[attempt] or nil
+  if not self.enabled then
+    return nil, "retry disabled"
+  end
+  local delay = self.delays[attempt]
+  if delay == nil then
+    return nil, "retry budget exhausted"
+  end
+  return delay
 end
 
-local policy = Policy.new({ 100, 200, 400 })
-return policy:delay(2)
+local policy = Policy.new({ 100, 200, 400 }, true)
+local attempt = ... or 2
+return policy:delay(attempt)

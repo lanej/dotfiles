@@ -261,7 +261,7 @@ vim.fn.writefile({vim.json.encode(before)}, vim.env.THEME_OBSERVATIONS)
     return json.loads(path.read_text())
 
 
-def run(surface, work, env, plugins, *, raw_path=None):
+def run(surface, work, env, plugins, *, raw_path=None, treesitter_site=None):
     review = raw_path is not None
 
     def observed_ansi(text, *, columns=76, lines=10):
@@ -315,6 +315,19 @@ def run(surface, work, env, plugins, *, raw_path=None):
         if app == "neovim":
             script = work / "language-review.lua"
             script.write_text('''
+if vim.env.THEME_TREESITTER_SITE then
+  local ok, err = pcall(function()
+    vim.opt.runtimepath:prepend(vim.env.THEME_TREESITTER_SITE)
+    vim.treesitter.language.register("bash", "sh")
+    local language = vim.treesitter.language.get_lang(vim.bo.filetype)
+    assert(language and vim.treesitter.query.get(language, "highlights"), "missing highlight query")
+    vim.treesitter.start(0, language)
+  end)
+  if not ok then
+    io.stderr:write("Tree-sitter fixture setup failed: " .. tostring(err) .. "\\n")
+    vim.cmd.cquit()
+  end
+end
 vim.opt.number = true
 vim.opt.cursorline = true
 vim.opt.signcolumn = "yes"
@@ -332,10 +345,13 @@ vim.api.nvim_win_set_cursor(0, {4, 0})
 ''')
             command = ["nvim", "-u", "NONE", "-i", "NONE", "-n",
                        "--cmd", "set rtp^=" + str(ROOT / "nvim"),
+                       "--cmd", "set rtp+=" + str(ROOT / "nvim/after"),
                        "-c", "colorscheme dotfiles", "-c", "syntax on",
                        "-c", "set filetype=" + fixture["filetype"],
                        str(source), "-c", "luafile " + str(script)]
             anchors = policy["surfaces"][surface]["anchors"]
+            if treesitter_site is not None:
+                env = {**env, "THEME_TREESITTER_SITE": str(treesitter_site)}
             return terminal(command, env, lambda screen: all(
                 anchor in "\n".join(screen.display) for anchor in anchors),
                 columns=112, lines=24, capture_lines=24, raw_path=raw_path)
@@ -461,11 +477,12 @@ print(json.dumps({name: str(getattr(opts, name)) for name in ("foreground", "bac
         text = subprocess.check_output(["bat", "--list-themes", "--color=never"], env=env, text=True)
         assert "Dotfiles" in text, "bat did not register the generated syntax theme"
         if surface == "bat":
-            command = ["bat", "--theme=Dotfiles", "--color=always", "--paging=never", "--style=plain", "--language=lua", str(ROOT / "design-system/fixtures/code.lua")]
+            source = ROOT / "design-system/fixtures/code.lua"
+            command = ["bat", "--theme=Dotfiles", "--color=always", "--paging=never", "--style=plain", "--language=lua", source.name]
             if review:
                 command[4] = "--style=numbers,header,grid"
                 command.insert(-1, "--terminal-width=96")
-            text = subprocess.check_output(command, env=env, text=True)
+            text = subprocess.check_output(command, cwd=source.parent, env=env, text=True)
         else:
             themes = subprocess.check_output(["delta", "--list-syntax-themes"], env=env, text=True)
             assert "Dotfiles" in themes, "delta cannot read the generated bat theme cache"
@@ -606,6 +623,8 @@ def main():
     parser.add_argument("--profile", choices=("theme", "zellij"),
                         help="Capture every required surface in a native review profile")
     parser.add_argument("--plugins-dir", type=Path, default=Path.home() / ".local/share/nvim/lazy")
+    parser.add_argument("--treesitter-site", type=Path,
+                        help="Use installed parsers and queries from this runtime directory in Neovim language captures")
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--record", action="store_true", help="Explicitly replace observed baselines; inspect changes before accepting them")
     mode.add_argument("--review-dir", type=Path, help="Write unapproved native review evidence outside regression baselines")
@@ -636,6 +655,13 @@ def main():
         surfaces = args.surface or base_surfaces
     if any(surface not in allowed for surface in surfaces):
         parser.error("unknown surface or language capture outside review mode")
+    treesitter_site = args.treesitter_site.resolve() if args.treesitter_site else None
+    if treesitter_site is not None:
+        if not args.review_dir or not any(surface.startswith("neovim-code-") for surface in surfaces):
+            parser.error("--treesitter-site requires a Neovim language review capture")
+        if not treesitter_site.is_dir():
+            parser.error("--treesitter-site must be an existing directory")
+    neovim_syntax = "treesitter" if treesitter_site is not None else "vim"
     if args.review_dir:
         if len(set(surfaces)) != len(surfaces):
             parser.error("review surfaces must be unique")
@@ -643,7 +669,7 @@ def main():
         shutil.copyfile(review_contract.CONTRACT, args.review_dir / "review-contract.toml")
         shutil.copyfile(GENERATED / "colors.json", args.review_dir / "colors.json")
         evidence.update(
-            schema=2, approval="unreviewed", required_surfaces=surfaces,
+            schema=2, approval="unreviewed", required_surfaces=surfaces, neovim_syntax=neovim_syntax,
             contract_sha256=review_contract.sha256(review_contract.CONTRACT),
             colors_sha256=review_contract.sha256(GENERATED / "colors.json"),
             auditor_sha256=review_contract.sha256(Path(review_contract.__file__)),
@@ -656,10 +682,12 @@ def main():
             (home / name).mkdir(parents=True, exist_ok=True)
         (home / ".config/dotfiles/theme").symlink_to(GENERATED)
         shutil.copyfile(GENERATED / "Dotfiles.tmTheme", home / ".config/bat/themes/Dotfiles.tmTheme")
+        if any(surface in ("bat", "delta") or surface.startswith("bat-code-") for surface in surfaces):
+            shutil.copytree(ROOT / "bat/syntaxes", home / ".config/bat/syntaxes")
         (home / ".gitconfig").write_text('[include]\npath = ' + str(GENERATED / 'delta.gitconfig') + '\n[delta]\nfeatures = dotfiles\n')
         locale = "C.UTF-8" if sys.platform.startswith("linux") else "en_US.UTF-8"
         env = {**os.environ, "HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config"), "XDG_CACHE_HOME": str(home / ".cache"), "XDG_DATA_HOME": str(home / ".local/share"), "BAT_CONFIG_DIR": str(home / ".config/bat"), "BAT_CACHE_PATH": str(home / ".cache/bat"), "TERM": "xterm-256color", "COLORTERM": "truecolor", "CLICOLOR_FORCE": "1", "DOTFILES_THEME_DIR": str(GENERATED), "LANG": locale, "LC_ALL": locale}
-        for name in ("TMUX", "TMUX_PANE", "NO_COLOR", "FZF_DEFAULT_OPTS", "FZF_DEFAULT_OPTS_FILE", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "BAT_THEME", "DELTA_FEATURES", "GIT_CONFIG_COUNT", "GIT_CONFIG_PARAMETERS"):
+        for name in ("TMUX", "TMUX_PANE", "NO_COLOR", "FZF_DEFAULT_OPTS", "FZF_DEFAULT_OPTS_FILE", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "BAT_THEME", "DELTA_FEATURES", "GIT_CONFIG_COUNT", "GIT_CONFIG_PARAMETERS", "THEME_TREESITTER_SITE"):
             env.pop(name, None)
         # Delta reads Git configuration via Git; isolate it from the checkout and host.
         env["GIT_CONFIG_GLOBAL"] = str(home / ".gitconfig")
@@ -668,7 +696,7 @@ def main():
             raw_path = args.review_dir / (surface + ".ansi") if args.review_dir else None
             incomplete = None
             try:
-                observed = run(surface, work, env, args.plugins_dir, raw_path=raw_path)
+                observed = run(surface, work, env, args.plugins_dir, raw_path=raw_path, treesitter_site=treesitter_site)
             except IncompleteCapture as error:
                 if not args.review_dir:
                     raise
@@ -703,7 +731,7 @@ def main():
                     capture = args.review_dir / (surface + ".svg")
                     report_path = args.review_dir / (surface + ".audit.json")
                     try:
-                        audit = review_contract.audit_capture(surface, observed, metadata, policy)
+                        audit = review_contract.audit_capture(surface, observed, metadata, policy, neovim_syntax=neovim_syntax)
                         report_path.write_text(json.dumps(audit, indent=2, ensure_ascii=False) + "\n")
                         detail.update(audit=report_path.name, contract_status="fail" if incomplete is not None else audit["status"])
                         for check in audit["checks"]:

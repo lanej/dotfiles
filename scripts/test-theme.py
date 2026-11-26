@@ -4,6 +4,7 @@
 import copy
 import importlib.util
 import json
+import math
 import os
 import re
 from pathlib import Path
@@ -51,15 +52,28 @@ class ThemeTests(unittest.TestCase):
         self.assertEqual(colors["git.file.stashed"], "#E5E9F0")
 
     def test_sage_preset_contrast_and_native_outputs(self):
-        def luminance(color):
+        def linear_srgb(color):
             channels = [int(color[i:i+2], 16) / 255 for i in (1, 3, 5)]
-            linear = [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
-            return sum(c * w for c, w in zip(linear, (0.2126, 0.7152, 0.0722)))
+            return [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
+
+        def luminance(color):
+            return sum(c * w for c, w in zip(linear_srgb(color), (0.2126, 0.7152, 0.0722)))
 
         def contrast(a, b):
             low, high = sorted((luminance(a), luminance(b)))
             return (high + 0.05) / (low + 0.05)
 
+        def oklab(color):
+            red, green, blue = linear_srgb(color)
+            l = (0.4122214708 * red + 0.5363325363 * green + 0.0514459929 * blue) ** (1 / 3)
+            m = (0.2119034982 * red + 0.6806995451 * green + 0.1073969566 * blue) ** (1 / 3)
+            s = (0.0883024619 * red + 0.2817188376 * green + 0.6299787005 * blue) ** (1 / 3)
+            return (0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+                    1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+                    0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s)
+
+        separation = theme.read(theme.SOURCE / "native-review-contract.toml")["syntax_literal_separation"]
+        minimum_distance = separation["minimum_oklab"]
         for symbols in ("unicode", "ascii"):
             with self.subTest(symbols=symbols):
                 outputs = theme.compile_theme(theme.SOURCE, "sage", symbols)
@@ -90,6 +104,13 @@ class ThemeTests(unittest.TestCase):
                 self.assertEqual(len({colors[r] for r in ("accent", "focus", "status.success",
                                                           "status.warning", "status.error",
                                                           "status.info", "status.attention")}), 7)
+                literal_roles = ("syntax.boolean.true", "syntax.boolean.false", "syntax.null", "syntax.string", "status.error")
+                self.assertEqual(len({colors[role] for role in literal_roles}), len(literal_roles))
+                for first, second in separation["pairs"]:
+                    distance = math.dist(oklab(colors[first]), oklab(colors[second]))
+                    self.assertGreaterEqual(distance, minimum_distance,
+                                            f"{first} {colors[first]} vs {second} {colors[second]}: "
+                                            f"Oklab distance {distance:.4f} below {minimum_distance:.3f}")
                 for background in ("surface", "surface.raised", "surface.selected"):
                     for foreground in ("text", "text.strong", "text.muted", "accent",
                                        "accent.secondary", "focus", "status.success",

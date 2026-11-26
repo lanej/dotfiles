@@ -480,6 +480,39 @@ return {
 ["@constant.builtin"] = {
 ["link"] = "Constant",
 },
+["@constant.null"] = {
+["fg"] = "#B48EAD",
+},
+["@boolean.true"] = {
+["fg"] = "#B48EAD",
+},
+["@boolean.false"] = {
+["fg"] = "#B48EAD",
+},
+["@constant.builtin.go"] = {
+["link"] = "Number",
+},
+["@constant.builtin.lua"] = {
+["link"] = "Number",
+},
+["@property.json"] = {
+["fg"] = "#D8DEE9",
+},
+["jsonKeyword"] = {
+["fg"] = "#D8DEE9",
+},
+["jsonQuote"] = {
+["link"] = "String",
+},
+["jsonNull"] = {
+["fg"] = "#B48EAD",
+},
+["DotfilesJsonTrue"] = {
+["fg"] = "#B48EAD",
+},
+["DotfilesJsonFalse"] = {
+["fg"] = "#B48EAD",
+},
 ["@constant.macro"] = {
 ["link"] = "Macro",
 },
@@ -489,8 +522,44 @@ return {
 ["@variable.builtin"] = {
 ["link"] = "Identifier",
 },
+["@variable.builtin.lua"] = {
+["fg"] = "#D8DEE9",
+},
+["@variable.builtin.python"] = {
+["fg"] = "#D8DEE9",
+},
+["pythonClassVar"] = {
+["fg"] = "#D8DEE9",
+},
+["@property.lua"] = {
+["fg"] = "#D8DEE9",
+},
 ["@variable.member"] = {
 ["link"] = "Identifier",
+},
+["@variable.member.ruby"] = {
+["fg"] = "#D8DEE9",
+},
+["rubyInstanceVariable"] = {
+["fg"] = "#D8DEE9",
+},
+["rubyClassVariable"] = {
+["fg"] = "#D8DEE9",
+},
+["rubyClassName"] = {
+["link"] = "Type",
+},
+["@variable.bash"] = {
+["fg"] = "#D8DEE9",
+},
+["shDerefSimple"] = {
+["fg"] = "#D8DEE9",
+},
+["shDerefVar"] = {
+["fg"] = "#D8DEE9",
+},
+["@markup.heading.toml"] = {
+["fg"] = "#D8DEE9",
 },
 ["@variable.parameter"] = {
 ["link"] = "Identifier",
@@ -516,8 +585,14 @@ return {
 ["@constructor"] = {
 ["link"] = "Type",
 },
+["@constructor.lua"] = {
+["link"] = "Delimiter",
+},
 ["@keyword"] = {
 ["link"] = "Keyword",
+},
+["@keyword.directive.bash"] = {
+["link"] = "Comment",
 },
 ["@keyword.function"] = {
 ["link"] = "Keyword",
@@ -554,6 +629,12 @@ return {
 },
 ["@module"] = {
 ["link"] = "Type",
+},
+["@module.go"] = {
+["link"] = "Identifier",
+},
+["@module.python"] = {
+["link"] = "Identifier",
 },
 ["@label"] = {
 ["link"] = "Label",
@@ -1077,6 +1158,15 @@ return {
 ["tab.active.fg"] = "#2E3440",
 ["tab.inactive.bg"] = "#2E3440",
 ["tab.inactive.fg"] = "#81A1C1",
+["statusline.active.fg"] = "#2E3440",
+["statusline.active.bg"] = "#B48EAD",
+["syntax.member"] = "#D8DEE9",
+["syntax.boolean.true"] = "#B48EAD",
+["syntax.boolean.false"] = "#B48EAD",
+["syntax.null"] = "#B48EAD",
+["syntax.receiver"] = "#D8DEE9",
+["syntax.section"] = "#D8DEE9",
+["syntax.variable.reference"] = "#D8DEE9",
 ["frame.inactive.fg"] = "#979DA9",
 ["keyhint"] = "#88C0D0",
 ["heading"] = "#88C0D0",
@@ -1129,6 +1219,7 @@ return {
 ["selection.content.number"] = "#B48EAD",
 },
 ["tokens"] = {
+["statusline.mode.fill"] = true,
 ["emphasis.heading"] = true,
 ["space.inline"] = 1,
 ["symbol.separator.section.left"] = "",

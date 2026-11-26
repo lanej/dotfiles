@@ -10,3 +10,11 @@ fn decide<'a>(p: &impl Policy, n: u32) -> Outcome<'a> {
         _ => Outcome::Stop("budget exhausted"),
     }
 }
+
+fn should_retry(outcome: &Outcome<'_>) -> bool {
+    let retry = match outcome {
+        Outcome::Retry(_) => true,
+        Outcome::Stop(_) => false,
+    };
+    retry
+}

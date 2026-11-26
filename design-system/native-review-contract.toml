@@ -6,6 +6,15 @@ structured_only = ["neovim", "kitty"]
 text_min = 4.5
 indicator_min = 3
 
+[syntax_literal_separation]
+minimum_oklab = 0.060
+pairs = [
+  ["syntax.boolean.true", "syntax.boolean.false"],
+  ["syntax.boolean.true", "syntax.null"],
+  ["syntax.boolean.false", "syntax.null"],
+  ["syntax.boolean.true", "syntax.string"],
+]
+
 [dense_selection]
 min_coverage = 0.5
 min_background_contrast = 3
@@ -62,12 +71,28 @@ bat_language = "Rust"
 [surfaces.neovim-code-rust]
 anchors = ["retry.rs","trait Policy","enum Outcome","match p.delay(n)","budget exhausted","Review retry policy"]
 forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
-primitives = [{ kind = "syntax-diversity", anchors = ["trait Policy","enum Outcome","match p.delay(n)","budget exhausted"], minimum_colors = 3 }]
+primitives = [
+  { kind = "syntax-roles", name = "signature", anchor = 'attempt: u32) -> Option<u64>', tokens = { attempt = "syntax.variable", u32 = "syntax.type", Option = "syntax.type", u64 = "syntax.type" } },
+  { kind = "syntax-roles", name = "impl-trait", anchor = '&impl Policy, n: u32', tokens = { impl = "syntax.keyword", Policy = "syntax.type", "n:" = "syntax.variable" }, distinct = true, treesitter_only = true },
+  { kind = "syntax-roles", name = "let-keyword", anchor = 'let retry = match outcome', tokens = { let = "syntax.keyword", retry = "syntax.variable" }, distinct = true },
+  { kind = "syntax-roles", name = "match-arm", anchor = 'Some(ms) if n < 3 => Outcome::Retry(ms)', tokens = { Some = "syntax.type", "3" = "syntax.number", "=>" = "syntax.operator", Outcome = "syntax.type", "::" = "syntax.variable" }, treesitter_only = true },
+  { kind = "syntax-roles", name = "generic-return-type", anchor = "-> Outcome<'a>", tokens = { Outcome = "syntax.type", "'a" = "syntax.special", "<" = "syntax.variable" }, treesitter_only = true },
+  { kind = "syntax-roles", name = "true-literal", anchor = 'Outcome::Retry(_) => true', tokens = { true = "syntax.boolean.true" }, treesitter_only = true },
+  { kind = "syntax-roles", name = "false-literal", anchor = 'Outcome::Stop(_) => false', tokens = { false = "syntax.boolean.false" }, treesitter_only = true },
+  { kind = "syntax-diversity", anchors = ["trait Policy","enum Outcome","match p.delay(n)","budget exhausted"], minimum_colors = 3 },
+]
 
 [surfaces.bat-code-rust]
 anchors = ["retry.rs","trait Policy","enum Outcome","match p.delay(n)","budget exhausted"]
 forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
-primitives = [{ kind = "syntax-diversity", anchors = ["trait Policy","enum Outcome","match p.delay(n)","budget exhausted"], minimum_colors = 3 }]
+primitives = [
+  { kind = "syntax-roles", name = "signature", anchor = 'attempt: u32) -> Option<u64>', tokens = { attempt = "syntax.variable", u32 = "syntax.type", Option = "syntax.type", u64 = "syntax.type" } },
+  { kind = "syntax-roles", name = "impl-trait", anchor = '&impl Policy, n: u32', tokens = { impl = "syntax.keyword", Policy = "syntax.type", "n:" = "syntax.variable" }, distinct = true },
+  { kind = "syntax-roles", name = "let-keyword", anchor = 'let retry = match outcome', tokens = { let = "syntax.keyword", retry = "syntax.variable" }, distinct = true },
+  { kind = "syntax-roles", name = "match-arm", anchor = 'Some(ms) if n < 3 => Outcome::Retry(ms)', tokens = { Some = "syntax.type", "3" = "syntax.number", "=>" = "syntax.operator", Outcome = "syntax.type", "::" = "syntax.variable" } },
+  { kind = "syntax-roles", name = "generic-return-type", anchor = "-> Outcome<'a>", tokens = { Outcome = "syntax.type", "'a" = "syntax.special", "<" = "syntax.variable" } },
+  { kind = "syntax-diversity", anchors = ["trait Policy","enum Outcome","match p.delay(n)","budget exhausted"], minimum_colors = 3 },
+]
 
 [languages.go]
 file = "design-system/fixtures/languages/retry.go"
@@ -77,7 +102,11 @@ bat_language = "Go"
 [surfaces.neovim-code-go]
 anchors = ["retry.go","type Policy interface","type Decision struct","if err != nil","fmt.Errorf","Review retry policy"]
 forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
-primitives = [{ kind = "syntax-diversity", anchors = ["type Policy interface","type Decision struct","if err != nil","fmt.Errorf(\"retry: %w\", err)","import \"fmt\""], minimum_colors = 3 }]
+primitives = [
+  { kind = "syntax-roles", name = "false-literal", anchor = 'Decision{Retry: false}', tokens = { false = "syntax.boolean.false" }, treesitter_only = true },
+  { kind = "syntax-roles", name = "true-and-nil", anchor = 'Decision{DelayMS: ms, Retry: true}, nil', tokens = { true = "syntax.boolean.true", nil = "syntax.null" }, distinct = true, treesitter_only = true },
+  { kind = "syntax-diversity", anchors = ["type Policy interface","type Decision struct","if err != nil","fmt.Errorf(\"retry: %w\", err)","import \"fmt\""], minimum_colors = 3 },
+]
 
 [surfaces.bat-code-go]
 anchors = ["retry.go","type Policy interface","type Decision struct","if err != nil","fmt.Errorf"]
@@ -92,12 +121,21 @@ bat_language = "TypeScript"
 [surfaces.neovim-code-typescript]
 anchors = ["retry.ts","type Result<T>","interface Policy","async function decide","await p.delay(n)","Review retry policy"]
 forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
-primitives = [{ kind = "syntax-diversity", anchors = ["type Result<T>","interface Policy","async function decide","await p.delay(n)"], minimum_colors = 3 }]
+primitives = [
+  { kind = "syntax-roles", name = "true-literal", anchor = '{ ok: true, value: ms }', tokens = { true = "syntax.boolean.true" }, treesitter_only = true },
+  { kind = "syntax-roles", name = "false-and-null", anchor = '{ ok: false, reason: null }', tokens = { false = "syntax.boolean.false", null = "syntax.null" }, distinct = true, treesitter_only = true },
+  { kind = "syntax-roles", name = "boolean-type", anchor = '{ ok: true; value: T }', tokens = { true = "syntax.boolean.true" }, treesitter_only = true },
+  { kind = "syntax-diversity", anchors = ["type Result<T>","interface Policy","async function decide","await p.delay(n)"], minimum_colors = 3 },
+]
 
 [surfaces.bat-code-typescript]
 anchors = ["retry.ts","type Result<T>","interface Policy","async function decide","await p.delay(n)"]
 forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
-primitives = [{ kind = "syntax-diversity", anchors = ["type Result<T>","interface Policy","async function decide","await p.delay(n)"], minimum_colors = 3 }]
+primitives = [
+  { kind = "syntax-roles", name = "true-literal", anchor = '{ ok: true, value: ms }', tokens = { true = "syntax.boolean.true" } },
+  { kind = "syntax-roles", name = "false-and-null", anchor = '{ ok: false, reason: null }', tokens = { false = "syntax.boolean.false", null = "syntax.null" }, distinct = true },
+  { kind = "syntax-diversity", anchors = ["type Result<T>","interface Policy","async function decide","await p.delay(n)"], minimum_colors = 3 },
+]
 
 [languages.python]
 file = "design-system/fixtures/languages/retry.py"
@@ -107,12 +145,20 @@ bat_language = "Python"
 [surfaces.neovim-code-python]
 anchors = ["retry.py","@dataclass","class Policy","def remaining","retry budget:","Review retry policy"]
 forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
-primitives = [{ kind = "syntax-diversity", anchors = ["@dataclass","class Policy","def remaining","retry budget:"], minimum_colors = 3 }]
+primitives = [
+  { kind = "syntax-roles", name = "boolean-arguments", anchor = '@dataclass(frozen=True, repr=False)', tokens = { True = "syntax.boolean.true", False = "syntax.boolean.false" }, distinct = true, treesitter_only = true },
+  { kind = "syntax-roles", name = "none-literal", anchor = 'next(iter(self.remaining(attempt)), None)', tokens = { None = "syntax.null" }, treesitter_only = true },
+  { kind = "syntax-roles", name = "receiver", anchor = "enumerate(self.delays)", tokens = { self = "syntax.receiver", delays = "syntax.variable" }, distinct = true },
+  { kind = "syntax-diversity", anchors = ["@dataclass","class Policy","def remaining","retry budget:"], minimum_colors = 3 },
+]
 
 [surfaces.bat-code-python]
 anchors = ["retry.py","@dataclass","class Policy","def remaining","retry budget:"]
 forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
-primitives = [{ kind = "syntax-diversity", anchors = ["@dataclass","class Policy","def remaining","retry budget:"], minimum_colors = 3 }]
+primitives = [
+  { kind = "syntax-diversity", anchors = ["@dataclass","class Policy","def remaining","retry budget:"], minimum_colors = 3 },
+  { kind = "syntax-roles", name = "receiver", anchor = "enumerate(self.delays)", tokens = { self = "syntax.receiver", delays = "syntax.variable" }, distinct = true },
+]
 
 [languages.ruby]
 file = "design-system/fixtures/languages/retry.rb"
@@ -122,12 +168,21 @@ bat_language = "Ruby"
 [surfaces.neovim-code-ruby]
 anchors = ["retry.rb","class RetryPolicy","def remaining","state: :queued","retry budget:","Review retry policy"]
 forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
-primitives = [{ kind = "syntax-diversity", anchors = ["class RetryPolicy","def remaining","state: :queued","retry budget:"], minimum_colors = 3 }]
+primitives = [
+  { kind = "syntax-roles", name = "true-literal", anchor = 'next_delay(attempt, enabled: true)', tokens = { true = "syntax.boolean.true" }, treesitter_only = true },
+  { kind = "syntax-roles", name = "false-literal", anchor = 'state: :queued, ready: false', tokens = { false = "syntax.boolean.false" }, treesitter_only = true },
+  { kind = "syntax-roles", name = "nil-literal", anchor = 'return nil unless enabled', tokens = { nil = "syntax.null" }, treesitter_only = true },
+  { kind = "syntax-diversity", anchors = ["class RetryPolicy","def remaining","state: :queued","retry budget:"], minimum_colors = 3 },
+  { kind = "syntax-roles", name = "instance-variable", anchor = "@delays.drop(attempt)", tokens = { "@delays" = "syntax.member", attempt = "syntax.variable" }, distinct = true },
+]
 
 [surfaces.bat-code-ruby]
 anchors = ["retry.rb","class RetryPolicy","def remaining","state: :queued","retry budget:"]
 forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
-primitives = [{ kind = "syntax-diversity", anchors = ["class RetryPolicy","def remaining","state: :queued","retry budget:"], minimum_colors = 3 }]
+primitives = [
+  { kind = "syntax-diversity", anchors = ["class RetryPolicy","def remaining","state: :queued","retry budget:"], minimum_colors = 3 },
+  { kind = "syntax-roles", name = "instance-variable", anchor = "@delays.drop(attempt)", tokens = { "@delays" = "syntax.member", attempt = "syntax.variable" }, distinct = true },
+]
 
 [languages.lua]
 file = "design-system/fixtures/languages/retry.lua"
@@ -135,14 +190,26 @@ filetype = "lua"
 bat_language = "Lua"
 
 [surfaces.neovim-code-lua]
-anchors = ["retry.lua","Policy.__index","setmetatable","function Policy:delay","policy:delay(2)","Review retry policy"]
+anchors = ["retry.lua","__index = Policy","setmetatable","function Policy:delay","retry budget exhausted","policy:delay(attempt)","Review retry policy"]
 forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
-primitives = [{ kind = "syntax-diversity", anchors = ["Policy.__index","setmetatable","function Policy:delay","policy:delay(2)"], minimum_colors = 3 }]
+primitives = [
+  { kind = "syntax-roles", name = "nil-literal", anchor = 'if delay == nil then', tokens = { nil = "syntax.null" }, treesitter_only = true },
+  { kind = "syntax-roles", name = "true-literal", anchor = 'Policy.new({ 100, 200, 400 }, true)', tokens = { true = "syntax.boolean.true" }, treesitter_only = true },
+  { kind = "syntax-roles", name = "false-literal", anchor = 'enabled ~= false', tokens = { false = "syntax.boolean.false" }, treesitter_only = true },
+  { kind = "syntax-diversity", anchors = ["__index = Policy","setmetatable","function Policy:delay","return nil, \"retry budget exhausted\""], minimum_colors = 4 },
+  { kind = "syntax-roles", name = "metatable-key", anchor = "__index = Policy", tokens = { __index = "syntax.member", Policy = "syntax.variable" }, distinct = true, treesitter_only = true },
+  { kind = "syntax-roles", name = "receiver", anchor = "self.delays[attempt]", tokens = { self = "syntax.receiver", attempt = "syntax.variable" }, distinct = true, treesitter_only = true },
+]
 
 [surfaces.bat-code-lua]
-anchors = ["retry.lua","Policy.__index","setmetatable","function Policy:delay","policy:delay(2)"]
+anchors = ["retry.lua","__index = Policy","setmetatable","function Policy:delay","retry budget exhausted","policy:delay(attempt)"]
 forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
-primitives = [{ kind = "syntax-diversity", anchors = ["Policy.__index","setmetatable","function Policy:delay","policy:delay(2)"], minimum_colors = 3 }]
+primitives = [
+  { kind = "syntax-roles", name = "nil-literal", anchor = 'if delay == nil then', tokens = { nil = "syntax.null" } },
+  { kind = "syntax-diversity", anchors = ["__index = Policy","setmetatable","function Policy:delay","return nil, \"retry budget exhausted\""], minimum_colors = 4 },
+  { kind = "syntax-roles", name = "metatable-key", anchor = "__index = Policy", tokens = { __index = "syntax.member", Policy = "syntax.variable" }, distinct = true },
+  { kind = "syntax-roles", name = "receiver", anchor = "self.delays[attempt]", tokens = { self = "syntax.receiver", attempt = "syntax.variable" }, distinct = true },
+]
 
 [languages.bash]
 file = "design-system/fixtures/languages/retry.sh"
@@ -152,12 +219,18 @@ bat_language = "sh"
 [surfaces.neovim-code-bash]
 anchors = ["retry.sh","set -euo pipefail","delays=(100 200 400)","if (( attempt","budget exhausted","Review retry policy"]
 forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
-primitives = [{ kind = "syntax-diversity", anchors = ["set -euo pipefail","delays=(100 200 400)","if (( attempt","budget exhausted"], minimum_colors = 3 }]
+primitives = [
+  { kind = "syntax-diversity", anchors = ["set -euo pipefail","delays=(100 200 400)","if (( attempt","budget exhausted"], minimum_colors = 3 },
+  { kind = "syntax-roles", name = "quoted-variable", anchor = '"$delay" | tee', tokens = { delay = "syntax.variable.reference" } },
+]
 
 [surfaces.bat-code-bash]
 anchors = ["retry.sh","set -euo pipefail","delays=(100 200 400)","if (( attempt","budget exhausted"]
 forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
-primitives = [{ kind = "syntax-diversity", anchors = ["set -euo pipefail","delays=(100 200 400)","if (( attempt","budget exhausted"], minimum_colors = 3 }]
+primitives = [
+  { kind = "syntax-diversity", anchors = ["set -euo pipefail","delays=(100 200 400)","if (( attempt","budget exhausted"], minimum_colors = 3 },
+  { kind = "syntax-roles", name = "quoted-variable", anchor = '"$delay" | tee', tokens = { delay = "syntax.variable.reference" } },
+]
 
 [languages.json]
 file = "design-system/fixtures/languages/retry.json"
@@ -167,12 +240,21 @@ bat_language = "JSON"
 [surfaces.neovim-code-json]
 anchors = ["retry.json","\"enabled\": true","\"delays_ms\"","\"reason\": null","\"labels\"","Review retry policy"]
 forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
-primitives = [{ kind = "syntax-diversity", anchors = ["\"enabled\": true","\"delays_ms\"","\"reason\": null","\"labels\""], minimum_colors = 3 }]
+primitives = [
+  { kind = "syntax-diversity", anchors = ["\"enabled\": true","\"delays_ms\"","\"reason\": null","\"labels\""], minimum_colors = 3 },
+  { kind = "syntax-roles", name = "key-and-value", anchor = '"state": "blocked"', tokens = { state = "syntax.member", blocked = "syntax.string" }, distinct = true },
+  { kind = "syntax-roles", name = "true-literal", anchor = '"enabled": true', tokens = { true = "syntax.boolean.true" } },
+  { kind = "syntax-roles", name = "false-literal", anchor = '"retryable": false', tokens = { false = "syntax.boolean.false" } },
+  { kind = "syntax-roles", name = "null-literal", anchor = '"reason": null', tokens = { null = "syntax.null" } },
+]
 
 [surfaces.bat-code-json]
 anchors = ["retry.json","\"enabled\": true","\"delays_ms\"","\"reason\": null","\"labels\""]
 forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
-primitives = [{ kind = "syntax-diversity", anchors = ["\"enabled\": true","\"delays_ms\"","\"reason\": null","\"labels\""], minimum_colors = 3 }]
+primitives = [
+  { kind = "syntax-diversity", anchors = ["\"enabled\": true","\"delays_ms\"","\"reason\": null","\"labels\""], minimum_colors = 3 },
+  { kind = "syntax-roles", name = "key-and-value", anchor = '"state": "blocked"', tokens = { state = "syntax.member", blocked = "syntax.string" }, distinct = true },
+]
 
 [languages.toml]
 file = "design-system/fixtures/languages/retry.toml"
@@ -182,7 +264,11 @@ bat_language = "TOML"
 [surfaces.neovim-code-toml]
 anchors = ["retry.toml","[policy]","delays_ms =","[policy.fallback]","[[policy.rules]]","Review retry policy"]
 forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
-primitives = [{ kind = "syntax-diversity", anchors = ["[policy]","delays_ms = [100, 200, 400]","enabled = true","state = \"blocked\"","reason = \"budget exhausted\"","code = 503"], minimum_colors = 3 }]
+primitives = [
+  { kind = "syntax-roles", name = "true-literal", anchor = 'enabled = true', tokens = { true = "syntax.boolean.true" }, treesitter_only = true },
+  { kind = "syntax-roles", name = "false-literal", anchor = 'jitter = false', tokens = { false = "syntax.boolean.false" }, treesitter_only = true },
+  { kind = "syntax-diversity", anchors = ["[policy]","delays_ms = [100, 200, 400]","enabled = true","state = \"blocked\"","reason = \"budget exhausted\"","code = 503"], minimum_colors = 3 },
+]
 
 [surfaces.bat-code-toml]
 anchors = ["retry.toml","[policy]","delays_ms =","[policy.fallback]","[[policy.rules]]"]

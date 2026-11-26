@@ -1,6 +1,7 @@
 # Retry policy for transient failures.
 [policy]
 enabled = true
+jitter = false
 delays_ms = [100, 200, 400]
 max_attempts = 3
 
