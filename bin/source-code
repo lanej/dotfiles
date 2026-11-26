@@ -2055,7 +2055,8 @@ def retired_lifecycle_plans(
         if actual is None:
             continue
         if actual["kind"] == "link" and (
-            relative != LEGACY_SKILL_PLAN or actual["target"] != str(source / "source-code-lifecycle/references/stages.json")
+            relative != LEGACY_SKILL_PLAN
+            or actual["target"] != str(source / "source-code-lifecycle/references/stages.json")
         ):
             raise ValueError(f"preserving redirected lifecycle plan: {relative}")
         retired[relative] = actual
