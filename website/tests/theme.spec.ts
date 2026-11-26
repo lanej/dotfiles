@@ -85,11 +85,11 @@ test('Sage is discoverable and compares both presets without changing the defaul
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
-test('Sage state families distinguish configuration, severity, execution and health', async ({ page }) => {
+test('Sage exposes all semantic token families with distinct meanings', async ({ page }) => {
   await page.goto('./design-system/sage/');
   const catalog = page.locator('[data-semantic-catalog="sage"]');
-  await expect(catalog.locator('[data-semantic-family]')).toHaveCount(4);
-  await expect(catalog.locator('[data-semantic-state]')).toHaveCount(19);
+  await expect(catalog.locator('[data-semantic-family]')).toHaveCount(8);
+  await expect(catalog.locator('[data-semantic-state]')).toHaveCount(38);
   for (const [id, color] of [
     ['configuration.on', 'rgb(172, 200, 183)'],
     ['configuration.off', 'rgb(144, 159, 149)'],
@@ -101,10 +101,31 @@ test('Sage state families distinguish configuration, severity, execution and hea
     ['execution.input', 'rgb(221, 167, 131)'],
     ['execution.succeeded', 'rgb(166, 205, 130)'],
     ['health.unknown', 'rgb(163, 177, 167)'],
+    ['execution.paused', 'rgb(163, 177, 167)'],
+    ['execution.retrying', 'rgb(232, 200, 139)'],
+    ['execution.skipped', 'rgb(144, 159, 149)'],
+    ['interaction.focused', 'rgb(196, 178, 217)'],
+    ['interaction.selected', 'rgb(172, 200, 183)'],
+    ['interaction.disabled', 'rgb(144, 159, 149)'],
+    ['connectivity.connecting', 'rgb(140, 197, 204)'],
+    ['connectivity.connected', 'rgb(143, 185, 168)'],
+    ['connectivity.disconnected', 'rgb(144, 159, 149)'],
+    ['connectivity.reconnecting', 'rgb(232, 200, 139)'],
+    ['connectivity.lost', 'rgb(241, 140, 150)'],
+    ['data.fresh', 'rgb(143, 185, 168)'],
+    ['data.stale', 'rgb(232, 200, 139)'],
+    ['data.missing', 'rgb(163, 177, 167)'],
+    ['data.invalid', 'rgb(241, 140, 150)'],
+    ['access.readwrite', 'rgb(172, 200, 183)'],
+    ['access.readonly', 'rgb(163, 177, 167)'],
+    ['access.approval', 'rgb(221, 167, 131)'],
+    ['access.denied', 'rgb(241, 140, 150)'],
   ]) {
     await expect(catalog.locator(`[data-semantic-state="${id}"] .state-label`)).toHaveCSS('color', color);
   }
   await expect(catalog.locator('[data-semantic-state="severity.fatal"] .state-label')).toHaveCSS('font-weight', '700');
+  await expect(catalog.locator('[data-semantic-state="access.approval"] .state-label')).toHaveCSS('font-weight', '700');
+  await expect(catalog.getByText('connectivity.connected', { exact: true })).toBeVisible();
   await expect(catalog.locator('[data-semantic-state="configuration.off"]')).toHaveCSS('box-shadow', 'rgb(172, 200, 183) 3px 0px 0px 0px inset');
   await page.setViewportSize({ width: 390, height: 844 });
   await catalog.scrollIntoViewIfNeeded();

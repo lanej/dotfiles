@@ -202,7 +202,8 @@ class ThemeTests(unittest.TestCase):
     def test_semantic_state_review_catalog(self):
         groups = theme.read(theme.SOURCE / "semantic-states.json")
         self.assertEqual([group["id"] for group in groups],
-                         ["configuration", "severity", "execution", "health"])
+                         ["configuration", "severity", "execution", "health",
+                          "interaction", "connectivity", "data", "access"])
         sage = theme.read(theme.SOURCE / "themes/sage.json")
         nord = theme.read(theme.SOURCE / "themes/nord.json")
         seen = set()
@@ -231,6 +232,65 @@ class ThemeTests(unittest.TestCase):
         self.assertEqual(mapping["execution", "succeeded"], "status.success")
         self.assertEqual(mapping["execution", "input"], "status.attention")
         self.assertEqual(mapping["health", "unknown"], "text.muted")
+        self.assertEqual(len(mapping), 38)
+        self.assertEqual(mapping["interaction", "focused"], "focus")
+        self.assertEqual(mapping["interaction", "selected"], "accent")
+        self.assertEqual(mapping["connectivity", "connected"], "accent.secondary")
+        self.assertEqual(mapping["connectivity", "lost"], "status.error")
+        self.assertEqual(mapping["data", "missing"], "text.muted")
+        self.assertEqual(mapping["data", "stale"], "status.warning")
+        self.assertEqual(mapping["access", "approval"], "status.attention")
+        self.assertEqual(mapping["execution", "retrying"], "status.warning")
+
+    def test_semantic_state_tokens_are_exported_for_every_preset_and_symbol_mode(self):
+        groups = theme.read(theme.SOURCE / "semantic-states.json")
+        shared = theme.read(theme.SOURCE / "tokens.json")["roles"]
+        for name in ("nord", "sage"):
+            preset = theme.read(theme.SOURCE / "themes" / f"{name}.json")
+            colors, _ = theme.resolve(preset, shared)
+            for symbols in ("unicode", "ascii"):
+                with self.subTest(preset=name, symbols=symbols):
+                    outputs = theme.compile_theme(theme.SOURCE, name, symbols)
+                    exported = json.loads(outputs["tokens.json"])["semantic_states"]
+                    self.assertEqual(len(exported), 38)
+                    for group in groups:
+                        for state in group["states"]:
+                            key = group["id"] + "." + state["id"]
+                            token = exported[key]
+                            role = state["role"] if state["role"] in colors else state["fallback_role"]
+                            self.assertEqual(token["fg"], colors[role])
+                            self.assertEqual(token["color_role"], "@" + role)
+                            self.assertEqual(token["symbol"], state["ascii"] if symbols == "ascii" else state["glyph"])
+                            self.assertEqual(token["bold"], state.get("bold", False))
+                            self.assertEqual(token["label"], state["label"])
+                            self.assertEqual(token["description"], state["description"])
+                    self.assertEqual(exported["configuration.off"]["color_role"],
+                                     "@text.subtle" if name == "sage" else "@text.muted")
+
+    def test_semantic_state_token_validation_rejects_invalid_declarations(self):
+        groups = theme.read(theme.SOURCE / "semantic-states.json")
+        colors, _ = theme.resolve(theme.read(theme.SOURCE / "themes/sage.json"),
+                                  theme.read(theme.SOURCE / "tokens.json")["roles"])
+        duplicate = copy.deepcopy(groups)
+        duplicate[0]["states"].append(copy.deepcopy(duplicate[0]["states"][0]))
+        with self.assertRaisesRegex(ValueError, "duplicate semantic state"):
+            theme.compile_semantic_states(duplicate, colors, "unicode")
+        with self.assertRaisesRegex(ValueError, "duplicate semantic family"):
+            theme.compile_semantic_states(groups + [groups[0]], colors, "unicode")
+        for changes, error in [
+            ({"id": "bad.id"}, ValueError),
+            ({"role": "missing"}, KeyError),
+            ({"fallback_role": "missing"}, ValueError),
+            ({"glyph": "wide"}, ValueError),
+            ({"glyph": "界"}, ValueError),
+            ({"ascii": "é"}, ValueError),
+            ({"bold": "true"}, ValueError),
+            ({"label": ""}, ValueError),
+        ]:
+            bad = copy.deepcopy(groups)
+            bad[0]["states"][0].update(changes)
+            with self.subTest(changes=changes), self.assertRaises(error):
+                theme.compile_semantic_states(bad, colors, "unicode")
 
     def test_invalid_definitions(self):
         base = theme.read(theme.SOURCE / "themes/nord.json")

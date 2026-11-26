@@ -60,7 +60,7 @@ const style = Object.fromEntries(['surface', 'surface.raised', 'surface.selected
         {family.states.map(state => (
           <div>
             <dt>{state.label}</dt>
-            <dd>{state.description}<br/><code>{state.role}</code> · <code>{color(state.role, state.fallback_role)}</code> · ASCII <code>{state.ascii}</code></dd>
+            <dd>{state.description}<br/><code>{family.id}.{state.id}</code><br/><code>{state.role}</code> · <code>{color(state.role, state.fallback_role)}</code> · ASCII <code>{state.ascii}</code></dd>
           </div>
         ))}
       </dl>
@@ -75,7 +75,7 @@ const style = Object.fromEntries(['surface', 'surface.raised', 'surface.selected
   .family h3 { margin: 0; color: var(--state-accent); font-size: 1rem; font-weight: 600; }
   .family header p { margin: .25rem 0 0; color: var(--state-text-muted); font-size: .8rem; line-height: 1.45; }
   .terminal-example { border: 1px solid var(--state-surface-selected); border-radius: .25rem; overflow: hidden; margin: 0; background: var(--state-surface-raised); font: .78rem/1.5 ui-monospace, monospace; }
-  .state-row { display: grid; grid-template-columns: minmax(7.75rem, auto) minmax(0, 1fr); align-items: baseline; gap: .4rem; padding: .35rem .45rem; margin: 0; }
+  .state-row { display: grid; grid-template-columns: minmax(8.5rem, auto) minmax(0, 1fr); align-items: baseline; gap: .4rem; padding: .35rem .45rem; margin: 0; }
   .state-row:nth-child(2) { background: var(--state-surface-selected); box-shadow: inset 3px 0 var(--state-accent); }
   .state-label { display: flex; align-items: baseline; gap: .3rem; color: var(--state-tone); margin: 0; white-space: nowrap; }
   .glyph { display: inline-block; width: 1ch; text-align: center; }
