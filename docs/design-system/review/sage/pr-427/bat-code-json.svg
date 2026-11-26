@@ -1,0 +1,601 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1032" height="344" viewBox="0 0 1032 344" role="img" aria-label="bat-code-json — observed terminal cells">
+<rect width="100%" height="100%" fill="#0D1513"/>
+<g font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="14" xml:space="preserve">
+<path d="M0 10H9" transform="translate(12 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(21 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(30 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(39 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(48 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9M4.5 10V20" transform="translate(57 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(66 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(75 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(84 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(93 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(102 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(111 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(120 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(129 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(138 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(147 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(156 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(165 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(174 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(183 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(192 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(201 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(210 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(219 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(228 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(237 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(246 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(255 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(264 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(273 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(282 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(291 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(300 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(309 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(318 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(327 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(336 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(345 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(354 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(363 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(372 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(381 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(390 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(399 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(408 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(417 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(426 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(435 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(444 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(453 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(462 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(471 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(480 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(489 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(498 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(507 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(516 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(525 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(534 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(543 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(552 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(561 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(570 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(579 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(588 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(597 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(606 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(615 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(624 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(633 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(642 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(651 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(660 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(669 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(678 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(687 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(696 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(705 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(714 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(723 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(732 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(741 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(750 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(759 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(768 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(777 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(786 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(795 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(804 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(813 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(822 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(831 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(840 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(849 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(858 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(867 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(876 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(885 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(894 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(903 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(912 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(921 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(930 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(939 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(948 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(957 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(966 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(975 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(984 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(993 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(1002 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(1011 12)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M4.5 0V20" transform="translate(57 32)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<text x="79.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">F</text>
+<text x="88.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">i</text>
+<text x="97.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">l</text>
+<text x="106.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">e</text>
+<text x="115.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">:</text>
+<text x="133.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">/</text>
+<text x="142.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">h</text>
+<text x="151.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">o</text>
+<text x="160.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">m</text>
+<text x="169.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">e</text>
+<text x="178.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">/</text>
+<text x="187.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">r</text>
+<text x="196.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">u</text>
+<text x="205.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">n</text>
+<text x="214.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">n</text>
+<text x="223.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">e</text>
+<text x="232.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">r</text>
+<text x="241.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">/</text>
+<text x="250.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">w</text>
+<text x="259.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">o</text>
+<text x="268.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">r</text>
+<text x="277.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">k</text>
+<text x="286.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">/</text>
+<text x="295.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">d</text>
+<text x="304.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">o</text>
+<text x="313.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">t</text>
+<text x="322.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">f</text>
+<text x="331.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">i</text>
+<text x="340.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">l</text>
+<text x="349.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">e</text>
+<text x="358.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">s</text>
+<text x="367.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">/</text>
+<text x="376.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">d</text>
+<text x="385.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">o</text>
+<text x="394.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">t</text>
+<text x="403.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">f</text>
+<text x="412.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">i</text>
+<text x="421.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">l</text>
+<text x="430.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">e</text>
+<text x="439.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">s</text>
+<text x="448.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">/</text>
+<text x="457.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">d</text>
+<text x="466.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">e</text>
+<text x="475.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">s</text>
+<text x="484.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">i</text>
+<text x="493.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">g</text>
+<text x="502.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">n</text>
+<text x="511.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">-</text>
+<text x="520.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">s</text>
+<text x="529.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">y</text>
+<text x="538.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">s</text>
+<text x="547.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">t</text>
+<text x="556.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">e</text>
+<text x="565.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">m</text>
+<text x="574.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">/</text>
+<text x="583.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">f</text>
+<text x="592.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">i</text>
+<text x="601.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">x</text>
+<text x="610.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">t</text>
+<text x="619.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">u</text>
+<text x="628.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">r</text>
+<text x="637.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">e</text>
+<text x="646.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">s</text>
+<text x="655.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">/</text>
+<text x="664.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">l</text>
+<text x="673.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">a</text>
+<text x="682.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">n</text>
+<text x="691.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">g</text>
+<text x="700.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">u</text>
+<text x="709.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">a</text>
+<text x="718.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">g</text>
+<text x="727.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">e</text>
+<text x="736.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">s</text>
+<text x="745.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">/</text>
+<text x="754.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">r</text>
+<text x="763.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">e</text>
+<text x="772.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">t</text>
+<text x="781.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">r</text>
+<text x="790.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">y</text>
+<text x="799.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">.</text>
+<text x="808.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">j</text>
+<text x="817.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">s</text>
+<text x="826.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">o</text>
+<text x="835.5" y="47" text-anchor="middle" fill="#D7DFD9" font-weight="bold" font-style="normal">n</text>
+<path d="M0 10H9" transform="translate(12 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(21 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(30 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(39 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(48 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9M4.5 0V20" transform="translate(57 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(66 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(75 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(84 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(93 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(102 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(111 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(120 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(129 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(138 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(147 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(156 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(165 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(174 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(183 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(192 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(201 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(210 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(219 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(228 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(237 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(246 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(255 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(264 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(273 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(282 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(291 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(300 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(309 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(318 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(327 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(336 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(345 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(354 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(363 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(372 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(381 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(390 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(399 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(408 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(417 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(426 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(435 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(444 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(453 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(462 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(471 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(480 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(489 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(498 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(507 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(516 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(525 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(534 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(543 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(552 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(561 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(570 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(579 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(588 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(597 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(606 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(615 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(624 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(633 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(642 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(651 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(660 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(669 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(678 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(687 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(696 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(705 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(714 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(723 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(732 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(741 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(750 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(759 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(768 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(777 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(786 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(795 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(804 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(813 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(822 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(831 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(840 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(849 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(858 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(867 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(876 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(885 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(894 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(903 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(912 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(921 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(930 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(939 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(948 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(957 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(966 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(975 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(984 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(993 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(1002 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(1011 52)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<text x="43.5" y="87" text-anchor="middle" fill="#909F95" font-weight="normal" font-style="normal">1</text>
+<path d="M4.5 0V20" transform="translate(57 72)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<text x="79.5" y="87" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">{</text>
+<text x="43.5" y="107" text-anchor="middle" fill="#909F95" font-weight="normal" font-style="normal">2</text>
+<path d="M4.5 0V20" transform="translate(57 92)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<text x="97.5" y="107" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">&quot;</text>
+<text x="106.5" y="107" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">p</text>
+<text x="115.5" y="107" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">o</text>
+<text x="124.5" y="107" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">l</text>
+<text x="133.5" y="107" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">i</text>
+<text x="142.5" y="107" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">c</text>
+<text x="151.5" y="107" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">y</text>
+<text x="160.5" y="107" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">&quot;</text>
+<text x="169.5" y="107" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">:</text>
+<text x="187.5" y="107" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">{</text>
+<text x="43.5" y="127" text-anchor="middle" fill="#909F95" font-weight="normal" font-style="normal">3</text>
+<path d="M4.5 0V20" transform="translate(57 112)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<text x="115.5" y="127" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">&quot;</text>
+<text x="124.5" y="127" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">e</text>
+<text x="133.5" y="127" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">n</text>
+<text x="142.5" y="127" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">a</text>
+<text x="151.5" y="127" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">b</text>
+<text x="160.5" y="127" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">l</text>
+<text x="169.5" y="127" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">e</text>
+<text x="178.5" y="127" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">d</text>
+<text x="187.5" y="127" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">&quot;</text>
+<text x="196.5" y="127" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">:</text>
+<text x="214.5" y="127" text-anchor="middle" fill="#C4B2D9" font-weight="normal" font-style="normal">t</text>
+<text x="223.5" y="127" text-anchor="middle" fill="#C4B2D9" font-weight="normal" font-style="normal">r</text>
+<text x="232.5" y="127" text-anchor="middle" fill="#C4B2D9" font-weight="normal" font-style="normal">u</text>
+<text x="241.5" y="127" text-anchor="middle" fill="#C4B2D9" font-weight="normal" font-style="normal">e</text>
+<text x="250.5" y="127" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">,</text>
+<text x="43.5" y="147" text-anchor="middle" fill="#909F95" font-weight="normal" font-style="normal">4</text>
+<path d="M4.5 0V20" transform="translate(57 132)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<text x="115.5" y="147" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">&quot;</text>
+<text x="124.5" y="147" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">d</text>
+<text x="133.5" y="147" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">e</text>
+<text x="142.5" y="147" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">l</text>
+<text x="151.5" y="147" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">a</text>
+<text x="160.5" y="147" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">y</text>
+<text x="169.5" y="147" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">s</text>
+<text x="178.5" y="147" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">_</text>
+<text x="187.5" y="147" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">m</text>
+<text x="196.5" y="147" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">s</text>
+<text x="205.5" y="147" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">&quot;</text>
+<text x="214.5" y="147" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">:</text>
+<text x="232.5" y="147" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">[</text>
+<text x="241.5" y="147" text-anchor="middle" fill="#C4B2D9" font-weight="normal" font-style="normal">1</text>
+<text x="250.5" y="147" text-anchor="middle" fill="#C4B2D9" font-weight="normal" font-style="normal">0</text>
+<text x="259.5" y="147" text-anchor="middle" fill="#C4B2D9" font-weight="normal" font-style="normal">0</text>
+<text x="268.5" y="147" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">,</text>
+<text x="286.5" y="147" text-anchor="middle" fill="#C4B2D9" font-weight="normal" font-style="normal">2</text>
+<text x="295.5" y="147" text-anchor="middle" fill="#C4B2D9" font-weight="normal" font-style="normal">0</text>
+<text x="304.5" y="147" text-anchor="middle" fill="#C4B2D9" font-weight="normal" font-style="normal">0</text>
+<text x="313.5" y="147" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">,</text>
+<text x="331.5" y="147" text-anchor="middle" fill="#C4B2D9" font-weight="normal" font-style="normal">4</text>
+<text x="340.5" y="147" text-anchor="middle" fill="#C4B2D9" font-weight="normal" font-style="normal">0</text>
+<text x="349.5" y="147" text-anchor="middle" fill="#C4B2D9" font-weight="normal" font-style="normal">0</text>
+<text x="358.5" y="147" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">]</text>
+<text x="367.5" y="147" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">,</text>
+<text x="43.5" y="167" text-anchor="middle" fill="#909F95" font-weight="normal" font-style="normal">5</text>
+<path d="M4.5 0V20" transform="translate(57 152)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<text x="115.5" y="167" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">&quot;</text>
+<text x="124.5" y="167" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">m</text>
+<text x="133.5" y="167" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">a</text>
+<text x="142.5" y="167" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">x</text>
+<text x="151.5" y="167" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">_</text>
+<text x="160.5" y="167" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">a</text>
+<text x="169.5" y="167" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">t</text>
+<text x="178.5" y="167" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">t</text>
+<text x="187.5" y="167" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">e</text>
+<text x="196.5" y="167" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">m</text>
+<text x="205.5" y="167" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">p</text>
+<text x="214.5" y="167" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">t</text>
+<text x="223.5" y="167" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">s</text>
+<text x="232.5" y="167" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">&quot;</text>
+<text x="241.5" y="167" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">:</text>
+<text x="259.5" y="167" text-anchor="middle" fill="#C4B2D9" font-weight="normal" font-style="normal">3</text>
+<text x="43.5" y="187" text-anchor="middle" fill="#909F95" font-weight="normal" font-style="normal">6</text>
+<path d="M4.5 0V20" transform="translate(57 172)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<text x="97.5" y="187" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">}</text>
+<text x="106.5" y="187" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">,</text>
+<text x="43.5" y="207" text-anchor="middle" fill="#909F95" font-weight="normal" font-style="normal">7</text>
+<path d="M4.5 0V20" transform="translate(57 192)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<text x="97.5" y="207" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">&quot;</text>
+<text x="106.5" y="207" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">f</text>
+<text x="115.5" y="207" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">a</text>
+<text x="124.5" y="207" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">l</text>
+<text x="133.5" y="207" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">l</text>
+<text x="142.5" y="207" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">b</text>
+<text x="151.5" y="207" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">a</text>
+<text x="160.5" y="207" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">c</text>
+<text x="169.5" y="207" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">k</text>
+<text x="178.5" y="207" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">&quot;</text>
+<text x="187.5" y="207" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">:</text>
+<text x="205.5" y="207" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">{</text>
+<text x="43.5" y="227" text-anchor="middle" fill="#909F95" font-weight="normal" font-style="normal">8</text>
+<path d="M4.5 0V20" transform="translate(57 212)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<text x="115.5" y="227" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">&quot;</text>
+<text x="124.5" y="227" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">s</text>
+<text x="133.5" y="227" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">t</text>
+<text x="142.5" y="227" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">a</text>
+<text x="151.5" y="227" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">t</text>
+<text x="160.5" y="227" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">e</text>
+<text x="169.5" y="227" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">&quot;</text>
+<text x="178.5" y="227" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">:</text>
+<text x="196.5" y="227" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">&quot;</text>
+<text x="205.5" y="227" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">b</text>
+<text x="214.5" y="227" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">l</text>
+<text x="223.5" y="227" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">o</text>
+<text x="232.5" y="227" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">c</text>
+<text x="241.5" y="227" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">k</text>
+<text x="250.5" y="227" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">e</text>
+<text x="259.5" y="227" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">d</text>
+<text x="268.5" y="227" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">&quot;</text>
+<text x="277.5" y="227" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">,</text>
+<text x="43.5" y="247" text-anchor="middle" fill="#909F95" font-weight="normal" font-style="normal">9</text>
+<path d="M4.5 0V20" transform="translate(57 232)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<text x="115.5" y="247" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">&quot;</text>
+<text x="124.5" y="247" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">r</text>
+<text x="133.5" y="247" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">e</text>
+<text x="142.5" y="247" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">a</text>
+<text x="151.5" y="247" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">s</text>
+<text x="160.5" y="247" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">o</text>
+<text x="169.5" y="247" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">n</text>
+<text x="178.5" y="247" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">&quot;</text>
+<text x="187.5" y="247" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">:</text>
+<text x="205.5" y="247" text-anchor="middle" fill="#C4B2D9" font-weight="normal" font-style="normal">n</text>
+<text x="214.5" y="247" text-anchor="middle" fill="#C4B2D9" font-weight="normal" font-style="normal">u</text>
+<text x="223.5" y="247" text-anchor="middle" fill="#C4B2D9" font-weight="normal" font-style="normal">l</text>
+<text x="232.5" y="247" text-anchor="middle" fill="#C4B2D9" font-weight="normal" font-style="normal">l</text>
+<text x="34.5" y="267" text-anchor="middle" fill="#909F95" font-weight="normal" font-style="normal">1</text>
+<text x="43.5" y="267" text-anchor="middle" fill="#909F95" font-weight="normal" font-style="normal">0</text>
+<path d="M4.5 0V20" transform="translate(57 252)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<text x="97.5" y="267" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">}</text>
+<text x="106.5" y="267" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">,</text>
+<text x="34.5" y="287" text-anchor="middle" fill="#909F95" font-weight="normal" font-style="normal">1</text>
+<text x="43.5" y="287" text-anchor="middle" fill="#909F95" font-weight="normal" font-style="normal">1</text>
+<path d="M4.5 0V20" transform="translate(57 272)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<text x="97.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">&quot;</text>
+<text x="106.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">l</text>
+<text x="115.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">a</text>
+<text x="124.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">b</text>
+<text x="133.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">e</text>
+<text x="142.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">l</text>
+<text x="151.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">s</text>
+<text x="160.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">&quot;</text>
+<text x="169.5" y="287" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">:</text>
+<text x="187.5" y="287" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">[</text>
+<text x="196.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">&quot;</text>
+<text x="205.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">d</text>
+<text x="214.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">e</text>
+<text x="223.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">l</text>
+<text x="232.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">i</text>
+<text x="241.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">v</text>
+<text x="250.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">e</text>
+<text x="259.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">r</text>
+<text x="268.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">y</text>
+<text x="277.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">&quot;</text>
+<text x="286.5" y="287" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">,</text>
+<text x="304.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">&quot;</text>
+<text x="313.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">t</text>
+<text x="322.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">r</text>
+<text x="331.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">a</text>
+<text x="340.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">n</text>
+<text x="349.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">s</text>
+<text x="358.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">i</text>
+<text x="367.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">e</text>
+<text x="376.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">n</text>
+<text x="385.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">t</text>
+<text x="394.5" y="287" text-anchor="middle" fill="#B7CB91" font-weight="normal" font-style="normal">&quot;</text>
+<text x="403.5" y="287" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">]</text>
+<text x="34.5" y="307" text-anchor="middle" fill="#909F95" font-weight="normal" font-style="normal">1</text>
+<text x="43.5" y="307" text-anchor="middle" fill="#909F95" font-weight="normal" font-style="normal">2</text>
+<path d="M4.5 0V20" transform="translate(57 292)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<text x="79.5" y="307" text-anchor="middle" fill="#D7DFD9" font-weight="normal" font-style="normal">}</text>
+<path d="M0 10H9" transform="translate(12 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(21 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(30 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(39 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(48 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9M4.5 10V0" transform="translate(57 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(66 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(75 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(84 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(93 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(102 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(111 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(120 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(129 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(138 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(147 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(156 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(165 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(174 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(183 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(192 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(201 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(210 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(219 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(228 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(237 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(246 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(255 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(264 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(273 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(282 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(291 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(300 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(309 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(318 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(327 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(336 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(345 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(354 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(363 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(372 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(381 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(390 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(399 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(408 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(417 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(426 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(435 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(444 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(453 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(462 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(471 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(480 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(489 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(498 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(507 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(516 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(525 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(534 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(543 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(552 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(561 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(570 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(579 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(588 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(597 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(606 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(615 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(624 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(633 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(642 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(651 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(660 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(669 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(678 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(687 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(696 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(705 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(714 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(723 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(732 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(741 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(750 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(759 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(768 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(777 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(786 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(795 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(804 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(813 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(822 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(831 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(840 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(849 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(858 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(867 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(876 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(885 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(894 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(903 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(912 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(921 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(930 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(939 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(948 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(957 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(966 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(975 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(984 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(993 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(1002 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+<path d="M0 10H9" transform="translate(1011 312)" stroke="#909F95" stroke-width="1.35" fill="none"/>
+</g></svg>
