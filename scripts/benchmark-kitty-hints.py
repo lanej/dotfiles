@@ -61,6 +61,14 @@ def micro():
     from kitty.config import load_config
     import hint_overlay as overlay
     from select_hint import capture
+    implementation = "optimized"
+    baseline = os.environ.get("KITTY_BENCH_BASELINE")
+    if baseline:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("baseline_hint_overlay", baseline)
+        overlay = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(overlay)
+        implementation = "baseline"
 
     set_options(load_config(str(ROOT / "design-system/generated/kitty.conf")))
     representative = runpy.run_path(str(ROOT / "scripts/fixtures/kitty-hint-review.py"))["fixture"]()
@@ -81,21 +89,30 @@ def micro():
         size = output_size = actual_links = 0
         for i in range(REPS):
             # Every invocation launches a new overlay process, hence cold contrast caches.
-            for f in (overlay.mix, overlay.luminance, overlay.readable, overlay.dimmed):
-                f.cache_clear()
+            for fn in (overlay.mix, overlay.luminance, overlay.readable, overlay.dimmed, overlay.sgr):
+                if hasattr(fn, "cache_clear"):
+                    fn.cache_clear()
             source, a = clock(lambda: capture(screen))
             model, b = clock(lambda: overlay.source_snapshot(screen, source))
             model["marks"], c = clock(lambda: overlay.raw_url_marks(source, model["wrapped"]))
             model["type"] = "url"
             payload, d = clock(lambda: json.dumps(model))
             loaded, e = clock(lambda: json.loads(payload))
-            frame, f = clock(lambda: overlay.render(loaded))
+            if hasattr(overlay, "FrameRenderer"):
+                renderer, init = clock(lambda: overlay.FrameRenderer(loaded))
+                frame, f = clock(renderer.draw)
+                f += init
+            else:
+                renderer = None
+                frame, f = clock(lambda: overlay.render(loaded))
             prefix = overlay.labels(len(loaded["marks"]))[0][:1] if len(loaded["marks"]) > 9 else ""
-            _, g = clock(lambda: overlay.render(loaded, prefix))
+            # Small single-key screens have no prefix redraw; measure a full warm
+            # frame there for a conservative like-for-like comparison.
+            _, g = clock(lambda: renderer.draw(prefix) if renderer and prefix else overlay.render(loaded, prefix))
             for key, v in zip(timings, (a, b, c, d, e, f, g, a+b+c+d+e+f)):
                 timings[key].append(v)
             size, output_size, actual_links = len(payload.encode()), len(frame.encode()), len(loaded["marks"])
-        report({"kind":"micro","case":name,"cols":cols,"rows":rows,"links":actual_links,
+        report({"kind":"micro","implementation":implementation,"case":name,"cols":cols,"rows":rows,"links":actual_links,
                 "expected_links":links,"snapshot_bytes":size,"frame_bytes":output_size,
                 "timings":{k:summarize(v) for k,v in timings.items()}})
 

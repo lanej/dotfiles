@@ -134,6 +134,31 @@ def check_image_hints(root):
     marked, keys, hidden = styling.active_cells(model, "s")
     if (0, 0) in hidden or (8, 0) in marked or keys[(6, 9)] != ("a", True):
         raise AssertionError("Filtered hints did not restore excluded schemes and promote the next key")
+    # Incremental frames must produce the same screen cells as a full repaint.
+    renderer = styling.FrameRenderer(model)
+    incremental = Screen(None, 12, 60, 0)
+    parse_bytes(incremental, renderer.draw().encode())
+    for prefix in ("s", "", "a", "s", ""):
+        parse_bytes(incremental, renderer.draw(prefix).encode())
+        fresh = Screen(None, 12, 60, 0)
+        parse_bytes(fresh, styling.render(model, prefix).encode())
+        for y in range(12):
+            a, b = incremental.line(y), fresh.line(y)
+            if str(a) != str(b):
+                raise AssertionError("Incremental hint redraw changed cell positions")
+            for x in range(60):
+                ac, bc = a.cursor_from(x), b.cursor_from(x)
+                if (ac.fg, ac.bg, ac.decoration_fg, ac.decoration) != (bc.fg, bc.bg, bc.decoration_fg, bc.decoration):
+                    raise AssertionError(f"Incremental hint redraw changed color at {x},{y}")
+    if renderer.draw("") != "":
+        raise AssertionError("Unchanged prefix repainted the overlay")
+    import random
+    rng = random.Random(429)
+    for _ in range(2000):
+        fg, bg = rng.randrange(1 << 24), rng.randrange(1 << 24)
+        for adjusted in (styling.readable(fg, bg), styling.dimmed(fg, bg)):
+            if styling.contrast(adjusted, bg) < 4.5:
+                raise AssertionError(f"Truecolor contrast floor violated: {fg:#x}/{bg:#x}")
     parse_bytes(source.screen, b"\x1b[2J\x1b[H")
     
     screen = Screen(None, 12, 94, 12)

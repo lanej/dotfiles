@@ -20,8 +20,24 @@ OSC8 = ESC + "]8;;"
 ST = ESC + "\\"
 
 
+# A 256-entry lookup table replaces repeated sRGB exponentiation.
+def linear_channel(value):
+    value /= 255
+    return value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4
+
+
+LINEAR = tuple(linear_channel(i) for i in range(256))
+RED = tuple(v * 0.2126 for v in LINEAR)
+GREEN = tuple(v * 0.7152 for v in LINEAR)
+BLUE = tuple(v * 0.0722 for v in LINEAR)
+# Bounded caches can hold every cell of a large truecolor viewport.
+COLOR_CACHE = 65536
+URL_MASK = bytes(1 if i & 2 else 0 for i in range(256))
+URL_RUN = re.compile(b"\x01+")
+
+
 def rgb(value):
-    return tuple((value >> shift) & 255 for shift in (16, 8, 0))
+    return value >> 16, value >> 8 & 255, value & 255
 
 
 def packed(parts):
@@ -29,69 +45,92 @@ def packed(parts):
     return (r << 16) | (g << 8) | b
 
 
-@lru_cache(maxsize=4096)
+@lru_cache(maxsize=COLOR_CACHE)
 def mix(fg, bg, amount):
-    return packed(round(a * amount + b * (1 - amount)) for a, b in zip(rgb(fg), rgb(bg)))
+    r, g, b = rgb(fg)
+    br, bgc, bb = rgb(bg)
+    other = 1 - amount
+    return ((round(r * amount + br * other) << 16)
+            | (round(g * amount + bgc * other) << 8)
+            | round(b * amount + bb * other))
 
 
-@lru_cache(maxsize=4096)
 def luminance(color):
-    def linear(v):
-        v /= 255
-        return v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4
-    return sum(w * linear(v) for w, v in zip((0.2126, 0.7152, 0.0722), rgb(color)))
+    return RED[color >> 16] + GREEN[color >> 8 & 255] + BLUE[color & 255]
 
 
 def contrast(fg, bg):
-    a, b = sorted((luminance(fg), luminance(bg)))
-    return (b + 0.05) / (a + 0.05)
+    a, b = luminance(fg) + 0.05, luminance(bg) + 0.05
+    return a / b if a >= b else b / a
 
 
-@lru_cache(maxsize=4096)
+def meets_contrast(fg, bg_luminance, minimum):
+    value = luminance(fg) + 0.05
+    return (value / bg_luminance if value >= bg_luminance else bg_luminance / value) >= minimum
+
+
+@lru_cache(maxsize=COLOR_CACHE)
 def readable(fg, bg, minimum=4.5):
     """Keep hue and saturation; change HSL lightness only as far as necessary."""
-    if contrast(fg, bg) >= minimum:
+    background = luminance(bg) + 0.05
+    if meets_contrast(fg, background, minimum):
         return fg
     h, l, s = colorsys.rgb_to_hls(*(v / 255 for v in rgb(fg)))
+    # For fixed hue and saturation, each RGB component is piecewise linear
+    # in HSL lightness. Resolve the midpoint once, not at each search step.
+    r, g, b = colorsys.hls_to_rgb(h, 0.5, s)
 
     def color_at(lightness):
-        return packed(round(v * 255) for v in colorsys.hls_to_rgb(h, lightness, s))
+        if lightness <= 0.5:
+            scale = lightness * 510
+            return ((round(r * scale) << 16) | (round(g * scale) << 8)
+                    | round(b * scale))
+        scale = (1 - lightness) * 510
+        return ((round(255 - (1 - r) * scale) << 16)
+                | (round(255 - (1 - g) * scale) << 8)
+                | round(255 - (1 - b) * scale))
 
     candidates = []
-    for end in (0.0, 1.0):
-        if contrast(color_at(end), bg) < minimum:
+    for end, extreme in ((0.0, 0), (1.0, 0xFFFFFF)):
+        if not meets_contrast(extreme, background, minimum):
             continue
-        lo, hi = 0.0, 1.0
-        for _ in range(16):
+        lo, hi, best = 0.0, 1.0, extreme
+        for _ in range(12):
             mid = (lo + hi) / 2
-            if contrast(color_at(l + (end - l) * mid), bg) >= minimum:
-                hi = mid
+            color = color_at(l + (end - l) * mid)
+            if meets_contrast(color, background, minimum):
+                hi, best = mid, color
             else:
                 lo = mid
-        candidates.append((abs(end - l) * hi, color_at(l + (end - l) * hi)))
+        candidates.append((abs(end - l) * hi, best))
     return min(candidates)[1] if candidates else max(
         (0, 0xFFFFFF), key=lambda c: contrast(c, bg))
 
 
-@lru_cache(maxsize=4096)
+@lru_cache(maxsize=COLOR_CACHE)
 def dimmed(fg, bg, minimum=4.5):
     """Dim toward the cell's own background without crossing the contrast floor."""
-    if contrast(fg, bg) < minimum:
+    background = luminance(bg) + 0.05
+    if not meets_contrast(fg, background, minimum):
         return readable(fg, bg, minimum)
     candidate = mix(fg, bg, 0.55)
-    if contrast(candidate, bg) >= minimum:
+    if meets_contrast(candidate, background, minimum):
         return candidate
-    lo, hi = 0.55, 1.0
-    best = fg
-    for _ in range(16):
+    # Avoid caching transient binary-search colors; cache only the final result.
+    r, g, b = rgb(fg)
+    br, bgc, bb = rgb(bg)
+    lo, hi, best = 0.55, 1.0, fg
+    for _ in range(12):
         mid = (lo + hi) / 2
-        candidate = mix(fg, bg, mid)
-        if contrast(candidate, bg) >= minimum:
+        other = 1 - mid
+        candidate = ((round(r * mid + br * other) << 16)
+                     | (round(g * mid + bgc * other) << 8)
+                     | round(b * mid + bb * other))
+        if meets_contrast(candidate, background, minimum):
             hi, best = mid, candidate
         else:
             lo = mid
     return best
-
 
 def source_snapshot(screen, rows):
     """Read Kitty's resolved cell attributes, not a stripped ANSI transcript."""
@@ -99,6 +138,7 @@ def source_snapshot(screen, rows):
     profile = screen.color_profile
     base_fg, base_bg = int(profile.default_fg), int(profile.default_bg)
 
+    @lru_cache(maxsize=COLOR_CACHE)
     def resolve(value, fallback):
         color = profile.as_color(value)
         return fallback if color is None else int(color)
@@ -132,7 +172,8 @@ def source_snapshot(screen, rows):
             deco_fg = resolve(cur.decoration_fg, fg)
             # Tabs and NULs occupy cells, not cursor movement in the overlay.
             char = char.replace("\t", " ").replace("\x00", " ")
-            result.append([char, max(1, wcswidth(char)), fg, bg, flags, decoration, deco_fg])
+            result.append([char, 1 if len(char) == 1 and char.isascii() else max(1, wcswidth(char)),
+                           fg, bg, flags, decoration, deco_fg])
         cells.append(result)
     return {"cells": cells, "wrapped": wrapped, "palette": palette}
 
@@ -163,16 +204,18 @@ def raw_url_marks(rows, wrapped):
     scratch = Screen(None, height, width, 0)
     candidates = []
     for y, row in enumerate(rows):
-        chars, positions = [], []
-        for x, (char, _) in enumerate(row):
-            char = char.replace("\t", " ").replace("\x00", " ")
-            chars.append(char)
-            positions.extend([x] * len(char))
+        chars = [char.replace("\t", " ").replace("\x00", " ") for char, _ in row]
         text = "".join(chars)
         scratch.cursor_position(y + 1, 1)
         scratch.draw(text)
         scratch.line(y).set_wrapped_flag(wrapped[y])
         start = text.find("://")
+        if start < 0:
+            continue
+        if all(len(char) == 1 for char in chars):
+            positions = range(width)
+        else:
+            positions = [x for x, char in enumerate(chars) for _ in char]
         while start >= 0:
             candidates.append((positions[start], y))
             start = text.find("://", start + 3)
@@ -187,7 +230,10 @@ def raw_url_marks(rows, wrapped):
             continue
         # Pixel scrolling adds a leading render-only row; our snapshot uses visual rows.
         mask = scratch.current_selections()[-width * height:]
-        cells = tuple((i % width, i // width) for i, flags in enumerate(mask) if flags & 2)
+        # Scan the selection mask in C. Only materialize actual marked cells
+        # in Python, rather than traversing every screen cell per candidate.
+        cells = tuple((i % width, i // width) for run in URL_RUN.finditer(mask.translate(URL_MASK))
+                      for i in range(run.start(), run.end()))
         if not cells or cells in seen:
             continue
         seen.add(cells)
@@ -212,6 +258,7 @@ def labels(count):
     return result
 
 
+@lru_cache(maxsize=COLOR_CACHE)
 def sgr(fg, bg, flags=0, decoration=0, deco_fg=None):
     parts = ["0", "38;2;" + ";".join(map(str, rgb(fg))), "48;2;" + ";".join(map(str, rgb(bg)))]
     if flags & 1:
@@ -292,12 +339,17 @@ def active_cells(model, prefix):
             first = False
     return marked, keys, hidden
 
-def render(model, prefix="", cols=None, rows=None):
+
+def render(model, prefix="", cols=None, rows=None, *, changed_rows=None):
     """Produce one frame, preserving coordinates, chromatic context and attributes."""
     palette = model["palette"]
     marked, keys, hidden = active_cells(model, prefix)
-    output = [RESET, ESC + "[H" + ESC + "[2J"]
+    output = [RESET]
+    if changed_rows is None:
+        output.append(ESC + "[H" + ESC + "[2J")
     for y, row in enumerate(model["cells"][:rows]):
+        if changed_rows is not None and y not in changed_rows:
+            continue
         output.append(f"{ESC}[{y + 1};1H")
         last_style, last_mark, end_x = None, None, 0
         for x, cell in enumerate(row[:cols]):
@@ -323,24 +375,50 @@ def render(model, prefix="", cols=None, rows=None):
                 deco = deco or 1
                 deco_fg = readable(palette["accent"], bg, 3.0)
             else:
-                fg = dimmed(fg, bg)
+                # Invisible blanks do not need a contrast search. Underlined
+                # spaces and other visible decorations still do.
+                if char != " " or deco or flags & 4:
+                    fg = dimmed(fg, bg)
                 if deco:
                     deco_fg = dimmed(deco_fg, bg, 3.0)
             if mark != last_mark:
                 output.append(OSC8 + (f"mark:{mark}" if mark is not None else "") + ST)
                 last_mark = mark
-            style = (fg, bg, flags, deco, deco_fg)
+            style = (fg, bg, flags, deco, deco_fg if deco else None)
             if style != last_style:
                 output.append(sgr(*style))
                 last_style = style
             if x != end_x:
                 output.append(f"{ESC}[{y + 1};{x + 1}H")
             output.append(char)
-            end_x = x + wcswidth(char)
+            end_x = x + width
         if last_mark is not None:
             output.append(OSC8 + ST)
     output.append(RESET)
     return "".join(output)
+
+
+class FrameRenderer:
+    """Render the initial snapshot once, then repaint only affected rows."""
+    def __init__(self, model):
+        self.model = model
+        self.previous = None
+        self.codes = labels(len(model["marks"]))
+        self.mark_rows = [frozenset(y for _, y in m["cells"]) for m in model["marks"]]
+
+    def draw(self, prefix="", cols=None, rows=None):
+        if self.previous is None:
+            result = render(self.model, prefix, cols, rows)
+        elif self.previous == prefix:
+            return ""
+        else:
+            changed = set()
+            for code, mark_rows in zip(self.codes, self.mark_rows):
+                if code.startswith(self.previous) or code.startswith(prefix):
+                    changed.update(mark_rows)
+            result = render(self.model, prefix, cols, rows, changed_rows=changed)
+        self.previous = prefix
+        return result
 
 
 class HintOverlay(Handler):
@@ -350,7 +428,8 @@ class HintOverlay(Handler):
 
     def __init__(self, model):
         self.model = model
-        self.codes = labels(len(model["marks"]))
+        self.renderer = FrameRenderer(model)
+        self.codes = self.renderer.codes
         self.prefix = ""
         self.result = {}
 
@@ -362,7 +441,7 @@ class HintOverlay(Handler):
 
     @Handler.atomic_update
     def draw(self):
-        self.write(render(self.model, self.prefix, self.screen_size.cols, self.screen_size.rows))
+        self.write(self.renderer.draw(self.prefix, self.screen_size.cols, self.screen_size.rows))
 
     def on_resize(self, new_size):
         super().on_resize(new_size)
