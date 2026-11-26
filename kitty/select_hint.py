@@ -4,13 +4,15 @@ import json
 import os
 import re
 import time
+from functools import partial
 from urllib.parse import unquote, urlsplit
 
-from kittens.hints.main import handle_result as open_native_hint
+from kittens.hints.main import handle_result as open_native_hint, on_mark_clicked
 from kittens.tui.handler import result_handler
 from kitty.fast_data_types import add_timer, remove_timer
 
 from hint_overlay import encode_snapshot, hyperlink_marks, raw_url_marks, source_snapshot
+from hint_renderer import encode_session
 
 
 EXT = r"\.(?:png|jpe?g|webp|gif|bmp|tiff?|avif|ico|svg|heic|jxl)"
@@ -190,7 +192,35 @@ def picker_input(rows, rect, ticket, files=True, return_overrides=False):
     return "\n".join(lines), choices
 
 
-def show_hints(boss, window, hint_type="hyperlink", *, rows=None, snapshot=None, overrides=None, **kwargs):
+def launch_overlay(boss, window, snapshot, embedded=False, **kwargs):
+    """Use a lightweight local session; retain Kitty's embedded kitten fallback."""
+    from kitty.utils import which
+    from kitty.tabs import SpecialWindow
+    from kitty.window import CwdRequest
+    from kitty.constants import config_dir
+
+    # No daemon, worker or persistent process. The normal Python installation
+    # used by the dotfiles is sufficient, and the embedded kitten remains usable.
+    python = None if embedded else which("python3")
+    helper = os.path.join(config_dir, "hint_session.py")
+    tab = window.tabref() if python and os.path.isfile(helper) else None
+    if tab is None:
+        return boss.run_kitten_with_metadata(
+            "hint_overlay.py", (), window=window, input_data=encode_snapshot(snapshot), **kwargs)
+
+    overlay = tab.new_special_window(
+        SpecialWindow([python, "-I", "-S", helper], stdin=encode_session(snapshot),
+                      cwd=CwdRequest(window).cwd_of_child or window.cwd_of_child,
+                      override_title="Choose URL" if snapshot["type"] == "url" else "Choose text",
+                      overlay_for=window.id, overlay_behind=True),
+        copy_colors_from=window)
+    overlay.actions_on_close.append(partial(boss.on_kitten_finish, window.id,
+                                            kwargs["custom_callback"], default_data=kwargs.get("default_data")))
+    overlay.open_url_handler = on_mark_clicked
+    return overlay
+
+
+def show_hints(boss, window, hint_type="hyperlink", *, rows=None, snapshot=None, overrides=None, embedded=False, **kwargs):
     if rows is None:
         rows = capture(window.screen)
     if snapshot is None:
@@ -205,8 +235,7 @@ def show_hints(boss, window, hint_type="hyperlink", *, rows=None, snapshot=None,
             if data.get("match"):
                 open_native_hint([], data, window_id, current_boss)
         kwargs["custom_callback"] = selected
-    return boss.run_kitten_with_metadata(
-        "hint_overlay.py", (), window=window, input_data=encode_snapshot(snapshot), **kwargs)
+    return launch_overlay(boss, window, snapshot, embedded=embedded, **kwargs)
 
 
 def at_cursor(window):
@@ -227,7 +256,7 @@ def handle_result(args, answer, target_window_id, boss):
     if hint_type not in ("hyperlink", "url"):
         raise ValueError("Expected hyperlink or url hint selection")
     if hint_type == "url" or not in_zellij(window):
-        show_hints(boss, window, hint_type)
+        show_hints(boss, window, hint_type, embedded="--embedded" in args[2:])
         return
 
     rows = capture(window.screen)

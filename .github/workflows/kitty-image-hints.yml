@@ -6,6 +6,8 @@ on:
       - 'kitty/kittyconf'
       - 'kitty/select_hint.py'
       - 'kitty/hint_overlay.py'
+      - 'kitty/hint_renderer.py'
+      - 'kitty/hint_session.py'
       - 'bin/zellij-image-hints'
       - 'scripts/build-zellij-helpers.sh'
       - 'scripts/make/config.sh'

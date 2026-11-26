@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'kitty/hint_overlay.py'
+      - 'kitty/hint_renderer.py'
+      - 'kitty/hint_session.py'
       - 'kitty/select_hint.py'
       - 'scripts/benchmark-kitty-hints.py'
       - 'scripts/fixtures/kitty-hint-review.py'

@@ -97,8 +97,8 @@ def micro():
             model, b = clock(lambda: overlay.source_snapshot(screen, source))
             model["marks"], c = clock(lambda: overlay.raw_url_marks(source, model["wrapped"]))
             model["type"] = "url"
-            encode = getattr(overlay, "encode_snapshot", json.dumps)
-            decode = getattr(overlay, "decode_snapshot", json.loads)
+            encode = getattr(overlay, "encode_session", getattr(overlay, "encode_snapshot", json.dumps))
+            decode = getattr(overlay, "decode_session", getattr(overlay, "decode_snapshot", json.loads))
             payload, d = clock(lambda: encode(model))
             loaded, e = clock(lambda: decode(payload))
             if hasattr(overlay, "FrameRenderer"):
@@ -138,7 +138,7 @@ def gui():
             conf = home / ".config/kitty/kitty.conf"
             original = conf.read_text()
             conf.unlink()
-            conf.write_text(original + "\nmap ctrl+shift+g kitten hints --type url --alphabet asdfghjkl --hints-offset 0 --ascending --prefix-free\n")
+            conf.write_text(original + "\nmap ctrl+shift+g kitten hints --type url --alphabet asdfghjkl --hints-offset 0 --ascending --prefix-free\nmap ctrl+shift+j kitten select_hint.py url --embedded\n")
             socket = "unix:" + str(work / "kitty.sock")
 
             def run(*args):
@@ -212,19 +212,19 @@ def gui():
                     time.sleep(.2)
                     geometry = json.loads(remote("ls"))[0]["tabs"][0]["windows"][0]
                     # Warm filesystem/font caches; the picker child still starts each time.
-                    for shortcut in ("ctrl+shift+g", "ctrl+shift+e"):
+                    for shortcut in ("ctrl+shift+g", "ctrl+shift+e", "ctrl+shift+j"):
                         key(shortcut)
                         ready(overlay_ready, "warm overlay " + shortcut)
                         key("Escape")
                         ready(source_ready, "warm cancellation")
-                    values = {"native": [], "styled": []}
+                    values = {"native": [], "styled": [], "embedded": []}
                     def observer():
                         remote("ls")
                         remote("get-text")
                     poll = [clock(observer)[1] for _ in range(REPS)]
                     for i in range(REPS):
-                        cases = (("native", "ctrl+shift+g"), ("styled", "ctrl+shift+e"))
-                        for label, shortcut in (cases if i%2==0 else reversed(cases)):
+                        cases = (("native", "ctrl+shift+g"), ("styled", "ctrl+shift+e"), ("embedded", "ctrl+shift+j"))
+                        for label, shortcut in cases[i%3:] + cases[:i%3]:
                             start = time.perf_counter_ns()
                             key(shortcut)
                             ready(overlay_ready, label)
@@ -234,7 +234,8 @@ def gui():
                     report({"kind":"gui","case":name,"cols":cols,"rows":rows,"links":links,
                             "actual_cols":geometry.get("columns"),"actual_rows":geometry.get("lines"),
                             "observer":summarize(poll),
-                            "native":summarize(values["native"]), "styled":summarize(values["styled"])})
+                            "native":summarize(values["native"]), "styled":summarize(values["styled"]),
+                            "embedded":summarize(values["embedded"])})
                 except Exception:
                     print((work / "kitty.log").read_text()[-4000:], file=sys.stderr)
                     try:

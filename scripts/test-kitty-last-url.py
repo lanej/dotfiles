@@ -42,6 +42,8 @@ def check_image_hints(root):
         return None
 
     boss = SimpleNamespace(run_kitten_with_metadata=run_picker, window_id_map={7: source})
+    picker.launch_overlay = lambda b, w, model, embedded=False, **kw: b.run_kitten_with_metadata(
+        "hint_overlay.py", (), window=w, input_data=styling.encode_snapshot(model), **kw)
     parse_bytes(source.screen, b"\x1b[33mwarning\x1b[0m  \x1b[36mhttps://example.org/\x1b[32mreference\x1b[0m")
     original = picker.capture(source.screen)
     original_fg = int(source.screen.color_profile.default_fg)
@@ -152,6 +154,20 @@ def check_image_hints(root):
                     raise AssertionError(f"Incremental hint redraw changed color at {x},{y}")
     if renderer.draw("") != "":
         raise AssertionError("Unchanged prefix repainted the overlay")
+    # Exercise the lightweight input parser with fragmented events and paste.
+    from hint_session import Input
+    parser = Input()
+    if parser.feed(b"a\x1b[2") != [("key", "a")] or parser.feed(b"7u") != [("cancel", None)]:
+        raise AssertionError("Fragmented extended keyboard event was lost")
+    if parser.feed(b"\x1b[200~asdf\x1b[20") or parser.feed(b"1~") or parser.feed(b"s") != [("key", "s")]:
+        raise AssertionError("Bracketed paste triggered a hint")
+    if parser.feed(b"\x1b[<0;18;2M\x1b[<0;18;2m") != [
+        ("press", (17, 1)), ("release", (17, 1))]:
+        raise AssertionError("Mouse coordinates were not decoded correctly")
+    if parser.feed(b'\x1bP@kitty-cmd{"Type":"mark_activated","Mark":3}\x1b\\') != [("mark", 3)]:
+        raise AssertionError("Kitty hyperlink activation was not decoded")
+    if parser.feed(b"\x1b") or parser.expire() != [("cancel", None)]:
+        raise AssertionError("Legacy Escape did not cancel")
     import random
     rng = random.Random(429)
     for _ in range(2000):
