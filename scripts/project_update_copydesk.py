@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -30,8 +31,6 @@ def installed_revision(plugin):
 
 
 def build(lazy_root, pin):
-    if not (lazy_root / "lazy.nvim/lua/lazy/init.lua").is_file():
-        raise ValueError("Install the dotfiles Neovim profile before updating Copydesk")
     # Lazy writes its resolved plugin set to the lockfile. Give the targeted
     # install a private copy so it cannot shrink the workstation's plugin lock.
     with tempfile.TemporaryDirectory(prefix="copydesk-update-") as scratch:
@@ -57,6 +56,22 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("build", "status", "inventory", "checkpoint", "restart", "restore", "verify"))
     action = parser.parse_args().action
+    settings = json.loads(subprocess.check_output(
+        [sys.executable, str(ROOT / "scripts/dotfiles-config.py"), "--format", "json"], text=True,
+    ))["settings"]
+    if not settings["tools.neovim"]:
+        if action == "status":
+            print(json.dumps({"activation": "not-applicable", "reason": "Neovim is disabled"}))
+        elif action != "build":
+            identity = "copydesk:neovim-disabled"
+            print(json.dumps({"schema_version": 1, "targets": [{
+                "target": "local", "expected_identity": identity, "running_identity": identity,
+                "ready": True, "process": None, "sessions": [], "reason": "Neovim is disabled",
+            }]}))
+        else:
+            print("copydesk: Neovim is disabled; skipping plugin installation", file=sys.stderr)
+        return 0
+
     pin = json.loads((ROOT / "nvim/lazy-lock.json").read_text())[PLUGIN]
     expected = pin["commit"]
     if not re.fullmatch(r"[a-f0-9]{40}", expected):
@@ -64,28 +79,37 @@ def main():
     data = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share")
     lazy_root = data / (os.environ.get("NVIM_APPNAME") or "nvim") / "lazy"
     plugin = lazy_root / PLUGIN
+    editor_available = shutil.which("nvim") is not None and (lazy_root / "lazy.nvim/lua/lazy/init.lua").is_file()
+    prerequisites = "Install Neovim and the profile’s lazy.nvim before updating Copydesk"
     revision = installed_revision(plugin)
     if revision == expected:
         for file in ("lua/copydesk.lua", "copydesk_schema.json"):
             if not (plugin / file).is_file():
                 raise ValueError(f"Copydesk runtime file is missing: {plugin / file}")
     if action == "build":
+        if not editor_available:
+            raise ValueError(prerequisites)
         if revision != expected:
             build(lazy_root, pin)
             if installed_revision(plugin) != expected:
                 raise ValueError("Copydesk installation did not match the locked revision")
         return 0
     if action == "status":
-        print(json.dumps({"installed_revision": revision, "selected_revision": expected, "running_revision": None}))
+        print(json.dumps({
+            "installed_revision": revision, "selected_revision": expected,
+            "running_revision": None, "editor_available": editor_available,
+        }))
         return 0
+    ready = editor_available and revision == expected
     target = {
         "target": "local",
         "expected_identity": expected,
         "running_identity": revision,
-        "ready": revision == expected,
+        "ready": ready,
         "process": None,
         "sessions": [],
-        "reason": "Copydesk is loaded by new Neovim processes" if revision == expected else "Build the locked Copydesk revision first",
+        "reason": ("Copydesk is available to new Neovim processes" if ready else
+                   "Build the locked Copydesk revision first" if editor_available else prerequisites),
     }
     print(json.dumps({"schema_version": 1, "targets": [target]}))
     return 0 if target["ready"] or action == "inventory" else 3

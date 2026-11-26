@@ -9,6 +9,7 @@ require("lazy").setup({
 	change_detection = { enabled = false },
 	headless = { process = false, colors = false },
 	pkg = { enabled = false },
+	local_spec = false,
 })
 local plugin = require("lazy.core.config").plugins.copydesk
 local action = plugin._.installed and "restore" or "install"
