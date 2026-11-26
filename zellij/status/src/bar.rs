@@ -195,7 +195,8 @@ impl State {
                     Done => colors.exit_code_success.base,
                     _ => colors.ribbon_unselected.base,
                 },
-                bg: colors.text_selected.background,
+                // Inactive tabs use the quiet pane surface, not the native selection fill.
+                bg: colors.frame_selected.background,
                 bold: false,
             },
         };

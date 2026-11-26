@@ -10,6 +10,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import tomllib
 import unittest
 from unittest import mock
 
@@ -99,6 +100,104 @@ class ThemeTests(unittest.TestCase):
                         for background in ("surface", "surface.raised", "surface.selected"):
                             with self.subTest(state=state["id"], background=background):
                                 self.assertGreaterEqual(contrast(colors[state["role"]], colors[background]), 4.5)
+
+    def test_sage_native_contrast_contract(self):
+        """Check actual filled styles, text roles and essential non-text indicators."""
+        def luminance(color):
+            channels = [int(color[i:i+2], 16) / 255 for i in (1, 3, 5)]
+            linear = [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
+            return sum(c * w for c, w in zip(linear, (0.2126, 0.7152, 0.0722)))
+
+        def check(label, fg, bg, minimum=4.5):
+            low, high = sorted((luminance(fg), luminance(bg)))
+            with self.subTest(pair=label, fg=fg, bg=bg, minimum=minimum):
+                self.assertGreaterEqual((high + 0.05) / (low + 0.05), minimum)
+
+        outputs = theme.compile_theme(theme.SOURCE, "sage")
+        resolved = json.loads(outputs["colors.json"])
+        c = resolved["roles"]
+        surfaces = [c[name] for name in ("surface", "surface.raised", "surface.selected")]
+        for bg in surfaces:
+            check("readable off/trace/metadata", c["status.off"], bg)
+            check("inactive frame text", c["frame.inactive.fg"], bg)
+            check("required border", c["border"], bg, 3)
+            check("selection pointer", c["accent"], bg, 3)
+            check("solid selection fill", c["selection.solid.bg"], bg, 3)
+            for role, color in c.items():
+                if role.startswith("git.file."):
+                    check(role, color, bg)
+                if role.startswith("diff.") and role.endswith(".dim"):
+                    check(role, color, bg, 3)
+
+        preset = theme.read(theme.SOURCE / "themes/sage.json")
+        _, value = theme.resolve(preset, theme.read(theme.SOURCE / "tokens.json")["roles"])
+        check("inverse selection text", c["selection.solid.fg"], c["selection.solid.bg"])
+        check("tmux inactive pane title", c["text.on.border"], c["border"])
+        self.assertIn(f'#[bg={c["border"]}]#[fg={c["text.on.border"]}]', outputs["tmux.conf"])
+        states = theme.expand(theme.read(theme.SOURCE / "adapters/tmux-states.json"), value)
+        for name, style in states.items():
+            check("tmux state " + name, style["fg"], style["bg"])
+        self.assertEqual(states["failed"]["fg"], c["text.inverse"])
+
+        glow = json.loads(outputs["glow.json"])
+        for label, style in (("Glow h1", glow["h1"]), ("Glow inline code", glow["code"]),
+                             ("Glow error", glow["code_block"]["chroma"]["error"])):
+            check(label, style["color"], style["background_color"])
+
+        kitty = dict(line.split() for line in outputs["kitty.conf"].splitlines() if not line.startswith("#"))
+        check("Kitty selection ink", kitty["selection_foreground"], kitty["selection_background"])
+        check("Kitty selection fill", kitty["selection_background"], kitty["background"], 3)
+        check("Kitty active tab", kitty["active_tab_foreground"], kitty["active_tab_background"])
+        check("Kitty inactive tab", kitty["inactive_tab_foreground"], kitty["inactive_tab_background"])
+
+        bottom = tomllib.loads(outputs["bottom.toml"])["styles"]["widgets"]
+        check("bottom selected row", bottom["selected_text"]["color"], bottom["selected_text"]["bg_color"])
+        check("bottom selected fill", bottom["selected_text"]["bg_color"], c["surface"], 3)
+
+        neovim = theme.read(theme.SOURCE / "adapters/neovim.json")
+        for name in ("LineNr", "FoldColumn", "SignColumn", "SpecialKey", "Conceal"):
+            style = theme.expand(neovim[name], value)
+            for bg in surfaces:
+                check("Neovim " + name, style["fg"], bg)
+        for name in ("Visual", "VisualNOS", "PmenuSel", "QuickFixLine"):
+            style = theme.expand({k: v for k, v in neovim[name].items() if k != "component"}, value)
+            check("Neovim " + name, style["fg"], style["bg"])
+            for bg in surfaces:
+                check("Neovim " + name + " fill", style["bg"], bg, 3)
+            self.assertIn(f'["{name}"] = ' + theme.lua(style), outputs["neovim.lua"])
+        check("Neovim scrollbar thumb", value(neovim["PmenuThumb"]["bg"]),
+              value(neovim["PmenuSbar"]["bg"]), 3)
+
+        zellij = theme.read(theme.SOURCE / "adapters/zellij.json")
+        for name in ("text_selected", "list_selected", "table_cell_selected", "ribbon_selected"):
+            style = {k: value("@" + role) for k, role in zellij[name].items()}
+            for field in ("base", "emphasis_0", "emphasis_1", "emphasis_2", "emphasis_3"):
+                check("Zellij " + name + " " + field, style[field], style["background"])
+            for bg in surfaces:
+                check("Zellij " + name + " fill", style["background"], bg, 3)
+
+        pi = json.loads(outputs["pi.json"])["colors"]
+        for bg in (c["surface"], pi["userMessageBg"], pi["selectedBg"]):
+            check("Pi thinking off", pi["thinkingOff"], bg)
+        check("Pi tool error output", pi["toolOutput"], pi["toolErrorBg"])
+        check("Pi tool error status", pi["error"], pi["toolErrorBg"])
+
+    def test_optional_role_fallbacks(self):
+        shared = theme.read(theme.SOURCE / "tokens.json")["roles"]
+        for name in ("nord", "sage"):
+            data = theme.read(theme.SOURCE / "themes" / f"{name}.json")
+            colors, value = theme.resolve(data, shared)
+            expected = colors.get("text.on.error", colors["text.strong"])
+            self.assertEqual(value("@text.on.error|text.strong"), expected)
+            self.assertEqual(theme.render_roles("{{text.on.error|text.strong}}", colors), expected)
+            with self.assertRaises(ValueError):
+                value("@text.on.error|missing")
+            with self.assertRaises(KeyError):
+                value("@missing")
+        data = theme.read(theme.SOURCE / "themes/sage.json")
+        data["roles"]["text.on.error"] = "@text.on.error|text.strong"
+        with self.assertRaises(ValueError):
+            theme.resolve(data, shared)
 
     def test_semantic_state_review_catalog(self):
         groups = theme.read(theme.SOURCE / "semantic-states.json")

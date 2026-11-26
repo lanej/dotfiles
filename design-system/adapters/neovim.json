@@ -30,10 +30,14 @@
     "component": "heading"
   },
   "Visual": {
-    "component": "selection"
+    "component": "selection",
+    "fg": "@selection.solid.fg|selection.fg",
+    "bg": "@selection.solid.bg|selection.bg"
   },
   "VisualNOS": {
-    "component": "selection"
+    "component": "selection",
+    "fg": "@selection.solid.fg|selection.fg",
+    "bg": "@selection.solid.bg|selection.bg"
   },
   "Cursor": {
     "fg": "@text.inverse",
@@ -53,15 +57,15 @@
     "bold": true
   },
   "LineNr": {
-    "fg": "@border",
+    "fg": "@status.off",
     "bg": "default"
   },
   "SignColumn": {
-    "fg": "@border",
+    "fg": "@status.off",
     "bg": "default"
   },
   "FoldColumn": {
-    "fg": "@border",
+    "fg": "@status.off",
     "bg": "default"
   },
   "Folded": {
@@ -192,10 +196,10 @@
     "fg": "@border"
   },
   "SpecialKey": {
-    "fg": "@border"
+    "fg": "@status.off"
   },
   "Conceal": {
-    "fg": "@border"
+    "fg": "@status.off"
   },
   "Directory": {
     "fg": "@accent"
@@ -226,10 +230,12 @@
     "bg": "@surface.raised"
   },
   "PmenuSel": {
-    "component": "selection"
+    "component": "selection",
+    "fg": "@selection.solid.fg|selection.fg",
+    "bg": "@selection.solid.bg|selection.bg"
   },
   "PmenuSbar": {
-    "bg": "@border"
+    "bg": "@scroll.track|border"
   },
   "PmenuThumb": {
     "bg": "@accent"
@@ -258,7 +264,9 @@
     "bg": "default"
   },
   "QuickFixLine": {
-    "component": "selection"
+    "component": "selection",
+    "fg": "@selection.solid.fg|selection.fg",
+    "bg": "@selection.solid.bg|selection.bg"
   },
   "DiagnosticError": {
     "fg": "@status.error"

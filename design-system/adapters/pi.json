@@ -46,7 +46,7 @@
     "syntaxType": "@syntax.type",
     "syntaxOperator": "@syntax.operator",
     "syntaxPunctuation": "@syntax.operator",
-    "thinkingOff": "@border",
+    "thinkingOff": "@status.off",
     "thinkingMinimal": "@text.muted",
     "thinkingLow": "@accent.secondary",
     "thinkingMedium": "@accent",

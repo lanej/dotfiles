@@ -106,7 +106,7 @@
         "color": "@text"
       },
       "error": {
-        "color": "@text.strong",
+        "color": "@text.on.error|text.strong",
         "background_color": "@status.error"
       },
       "comment": {
