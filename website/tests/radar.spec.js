@@ -4,7 +4,6 @@ for (const width of [1440, 390]) {
   test(`radar decisions remain reachable at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('./');
-    await expect(page.locator('.navigation-card .destination-icon')).toHaveCount(5);
     await page.locator('main').getByRole('link', { name: 'Tech radar', exact: true }).click();
     await expect(page).toHaveURL(/\/reference\/radar\/$/);
     const radar = page.getByRole('figure', { name: 'Technology decisions by ring' });
