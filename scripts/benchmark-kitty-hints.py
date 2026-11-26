@@ -114,6 +114,11 @@ def gui():
             env = {**os.environ, "HOME":str(home), "XDG_CONFIG_HOME":str(home / ".config"),
                    "XDG_CACHE_HOME":str(home / ".cache"), "XDG_DATA_HOME":str(home / ".local/share")}
             subprocess.run(["make", "-s", "kitty-config"], cwd=ROOT, env=env, check=True)
+            # Copy, rather than editing the symlink into the checked-out config.
+            conf = home / ".config/kitty/kitty.conf"
+            original = conf.read_text()
+            conf.unlink()
+            conf.write_text(original + "\nmap ctrl+shift+g kitten hints --type url --alphabet asdfghjkl --hints-offset 0 --ascending --prefix-free\n")
             socket = "unix:" + str(work / "kitty.sock")
 
             def run(*args):
@@ -135,12 +140,16 @@ def gui():
                 raise RuntimeError(f"Timed out waiting for {name}")
 
             def key(k):
-                run("xdotool", "key", "--delay", "0", "--clearmodifiers", k)
+                run("xdotool", "key", "--delay", "1", "--clearmodifiers", k)
 
             # ANSI transitions can appear within the target itself.
             import re
             def overlay_ready():
-                out = remote("get-text", "--ansi", "--match", "title:^Choose URL$")
+                windows = [w for ow in json.loads(remote("ls")) for tab in ow["tabs"] for w in tab["windows"]]
+                overlay = next((w for w in windows if w["title"] == "Choose URL"), None)
+                if overlay is None:
+                    return False
+                out = remote("get-text", "--ansi", "--match", f"id:{overlay['id']}")
                 return target in re.sub(r"\x1b\[[0-9;:]*m", "", out) and "mark:" in out
 
             def source_ready():
@@ -151,7 +160,6 @@ def gui():
                 app = subprocess.Popen(["kitty", "--listen-on", socket, "-o", "allow_remote_control=socket-only",
                     "-o", "linux_display_server=x11", "-o", f"initial_window_width={cols}c",
                     "-o", f"initial_window_height={rows}c", "-o", "remember_window_size=no",
-                    "-o", "map ctrl+shift+g kitten hints --type url --alphabet asdfghjkl --hints-offset 0 --ascending --prefix-free",
                     "--directory", str(ROOT), *command], env=env, stdout=log, stderr=log)
                 try:
                     ready(lambda: target in remote("get-text"), "source")
@@ -162,11 +170,14 @@ def gui():
                     # Warm filesystem/font caches; the picker child still starts each time.
                     for shortcut in ("ctrl+shift+g", "ctrl+shift+e"):
                         key(shortcut)
-                        ready(overlay_ready, "warm overlay")
+                        ready(overlay_ready, "warm overlay " + shortcut)
                         key("Escape")
                         ready(source_ready, "warm cancellation")
                     values = {"native": [], "styled": []}
-                    poll = [clock(lambda: remote("get-text"))[1] for _ in range(REPS)]
+                    def observer():
+                        remote("ls")
+                        remote("get-text")
+                    poll = [clock(observer)[1] for _ in range(REPS)]
                     for i in range(REPS):
                         cases = (("native", "ctrl+shift+g"), ("styled", "ctrl+shift+e"))
                         for label, shortcut in (cases if i%2==0 else reversed(cases)):
@@ -180,6 +191,14 @@ def gui():
                             "actual_cols":geometry.get("columns"),"actual_rows":geometry.get("lines"),
                             "observer":summarize(poll),
                             "native":summarize(values["native"]), "styled":summarize(values["styled"])})
+                except Exception:
+                    print((work / "kitty.log").read_text()[-4000:], file=sys.stderr)
+                    try:
+                        print(remote("ls"), file=sys.stderr)
+                        print(remote("get-text", "--ansi"), file=sys.stderr)
+                    except subprocess.SubprocessError:
+                        pass
+                    raise
                 finally:
                     app.terminate()
                     try:
