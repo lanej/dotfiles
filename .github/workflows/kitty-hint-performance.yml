@@ -1,0 +1,28 @@
+name: Kitty hint performance
+on:
+  pull_request:
+    paths:
+      - 'kitty/hint_overlay.py'
+      - 'kitty/select_hint.py'
+      - 'scripts/benchmark-kitty-hints.py'
+      - 'scripts/fixtures/kitty-hint-review.py'
+      - '.github/workflows/kitty-hint-performance.yml'
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install pinned Kitty and X11 runtime
+        run: |
+          mkdir -p "$RUNNER_TEMP/kitty"
+          curl --fail --location --retry 3 https://github.com/kovidgoyal/kitty/releases/download/v0.50.0/kitty-0.50.0-x86_64.txz | tar -xJ -C "$RUNNER_TEMP/kitty"
+          echo "$RUNNER_TEMP/kitty/bin" >> "$GITHUB_PATH"
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb xauth xdotool libgl1-mesa-dri libxcb-xkb1 libxkbcommon-x11-0 libxcursor1
+      - name: Report CPU stages
+        run: kitty +runpy 'import runpy; runpy.run_path("scripts/benchmark-kitty-hints.py", run_name="__main__")'
+      - name: Compare native and styled picker activation
+        run: xvfb-run -a -s "-screen 0 1920x1200x24" env LIBGL_ALWAYS_SOFTWARE=1 python3 scripts/benchmark-kitty-hints.py --gui
