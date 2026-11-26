@@ -298,12 +298,23 @@ impl State {
         let mut used = 0;
         let mut previous = surface;
         if !heading.is_empty() {
+            // Mode and session are independent: only the mode gets a fill.
+            let mode_width = if mode.is_empty() { 0 } else { (1 + mode.width()).min(heading.width()) };
+            let mode_end = heading.char_indices().nth(mode_width).map_or(heading.len(), |(i, _)| i);
+            if mode_width > 0 {
+                Ribbon {
+                    fg: surface,
+                    bg: colors.text_unselected.emphasis_1,
+                    bold: true,
+                }
+                .paint(&heading[..mode_end]);
+            }
             Ribbon {
                 fg: colors.text_unselected.base,
                 bg: surface,
                 bold: true,
             }
-            .paint(&heading);
+            .paint(&heading[mode_end..]);
             used = heading.width();
         }
         let tab_space = available.saturating_sub(used + 1);
