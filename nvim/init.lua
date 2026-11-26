@@ -8,6 +8,7 @@
 
 local use_ghlite = require("dotfiles-config").enabled("features.nvim_ghlite")
 require("file-opener").setup()
+require("copydesk-keybindings")
 
 vim.opt.autoread = true
 vim.opt.autoindent = true
