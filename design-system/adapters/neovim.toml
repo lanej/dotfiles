@@ -478,6 +478,9 @@ link = "Constant"
 ["@constant.null"]
 fg = "@syntax.null"
 
+[DotfilesLuaNil]
+fg = "@syntax.null"
+
 ["@boolean.true"]
 fg = "@syntax.boolean.true"
 

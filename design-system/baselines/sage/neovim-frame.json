@@ -153,7 +153,25 @@
     {
       "bg": "default",
       "bold": false,
-      "data": " nil ",
+      "data": " ",
+      "fg": "d7dfd9",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "nil",
+      "fg": "d89dae",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": " ",
       "fg": "d7dfd9",
       "italics": false,
       "reverse": false,

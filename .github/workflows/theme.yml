@@ -10,6 +10,7 @@ on:
       - 'scripts/theme_review_contract.py'
       - 'scripts/test-theme*.py'
       - 'nvim/colors/dotfiles.lua'
+      - 'nvim/after/syntax/lua.vim'
       - 'nvim/lua/dotfiles-theme.lua'
       - 'nvim/lua/gitsignsconfig.lua'
       - 'nvim/lua/git-branch-signs.lua'

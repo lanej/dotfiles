@@ -483,6 +483,9 @@ return {
 ["@constant.null"] = {
 ["fg"] = "#D89DAE",
 },
+["DotfilesLuaNil"] = {
+["fg"] = "#D89DAE",
+},
 ["@boolean.true"] = {
 ["fg"] = "#95B5D3",
 },

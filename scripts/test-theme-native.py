@@ -370,7 +370,12 @@ vim.api.nvim_win_set_cursor(0, {4, 0})
     if surface == "neovim":
         return neovim(work, env, plugins)
     if surface == "neovim-frame":
-        command = ["nvim", "-u", "NONE", "-i", "NONE", "-n", "--cmd", "set rtp^=" + str(ROOT / "nvim"), "-c", "colorscheme dotfiles", "-c", "syntax on", "-c", "set noshowmode noruler laststatus=0 noshowcmd", str(ROOT / "design-system/fixtures/code.lua")]
+        command = ["nvim", "-u", "NONE", "-i", "NONE", "-n",
+                   "--cmd", "set rtp^=" + str(ROOT / "nvim"),
+                   "--cmd", "set rtp+=" + str(ROOT / "nvim/after"),
+                   "-c", "colorscheme dotfiles", "-c", "syntax on",
+                   "-c", "set noshowmode noruler laststatus=0 noshowcmd",
+                   str(ROOT / "design-system/fixtures/code.lua")]
         if review:
             script = work / "visual-review.lua"
             script.write_text('''
