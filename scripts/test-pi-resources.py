@@ -127,3 +127,5 @@ if __name__ == "__main__":
     if NATIVE:
         sys.argv.remove("--native")
     unittest.main()
+
+# Temporary Mac overflow workflow acceptance marker.
