@@ -5,7 +5,7 @@ description: Shared foundations and atomic compositions across Neovim, Zellij, t
 
 import ThemeCatalog from '@components/ThemeCatalog.astro';
 
-My terminal design system supplies shared tokens and atomic compositions across native interfaces. Application code stays grouped by capability. The built-in [Nord preset](design-system/nord.mdx) establishes the first baseline before a personal green preset is designed.
+My terminal design system supplies shared tokens and atomic compositions across native interfaces. Application code stays grouped by capability. The built-in [Nord preset](design-system/nord.mdx) establishes the first native baseline; [Sage](design-system/sage.mdx) is a green-charcoal alternative inspired by my website.
 
 Jump to [theme roles](#theme-roles), [presentation tokens](#presentation-tokens), [Git status components](#git-state-components), the [atomic catalog](#atomic-catalog), or [integration boundaries](#integration-boundaries).
 
@@ -95,7 +95,7 @@ For an isolated theme experiment, run `python3 scripts/theme.py --theme nord --o
 
 ## Presets
 
-The built-in [Nord preset](design-system/nord.mdx) owns its palette reference, native examples and initial regression baseline. New presets use the same token contract and native adapters; preset-specific captures stay with their preset.
+The built-in [Nord preset](design-system/nord.mdx) owns its palette reference, native examples and initial regression baseline. [Sage](design-system/sage.mdx) is available for evaluation with its own palette, semantic contrast tests and a comparative composition preview. Nord remains the default until native Sage captures are reviewed. Presets use the same token contract and native adapters; preset-specific captures stay with their preset.
 
 <ThemeCatalog />
 

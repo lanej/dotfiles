@@ -34,6 +34,48 @@ class ThemeTests(unittest.TestCase):
         self.assertEqual(colors["git.file.modified"], "#EBCB8B")
         self.assertEqual(colors["git.file.stashed"], "#E5E9F0")
 
+    def test_sage_preset_contrast_and_native_outputs(self):
+        def luminance(color):
+            channels = [int(color[i:i+2], 16) / 255 for i in (1, 3, 5)]
+            linear = [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
+            return sum(c * w for c, w in zip(linear, (0.2126, 0.7152, 0.0722)))
+
+        def contrast(a, b):
+            low, high = sorted((luminance(a), luminance(b)))
+            return (high + 0.05) / (low + 0.05)
+
+        for symbols in ("unicode", "ascii"):
+            with self.subTest(symbols=symbols):
+                outputs = theme.compile_theme(theme.SOURCE, "sage", symbols)
+                self.assertEqual(set(outputs), {p.name for p in (theme.SOURCE / "generated").iterdir()})
+                self.assertEqual(outputs, theme.compile_theme(theme.SOURCE, "sage", symbols))
+                resolved = json.loads(outputs["colors.json"])
+                self.assertEqual(resolved["theme"], "sage")
+                self.assertEqual(resolved["symbols"], symbols)
+                self.assertEqual(len(resolved["ansi"]), 16)
+                colors = resolved["roles"]
+                self.assertEqual(colors["surface"], "#1D2924")
+                self.assertEqual(colors["accent"], "#ACC8B7")
+                self.assertEqual(colors["focus"], "#C4B2D9")
+                self.assertEqual(colors["diff.add"], colors["status.success"])
+                self.assertEqual(colors["diff.delete"], colors["status.error"])
+                self.assertEqual(colors["git.file.staged"], colors["status.success"])
+                self.assertEqual(colors["git.file.modified"], colors["status.warning"])
+                self.assertEqual(colors["git.file.deleted"], colors["status.error"])
+                self.assertEqual(colors["tab.active.bg"], colors["focus"])
+                self.assertEqual(len({colors[r] for r in ("accent", "focus", "status.success",
+                                                          "status.warning", "status.error",
+                                                          "status.info", "status.attention")}), 7)
+                for background in ("surface", "surface.raised", "surface.selected"):
+                    for foreground in ("text", "text.strong", "text.muted", "accent",
+                                       "accent.secondary", "focus", "status.success",
+                                       "status.warning", "status.error", "status.info",
+                                       "status.attention", "status.idle",
+                                       *(r for r in colors if r.startswith("syntax."))):
+                        with self.subTest(background=background, foreground=foreground):
+                            self.assertGreaterEqual(contrast(colors[background], colors[foreground]), 4.5)
+                self.assertGreaterEqual(contrast(colors["tab.active.bg"], colors["tab.active.fg"]), 4.5)
+
     def test_invalid_definitions(self):
         base = theme.read(theme.SOURCE / "themes/nord.json")
         for changes in ({"accent": {"ansi": 16}}, {"accent": {"ansi": True}}, {"accent": "@missing"}, {"accent": "@accent"}, {"accent": "#123456"}, {"accent": {"mix": ["@surface", "@text"], "amount": 2}}):

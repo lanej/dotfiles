@@ -1,0 +1,74 @@
+---
+interface Preset {
+  name: string;
+  palette: Record<string, string>;
+  roles: Record<string, string>;
+}
+const definitions = import.meta.glob<Preset>('../../../design-system/themes/*.json', { eager: true, import: 'default' });
+const roles = ['surface', 'surface.raised', 'surface.selected', 'text', 'text.strong', 'text.muted',
+  'accent', 'focus', 'syntax.comment', 'syntax.keyword', 'syntax.function', 'syntax.type',
+  'syntax.string', 'status.success', 'status.warning', 'status.error', 'status.attention'];
+const presets = ['nord', 'sage'].map(name => {
+  const definition = definitions[`../../../design-system/themes/${name}.json`];
+  if (!definition) throw new Error(`Unknown comparison preset: ${name}`);
+  const style = Object.fromEntries(roles.map(role => {
+    const color = definition.palette[definition.roles[role]?.slice(1)];
+    if (!color) throw new Error(`Missing comparison palette color: ${name}/${role}`);
+    return [`--preview-${role.replaceAll('.', '-')}`, color];
+  }));
+  return { name, style };
+});
+---
+
+<div class="comparison">
+  {presets.map(({ name, style }) => (
+    <figure style={style} data-preset-preview={name}>
+      <figcaption>{name === 'nord' ? 'Nord · baseline' : 'Sage · candidate'}</figcaption>
+      <div class="tabs"><span class="active">1 studio</span><span>2 editor</span><span>3 shell</span></div>
+      <div class="terminal">
+        <div class="path">producer / task.rs</div>
+        <div class="source">
+          <div class="comment">// Validate before publish</div>
+          <div><span class="keyword">fn</span> <span class="function">publish</span>(task: <span class="type">Task</span>) {'{'}</div>
+          <div class="selected">  <span class="keyword">if</span> task.<span class="function">ready</span>() {'{'}</div>
+          <div>    <span class="function">emit</span>(<span class="string">"ready"</span>);</div>
+          <div>{'  }'}</div>
+          <div>{'}'}</div>
+        </div>
+        <div class="states">
+          <span class="success">✓ Passed</span><span class="warning">△ Pending</span>
+          <span class="error">× <span>Failed</span></span>
+          <span class="attention">! Review</span>
+        </div>
+        <div class="diff"><span class="success">+ new task</span><span class="error">− old task</span></div>
+      </div>
+      <div class="footer"><span>NORMAL</span><span>task.rs</span></div>
+    </figure>
+  ))}
+</div>
+
+<style>
+  .comparison { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: 1rem; }
+  figure { margin: 0; min-width: 0; background-color: var(--preview-surface); color: var(--preview-text); font: .8125rem/1.55 ui-monospace, monospace; border: 1px solid var(--preview-surface-selected); border-radius: .375rem; overflow: hidden; }
+  figcaption { padding: .65rem .75rem; color: var(--preview-accent); font-weight: 600; }
+  .tabs, .footer { display: flex; gap: .5rem; align-items: center; margin: 0; background: var(--preview-surface-raised); color: var(--preview-text-muted); }
+  .tabs span, .footer span { padding: .25rem .5rem; }
+  .active { color: var(--preview-surface); background: var(--preview-focus); font-weight: 600; }
+  .terminal { padding: .75rem; margin: 0; }
+  .path { color: var(--preview-accent); }
+  .source { overflow-x: auto; white-space: pre; padding-block: .5rem; }
+  .source div { margin: 0; min-width: max-content; }
+  .selected { background: var(--preview-surface-selected); color: var(--preview-text-strong); }
+  .comment { color: var(--preview-syntax-comment); }
+  .keyword { color: var(--preview-syntax-keyword); }
+  .function { color: var(--preview-syntax-function); }
+  .type { color: var(--preview-syntax-type); }
+  .string { color: var(--preview-syntax-string); }
+  .states, .diff { display: flex; flex-wrap: wrap; gap: .35rem .8rem; border-top: 1px solid var(--preview-surface-selected); padding-block: .5rem; margin: 0; }
+  .success { color: var(--preview-status-success); }
+  .warning { color: var(--preview-status-warning); }
+  .error { color: var(--preview-status-error); }
+  .attention { color: var(--preview-status-attention); }
+  .footer { justify-content: space-between; color: var(--preview-text); }
+  .footer span:first-child { background: var(--preview-accent); color: var(--preview-surface); font-weight: 600; }
+</style>

@@ -23,6 +23,7 @@ const pages = [
   { file: 'docs/components.mdx', slug: 'components' },
   { file: 'docs/design-system.mdx', slug: 'design-system' },
   { file: 'docs/design-system/nord.mdx', slug: 'design-system/nord' },
+  { file: 'docs/design-system/sage.mdx', slug: 'design-system/sage' },
   { file: 'docs/terminal-workflows.mdx', slug: 'terminal' },
   { file: 'docs/intent-ssh.md', slug: 'reference/intent-ssh', title: 'Mac approval over SSH' },
   { file: 'docs/keylease-ssh.md', slug: 'reference/keylease-ssh', title: 'Keylease and SSH approval' },

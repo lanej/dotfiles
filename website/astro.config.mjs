@@ -56,7 +56,7 @@ export default defineConfig({
       { label: 'Reference', items: [
         { label: 'Design system', items: [
           { label: 'Tokens and components', slug: 'design-system' },
-          { label: 'Presets', items: [{ label: 'Nord preset', slug: 'design-system/nord' }] },
+          { label: 'Presets', items: [{ label: 'Nord preset', slug: 'design-system/nord' }, { label: 'Sage preset', slug: 'design-system/sage' }] },
         ] },
         { label: 'Components', slug: 'components' },
         { label: 'Builder', slug: 'reference/builder' },

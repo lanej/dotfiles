@@ -63,3 +63,19 @@ test('Nord is documented as a preset with its own palette and native captures', 
   await page.locator('#preset-palette').scrollIntoViewIfNeeded();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
+
+test('Sage is discoverable and compares both presets without changing the default', async ({ page }) => {
+  await page.goto('./design-system/');
+  await page.getByRole('link', { name: 'Sage preset', exact: true }).first().click();
+  await expect(page).toHaveURL(/\/design-system\/sage\/$/);
+  await expect(page.getByRole('heading', { name: 'Sage preset', exact: true })).toBeVisible();
+  await expect(page.locator('#preset-palette')).toContainText('#ACC8B7');
+  const sage = page.locator('[data-preset-preview="sage"]');
+  const nord = page.locator('[data-preset-preview="nord"]');
+  await expect(sage).toHaveCSS('background-color', 'rgb(29, 41, 36)');
+  await expect(nord).toHaveCSS('background-color', 'rgb(46, 52, 64)');
+  await expect(sage.getByText('Failed', { exact: true })).toHaveCSS('color', 'rgb(230, 154, 160)');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await sage.scrollIntoViewIfNeeded();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
