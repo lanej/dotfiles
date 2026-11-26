@@ -10,6 +10,8 @@ on:
       - 'scripts/build-zellij-helpers.sh'
       - 'scripts/make/config.sh'
       - 'scripts/test-kitty-image-preview.py'
+      - 'scripts/test-kitty-hint-review.py'
+      - 'scripts/fixtures/kitty-hint-review.py'
       - 'scripts/test-kitty-last-url.py'
       - 'scripts/test-zellij-file-hints.py'
       - 'scripts/test-zellij.py'
@@ -55,6 +57,8 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y xvfb xauth xdotool libgl1-mesa-dri libxcb-xkb1 libxkbcommon-x11-0 libxcursor1 fzf file
           python -m pip install Pillow
+      - name: Capture representative normal and URL hint modes
+        run: xvfb-run -a -s "-screen 0 1280x900x24" env LIBGL_ALWAYS_SOFTWARE=1 KITTY_HINT_ARTIFACTS="$RUNNER_TEMP/kitty-hint-artifacts" python scripts/test-kitty-hint-review.py
       - run: make zellij-helpers
       - run: make test-kitty-last-url
       - run: python scripts/test-zellij-file-hints.py

@@ -164,8 +164,9 @@ def raw_url_marks(rows, wrapped):
         target = scratch.current_url_text()
         if not target:
             continue
-        mask = scratch.current_selections()
-        cells = tuple((i % width, i // width) for i, flags in enumerate(mask[:width * height]) if flags & 2)
+        # Pixel scrolling adds a leading render-only row; our snapshot uses visual rows.
+        mask = scratch.current_selections()[-width * height:]
+        cells = tuple((i % width, i // width) for i, flags in enumerate(mask) if flags & 2)
         if not cells or cells in seen:
             continue
         seen.add(cells)
