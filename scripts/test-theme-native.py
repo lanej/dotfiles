@@ -269,6 +269,52 @@ def run(surface, work, env, plugins, *, raw_path=None):
             raw_path.write_text(text)
         return ansi_cells(text, columns, lines, review=review)
 
+    if "-code-" in surface:
+        if not review:
+            raise ValueError("language captures require --review-dir")
+        app, language = surface.split("-code-", 1)
+        policy = tomllib.loads(review_contract.CONTRACT.read_text())
+        fixture = policy["languages"][language]
+        source = ROOT / fixture["file"]
+        if app == "neovim":
+            script = work / "language-review.lua"
+            script.write_text('''
+vim.opt.number = true
+vim.opt.cursorline = true
+vim.opt.signcolumn = "yes"
+vim.opt.laststatus = 2
+vim.opt.statusline = "%t %=%y"
+vim.opt.showmode = false
+vim.opt.ruler = false
+vim.opt.tabstop = 4
+local ns = vim.api.nvim_create_namespace("language-review")
+vim.diagnostic.config({virtual_text = {current_line = false, prefix = "·"},
+  signs = {text = {[vim.diagnostic.severity.WARN] = "!"}}})
+vim.diagnostic.set(ns, 0, {{lnum = 0, col = 0,
+  severity = vim.diagnostic.severity.WARN, message = "Review retry policy"}})
+vim.api.nvim_win_set_cursor(0, {4, 0})
+''')
+            command = ["nvim", "-u", "NONE", "-i", "NONE", "-n",
+                       "--cmd", "set rtp^=" + str(ROOT / "nvim"),
+                       "-c", "colorscheme dotfiles", "-c", "syntax on",
+                       "-c", "set filetype=" + fixture["filetype"],
+                       str(source), "-c", "luafile " + str(script)]
+            anchors = policy["surfaces"][surface]["anchors"]
+            return terminal(command, env, lambda screen: all(
+                anchor in "\n".join(screen.display) for anchor in anchors),
+                columns=112, lines=24, capture_lines=24, raw_path=raw_path)
+        if app == "bat":
+            marker = work / "language-bat-cache-ready"
+            if not marker.exists():
+                subprocess.run(["bat", "cache", "--build"], env=env, check=True, capture_output=True)
+                marker.touch()
+            command = ["bat", "--theme=Dotfiles", "--color=always", "--paging=never",
+                       "--style=numbers,header,grid", "--terminal-width=112",
+                       "--language=" + fixture["bat_language"], str(source)]
+            output = subprocess.check_output(command, env=env, text=True)
+            return observed_ansi(output, columns=112, lines=max(24, len(output.splitlines()) + 1))
+        raise ValueError(surface)
+
     if surface == "neovim":
         return neovim(work, env, plugins)
     if surface == "neovim-frame":
@@ -519,7 +565,10 @@ return retries
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--surface", action="append", choices=["kitty", "neovim", "neovim-frame", "zellij", "tmux", "cli", "fzf", "bat", "delta", "glow", "bottom"])
+    base_surfaces = ["kitty", "neovim", "neovim-frame", "zellij", "tmux", "cli", "fzf", "bat", "delta", "glow", "bottom"]
+    parser.add_argument("--surface", action="append")
+    parser.add_argument("--profile", choices=("theme", "zellij"),
+                        help="Capture every required surface in a native review profile")
     parser.add_argument("--plugins-dir", type=Path, default=Path.home() / ".local/share/nvim/lazy")
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--record", action="store_true", help="Explicitly replace observed baselines; inspect changes before accepting them")
@@ -540,7 +589,17 @@ def main():
                 "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip() if args.review_dir else None,
                 "run_id": os.environ.get("GITHUB_RUN_ID"), "mode": "native-review", "surfaces": {}}
     failures = []
-    surfaces = args.surface or ["kitty", "neovim", "neovim-frame", "zellij", "tmux", "cli", "fzf", "bat", "delta", "glow", "bottom"]
+    if args.profile and (not args.review_dir or args.surface):
+        parser.error("--profile requires --review-dir and cannot be combined with --surface")
+    if args.review_dir:
+        policy = tomllib.loads(review_contract.CONTRACT.read_text())
+        allowed = set(base_surfaces) | set(policy["surfaces"])
+        surfaces = policy["profiles"][args.profile] if args.profile else (args.surface or base_surfaces)
+    else:
+        allowed = set(base_surfaces)
+        surfaces = args.surface or base_surfaces
+    if any(surface not in allowed for surface in surfaces):
+        parser.error("unknown surface or language capture outside review mode")
     if args.review_dir:
         if len(set(surfaces)) != len(surfaces):
             parser.error("review surfaces must be unique")

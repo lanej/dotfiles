@@ -107,7 +107,7 @@ def audit_capture(surface, rows, theme, policy):
             if any(ch == "\ufffd" or (unicodedata.category(ch) == "Co" and ch not in DECORATIVE_JOINS and ch not in GLYPH_PATHS) for ch in data):
                 glyphs.append({"row": y+1, "column": x+1, "glyph": data})
             # These transitions and Neovim's empty-line tildes convey no state.
-            if data in DECORATIVE_JOINS or (surface == "neovim-frame" and lines[y].strip() == "~"):
+            if data in DECORATIVE_JOINS or ((surface == "neovim-frame" or surface.startswith("neovim-code-")) and lines[y].strip() == "~"):
                 counts["decorative"] += 1
                 continue
             kind = "indicator" if all(0x2500 <= ord(ch) <= 0x259f or 0x2800 <= ord(ch) <= 0x28ff or ch == "⋮" for ch in data) else "text"
@@ -214,7 +214,27 @@ def audit_capture(surface, rows, theme, policy):
                                       "bg": inks[y][x][1], "bold": rows[y][x].get("bold", False)}
                                      for x in region]})
 
-    handlers = {"dense-selection": dense_selection, "tab-strip": tab_strip,
+    def syntax_diversity(primitive):
+        # Measure source anchors, not status line, gutter or diagnostics.
+        colors = set()
+        observed = []
+        for anchor in primitive["anchors"]:
+            for y, row in enumerate(rows):
+                bounds = span(row, anchor)
+                if bounds is None:
+                    continue
+                for x in range(*bounds):
+                    if row[x]["data"].strip():
+                        colors.add(inks[y][x][0])
+                observed.append({"anchor": anchor, "row": y+1})
+                break
+        check(surface + ".syntax-diversity",
+              len(colors) >= primitive["minimum_colors"],
+              {"minimum_colors": primitive["minimum_colors"]},
+              {"colors": sorted(colors), "anchors": observed})
+
+    handlers = {"syntax-diversity": syntax_diversity,
+                "dense-selection": dense_selection, "tab-strip": tab_strip,
                 "marked-selection": marked_selection, "change-markers": change_markers,
                 "plain-heading": plain_heading}
     for primitive in rules.get("primitives", []):

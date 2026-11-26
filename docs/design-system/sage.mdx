@@ -19,13 +19,13 @@ The same composition uses each preset's input colors. This is an illustrative HT
 
 The selected Midnight treatment uses the website’s exact near-black canvas (`#0D1513`), a raised surface (`#17231E`), and a selected surface (`#26352D`). The three surface colors stay fixed after variant selection; the contrast review refines the border, error and subtle-text tones. Pale sage identifies headings, links and navigation. Lavender identifies focus; a blue/cyan, sand and lichen syntax palette maintains distinctions between keywords, functions, types and strings. Success uses yellow-green, warnings amber, errors a more saturated rose (`#F18C96`), and attention copper. ANSI slots retain their conventional semantic families.
 
-The [preset input](../../design-system/themes/sage.toml) defines the base palette and role assignments. Shared presentation defaults and ANSI-derived Git roles are inherited. Sage overrides emphasized add/delete diff tinting from 30% to 20%; ordinary diffs retain 16% tinting. Ordinary foreground roles, including comments and diagnostics, target at least 4.5:1 contrast on the solid base, raised and selected surfaces. Regression tests also require 3:1 for borders on the three solid surfaces and 4.5:1 for syntax/error foregrounds on diff backgrounds. The native contrast contract also tests 4.5:1 for dim Git file counts and inactive labels, and 3:1 for staged/branch gutter symbols. Transparent compositing remains a separate native review.
+The [preset input](../../design-system/themes/sage.json) defines the base palette and role assignments. Shared presentation defaults and ANSI-derived Git roles are inherited. Sage overrides emphasized add/delete diff tinting from 30% to 20%; ordinary diffs retain 16% tinting. Ordinary foreground roles, including comments and diagnostics, target at least 4.5:1 contrast on the solid base, raised and selected surfaces. Regression tests also require 3:1 for borders on the three solid surfaces and 4.5:1 for syntax/error foregrounds on diff backgrounds. The native contrast contract also tests 4.5:1 for dim Git file counts and inactive labels, and 3:1 for staged/branch gutter symbols. Transparent compositing remains a separate native review.
 
 <PresetPalette preset="sage" />
 
 ## Semantic states
 
-The [candidate state vocabulary](../../design-system/semantic-states.toml) separates configuration, log severity, execution, system health, interaction, connectivity, data freshness/validity, and access/approval. It defines 39 stable tokens across eight families. The same color can express related emphasis across families without making the states interchangeable. The previews show labels and glyphs, not color alone.
+The [candidate state vocabulary](../../design-system/semantic-states.json) separates configuration, log severity, execution, system health, interaction, connectivity, data freshness/validity, and access/approval. It defines 39 stable tokens across eight families. The same color can express related emphasis across families without making the states interchangeable. The previews show labels and glyphs, not color alone.
 
 On uses the primary sage accent; off and trace use the new subtle text tone (`#909F95`), which is darker than debug (`#A3B1A7`) while retaining at least 4.5:1 contrast on selected rows. The proposed state vocabulary falls back to muted text for presets without the subtle role. Info and running share cyan, warning and blocked share amber, attention uses copper, and failed or unavailable use rose. Fatal adds weight rather than a new color. A canceled task or unknown service observation is neutral.
 
@@ -53,7 +53,7 @@ python3 scripts/theme.py --theme sage --output-dir /tmp/sage-preset --check
 DOTFILES_THEME_DIR=/tmp/sage-preset bin/dotfiles-theme --color=always
 ```
 
-For a full local trial, select `"theme": "sage"` in [preset selection](../../design-system/config.toml), run `make theme-generate` and follow the [configuration and reload instructions](../design-system.mdx#generate-configure-and-reload). Restore Nord by selecting `"theme": "nord"` and regenerating/reloading. An isolated output alone does not switch every running application.
+For a full local trial, select `"theme": "sage"` in [preset selection](../../design-system/config.json), run `make theme-generate` and follow the [configuration and reload instructions](../design-system.mdx#generate-configure-and-reload). Restore Nord by selecting `"theme": "nord"` and regenerating/reloading. An isolated output alone does not switch every running application.
 
 ## Native review
 
@@ -92,3 +92,7 @@ python3 scripts/theme_review_contract.py --verify-dir /tmp/theme-review/sage \
 Add `--gallery-dir docs/design-system/review/sage/native` to require all published images in that profile to match the captured SVG bytes. After a complete passing run, `--export-gallery docs/design-system/review/sage/native` copies the exact verified SVGs; it refuses to publish an incomplete or failing profile. Do not edit, recolor, or omit a defective capture to make it pass. Fix the underlying adapter or fixture and replace the image from verified evidence. Changes to acceptance thresholds are design changes and require review, not automatic baseline updates.
 
 Passing the contract does **not** approve the design. The evidence is reconstructed from terminal cells, not an OS-level screenshot; font rasterization, opacity, real terminal behavior and subjective composition still require an independent visual sign-off. A structured observation without pixels is marked not-visual. Approval remains pending even when all automated checks pass.
+
+### Language syntax evidence
+
+The theme review profile requires separate native Neovim and bat captures for Rust, Go, TypeScript, Python, Ruby, Lua, Bash, JSON and TOML, using the same checked-in sources. Each verifies representative source anchors, readable observed cells and a minimum of three distinct foreground colors across source anchors; Neovim also includes an injected warning diagnostic. Each surface produces its own raw output, grid, SVG and audit. Missing or monochrome samples fail the Sage profile. The original regression baselines remain unchanged. Use `--profile theme` with `--review-dir` to capture the entire profile, or `--surface neovim-code-rust` for a single sample.

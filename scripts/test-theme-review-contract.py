@@ -113,6 +113,22 @@ class NativeReviewContractTests(unittest.TestCase):
             cell.update(fg="d7dfd9", bg="0d1513", bold=False)
         self.assertIn("zellij.plain-heading", failures(report("zellij", specimen)))
 
+    def test_language_profile_and_monochrome_negative_control(self):
+        self.assertEqual(len(POLICY["languages"]), 9)
+        for language, fixture in POLICY["languages"].items():
+            self.assertTrue((review.ROOT / fixture["file"]).is_file())
+            for app in ("neovim", "bat"):
+                surface = f"{app}-code-{language}"
+                self.assertIn(surface, POLICY["profiles"]["theme"])
+                self.assertIn(surface, POLICY["surfaces"])
+        surface = "bat-code-rust"
+        anchors = POLICY["surfaces"][surface]["anchors"]
+        specimen = [row(anchor) for anchor in anchors]
+        self.assertIn(surface + ".syntax-diversity", failures(report(surface, specimen)))
+        for i, color in enumerate(("#95B5D3", "#8CC5CC", "#B7CB91"), start=1):
+            paint(specimen[i], anchors[i], color, "#0D1513")
+        self.assertEqual(report(surface, specimen)["status"], "pass")
+
     def test_primitives_are_reusable_and_fail_closed(self):
         policy = copy.deepcopy(POLICY)
         policy["surfaces"]["process-table"] = copy.deepcopy(policy["surfaces"]["bottom"])
