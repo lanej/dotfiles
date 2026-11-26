@@ -1,6 +1,6 @@
 """Styled, read-only hint overlay. Routing stays in select_hint.py."""
 import colorsys
-import json
+import marshal
 import os
 import re
 import sys
@@ -131,6 +131,17 @@ def dimmed(fg, bg, minimum=4.5):
         else:
             lo = mid
     return best
+
+def encode_snapshot(model):
+    # Only locally constructed primitive data crosses this pipe, and both
+    # processes use the same pinned Kitty/Python runtime. Avoid JSON's decimal
+    # conversion, repeated escaping, and text decoding.
+    return marshal.dumps(model)
+
+
+def decode_snapshot(data):
+    return marshal.loads(data, allow_code=False)
+
 
 def source_snapshot(screen, rows):
     """Read Kitty's resolved cell attributes, not a stripped ANSI transcript."""
@@ -375,10 +386,9 @@ def render(model, prefix="", cols=None, rows=None, *, changed_rows=None):
                 deco = deco or 1
                 deco_fg = readable(palette["accent"], bg, 3.0)
             else:
-                # Invisible blanks do not need a contrast search. Underlined
-                # spaces and other visible decorations still do.
-                if char != " " or deco or flags & 4:
-                    fg = dimmed(fg, bg)
+                # Keep blank cells in the same style runs as surrounding text;
+                # skipping them creates excessive SGR transitions.
+                fg = dimmed(fg, bg)
                 if deco:
                     deco_fg = dimmed(deco_fg, bg, 3.0)
             if mark != last_mark:
@@ -496,7 +506,7 @@ class HintOverlay(Handler):
 
 
 def main(args):
-    model = json.load(sys.stdin)
+    model = decode_snapshot(sys.stdin.buffer.read())
     if not model["marks"]:
         return {}
     handler = HintOverlay(model)

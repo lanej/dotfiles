@@ -37,7 +37,7 @@ def check_image_hints(root):
     calls = []
 
     def run_picker(name, args, **kwargs):
-        model = json.loads(kwargs["input_data"])
+        model = styling.decode_snapshot(kwargs["input_data"])
         calls.append((name, SimpleNamespace(type=model["type"]), args, kwargs))
         return None
 
@@ -48,7 +48,7 @@ def check_image_hints(root):
     for kind in ("hyperlink", "url"):
         picker.show_hints(boss, source, kind)
         name, options, extra, kwargs = calls[-1]
-        model = json.loads(kwargs["input_data"])
+        model = styling.decode_snapshot(kwargs["input_data"])
         palette = model["palette"]
         if (name != "hint_overlay.py" or options.type != kind or extra
                 or kwargs["window"] is not source
@@ -280,7 +280,7 @@ def check_image_hints(root):
                 raise AssertionError("A build error must remain visible without a hint overlay")
         else:
             callback(17)
-            if removed != [17] or json.loads(calls[-1][3]["input_data"])["type"] != "hyperlink":
+            if removed != [17] or styling.decode_snapshot(calls[-1][3]["input_data"])["type"] != "hyperlink":
                 raise AssertionError("Unmanaged sessions lost the original five-second fallback")
 
     parse_bytes(source.screen, b"\x1b[2J\x1b[Hhttps://example.org/release")

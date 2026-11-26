@@ -6,6 +6,7 @@ from pathlib import Path
 import platform
 import runpy
 import signal
+import socket as unix_socket
 import statistics
 import subprocess
 import sys
@@ -96,8 +97,10 @@ def micro():
             model, b = clock(lambda: overlay.source_snapshot(screen, source))
             model["marks"], c = clock(lambda: overlay.raw_url_marks(source, model["wrapped"]))
             model["type"] = "url"
-            payload, d = clock(lambda: json.dumps(model))
-            loaded, e = clock(lambda: json.loads(payload))
+            encode = getattr(overlay, "encode_snapshot", json.dumps)
+            decode = getattr(overlay, "decode_snapshot", json.loads)
+            payload, d = clock(lambda: encode(model))
+            loaded, e = clock(lambda: decode(payload))
             if hasattr(overlay, "FrameRenderer"):
                 renderer, init = clock(lambda: overlay.FrameRenderer(loaded))
                 frame, f = clock(renderer.draw)
@@ -111,7 +114,7 @@ def micro():
             _, g = clock(lambda: renderer.draw(prefix) if renderer and prefix else overlay.render(loaded, prefix))
             for key, v in zip(timings, (a, b, c, d, e, f, g, a+b+c+d+e+f)):
                 timings[key].append(v)
-            size, output_size, actual_links = len(payload.encode()), len(frame.encode()), len(loaded["marks"])
+            size, output_size, actual_links = len(payload.encode() if isinstance(payload, str) else payload), len(frame.encode()), len(loaded["marks"])
         report({"kind":"micro","implementation":implementation,"case":name,"cols":cols,"rows":rows,"links":actual_links,
                 "expected_links":links,"snapshot_bytes":size,"frame_bytes":output_size,
                 "timings":{k:summarize(v) for k,v in timings.items()}})
@@ -142,8 +145,32 @@ def gui():
                 return subprocess.check_output(args, env=env, text=True,
                                                stderr=subprocess.DEVNULL, timeout=5)
 
-            def remote(*args):
-                return run("kitten", "@", "--to", socket, *args)
+            def remote(cmd, *args):
+                # Use Kitty's actual socket protocol, not a new CLI process on
+                # every observation. This removes tens of ms of measurement
+                # overhead without changing the picker itself.
+                payload = {}
+                if cmd == "get-text":
+                    payload = {"extent": "screen", "ansi": "--ansi" in args}
+                    if "--match" in args:
+                        payload["match"] = args[args.index("--match") + 1]
+                request = {"cmd": cmd, "version": [0, 50, 0], "payload": payload}
+                with unix_socket.socket(unix_socket.AF_UNIX, unix_socket.SOCK_STREAM) as client:
+                    client.settimeout(2)
+                    client.connect(socket.removeprefix("unix:"))
+                    client.sendall(b"\x1bP@kitty-cmd" + json.dumps(request).encode("ascii") + b"\x1b\\")
+                    client.shutdown(unix_socket.SHUT_WR)
+                    parts = []
+                    while chunk := client.recv(65536):
+                        parts.append(chunk)
+                raw = b"".join(parts)
+                match = re.search(rb"\x1bP@kitty-cmd([^\x1b]+)\x1b\\", raw)
+                if not match:
+                    raise ValueError("No remote-control response")
+                response = json.loads(match[1])
+                if not response.get("ok"):
+                    raise ValueError(response.get("error", "Kitty request failed"))
+                return response.get("data", "")
 
             def ready(predicate, name):
                 deadline = time.monotonic() + 10

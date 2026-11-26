@@ -10,7 +10,7 @@ from kittens.hints.main import handle_result as open_native_hint
 from kittens.tui.handler import result_handler
 from kitty.fast_data_types import add_timer, remove_timer
 
-from hint_overlay import hyperlink_marks, raw_url_marks, source_snapshot
+from hint_overlay import encode_snapshot, hyperlink_marks, raw_url_marks, source_snapshot
 
 
 EXT = r"\.(?:png|jpe?g|webp|gif|bmp|tiff?|avif|ico|svg|heic|jxl)"
@@ -206,7 +206,7 @@ def show_hints(boss, window, hint_type="hyperlink", *, rows=None, snapshot=None,
                 open_native_hint([], data, window_id, current_boss)
         kwargs["custom_callback"] = selected
     return boss.run_kitten_with_metadata(
-        "hint_overlay.py", (), window=window, input_data=json.dumps(snapshot), **kwargs)
+        "hint_overlay.py", (), window=window, input_data=encode_snapshot(snapshot), **kwargs)
 
 
 def at_cursor(window):
