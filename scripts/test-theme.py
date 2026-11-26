@@ -235,6 +235,9 @@ class ThemeTests(unittest.TestCase):
         self.assertEqual(len(mapping), 38)
         self.assertEqual(mapping["interaction", "focused"], "focus")
         self.assertEqual(mapping["interaction", "selected"], "accent")
+        connecting = next(s for g in groups if g["id"] == "connectivity"
+                          for s in g["states"] if s["id"] == "connecting")
+        self.assertEqual((connecting["glyph"], connecting["ascii"]), ("◐", "~"))
         self.assertEqual(mapping["connectivity", "connected"], "accent.secondary")
         self.assertEqual(mapping["connectivity", "lost"], "status.error")
         self.assertEqual(mapping["data", "missing"], "text.muted")

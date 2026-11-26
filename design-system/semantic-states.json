@@ -273,8 +273,8 @@
       {
         "id": "connecting",
         "label": "CONNECTING",
-        "glyph": "›",
-        "ascii": ">",
+        "glyph": "◐",
+        "ascii": "~",
         "role": "status.info",
         "description": "Establishing a connection; no success implied.",
         "example": "Remote agent"

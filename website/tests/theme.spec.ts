@@ -126,6 +126,7 @@ test('Sage exposes all semantic token families with distinct meanings', async ({
   await expect(catalog.locator('[data-semantic-state="severity.fatal"] .state-label')).toHaveCSS('font-weight', '700');
   await expect(catalog.locator('[data-semantic-state="access.approval"] .state-label')).toHaveCSS('font-weight', '700');
   await expect(catalog.getByText('connectivity.connected', { exact: true })).toBeVisible();
+  await expect(catalog.locator('[data-semantic-state="connectivity.connecting"] .glyph')).toHaveText('◐');
   await expect(catalog.locator('[data-semantic-state="configuration.off"]')).toHaveCSS('box-shadow', 'rgb(172, 200, 183) 3px 0px 0px 0px inset');
   await page.setViewportSize({ width: 390, height: 844 });
   await catalog.scrollIntoViewIfNeeded();
