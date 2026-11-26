@@ -1122,6 +1122,18 @@ chmod +x "$HOME/.local/bin/worktree"
         self.assertEqual(terminal["activation"], "deferred")
         self.assertEqual(terminal["steps"], ["pull", "inventory"])
 
+    def test_copydesk_skips_a_machine_with_neovim_disabled(self):
+        machine = self.base / "machine.toml"
+        machine.write_text("[tools]\nneovim = false\n")
+        data = self.base / "editor-data"
+        env = {**self.env, "DOTFILES_CONFIG": str(machine), "XDG_DATA_HOME": str(data)}
+        for action in ("build", "verify"):
+            result = subprocess.run([sys.executable, str(COMMAND), action, "copydesk"],
+                                    env=env, text=True, capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(result.stdout)[0]["outcome"], "ok")
+        self.assertFalse(data.exists(), "Disabled Neovim still created editor data")
+
     def test_dotfiles_install_clones_and_preserves_both_tools(self):
         for project, directory in (("intent", "intent"), ("keylease", "1password-agent")):
             with self.subTest(project=project):
