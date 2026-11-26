@@ -7,7 +7,7 @@ description: Evaluate execution evidence against a saved Socrates specification 
 
 Read [the shared evidence and session contract](../socrates/references/dialogue.txt). Resolve the explicitly supplied spec/session or the bound session without starting its interview. For an execution artifact, require its explicit session/version reference; ask when that association is ambiguous rather than choosing the newest nearby spec.
 
-Read the specification, decision record, relevant critique dispositions, approved plan, and execution evidence. Record the specification version and exact artifact or commit being verified. Old plans, reviews, or results establish only the version/content they actually covered; inspect relevance after reopening. Do not migrate or rewrite the spec during verification.
+Read the specification, decision record, relevant critique dispositions, approved plan, and execution evidence. Record the specification version, approved plan revision when known, and exact artifact or commit being verified. Old plans, reviews, or results establish only the version and content they covered. Where legacy records lack a plan revision, use them only when the association can be established from the evidence. Do not migrate or rewrite the spec during verification.
 
 Evaluate:
 
@@ -26,6 +26,8 @@ Classify the overall result:
 | `UNVERIFIABLE` | Available evidence cannot establish the required acceptance outcomes. |
 | `FAILED` | Evidence establishes a violated acceptance criterion, authority boundary, blocking decision, or defined failure signal. |
 
-Write `verification.md` beside the spec, preserving an existing report in a unique timestamped `history/` file. Include specification version, verified target, classification, per-criterion evidence, regression results, feedback usage, decisions/readiness, failure signals, false-positive risks, and residual uncertainty as applicable. Distinguish local checks, hosted CI, delivery, and live acceptance when relevant. Set the spec to `Verified` only when the matching current version earns `VERIFIED` and writes are permitted; preserve its frozen decisions. Other results do not advance lifecycle state.
+Write `verification.md` beside the spec, preserving an existing report in a unique timestamped `history/` file. Include the specification version and plan revision when available, verified target, classification, per-criterion evidence, regression results, feedback usage, decisions/readiness, failure signals, false-positive risks, and residual uncertainty as applicable. Distinguish local checks, hosted CI, delivery, and live acceptance when relevant. Set the spec to `Verified` only when the evidence matches the current specification and applicable approved plan, the result earns `VERIFIED`, and writes are permitted. Preserve its frozen decisions. Other results do not advance lifecycle state.
+
+Record the classification and a link to `verification.md` in `progress.md` when the report covers the active spec and plan. For incomplete verification, keep the next required check or blocker visible.
 
 Missing evidence is unknown, not success. Do not redefine success, weaken requirements, manufacture acceptance, or reopen settled questions just to fill the report. State unavailable review or execution capabilities. When writes are restricted, return findings inline and identify unsaved artifacts.

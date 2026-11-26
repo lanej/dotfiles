@@ -12,6 +12,8 @@ Read [the skill-maintenance policy](skill-maintenance.md) before changing instru
 
 The `.claude/settings.json` source is tracked. The `claude-settings` Git clean filter configured by `make claude-config` removes bookkeeping keys such as `feedbackSurveyState`. Preserve unrelated local entries. Codex MCP configuration is manually curated; do not import or re-enable servers as a side effect.
 
+`make codex-config` enables structured questions in Default mode when the installed Codex CLI advertises the `default_mode_request_user_input` feature. This feature is under development. To opt out across setup runs, set `default_mode_request_user_input = false` under `[features]` in `~/.codex/config.toml` or `$CODEX_HOME/config.toml` if configured. Setup preserves explicit values. Start a fresh Codex session to load the setting.
+
 ## Dotfiles as a source-code project
 
 `source-code.toml` declares this repository’s beta, owned tool profile with new-surface adoption. `AGENTS.override.md` routes to the authored repository instructions and the installed `.agents/source-code.md` policy. Codex reads `.agents/skills/`; Claude uses repository-local `.claude/skills/` links to those same packages. These project instructions are distinct from the workstation sources this repository distributes.

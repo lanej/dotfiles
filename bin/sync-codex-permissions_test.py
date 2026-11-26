@@ -1,13 +1,54 @@
-"""Focused installation and native-policy checks for Octo command allowances."""
+"""Focused checks for Codex defaults and native Octo command policy."""
 import json
 import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tomllib
+
+import pytest
 
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+@pytest.mark.parametrize(
+    ("stage", "configured", "expected"),
+    [
+        ("under development", None, True),
+        ("under development", False, False),
+        ("removed", None, None),
+        (None, None, None),
+    ],
+    ids=("supported", "opt-out", "removed", "unlaunchable"),
+)
+def test_structured_question_default_respects_client_and_config(tmp_path, stage, configured, expected):
+    tools = tmp_path / "bin"
+    tools.mkdir()
+    codex = tools / "codex"
+    if stage is None:
+        codex.write_text("Invalid executable\n")
+    else:
+        codex.write_text(
+            '#!/bin/sh\n[ "$*" = "features list" ] && [ -d "$CODEX_HOME" ] || exit 1\n'
+            f"printf '%s\\n' 'default_mode_request_user_input  {stage}  false'\n"
+        )
+    codex.chmod(0o755)
+    codex_home = tmp_path / "codex"
+    config = codex_home / "config.toml"
+    if configured is not None:
+        codex_home.mkdir()
+        config.write_text(f"[features]\ndefault_mode_request_user_input = {str(configured).lower()}\n")
+    env = dict(os.environ, CODEX_HOME=str(codex_home), PATH=str(tools))
+    command = [
+        shutil.which("uv"), "run", "--python", sys.executable, "--script", str(ROOT / "bin/sync-codex-permissions"),
+        "--github-enabled", "false", "--easypost", "false",
+    ]
+
+    subprocess.run(command, env=env, check=True, capture_output=True, text=True, timeout=15)
+    features = tomllib.loads(config.read_text()).get("features", {})
+    assert features.get("default_mode_request_user_input") is expected
 
 
 def test_make_codex_permissions_installs_preserves_and_refreshes_rules(tmp_path):
@@ -22,6 +63,7 @@ def test_make_codex_permissions_installs_preserves_and_refreshes_rules(tmp_path)
         '[apps.connector_76869538009648d5b282a4bb21c3d157]\nenabled = true\n'
         '[plugins."github@openai-curated"]\nenabled = true\n'
         '[plugins."github@openai-curated-remote"]\nenabled = true\n'
+        '[features]\nmemories = true\ndefault_mode_request_user_input = false\n'
     )
     config.write_text(original)
     config.chmod(0o640)

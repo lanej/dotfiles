@@ -3,12 +3,13 @@
 # requires-python = ">=3.11"
 # dependencies = ["tomlkit>=0.13,<1"]
 # ///
-"""Install Codex approval defaults and explicitly selected integration policies."""
+"""Install Codex approval and interaction defaults and selected integration policies."""
 import argparse
 import copy
 import json
 import os
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import tomllib
@@ -21,6 +22,7 @@ DEFAULTS = {
     "approvals_reviewer": "auto_review",
     "sandbox_mode": "workspace-write",
 }
+DEFAULT_QUESTION_FEATURE = "default_mode_request_user_input"
 GITHUB_APP = "connector_76869538009648d5b282a4bb21c3d157"
 GITHUB_PLUGINS = ("github@openai-curated", "github@openai-curated-remote")
 DISABLED_APPS = {
@@ -44,6 +46,19 @@ DISABLED_PLUGINS = (
 )
 OCTO_START = "# BEGIN dotfiles Octo Manager rules\n"
 OCTO_END = "# END dotfiles Octo Manager rules\n"
+
+
+def supports_default_questions():
+    try:
+        result = subprocess.run(
+            ["codex", "features", "list"], capture_output=True, text=True, timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return result.returncode == 0 and any(
+        len(columns) >= 3 and columns[0] == DEFAULT_QUESTION_FEATURE and columns[1] != "removed"
+        for columns in map(str.split, result.stdout.splitlines())
+    )
 
 
 def octo_rules(root):
@@ -126,8 +141,17 @@ def main():
     original = path.read_text() if path.exists() else ""
     config = tomllib.loads(original)
     rules = octo_rules(root)
+    root.mkdir(parents=True, exist_ok=True)
     expected = copy.deepcopy(config)
     expected.update(DEFAULTS)
+    features = config.get("features", {})
+    enable_questions = (
+        isinstance(features, dict)
+        and DEFAULT_QUESTION_FEATURE not in features
+        and supports_default_questions()
+    )
+    if enable_questions:
+        expected.setdefault("features", {})[DEFAULT_QUESTION_FEATURE] = True
     app_access = {GITHUB_APP: github_enabled}
     plugin_access = dict.fromkeys(GITHUB_PLUGINS, github_enabled)
     if args.easypost == "true":
@@ -143,6 +167,8 @@ def main():
 
     document = tomlkit.parse(original)
     document.update(DEFAULTS)
+    if enable_questions:
+        document.setdefault("features", tomlkit.table())[DEFAULT_QUESTION_FEATURE] = True
     apps = document.setdefault("apps", tomlkit.table())
     for app, enabled in app_access.items():
         apps.setdefault(app, tomlkit.table())["enabled"] = enabled
