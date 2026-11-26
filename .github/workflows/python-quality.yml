@@ -4,6 +4,7 @@ on:
     paths:
       - 'bin/source-code'
       - 'scripts/source_code_languages.py'
+      - 'scripts/source-code-stages.json'
       - 'scripts/check-python.py'
       - 'scripts/test-python-quality.py'
       - 'scripts/test-repo-bootstrap.py'
@@ -20,6 +21,7 @@ on:
     paths:
       - 'bin/source-code'
       - 'scripts/source_code_languages.py'
+      - 'scripts/source-code-stages.json'
       - 'scripts/check-python.py'
       - 'scripts/test-python-quality.py'
       - 'scripts/test-repo-bootstrap.py'

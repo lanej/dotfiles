@@ -64,6 +64,12 @@ class Registry(TypedDict):
     skills: dict[str, str]
 
 
+class LifecyclePlan(TypedDict):
+    schema_version: int
+    policy_version: str
+    stages: dict[str, dict[str, list[list[str]]]]
+
+
 class Detection(TypedDict):
     languages: list[str]
     skills: list[str]
@@ -245,7 +251,9 @@ AUTHORITIES = ("owned", "shared", "upstream")
 ADOPTIONS = ("hold", "new", "backfill")
 POLICY = ".source-code.json"
 LIFECYCLE_RUNNER = "scripts/check-source-code.py"
-LIFECYCLE_PLAN = ".source-code-stages.json"
+LEGACY_LIFECYCLE_PLAN = ".source-code-stages.json"
+LEGACY_SKILL_PLAN = ".agents/skills/source-code-lifecycle/references/stages.json"
+LIFECYCLE_PLAN_SOURCE = "scripts/source-code-stages.json"
 VERSIONS = ".agents/source-code-versions.json"
 GUIDANCE = "AGENTS.override.md"
 PROJECT_GUIDANCE = ".agents/source-code.md"
@@ -373,7 +381,7 @@ def allowed_path(relative: str) -> bool:
         TS_LOCK,
         POLICY,
         LIFECYCLE_RUNNER,
-        LIFECYCLE_PLAN,
+        LEGACY_LIFECYCLE_PLAN,
         VERSIONS,
         GUIDANCE,
         PROJECT_GUIDANCE,
@@ -480,7 +488,7 @@ def installed_paths(state: Installation) -> set[str]:
     """Known runtime artifacts, derived from selections rather than a file ledger."""
     paths: set[str] = {POLICY, VERSIONS, GUIDANCE, PROJECT_GUIDANCE} if state.get("skills") else set()
     if "source-code-lifecycle" in state.get("skills", []):
-        paths.update({LIFECYCLE_RUNNER, LIFECYCLE_PLAN})
+        paths.add(LIFECYCLE_RUNNER)
     for language, files in (
         ("go", GO_FILES),
         ("typescript", TS_FILES),
@@ -902,7 +910,7 @@ def detect_languages(root: Path, state: Installation | None = None) -> Detection
         if isinstance(portable, dict) and portable.get("skill_storage") == "linked":
             # A clone retains generated runtime files but has no local installation state.
             # Those files are not evidence of application languages.
-            managed.update({LIFECYCLE_RUNNER, LIFECYCLE_PLAN})
+            managed.add(LIFECYCLE_RUNNER)
             for language, artifacts in (
                 ("go", GO_FILES),
                 ("typescript", TS_FILES),
@@ -930,7 +938,7 @@ def artifact_owner(path: str) -> str | None:
         return "python"
     if path in PROTO_FILES:
         return "protobuf"
-    if path in {POLICY, VERSIONS, GUIDANCE, PROJECT_GUIDANCE, HOST_RULE, LIFECYCLE_RUNNER, LIFECYCLE_PLAN}:
+    if path in {POLICY, VERSIONS, GUIDANCE, PROJECT_GUIDANCE, HOST_RULE, LIFECYCLE_RUNNER}:
         return "source-code-lifecycle"
     if path in {".github/pull_request_template.md", ".agents/templates/pull_request_template.md"}:
         return "pull-request"
@@ -1020,6 +1028,8 @@ def package(
             add(f".agents/skills/{skill}/SKILL.md", selected / "SKILL.md")
         for source in sorted(directory.rglob("*")):
             relative = source.relative_to(directory)
+            if f".agents/skills/{skill}/{relative.as_posix()}" == LEGACY_SKILL_PLAN:
+                continue
             if skill in MATURITY_SKILLS and relative == Path("SKILL.md"):
                 continue
             if "__pycache__" in relative.parts or source.suffix == ".pyc":
@@ -1416,6 +1426,28 @@ def bun_ci_setup(root: Path, declaration: object) -> str | None:
     if not VERSION_RE.fullmatch(version):
         raise ValueError("Bun CI requires an exact packageManager version, such as bun@1.4.4")
     return setup + f"        with:\n          bun-version: '{version}'\n"
+
+
+def lifecycle_rules(root: Path, languages: list[str]) -> LifecyclePlan:
+    rules = cast(LifecyclePlan, json.loads((SOURCE / LIFECYCLE_PLAN_SOURCE).read_text()))
+    if "typescript" not in languages:
+        return rules
+    project = json.loads((root / "package.json").read_text())
+    if project_package_manager(root, project.get("packageManager", "")) == "bun":
+        for stage in rules["stages"].values():
+            for command in stage["typescript"]:
+                if command[0] == "node":
+                    command[0] = "bun"
+    return rules
+
+
+def lifecycle_runner(rules: LifecyclePlan, languages: list[str]) -> bytes:
+    stages = {stage: {name: commands[name] for name in languages} for stage, commands in rules["stages"].items()}
+    selected = {**rules, "stages": stages}
+    lines = json.dumps(selected, indent=2).splitlines(keepends=True)
+    embedded_rules = "RULES_JSON = (\n" + "".join(f"    {line!r}\n" for line in lines) + ")"
+    template = (SOURCE / "ai/skills/source-code-lifecycle/assets/check-source-code.py").read_text()
+    return template.replace('RULES_JSON = ""', embedded_rules, 1).encode()
 
 
 def go_configuration(
@@ -1994,7 +2026,7 @@ def storage_migration(root: Path, state: Installation, storage: str, desired: Ma
             if not reference.is_file():
                 continue
             relative = f"{prefix}/references/{reference.relative_to(source / name / 'references').as_posix()}"
-            if relative not in desired:
+            if relative != LEGACY_SKILL_PLAN and relative not in desired:
                 actual = inspect(root, relative)
                 if actual is None:
                     continue
@@ -2007,6 +2039,53 @@ def storage_migration(root: Path, state: Installation, storage: str, desired: Ma
             raise ValueError("preserving redirected version registry")
         removals.add(VERSIONS)
     return removals
+
+
+def retired_lifecycle_plans(
+    root: Path, state: Installation, desired: Mapping[str, Snapshot], removals: set[str]
+) -> dict[str, Snapshot]:
+    if LIFECYCLE_RUNNER not in desired or "source-code-lifecycle" not in recorded_skills(state):
+        return {}
+    retired: dict[str, Snapshot] = {}
+    source = Path(state.get("skill_source", str(SOURCE / "ai/skills")))
+    for relative in (LEGACY_LIFECYCLE_PLAN, LEGACY_SKILL_PLAN):
+        if any(relative.startswith(path + "/") and (root / path).is_symlink() for path in removals):
+            continue
+        actual = inspect(root, relative)
+        if actual is None:
+            continue
+        if actual["kind"] == "link" and (
+            relative != LEGACY_SKILL_PLAN
+            or actual["target"] != str(source / "source-code-lifecycle/references/stages.json")
+        ):
+            raise ValueError(f"preserving redirected lifecycle plan: {relative}")
+        retired[relative] = actual
+    return retired
+
+
+def check_retired_lifecycle_plans(root: Path, retired: Mapping[str, Snapshot], rules: LifecyclePlan) -> None:
+    canonical = cast(LifecyclePlan, json.loads((SOURCE / LIFECYCLE_PLAN_SOURCE).read_text()))
+    before_protobuf = {
+        stage: {language: commands for language, commands in plan.items() if language != "protobuf"}
+        for stage, plan in canonical["stages"].items()
+    }
+    generated = [
+        canonical,
+        rules,
+        *({**canonical, "policy_version": version, "stages": before_protobuf} for version in ("1.0.0", "1.1.0")),
+    ]
+    for relative, entry in retired.items():
+        if entry["kind"] != "file":
+            continue
+        try:
+            previous = json.loads((root / relative).read_text())
+        except ValueError:
+            previous = None
+        if previous not in generated:
+            raise ValueError(
+                f"preserving modified lifecycle plan: {relative}; move custom checks to repository-owned commands "
+                "or use --conflict replace to back up the file and adopt the generated rules"
+            )
 
 
 def install(args: Arguments) -> None:
@@ -2089,14 +2168,10 @@ def install(args: Arguments) -> None:
     versions = read_versions((skill_source or SOURCE / "ai/skills") / "source-code-versions.json")
     pins: dict[str, str] = {}
     languages: list[str] = []
+    rules: LifecyclePlan | None = None
     if skills:
         if args.policy_version and args.policy_version != versions["policy_version"]:
             raise ValueError(f"requested policy {args.policy_version}; this source ships {versions['policy_version']}")
-        plans_version = json.loads((SOURCE / "ai/skills/source-code-lifecycle/references/stages.json").read_text())[
-            "policy_version"
-        ]
-        if plans_version != versions["policy_version"]:
-            raise ValueError("source policy version and lifecycle command-plan version disagree")
         languages = [
             name
             for name, active, entry in (
@@ -2107,6 +2182,9 @@ def install(args: Arguments) -> None:
             )
             if active or entry in installed_paths(state)
         ]
+        rules = lifecycle_rules(root, languages)
+        if rules["policy_version"] != versions["policy_version"]:
+            raise ValueError("source policy version and lifecycle command-plan version disagree")
         for name, active, entry, asset, needs_upgrade in (
             ("go", go_profile, "scripts/check-go.sh", "go/assets/check-go.sh", stage in {"research", "alpha"}),
             (
@@ -2203,16 +2281,7 @@ def install(args: Arguments) -> None:
             desired[VERSIONS] = {"kind": "link", "target": str(skill_source / "source-code-versions.json")}
             resources = [(path, data) for path, data in resources if path != VERSIONS]
         if "source-code-lifecycle" in skills:
-            resources.append(
-                (
-                    LIFECYCLE_RUNNER,
-                    (SOURCE / "ai/skills/source-code-lifecycle/assets/check-source-code.py").read_bytes(),
-                )
-            )
-        if "source-code-lifecycle" in skills:
-            resources.append(
-                (LIFECYCLE_PLAN, (SOURCE / "ai/skills/source-code-lifecycle/references/stages.json").read_bytes())
-            )
+            resources.append((LIFECYCLE_RUNNER, lifecycle_runner(rules, languages)))
         for path, data in resources:
             desired[path] = file_entry(data)
             payloads[path] = data
@@ -2247,10 +2316,14 @@ def install(args: Arguments) -> None:
 
     octo_snapshot = configure_skill_packages(root, resolved, state, desired, payloads)
     removals = storage_migration(root, state, storage, desired)
+    retired_plans = retired_lifecycle_plans(root, state, desired, removals)
+    if retired_plans and rules is not None and args.conflict != "replace":
+        check_retired_lifecycle_plans(root, retired_plans, rules)
     managed: dict[str, Snapshot] = {}
     if legacy:
         managed.pop(legacy, None)
     changes, snapshots, conflicts, skipped = [], dict(ts_snapshots), [], []
+    snapshots.update(retired_plans)
     if "octo-manager" in skills:
         snapshots["octo-manager.toml"] = octo_snapshot
     if legacy_snapshot:
@@ -2315,13 +2388,15 @@ def install(args: Arguments) -> None:
             + "\n  ".join(conflicts)
             + "\nChoose --conflict skip, or --conflict replace to back up and replace regular files."
         )
+    if retired_plans and LIFECYCLE_RUNNER in skipped:
+        raise ValueError(f"cannot retire lifecycle plans while skipping {LIFECYCLE_RUNNER}")
     if args.hydration:
         tracked_paths = set(git(root, "ls-files", "-z").stdout.split("\0"))
         unsafe = [path for path, _, _ in changes if path in tracked_paths or snapshots.get(path) is not None]
-        if unsafe or removals:
+        if unsafe or removals or retired_plans:
             raise ValueError(
                 "worktree hydration preserves existing files; run an explicit setup/upgrade: "
-                + ", ".join(sorted(set(unsafe) | removals))
+                + ", ".join(sorted(set(unsafe) | removals | retired_plans.keys()))
             )
     paths = set(desired) | installed_paths(state) | {STATE}
     if "octo-manager" in skills:
@@ -2353,7 +2428,7 @@ def install(args: Arguments) -> None:
         if exclude_entry and exclude_entry["kind"] != "file":
             raise ValueError(f"preserving linked or non-file Git exclude: {exclude}")
         old_exclude = exclude.read_text() if exclude.exists() else ""
-        if removals or any(replacing for _, _, replacing in changes):
+        if removals or retired_plans or any(replacing for _, _, replacing in changes):
             inspect(metadata, "repo-bootstrap/backups/.probe")
         tracked = set(git(root, "ls-files", "-z").stdout.split("\0"))
         if "octo-manager.toml" in tracked:
@@ -2460,11 +2535,13 @@ def install(args: Arguments) -> None:
         print("  create source-code.toml (portable project selections)")
     for relative in sorted(removals):
         print(f"  migrate package (backup regular content): {relative}")
+    for relative in retired_plans:
+        print(f"  retire lifecycle plan (with backup): {relative}")
     print("  Detected language guidance: " + (", ".join(detection["languages"]) or "none"))
     if getattr(args, "config_path", None):
         effective = policy_view(root, resolved, state, versions["policy_version"], rollout, ts_rollout, payloads, pins)
         print("  Effective configuration: " + json.dumps(effective, sort_keys=True))
-    if skills:
+    if rules is not None:
         previous = state.get("stage", "beta (legacy full checks)")
         print(f"  Lifecycle: {previous} -> {stage}; policy {versions['policy_version']}")
         for name in ("authority", "adoption"):
@@ -2473,7 +2550,7 @@ def install(args: Arguments) -> None:
             print(f"  Kind: {state.get('kind', 'unspecified')} -> {kind}")
         for name, version in pins.items():
             print(f"  Skill {name}: {old_pins.get(name, 'unversioned')} -> {version}")
-        plans = json.loads((SOURCE / "ai/skills/source-code-lifecycle/references/stages.json").read_text())["stages"]
+        plans = rules["stages"]
         for language in languages:
             before = plans[state.get("stage", "beta")][language]
             after = plans[stage][language]
@@ -2490,7 +2567,14 @@ def install(args: Arguments) -> None:
         print(f"  update local exclusions: {exclude}")
     if state_changed:
         print(f"  update {STATE}")
-    if not changes and not removals and generated_config is None and not state_changed and new_exclude == old_exclude:
+    if (
+        not changes
+        and not removals
+        and not retired_plans
+        and generated_config is None
+        and not state_changed
+        and new_exclude == old_exclude
+    ):
         print("  already current")
     if args.dry_run:
         print("  preview only; no files changed")
@@ -2534,15 +2618,15 @@ def install(args: Arguments) -> None:
         elif destination.is_symlink():
             destination.unlink()
     backup = None
+    if retired_plans or any(replacing for _, _, replacing in changes):
+        inspect(metadata, "repo-bootstrap/backups/.probe")
+        backup_root = metadata / "repo-bootstrap/backups"
+        backup_root.mkdir(parents=True, exist_ok=True)
+        backup = Path(tempfile.mkdtemp(prefix="replace-", dir=backup_root))
+        print(f"  preserving replaced and retired files in {backup}")
     for relative, expected, replacing in changes:
         destination = root / relative
-        if replacing:
-            if backup is None:
-                inspect(metadata, "repo-bootstrap/backups/.probe")
-                backup_root = metadata / "repo-bootstrap/backups"
-                backup_root.mkdir(parents=True, exist_ok=True)
-                backup = Path(tempfile.mkdtemp(prefix="replace-", dir=backup_root))
-                print(f"  preserving replaced files in {backup}")
+        if replacing and backup is not None:
             atomic_file(backup / relative, destination.read_bytes(), bool(destination.stat().st_mode & 0o111))
         destination.parent.mkdir(parents=True, exist_ok=True)
         if relative == "octo-manager.toml":
@@ -2553,6 +2637,15 @@ def install(args: Arguments) -> None:
             destination.symlink_to(expected["target"], target_is_directory=True)
         else:
             atomic_file(destination, payloads[relative], expected["executable"])
+    if backup is not None:
+        for relative, before in retired_plans.items():
+            if any(relative.startswith(path + "/") for path in removals):
+                continue
+            if inspect(root, relative) != before:
+                raise ValueError(f"lifecycle plan changed during installation: {relative}")
+            destination = backup / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(root / relative), destination)
     if new_exclude != old_exclude:
         atomic_file(exclude, new_exclude.encode())
     if state_changed:
