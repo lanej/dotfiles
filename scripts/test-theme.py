@@ -232,7 +232,7 @@ class ThemeTests(unittest.TestCase):
         self.assertEqual(mapping["execution", "succeeded"], "status.success")
         self.assertEqual(mapping["execution", "input"], "status.attention")
         self.assertEqual(mapping["health", "unknown"], "text.muted")
-        self.assertEqual(len(mapping), 38)
+        self.assertEqual(len(mapping), 39)
         self.assertEqual(mapping["interaction", "focused"], "focus")
         self.assertEqual(mapping["interaction", "selected"], "accent")
         connecting = next(s for g in groups if g["id"] == "connectivity"
@@ -243,6 +243,11 @@ class ThemeTests(unittest.TestCase):
         self.assertEqual(mapping["data", "missing"], "text.muted")
         self.assertEqual(mapping["data", "stale"], "status.warning")
         self.assertEqual(mapping["access", "approval"], "status.attention")
+        self.assertEqual(mapping["access", "approved"], "accent")
+        approved = next(s for g in groups if g["id"] == "access"
+                        for s in g["states"] if s["id"] == "approved")
+        self.assertEqual((approved["glyph"], approved["ascii"]), ("✓", "+"))
+        self.assertNotEqual(mapping["access", "approved"], mapping["execution", "succeeded"])
         self.assertEqual(mapping["execution", "retrying"], "status.warning")
 
     def test_semantic_state_tokens_are_exported_for_every_preset_and_symbol_mode(self):
@@ -255,7 +260,7 @@ class ThemeTests(unittest.TestCase):
                 with self.subTest(preset=name, symbols=symbols):
                     outputs = theme.compile_theme(theme.SOURCE, name, symbols)
                     exported = json.loads(outputs["tokens.json"])["semantic_states"]
-                    self.assertEqual(len(exported), 38)
+                    self.assertEqual(len(exported), 39)
                     for group in groups:
                         for state in group["states"]:
                             key = group["id"] + "." + state["id"]

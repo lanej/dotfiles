@@ -395,6 +395,15 @@
         "example": "Publish release"
       },
       {
+        "id": "approved",
+        "label": "APPROVED",
+        "glyph": "✓",
+        "ascii": "+",
+        "role": "accent",
+        "description": "Explicit authorization has been granted; execution has not necessarily started or succeeded.",
+        "example": "Release authorized"
+      },
+      {
         "id": "denied",
         "label": "DENIED",
         "glyph": "×",

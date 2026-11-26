@@ -89,7 +89,7 @@ test('Sage exposes all semantic token families with distinct meanings', async ({
   await page.goto('./design-system/sage/');
   const catalog = page.locator('[data-semantic-catalog="sage"]');
   await expect(catalog.locator('[data-semantic-family]')).toHaveCount(8);
-  await expect(catalog.locator('[data-semantic-state]')).toHaveCount(38);
+  await expect(catalog.locator('[data-semantic-state]')).toHaveCount(39);
   for (const [id, color] of [
     ['configuration.on', 'rgb(172, 200, 183)'],
     ['configuration.off', 'rgb(144, 159, 149)'],
@@ -119,12 +119,14 @@ test('Sage exposes all semantic token families with distinct meanings', async ({
     ['access.readwrite', 'rgb(172, 200, 183)'],
     ['access.readonly', 'rgb(163, 177, 167)'],
     ['access.approval', 'rgb(221, 167, 131)'],
+    ['access.approved', 'rgb(172, 200, 183)'],
     ['access.denied', 'rgb(241, 140, 150)'],
   ]) {
     await expect(catalog.locator(`[data-semantic-state="${id}"] .state-label`)).toHaveCSS('color', color);
   }
   await expect(catalog.locator('[data-semantic-state="severity.fatal"] .state-label')).toHaveCSS('font-weight', '700');
   await expect(catalog.locator('[data-semantic-state="access.approval"] .state-label')).toHaveCSS('font-weight', '700');
+  await expect(catalog.locator('[data-semantic-state="access.approved"] .glyph')).toHaveText('✓');
   await expect(catalog.getByText('connectivity.connected', { exact: true })).toBeVisible();
   await expect(catalog.locator('[data-semantic-state="connectivity.connecting"] .glyph')).toHaveText('◐');
   await expect(catalog.locator('[data-semantic-state="configuration.off"]')).toHaveCSS('box-shadow', 'rgb(172, 200, 183) 3px 0px 0px 0px inset');
