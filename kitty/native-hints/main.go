@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/kovidgoyal/kitty/kittens/hints"
+	"github.com/kovidgoyal/kitty/tools/tui"
 )
 
 func main(){
@@ -18,6 +19,7 @@ func main(){
 	if err==nil {err=hints.RunDirectHints(os.Args[1],uint(id))}
 	if err!=nil {
 		fmt.Fprintln(os.Stderr,"Kitty hints:",err)
+		if os.Getenv("KITTY_WINDOW_ID") != "" {tui.HoldTillEnter(true)}
 		os.Exit(1)
 	}
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build only the opt-in native helper, never replace the installed kitten.
+# Build the native picker without replacing the installed Kitty or kitten.
 set -euo pipefail
 root=$(cd -- "$(dirname -- "$0")/.." && pwd)
 version=0.50.0
@@ -38,7 +38,7 @@ if command -v gotestsum >/dev/null 2>&1; then
 else
     go test ./kittens/hints -run '^TestDotfiles'
 fi
-go vet ./tools/cmd/dotfiles-hints
+go vet ./kittens/hints ./tools/cmd/dotfiles-hints
 go build -trimpath -ldflags="-s -w" -o "$out.tmp" ./tools/cmd/dotfiles-hints
 mv "$out.tmp" "$out"
 echo "Installed native hints helper: $out"

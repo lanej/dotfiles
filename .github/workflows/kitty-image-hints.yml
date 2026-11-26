@@ -49,6 +49,7 @@ jobs:
           python-version: '3.12'
       - name: Hydrate and validate configured source-code policy
         run: |
+          python -m pip install PyYAML==6.0.3
           python bin/source-code hydrate --repo "$GITHUB_WORKSPACE" --dry-run
           python bin/source-code hydrate --repo "$GITHUB_WORKSPACE"
           python bin/source-code validate --repo "$GITHUB_WORKSPACE"
