@@ -218,6 +218,11 @@ def gui():
                     for _, shortcut in cases:
                         key(shortcut)
                         ready(overlay_ready, "warm overlay " + shortcut)
+                        if shortcut == "ctrl+shift+e" and os.environ.get("KITTY_NATIVE_HINTS_BIN"):
+                            current = next(w for ow in json.loads(remote("ls")) for tab in ow["tabs"]
+                                           for w in tab["windows"] if w["title"] == "Choose URL")
+                            if not current.get("cmdline") or current["cmdline"][0] != os.environ["KITTY_NATIVE_HINTS_BIN"]:
+                                raise AssertionError(f"Native helper was not activated: {current.get('cmdline')}")
                         key("Escape")
                         ready(source_ready, "warm cancellation")
                     values = {label: [] for label, _ in cases}

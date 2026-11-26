@@ -75,6 +75,11 @@ def main():
                       in remote("get-text", "--match", f"id:{overlay_id}"))
                 if "https://" in remote("get-text", "--match", f"id:{overlay_id}"):
                     raise AssertionError("An active HTTPS scheme remained visible")
+                expected_helper = os.environ.get("KITTY_NATIVE_HINTS_BIN")
+                if expected_helper:
+                    actual = next(w for w in windows() if w["id"] == overlay_id)
+                    if not actual.get("cmdline") or actual["cmdline"][0] != expected_helper:
+                        raise AssertionError(f"Expected native Go helper, found {actual.get('cmdline')}")
                 image = capture("review-url-hints.png", xid)
                 counts = dict((color, count) for count, color in image.getcolors(image.width * image.height))
                 for color in ((235, 203, 139), (136, 192, 208), (163, 190, 140), (59, 66, 82), (67, 76, 94), (173, 153, 114)):
