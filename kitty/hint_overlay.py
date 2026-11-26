@@ -111,7 +111,7 @@ def source_snapshot(screen, rows):
             deco_fg = resolve(cur.decoration_fg, fg)
             # Tabs and NULs occupy cells, not cursor movement in the overlay.
             char = char.replace("\t", " ").replace("\x00", " ")
-            result.append([char, max(1, line.width(x)), fg, bg, flags, decoration, deco_fg])
+            result.append([char, max(1, wcswidth(char)), fg, bg, flags, decoration, deco_fg])
         cells.append(result)
     return {"cells": cells, "wrapped": wrapped, "palette": palette}
 
