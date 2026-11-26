@@ -1,9 +1,10 @@
-"""Capture normal and URL-hint frames of a representative Nord terminal."""
+"""Capture normal and URL-hint frames of a representative terminal under a selected preset."""
 import json
 import os
 from pathlib import Path
 import subprocess
 import tempfile
+import sys
 import time
 
 from PIL import ImageGrab
@@ -34,6 +35,19 @@ def main():
         env = {**os.environ, "HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config"),
                "XDG_CACHE_HOME": str(home / ".cache"), "XDG_DATA_HOME": str(home / ".local/share")}
         subprocess.run(["make", "-s", "kitty-config"], cwd=ROOT, env=env, check=True)
+        theme = os.environ.get("KITTY_HINT_THEME", "nord")
+        generated = work / "theme"
+        subprocess.run([sys.executable, str(ROOT / "scripts/theme.py"), "--theme", theme,
+                        "--output-dir", str(generated)], cwd=ROOT, env=env, check=True)
+        # Resolve the same generated palette used by the installed theme, in
+        # an isolated review config. Never modify the checkout or active preset.
+        config = home / ".config/kitty/kitty.conf"
+        original = config.read_text()
+        config.unlink()
+        config.write_text(original.replace("include ../dotfiles/theme/kitty.conf",
+                                           f"include {generated / 'kitty.conf'}"))
+        palette = dict(line.split() for line in (generated / "kitty.conf").read_text().splitlines()
+                       if line and not line.startswith("#"))
         helper = Path(os.environ["KITTY_NATIVE_HINTS_BIN"]).resolve()
         installed = home / ".local/bin/hint-native"
         installed.parent.mkdir(parents=True, exist_ok=True)
@@ -87,7 +101,12 @@ def main():
                         raise AssertionError(f"Expected native Go helper, found {actual.get('cmdline')}")
                 image = capture("review-url-hints.png", xid)
                 counts = dict((color, count) for count, color in image.getcolors(image.width * image.height))
-                for color in ((235, 203, 139), (136, 192, 208), (163, 190, 140), (59, 66, 82), (67, 76, 94), (173, 153, 114)):
+                def rgb(name):
+                    value = palette[name]
+                    return tuple(int(value[i:i+2], 16) for i in (1, 3, 5))
+                # Scheme badge, unchanged target hues, target background and
+                # key background must originate in the selected preset.
+                for color in (rgb("color6"), rgb("color2"), rgb("color0"), rgb("selection_background")):
                     if counts.get(color, 0) < 5:
                         raise AssertionError(f"Representative frame is missing rendered color {color}")
                 command("xdotool", "key", "--clearmodifiers", "Escape")

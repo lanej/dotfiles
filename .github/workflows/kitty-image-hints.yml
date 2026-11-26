@@ -8,6 +8,8 @@ on:
       - 'scripts/build-kitty-native-hints.sh'
       - 'scripts/benchmark-kitty-hints.py'
       - 'source-code.toml'
+      - 'design-system/**'
+      - 'scripts/theme.py'
       - 'bin/zellij-image-hints'
       - 'scripts/build-zellij-helpers.sh'
       - 'scripts/make/config.sh'
@@ -74,6 +76,8 @@ jobs:
         run: bash scripts/build-kitty-native-hints.sh "$RUNNER_TEMP/hint-native"
       - name: Capture representative normal and URL hint modes
         run: xvfb-run -a -s "-screen 0 1280x900x24" env LIBGL_ALWAYS_SOFTWARE=1 KITTY_NATIVE_HINTS_BIN="$RUNNER_TEMP/hint-native" KITTY_HINT_ARTIFACTS="$RUNNER_TEMP/kitty-hint-artifacts" python scripts/test-kitty-hint-review.py
+      - name: Capture Sage Midnight hint mode
+        run: xvfb-run -a -s "-screen 0 1280x900x24" env LIBGL_ALWAYS_SOFTWARE=1 KITTY_NATIVE_HINTS_BIN="$RUNNER_TEMP/hint-native" KITTY_HINT_THEME=sage KITTY_HINT_ARTIFACTS="$RUNNER_TEMP/kitty-hint-artifacts/sage" python scripts/test-kitty-hint-review.py
       - run: make zellij-helpers
       - run: make test-kitty-last-url
       - run: python scripts/test-zellij-file-hints.py
