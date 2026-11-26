@@ -91,6 +91,34 @@ test('strict mode rejects real unsafe operations and suppression bypasses', (t) 
   }
 });
 
+test('conditions allow concise presence checks and reject coercion', (t) => {
+  const f = fixture(t, `export function count(result?: { count: number }): number {
+  return result ? result.count : 0;
+}
+
+export function hasCount(value?: number): boolean {
+  return value != null;
+}
+
+export function label(ready: boolean): string {
+  return ready ? "ready" : "waiting";
+}
+`);
+  f.check('lint');
+
+  f.put('src/main.ts', `export function isReady(value: boolean | number): boolean {
+  return value == true;
+}
+
+export function count(value?: number): number {
+  return value ? value : -1;
+}
+`);
+  const output = f.check('lint', 1);
+  assert.match(output, /eqeqeq/u);
+  assert.match(output, /strict-boolean-expressions/u);
+});
+
 test('retrofit budgets shrink; new files and untouched consumers have no exemption', (t) => {
   const f = fixture(t, indexDebt, 'ratchet');
   f.put('src/state.ts', 'export type State = "a" | "b";\n');
@@ -160,6 +188,30 @@ test('original gates, test and audit failures remain blocking; formatting is sco
   f.check('fmt', 0, 'src/main.ts');
   assert.equal(readFileSync(path.join(f.root, 'src/main.ts'), 'utf8'), clean);
   assert.equal(readFileSync(path.join(f.root, 'src/other.ts'), 'utf8'), 'export const other=2;\n');
+});
+
+test('formatting uses the installed defaults with per-file configuration taking precedence', (t) => {
+  const f = fixture(t, clean);
+  const manifest = '.typescript-quality/package.json';
+  const packageConfig = JSON.parse(readFileSync(path.join(f.root, manifest), 'utf8'));
+  packageConfig.prettier.singleQuote = true;
+  f.put(manifest, JSON.stringify(packageConfig));
+  f.put('.editorconfig', 'root = true\n\n[*.ts]\nindent_style = space\nindent_size = 4\n');
+  f.put('src/nested/.prettierrc.json', '{"singleQuote":false}\n');
+  const raw = 'export function label(){return "ready"}\n';
+  f.put('src/main.ts', raw);
+  f.put('src/nested/main.ts', raw);
+  const wide = 'export const limits = { maximumRetries: 3, retryDelayMilliseconds: 250, timeoutMilliseconds: 5000 };\n';
+  f.put('src/limits.ts', wide);
+  assert.match(f.check('lint', 1), /Formatting differs/u);
+  assert.equal(readFileSync(path.join(f.root, 'src/main.ts'), 'utf8'), raw);
+  f.check('fmt', 0, 'src/main.ts', 'src/nested/main.ts', 'src/limits.ts');
+  assert.equal(readFileSync(path.join(f.root, 'src/main.ts'), 'utf8'),
+    "export function label() {\n    return 'ready';\n}\n");
+  assert.equal(readFileSync(path.join(f.root, 'src/nested/main.ts'), 'utf8'),
+    'export function label() {\n    return "ready";\n}\n');
+  assert.equal(readFileSync(path.join(f.root, 'src/limits.ts'), 'utf8'), wide);
+  f.check('lint');
 });
 
 

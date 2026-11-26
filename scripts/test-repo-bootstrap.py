@@ -912,7 +912,17 @@ with tempfile.TemporaryDirectory(prefix="repo-bootstrap-acceptance-") as tempora
     for preview in (setup_preview, upgrade_preview):
         effective = json.loads(next(line.split(": ", 1)[1] for line in preview.splitlines() if "Effective configuration:" in line))
         assert effective["checks"]["go"]["selected"] and effective["checks"]["typescript"]["selected"]
+    bun_lock = profile_intent / "bun.lock"
+    bun_lock.write_text("fixture Bun lock\n")
     run([str(cli), "upgrade", "--repo", str(profile_intent)])
+    for language in ("go", "typescript"):
+        workflow = (profile_intent / f".github/workflows/{language}-quality.yml").read_text()
+        assert "uses: oven-sh/setup-bun@v2\n" in workflow
+        assert "run: bun install --frozen-lockfile --ignore-scripts\n" in workflow
+        assert "run: npm ci\n" not in workflow
+    commands = json.loads((profile_intent / ".typescript-quality.json").read_text())["commands"]
+    assert commands["test"] == ["bun", "run", "test"]
+    assert bun_lock.read_text() == "fixture Bun lock\n"
     assert json.loads((profile_intent / ".source-code.json").read_text())["languages"] == ["go", "typescript"]
     guide = rendered_skill(profile_intent, "typescript")
     assert "# typescript: research" in guide and "python3 scripts/check-source-code.py typescript" in guide, guide
