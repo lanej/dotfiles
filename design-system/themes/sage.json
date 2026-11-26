@@ -176,7 +176,15 @@
         "@text"
       ],
       "amount": 0.72
-    }
+    },
+    "selection.row.bg": {
+      "mix": [
+        "@surface",
+        "@accent"
+      ],
+      "amount": 0.51
+    },
+    "selection.row.fg": "@text.strong"
   },
   "ansi": [
     "$raised",

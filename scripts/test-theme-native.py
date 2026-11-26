@@ -26,6 +26,7 @@ import sys
 import tempfile
 import termios
 import time
+import tomllib
 
 import pyte
 
@@ -447,9 +448,27 @@ return retries
         return terminal(command, env, lambda screen: "worker ERROR" in "\n".join(screen.display))
     if surface == "bottom":
         if review:
+            style = tomllib.loads((GENERATED / "bottom.toml").read_text())["styles"]["widgets"]["selected_text"]
+            expected_fg, expected_bg = (style[key].lstrip("#").lower() for key in ("color", "bg_color"))
+
+            def selected_row_ready(screen):
+                # Verify the actual selected process row, not just the CPU
+                # header. The visible table must contain both configured RGBs.
+                if not any("CPU%" in line for line in screen.display):
+                    return False
+                for y in range(screen.lines):
+                    row = [screen.buffer[y][x] for x in range(screen.columns)]
+                    highlighted = [cell for cell in row
+                                   if (cell.fg.lower(), cell.bg.lower()) == (expected_fg, expected_bg)
+                                   and not cell.reverse]
+                    if (len(highlighted) >= screen.columns // 2
+                            and sum(bool(cell.data.strip()) for cell in highlighted) >= 5):
+                        return True
+                return False
+
             return terminal(["btm", "--config_location", str(GENERATED / "bottom.toml"), "--basic"],
-                            env, lambda screen: "CPU" in "\n".join(screen.display),
-                            columns=100, lines=18, capture_lines=18, raw_path=raw_path)
+                            env, selected_row_ready, columns=100, lines=18,
+                            capture_lines=18, raw_path=raw_path)
         result = terminal(["btm", "--config_location", str(GENERATED / "bottom.toml"), "--basic"], env, lambda screen: "CPU" in "\n".join(screen.display), capture_lines=2)
         # WHY: CPU count and resource samples vary across hosts; CPU0 exists on both.
         label = next(cell for cell in result[0] if cell["data"].strip())

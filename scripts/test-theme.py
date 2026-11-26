@@ -152,8 +152,20 @@ class ThemeTests(unittest.TestCase):
         check("Kitty inactive tab", kitty["inactive_tab_foreground"], kitty["inactive_tab_background"])
 
         bottom = tomllib.loads(outputs["bottom.toml"])["styles"]["widgets"]
-        check("bottom selected row", bottom["selected_text"]["color"], bottom["selected_text"]["bg_color"])
-        check("bottom selected fill", bottom["selected_text"]["bg_color"], c["surface"], 3)
+        selected = bottom["selected_text"]
+        self.assertEqual(selected["color"], c["selection.row.fg"])
+        self.assertEqual(selected["bg_color"], c["selection.row.bg"])
+        self.assertNotEqual(selected["bg_color"], c["selection.solid.bg"])
+        self.assertEqual(selected["color"], c["text.strong"])
+        check("bottom selected row", selected["color"], selected["bg_color"])
+        for surface in ("surface", "surface.raised"):
+            check("bottom selected fill on " + surface, selected["bg_color"], c[surface], 3)
+        # Keep the selection readable without turning a full-width row into
+        # an accent banner. White ink and the text floor bound the fill luminance.
+        self.assertLess(luminance(selected["bg_color"]), luminance(c["accent"]))
+        nord = tomllib.loads(theme.compile_theme(theme.SOURCE, "nord")["bottom.toml"])
+        self.assertEqual(nord["styles"]["widgets"]["selected_text"],
+                         {"color": "#ECEFF4", "bg_color": "#434C5E"})
 
         neovim = theme.read(theme.SOURCE / "adapters/neovim.json")
         for name in ("LineNr", "FoldColumn", "SignColumn", "SpecialKey", "Conceal"):
