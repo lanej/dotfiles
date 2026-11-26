@@ -52,3 +52,9 @@ path = "~/src/studio"
 command = ["{python}", "{dotfiles}/scripts/install-studio.py"]
 lifecycle = "consumer"
 depends_on = ["beads", "octo-manager", "intent"]
+
+[projects.copydesk]
+repository = "https://github.com/lanej/dotfiles.git"
+path = "{dotfiles}"
+command = ["{python}", "{dotfiles}/scripts/project_update_copydesk.py"]
+lifecycle = "stateless"
