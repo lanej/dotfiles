@@ -29,6 +29,8 @@ import time
 
 import pyte
 
+from theme_review import TerminalMetadata, render_svg
+
 ROOT = Path(__file__).resolve().parents[1]
 GENERATED = Path(os.environ.get("DOTFILES_THEME_DIR", ROOT / "design-system/generated"))
 
@@ -50,6 +52,15 @@ class NativeStream(pyte.Stream):
         # pyte parses colon-separated SGR parameters as printable characters.
         complete = re.sub(r"\x1b\[58:2::(\d+):(\d+):(\d+)m", "\x1b" + r"[58;2;\1;\2;\3m", complete)
         super().feed(re.sub(r"\x1b\[>[0-9;]*m", "", complete))
+
+
+class ReviewStream(NativeStream):
+    def __init__(self, screen):
+        self.metadata = TerminalMetadata()
+        super().__init__(screen)
+
+    def feed(self, data):
+        super().feed(self.metadata.feed(data))
 
 
 class NativeScreen(pyte.Screen):
@@ -102,9 +113,9 @@ def cells(screen, lines):
              for col in range(screen.columns)] for row in range(lines)]
 
 
-def ansi_cells(text, columns=76, lines=10):
+def ansi_cells(text, columns=76, lines=10, *, review=False):
     screen = NativeScreen(columns, lines)
-    NativeStream(screen).feed(text.replace("\n", "\r\n"))
+    (ReviewStream if review else NativeStream)(screen).feed(text.replace("\n", "\r\n"))
     return cells(screen, lines)
 
 
@@ -146,16 +157,18 @@ def stop_child_group(pid):
         os.waitpid(pid, 0)
 
 
-def terminal(command, env, ready, *, columns=76, lines=24, capture_lines=10):
+def terminal(command, env, ready, *, columns=76, lines=24, capture_lines=10, raw_path=None):
     pid, fd = pty.fork()
     if pid == 0:
         fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack("HHHH", lines, columns, 0, 0))
         os.chdir(env["HOME"])
         os.execvpe(command[0], command, env)
     screen = NativeScreen(columns, lines)
-    stream, decoder = NativeStream(screen), codecs.getincrementaldecoder("utf-8")("replace")
+    stream = (ReviewStream if raw_path else NativeStream)(screen)
+    decoder = codecs.getincrementaldecoder("utf-8")("replace")
     raw = bytearray()
     deadline = time.monotonic() + 15
+    ready_since = None
     try:
         while time.monotonic() < deadline:
             if select.select([fd], [], [], 0.1)[0]:
@@ -168,49 +181,25 @@ def terminal(command, env, ready, *, columns=76, lines=24, capture_lines=10):
                 raw.extend(chunk)
                 stream.feed(decoder.decode(chunk))
             if ready(screen):
-                return cells(screen, capture_lines)
+                if not raw_path:
+                    return cells(screen, capture_lines)
+                # Give asynchronous preview/status widgets time to finish.
+                ready_since = ready_since or time.monotonic()
+                if time.monotonic() - ready_since >= 0.25:
+                    return cells(screen, capture_lines)
+            else:
+                ready_since = None
         raise AssertionError(f"Native preview did not become ready: {command[0]}\n" + "\n".join(screen.display))
     finally:
+        if raw_path:
+            raw_path.write_bytes(raw)
         os.close(fd)
         stop_child_group(pid)
 
 
-def svg(name, rows):
+def svg(name, rows, *, trim=True):
     theme = json.loads((GENERATED / "colors.json").read_text())
-    normal, background = theme["roles"]["text"], theme["roles"]["surface"]
-    names = ["black", "red", "green", "brown", "blue", "magenta", "cyan", "white"]
-    colors = {key: theme["ansi"][index] for index, key in enumerate(names)}
-    colors.update({"bright" + key: theme["ansi"][index + 8] for index, key in enumerate(names)})
-    colors["yellow"] = colors["brown"]
-
-    def color(value, fallback):
-        if value == "default":
-            return fallback
-        return "#" + value if len(value) == 6 else colors.get(value, fallback)
-
-    width, height = sum(len(cell["data"]) for cell in rows[0]) * 9 + 24, len(rows) * 20 + 24
-    result = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img" aria-label="{html.escape(name)} — captured native terminal cells">', f'<rect width="100%" height="100%" fill="{background}"/>', '<g font-family="monospace" font-size="14" style="white-space:pre">']
-    for row, line in enumerate(compact(rows)):
-        col = 0
-        for cell in line:
-            fg, bg = color(cell["fg"], normal), color(cell["bg"], background)
-            if cell["reverse"]:
-                fg, bg = bg, fg
-            x, y = 12 + col * 9, 12 + row * 20
-            result.append(f'<rect x="{x}" y="{y}" width="{len(cell["data"])*9}" height="20" fill="{bg}"/>')
-            underline_color = cell.get("underline_color", "default")
-            if cell["underscore"] and underline_color != "default":
-                result.append(f'<rect x="{x}" y="{y+17}" width="{len(cell["data"])*9}" height="1" fill="{color(underline_color, fg)}"/>')
-            if cell["data"].strip():
-                weight = "bold" if cell["bold"] else "normal"
-                italic = "italic" if cell["italics"] else "normal"
-                decoration = "underline" if cell["underscore"] and underline_color == "default" else "none"
-                # WHY: SVG renderers can discard terminal padding before applying textLength.
-                visible = cell["data"].strip(" ")
-                text_x = x + (len(cell["data"]) - len(cell["data"].lstrip(" "))) * 9
-                result.append(f'<text x="{text_x}" y="{y+15}" fill="{fg}" font-weight="{weight}" font-style="{italic}" text-decoration="{decoration}" textLength="{len(visible)*9}" lengthAdjust="spacingAndGlyphs">{html.escape(visible)}</text>')
-            col += len(cell["data"])
-    return "\n".join([*result, "</g></svg>\n"])
+    return render_svg(name, rows, theme, trim=trim)
 
 
 def neovim(work, env, plugins):
@@ -265,11 +254,42 @@ vim.fn.writefile({vim.json.encode(before)}, vim.env.THEME_OBSERVATIONS)
     return json.loads(path.read_text())
 
 
-def run(surface, work, env, plugins):
+def run(surface, work, env, plugins, *, raw_path=None):
+    review = raw_path is not None
+
+    def observed_ansi(text, *, columns=76, lines=10):
+        if raw_path:
+            raw_path.write_text(text)
+        return ansi_cells(text, columns, lines, review=review)
+
     if surface == "neovim":
         return neovim(work, env, plugins)
     if surface == "neovim-frame":
         command = ["nvim", "-u", "NONE", "-i", "NONE", "-n", "--cmd", "set rtp^=" + str(ROOT / "nvim"), "-c", "colorscheme dotfiles", "-c", "syntax on", "-c", "set noshowmode noruler laststatus=0 noshowcmd", str(ROOT / "design-system/fixtures/code.lua")]
+        if review:
+            script = work / "visual-review.lua"
+            script.write_text('''
+vim.opt.number = true
+vim.opt.cursorline = true
+vim.opt.signcolumn = "yes"
+vim.opt.laststatus = 2
+vim.opt.ruler = true
+vim.opt.rtp:append(vim.env.THEME_PLUGINS .. "/lualine.nvim")
+require("lualine").setup({options = {theme = require("dotfiles-theme").lualine()}})
+local ns = vim.api.nvim_create_namespace("theme-review")
+vim.diagnostic.config({virtual_text = {current_line = false, prefix = "·"}, signs = true})
+vim.diagnostic.set(ns, 0, {
+  {lnum = 1, col = 0, severity = vim.diagnostic.severity.WARN, message = "Review retry budget"},
+  {lnum = 5, col = 2, severity = vim.diagnostic.severity.ERROR, message = "Fixture diagnostic"},
+})
+vim.api.nvim_win_set_cursor(0, {4, 4})
+''')
+            command += ["-c", "luafile " + str(script)]
+            return terminal(command, {**env, "THEME_PLUGINS": str(plugins)},
+                            lambda screen: "Review retry budget" in "\n".join(screen.display)
+                            and "Fixture diagnostic" in "\n".join(screen.display)
+                            and "code.lua" in "\n".join(screen.display),
+                            columns=104, lines=15, capture_lines=15, raw_path=raw_path)
         return terminal(command, env, lambda screen: "print(greet" in "\n".join(screen.display))
     if surface == "kitty":
         config = work / "home/.config/kitty"
@@ -295,10 +315,11 @@ print(json.dumps({name: str(getattr(opts, name)) for name in ("foreground", "bac
         subprocess.run(["make", "--no-print-directory", "zellij"], cwd=ROOT, env=native_env, check=True, capture_output=True)
         # Keep machine-specific notices and status modules outside this narrow fixture.
         # Its fixed name is isolated by the private socket directory.
-        name, columns, lines = "work", 28, 8
+        name, columns, lines = ("work", 100, 16) if review else ("work", 28, 8)
         client = workflow.Terminal(shutil.which("zellij"), native_env, name, install_navigation=False)
         screen = ZellijScreen(120, 32)
-        stream, decoder, offset = NativeStream(screen), codecs.getincrementaldecoder("utf-8")("replace"), 0
+        stream = (ReviewStream if review else NativeStream)(screen)
+        decoder, offset = codecs.getincrementaldecoder("utf-8")("replace"), 0
         def update_screen():
             nonlocal offset
             stream.feed(decoder.decode(bytes(client.output[offset:])))
@@ -309,11 +330,15 @@ print(json.dumps({name: str(getattr(opts, name)) for name in ("foreground", "bac
             return ("0:Shell" in screen.display[0] and "!?" not in screen.display[0]
                     and screen.display[2].strip("│ ") == workflow.PROMPT.decode().strip()
                     and all(screen.buffer[0][x].underscore for x in range(columns))
-                    and screen.buffer[lines - 1][columns - 1].fg == screen.buffer[0][5].underline_color)
+                    and screen.buffer[lines - 1][columns - 1].fg == screen.buffer[0][5].underline_color
+                    and (not review or all(name in screen.display[0] for name in ("Editor", "Publisher"))))
         try:
             client.grant_status_permissions()
             client.until("theme fixture shell ready", lambda: workflow.PROMPT in client.output)
             client.action("rename-pane", "Shell")
+            if review:
+                client.action("new-tab", "--name", "Editor", "--no-focus")
+                client.action("new-tab", "--name", "Publisher", "--no-focus")
             update_screen()
             screen.resize(lines=lines, columns=columns)
             fcntl.ioctl(client.fd, termios.TIOCSWINSZ, struct.pack("HHHH", lines, columns, 0, 0))
@@ -323,11 +348,17 @@ print(json.dumps({name: str(getattr(opts, name)) for name in ("foreground", "bac
             client.until("native themed prefix", ready)
             return cells(screen, lines)
         finally:
+            if raw_path:
+                raw_path.write_bytes(client.output)
             subprocess.run(["zellij", "kill-session", name], env=native_env, capture_output=True, timeout=5)
             client.close()
     if surface == "cli":
-        text = subprocess.check_output([str(ROOT / "bin/dotfiles-theme"), "--color=always"], env=env, text=True)
-        return ansi_cells(text)
+        command = [str(ROOT / "bin/dotfiles-theme"), "--color=always"]
+        if review:
+            command.append("--catalog")
+        text = subprocess.check_output(command, env=env, text=True)
+        return observed_ansi(text, columns=120 if review else 76,
+                             lines=len(text.splitlines()) + 1 if review else 10)
     if surface in ("bat", "delta"):
         cache = subprocess.run(["bat", "cache", "--build"], env=env, capture_output=True, text=True)
         if cache.returncode:
@@ -336,19 +367,89 @@ print(json.dumps({name: str(getattr(opts, name)) for name in ("foreground", "bac
         assert "Dotfiles" in text, "bat did not register the generated syntax theme"
         if surface == "bat":
             command = ["bat", "--theme=Dotfiles", "--color=always", "--paging=never", "--style=plain", "--language=lua", str(ROOT / "design-system/fixtures/code.lua")]
+            if review:
+                command[4] = "--style=numbers,header,grid"
+                command.insert(-1, "--terminal-width=96")
             text = subprocess.check_output(command, env=env, text=True)
         else:
             themes = subprocess.check_output(["delta", "--list-syntax-themes"], env=env, text=True)
             assert "Dotfiles" in themes, "delta cannot read the generated bat theme cache"
-            text = subprocess.check_output(["delta", "--paging=never", "--width=76", "--true-color=always"], env=env, input=(ROOT / "design-system/fixtures/change.diff").read_text(), text=True)
-        return ansi_cells(text)
+            command = ["delta", "--paging=never", "--width=96" if review else "--width=76", "--true-color=always"]
+            if review:
+                # Line numbers exercise a richer native mode. Sage's actual
+                # generated config, not the review invocation, retains +/-.
+                command.append("--line-numbers")
+            text = subprocess.check_output(command, env=env, input=(ROOT / "design-system/fixtures/change.diff").read_text(), text=True)
+        rows = observed_ansi(text, columns=96 if review else 76, lines=24 if review else 10)
+        if review and surface == "delta":
+            displayed = "\n".join("".join(cell["data"] for cell in row) for row in rows)
+            assert "service.lua" in displayed, "Delta filename missing in captured cells; inspect raw ANSI"
+            if json.loads((GENERATED / "tokens.json").read_text())["presentation"]["diff.markers"]["resolved"]:
+                assert re.search(r"-\s*local retries", displayed) and re.search(r"\+\s*local retries", displayed), "Delta lost explicit +/- change markers"
+        return rows
     if surface == "glow":
-        text = subprocess.check_output(["glow", "--style", str(GENERATED / "glow.json"), "--width=70", str(ROOT / "design-system/fixtures/document.md")], env=env, stdin=subprocess.DEVNULL, text=True)
-        return ansi_cells(text, lines=14)
+        document = ROOT / "design-system/fixtures/document.md"
+        if review:
+            document = work / "review.md"
+            document.write_text("""# Service inspection
+
+Review **api** and its [runbook](https://example.com/runbook) before publishing.
+
+## Release checklist
+
+- [x] Configuration validated
+- [ ] Approval pending
+
+| Service | Status | Evidence |
+| --- | --- | --- |
+| api | Ready | Current |
+| worker | Failed | Stale |
+
+> Missing data remains unknown.
+
+Inspect the value of `retries`:
+
+```lua
+-- Retry only when the connection is transient.
+local retries = 3
+return retries
+```
+""")
+        text = subprocess.check_output(["glow", "--style", str(GENERATED / "glow.json"), "--width=70", str(document)], env=env, stdin=subprocess.DEVNULL, text=True)
+        return observed_ansi(text, lines=max(24, len(text.splitlines()) + 1) if review else 14)
     if surface == "fzf":
+        if review:
+            semantic = json.loads((GENERATED / "tokens.json").read_text())["semantic_states"]
+            candidates = work / "review-picker.tsv"
+            preview = work / "review-preview.txt"
+            items = [
+                ("execution.input", "Publish release"),
+                ("execution.running", "Compile workspace"),
+                ("execution.failed", "Run integration tests"),
+                ("execution.blocked", "Await upstream check"),
+                ("execution.succeeded", "Validate configuration"),
+                ("execution.queued", "Generate release notes"),
+            ]
+            lines = []
+            for i, (key, label) in enumerate(items):
+                token = semantic[key]
+                rgb = ";".join(str(int(token["fg"][j:j+2], 16)) for j in (1, 3, 5))
+                lines.append(f'{i}\t\033[38;2;{rgb}m{token["symbol"]} {token["label"]:<12}\033[0m  {label}')
+            candidates.write_text("\n".join(lines) + "\n")
+            preview.write_text("TASK DETAILS\n\nPublish release\nAuthorization required\n\nRepository: workspace\nChecks: 12 passed\n")
+            command = ["bash", "-c", '''"$1" --ansi --no-multi --no-sort --delimiter="\\t" --with-nth=2.. --reverse --info=hidden --header="Workspace tasks" --prompt="Search > " --preview='cat "$THEME_REVIEW_PREVIEW"' --preview-window=right:45% < "$2"''',
+                       "bash", str(ROOT / "bin/dotfiles-fzf"), str(candidates)]
+            return terminal(command, {**env, "THEME_REVIEW_PREVIEW": str(preview)},
+                            lambda screen: all(label in "\n".join(screen.display)
+                                               for label in ("Publish release", "FAILED", "TASK DETAILS")),
+                            columns=108, lines=16, capture_lines=16, raw_path=raw_path)
         command = ["bash", "-c", 'printf "api\\tapi OK\\nworker\\tworker ERROR\\n" | "$1" --no-multi --delimiter="\\t" --with-nth=2.. --reverse --info=hidden --header="Services" --prompt="Search > "', "bash", str(ROOT / "bin/dotfiles-fzf")]
         return terminal(command, env, lambda screen: "worker ERROR" in "\n".join(screen.display))
     if surface == "bottom":
+        if review:
+            return terminal(["btm", "--config_location", str(GENERATED / "bottom.toml"), "--basic"],
+                            env, lambda screen: "CPU" in "\n".join(screen.display),
+                            columns=100, lines=18, capture_lines=18, raw_path=raw_path)
         result = terminal(["btm", "--config_location", str(GENERATED / "bottom.toml"), "--basic"], env, lambda screen: "CPU" in "\n".join(screen.display), capture_lines=2)
         # WHY: CPU count and resource samples vary across hosts; CPU0 exists on both.
         label = next(cell for cell in result[0] if cell["data"].strip())
@@ -373,6 +474,19 @@ print(json.dumps({name: str(getattr(opts, name)) for name in ("foreground", "bac
             assert tmux("show-options", "-wv", "@claude-since").strip() == "123"
             assert tmux("show-options", "-wv", "@claude-reason").strip() == "fixture"
             assert observations == {key: tmux("show-options", "-gv", key).strip() for key in observations}
+            if review:
+                tmux("rename-window", "Editor")
+                tmux("respawn-pane", "-k", "printf 'Workspace review\\n\\nReady to inspect changes.\\n'; sleep 60")
+                tmux("new-window", "-d", "-n", "Publisher", "sleep 60")
+                tmux("set-option", "-w", "-t", "fixture:Publisher", "@claude-state", "failed")
+                tmux("set-option", "-w", "-t", "fixture:Publisher", "@claude-glyph", "×")
+                tmux("new-window", "-d", "-n", "Checks", "sleep 60")
+                tmux("set-option", "-w", "-t", "fixture:Checks", "@claude-state", "approval")
+                tmux("set-option", "-w", "-t", "fixture:Checks", "@claude-glyph", "!")
+                return terminal(["tmux", "-S", socket, "attach-session", "-t", "fixture"], env,
+                                lambda screen: all(label in "\n".join(screen.display)
+                                                   for label in ("Workspace review", "Editor", "Publisher", "Checks")),
+                                columns=100, lines=16, capture_lines=16, raw_path=raw_path)
             return observations
         finally:
             subprocess.run(["tmux", "-S", socket, "kill-server"], env=env, capture_output=True)
@@ -383,7 +497,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--surface", action="append", choices=["kitty", "neovim", "neovim-frame", "zellij", "tmux", "cli", "fzf", "bat", "delta", "glow", "bottom"])
     parser.add_argument("--plugins-dir", type=Path, default=Path.home() / ".local/share/nvim/lazy")
-    parser.add_argument("--record", action="store_true", help="Explicitly replace observed baselines; inspect changes before accepting them")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--record", action="store_true", help="Explicitly replace observed baselines; inspect changes before accepting them")
+    mode.add_argument("--review-dir", type=Path, help="Write unapproved native review evidence outside regression baselines")
     args = parser.parse_args()
     metadata = json.loads((GENERATED / "colors.json").read_text())
     preset = metadata["theme"]
@@ -394,6 +510,12 @@ def main():
         parser.error("invalid generated symbols representation")
     variant = Path("ascii") if symbols == "ascii" else Path()
     baselines = ROOT / "design-system/baselines" / preset / variant
+    if args.review_dir:
+        args.review_dir.mkdir(parents=True, exist_ok=True)
+    evidence = {"preset": preset, "symbols": symbols,
+                "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip() if args.review_dir else None,
+                "run_id": os.environ.get("GITHUB_RUN_ID"), "mode": "native-review", "surfaces": {}}
+    failures = []
     surfaces = args.surface or ["kitty", "neovim", "neovim-frame", "zellij", "tmux", "cli", "fzf", "bat", "delta", "glow", "bottom"]
     with tempfile.TemporaryDirectory(prefix="theme-native-", dir="/tmp") as temporary:
         work = Path(temporary).resolve()
@@ -408,11 +530,37 @@ def main():
         for name in ("TMUX", "TMUX_PANE", "NO_COLOR", "FZF_DEFAULT_OPTS", "FZF_DEFAULT_OPTS_FILE", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "BAT_THEME", "DELTA_FEATURES"):
             env.pop(name, None)
         for surface in surfaces:
-            observed = run(surface, work, env, args.plugins_dir)
+            raw_path = args.review_dir / (surface + ".ansi") if args.review_dir else None
+            try:
+                observed = run(surface, work, env, args.plugins_dir, raw_path=raw_path)
+            except Exception as error:
+                if not args.review_dir:
+                    raise
+                failures.append(surface)
+                evidence["surfaces"][surface] = {"status": "failed", "error": str(error)}
+                print(f"REVIEW FAILED {surface}: {error}", file=sys.stderr)
+                continue
             terminal_rows = isinstance(observed, list) and observed and isinstance(observed[0], list)
             snapshot = compact(observed) if terminal_rows else observed
             baseline = baselines / f"{surface}.json"
-            if args.record:
+            if args.review_dir:
+                snapshot_name = surface + ".json"
+                (args.review_dir / snapshot_name).write_text(json.dumps(snapshot, indent=2, sort_keys=True) + "\n")
+                detail = {"status": "captured", "cells": snapshot_name}
+                if raw_path.exists():
+                    detail["ansi"] = raw_path.name
+                if terminal_rows:
+                    capture = args.review_dir / (surface + ".svg")
+                    try:
+                        capture.write_text(svg(surface, observed, trim=surface not in ("zellij", "bottom", "tmux")))
+                        detail.update(svg=capture.name, rows=len(observed), columns=len(observed[0]))
+                    except Exception as error:
+                        failures.append(surface)
+                        detail.update(status="render-failed", error=str(error))
+                        print(f"REVIEW RENDER FAILED {surface}: {error}", file=sys.stderr)
+                evidence["surfaces"][surface] = detail
+                print(f"REVIEW {surface}: unapproved native capture")
+            elif args.record:
                 baselines.mkdir(parents=True, exist_ok=True)
                 baseline.write_text(json.dumps(snapshot, indent=2, sort_keys=True) + "\n")
                 if terminal_rows:
@@ -426,6 +574,10 @@ def main():
                     difference = "\n".join(difflib.unified_diff(json.dumps(expected, indent=2, sort_keys=True).splitlines(), json.dumps(snapshot, indent=2, sort_keys=True).splitlines(), fromfile="expected", tofile="observed", lineterm=""))
                     raise AssertionError(f"{surface}: native style regression against {baseline.relative_to(ROOT)}\n{difference}")
                 print(f"PASS {surface}: native styling and baseline agree")
+    if args.review_dir:
+        (args.review_dir / "manifest.json").write_text(json.dumps(evidence, indent=2) + "\n")
+        if failures:
+            raise SystemExit("Native visual review failed: " + ", ".join(failures))
 
 
 if __name__ == "__main__":

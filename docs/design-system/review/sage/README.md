@@ -1,1 +1,7 @@
-These comparisons re-render the committed Nord fixture cell data with the recorded Nord colors and projected Sage Midnight colors. The surface-variants illustration preserves the original candidates for comparison; Midnight is the selected treatment. The Sage panels are not native executions or approved baselines. Review native capture artifacts independently before accepting the preset.
+# Sage Midnight review evidence
+
+The palette, semantic catalog, contrast charts and variant comparisons in this directory are design illustrations. The historical Nord/Sage projections are not native screenshots and are superseded for acceptance by actual native review evidence.
+
+Use the `native-theme-review` and `native-zellij-review` CI artifacts. They contain same-checkout Nord and Sage observations, per-surface manifests, raw ANSI where applicable, and fixed-cell SVG renders. No palette substitution or hand-drawn application content is used in the native captures. Rich fixture content is intentionally seeded; it does not claim to be a production Studio or Publisher session.
+
+Unapproved review evidence is separate from `design-system/baselines`. Capture failures must remain visible; do not record or accept new baselines until the output is inspected.

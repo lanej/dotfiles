@@ -57,12 +57,17 @@ For a full local trial, select `"theme": "sage"` in [preset selection](../../des
 
 ## Native review
 
-Run the existing fixture runner against the isolated output on a machine with the pinned native tools and plugins installed:
+The browser preview and older projected comparisons are design illustrations, not native screenshots. Review evidence must come from running each preset with the same native application versions and fixture at the same checkout.
+
+Generate and review the isolated preset without recording a new regression baseline:
 
 ```sh
-DOTFILES_THEME_DIR=/tmp/sage-preset uv run --script scripts/test-theme-native.py --record
+python3 scripts/theme.py --theme sage --output-dir /tmp/sage-preset
+DOTFILES_THEME_DIR=/tmp/sage-preset uv run --script scripts/test-theme-native.py --review-dir /tmp/sage-review \
+  --surface neovim --surface neovim-frame --surface tmux --surface cli --surface fzf \
+  --surface bat --surface delta --surface glow --surface bottom
 ```
 
-Review the actual Neovim, Zellij, CLI, fzf, bat, delta and Glow captures plus the remaining native baselines before accepting them. These recordings belong to Sage, not Nord. Also inspect live Studio, Publisher, Kitty transparency and dense mixed-status screens, which are not established by the isolated fixtures. Optional integrations outside the shared design system retain their existing color configuration.
+Zellij uses the checkout's generated KDL and installed status plugin. Run its review in a disposable checkout with `make zellij-status` and the selected generated theme. CI captures both presets and publishes `native-theme-review` and `native-zellij-review` artifacts. Each includes the checkout commit, per-surface success or failure, compact observed cells, raw terminal output where applicable, and rendered SVGs. The richer fixtures include native diagnostics and lualine, a colored task picker with preview, Markdown code/table/link rendering, full tmux/bottom views, and multiple Zellij tabs. Sage retains explicit plus/minus markers in its actual generated Delta configuration; the review additionally enables Delta line numbers.
 
-Native Sage captures and baselines are pending review; the composition above is not a substitute for them.
+The renderer uses terminal cell coordinates, including wide glyph continuations and combining text, and draws standard Powerline and box geometry independently of the browser's installed fonts. It does not substitute colors or fabricate missing text. Inspect failures and raw ANSI rather than approving a defective capture. All captured views are unapproved evidence; neither CI nor `--review-dir` overwrites regression baselines. Acceptance still requires the explicit `--record` workflow after inspection. Studio, Publisher, Kitty transparency and other application-owned behavior need their own actual runtime review.

@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import tempfile
 import tomllib
+import xml.etree.ElementTree as ET
 import unittest
 from unittest import mock
 
@@ -529,6 +530,65 @@ class ThemeTests(unittest.TestCase):
             self.assertEqual(result.returncode, 130)
             self.assertEqual(result.stdout.splitlines()[-2:], ["--header=A name", "--no-multi"])
             self.assertTrue(result.stdout.startswith("--color=dark,"))
+
+    def test_native_review_uses_observed_cell_geometry(self):
+        from theme_review import render_svg
+        theme_data = json.loads(theme.compile_theme(theme.SOURCE, "sage")["colors.json"])
+        def cell(data, **styles):
+            return {"data": data, "fg": "default", "bg": "default",
+                    "bold": False, "italics": False, "reverse": False,
+                    "underscore": False, **styles}
+        rows = [
+            [cell("A\u0301"), cell("界"), cell(""), cell("\ue0b0", fg="acc8b7", bg="c4b2d9"),
+             cell("─"), cell(" ", bg="26352d"), cell(" ")],
+            [cell(" ") for _ in range(7)],
+        ]
+        svg = render_svg("geometry", rows, theme_data)
+        root = ET.fromstring(svg)
+        ns = {"s": "http://www.w3.org/2000/svg"}
+        self.assertEqual(root.get("width"), str(6 * 9 + 24))
+        self.assertEqual(root.get("height"), str(20 + 24))
+        self.assertNotIn("textLength", svg)
+        self.assertNotIn("\ue0b0", svg)
+        labels = {node.text: node for node in root.findall(".//s:text", ns)}
+        self.assertEqual(labels["A\u0301"].get("x"), "16.5")
+        self.assertEqual(labels["界"].get("x"), "30")
+        self.assertIn('transform="translate(39 12)" fill="#ACC8B7"', svg)
+        self.assertIn('width="9" height="20" fill="#26352D"', svg)
+        full = ET.fromstring(render_svg("full", rows, theme_data, trim=False))
+        self.assertEqual(full.get("width"), str(7 * 9 + 24))
+        self.assertEqual(full.get("height"), str(2 * 20 + 24))
+
+    def test_review_metadata_filter_preserves_hyperlink_labels(self):
+        from theme_review import TerminalMetadata
+        stream = TerminalMetadata()
+        parts = [
+            "before \x1b]8;;file:///tmp/service",
+            ".lua\x1b",
+            "\\service.lua\x1b]8;;\x07 after",
+            "\x1bPignored",
+            "\x1b\\\x1b[31mred\x1b[0m",
+        ]
+        self.assertEqual("".join(stream.feed(part) for part in parts),
+                         "before service.lua after\x1b[31mred\x1b[0m")
+        self.assertEqual(stream.pending, "")
+
+    def test_sage_retains_explicit_delta_markers(self):
+        sage = theme.compile_theme(theme.SOURCE, "sage")
+        nord = theme.compile_theme(theme.SOURCE, "nord")
+        self.assertIn("keep-plus-minus-markers = true", sage["delta.gitconfig"])
+        self.assertNotIn("keep-plus-minus-markers", nord["delta.gitconfig"])
+        with tempfile.TemporaryDirectory() as directory:
+            for name in ("colors.json", "tokens.json"):
+                (Path(directory) / name).write_text(sage[name])
+            env = {**os.environ, "DOTFILES_THEME_DIR": directory}
+            command = [str(ROOT / "bin/dotfiles-theme"), "--catalog"]
+            plain = subprocess.check_output([*command, "--color=never"], env=env, text=True)
+            self.assertNotIn("\x1b", plain)
+            self.assertIn("◐ CONNECTING", plain)
+            self.assertIn("✓ APPROVED", plain)
+            colored = subprocess.check_output([*command, "--color=always"], env=env, text=True)
+            self.assertIn("\x1b[38;2;172;200;183m✓ APPROVED", colored)
 
     def test_cli_preserves_meaning_without_color(self):
         command = [str(ROOT / "bin/dotfiles-theme")]

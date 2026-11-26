@@ -1169,6 +1169,7 @@ return {
 ["emphasis.git.file.branch.dim"] = false,
 ["symbol.file.regular"] = "",
 ["symbol.file.directory"] = "",
+["diff.markers"] = false,
 },
 ["components"] = {
 ["text"] = {
