@@ -37,6 +37,7 @@ export default defineConfig({
         { label: 'Tech radar', slug: 'reference/radar' },
       ] },
       { label: 'Daily workflows', items: [
+        { label: 'Studio toolchain', slug: 'studio' },
         { label: 'Terminal & copying', slug: 'terminal' },
         { label: 'Mac approval over SSH', slug: 'reference/intent-ssh' },
         { label: 'Keylease', slug: 'reference/keylease-ssh' },
