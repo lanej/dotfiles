@@ -182,7 +182,7 @@ border_color = "{{border}}"
 selected_border_color = "{{focus}}"
 widget_title = { color = "{{heading}}" }
 text = { color = "{{text}}" }
-selected_text = { color = "{{selection.row.fg|selection.fg}}", bg_color = "{{selection.row.bg|selection.bg}}" }
+selected_text = { color = "{{selection.row.fg}}", bg_color = "{{selection.row.bg}}" }
 disabled_text = { color = "{{text.muted}}" }
 [styles.graphs]
 graph_color = "{{border}}"

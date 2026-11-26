@@ -1,3 +1,4 @@
+required_roles = ["surface", "surface.raised", "surface.selected", "border", "text", "text.strong", "text.muted", "text.inverse", "accent", "accent.secondary", "focus", "status.success", "status.warning", "status.error", "status.info", "status.attention", "status.idle", "status.off", "syntax.comment", "syntax.keyword", "syntax.function", "syntax.string", "syntax.type", "syntax.number", "syntax.constant", "syntax.operator", "syntax.special", "syntax.variable"]
 
 [roles]
 "diff.add" = "@status.success"
@@ -51,6 +52,24 @@ prompt = "@accent"
 "file.special" = "@syntax.number"
 "file.archive" = "@status.attention"
 "file.project" = "@status.warning"
+
+# Universal roles: themes may override values, not the existence of a capability.
+"text.subtle" = "@text.muted"
+"text.on.error" = "@text.strong"
+"text.on.border" = "@text.strong"
+"selection.solid.fg" = "@selection.fg"
+"selection.solid.bg" = "@selection.bg"
+"scroll.track" = "@border"
+"selection.row.fg" = "@selection.fg"
+"selection.row.bg" = "@selection.bg"
+"gutter.text" = "@text.subtle"
+"gutter.border" = "@border"
+"selection.content.fg" = "@text"
+"selection.content.bg" = "@surface.selected"
+"selection.content.attention" = "@status.attention"
+"selection.content.accent" = "@accent"
+"selection.content.success" = "@status.success"
+"selection.content.number" = "@syntax.number"
 
 [presentation]
 "emphasis.heading" = { type = "boolean", value = true, note = "Glow h6 remains subdued; other heading consumers use this emphasis." }
@@ -111,3 +130,4 @@ prompt = "@accent"
 "symbol.file.directory" = { type = "string", value = "", ascii = "d" }
 "diff.markers" = { type = "boolean", value = false, note = "Retain explicit added/removed line markers when diff tint is subtle." }
 "tmux.tabs.compact" = { type = "boolean", value = false, note = "Use compact tmux tabs: focus fill on the active label and semantic marks on the dark surface." }
+"gutter.explicit" = { type = "boolean", value = false, note = "Emit explicit native gutter styling rather than application defaults." }

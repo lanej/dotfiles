@@ -8,12 +8,12 @@ emphasis_2 = "status.success"
 emphasis_3 = "syntax.number"
 
 [text_selected]
-base = "selection.solid.fg|text"
-background = "selection.solid.bg|surface.selected"
-emphasis_0 = "selection.solid.fg|status.attention"
-emphasis_1 = "selection.solid.fg|accent"
-emphasis_2 = "selection.solid.fg|status.success"
-emphasis_3 = "selection.solid.fg|syntax.number"
+base = "selection.content.fg"
+background = "selection.content.bg"
+emphasis_0 = "selection.content.attention"
+emphasis_1 = "selection.content.accent"
+emphasis_2 = "selection.content.success"
+emphasis_3 = "selection.content.number"
 
 [ribbon_unselected]
 base = "text.muted"
@@ -48,12 +48,12 @@ emphasis_2 = "status.success"
 emphasis_3 = "syntax.number"
 
 [table_cell_selected]
-base = "selection.solid.fg|text"
-background = "selection.solid.bg|surface.selected"
-emphasis_0 = "selection.solid.fg|status.attention"
-emphasis_1 = "selection.solid.fg|accent"
-emphasis_2 = "selection.solid.fg|status.success"
-emphasis_3 = "selection.solid.fg|syntax.number"
+base = "selection.content.fg"
+background = "selection.content.bg"
+emphasis_0 = "selection.content.attention"
+emphasis_1 = "selection.content.accent"
+emphasis_2 = "selection.content.success"
+emphasis_3 = "selection.content.number"
 
 [list_unselected]
 base = "text"
@@ -64,12 +64,12 @@ emphasis_2 = "status.success"
 emphasis_3 = "syntax.number"
 
 [list_selected]
-base = "selection.solid.fg|text"
-background = "selection.solid.bg|surface.selected"
-emphasis_0 = "selection.solid.fg|status.attention"
-emphasis_1 = "selection.solid.fg|accent"
-emphasis_2 = "selection.solid.fg|status.success"
-emphasis_3 = "selection.solid.fg|syntax.number"
+base = "selection.content.fg"
+background = "selection.content.bg"
+emphasis_0 = "selection.content.attention"
+emphasis_1 = "selection.content.accent"
+emphasis_2 = "selection.content.success"
+emphasis_3 = "selection.content.number"
 
 [frame_unselected]
 base = "surface"

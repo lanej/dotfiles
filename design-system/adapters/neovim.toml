@@ -31,13 +31,13 @@ component = "heading"
 
 [Visual]
 component = "selection"
-fg = "@selection.solid.fg|selection.fg"
-bg = "@selection.solid.bg|selection.bg"
+fg = "@selection.solid.fg"
+bg = "@selection.solid.bg"
 
 [VisualNOS]
 component = "selection"
-fg = "@selection.solid.fg|selection.fg"
-bg = "@selection.solid.bg|selection.bg"
+fg = "@selection.solid.fg"
+bg = "@selection.solid.bg"
 
 [Cursor]
 fg = "@text.inverse"
@@ -231,11 +231,11 @@ bg = "@surface.raised"
 
 [PmenuSel]
 component = "selection"
-fg = "@selection.solid.fg|selection.fg"
-bg = "@selection.solid.bg|selection.bg"
+fg = "@selection.solid.fg"
+bg = "@selection.solid.bg"
 
 [PmenuSbar]
-bg = "@scroll.track|border"
+bg = "@scroll.track"
 
 [PmenuThumb]
 bg = "@accent"
@@ -265,8 +265,8 @@ bg = "default"
 
 [QuickFixLine]
 component = "selection"
-fg = "@selection.solid.fg|selection.fg"
-bg = "@selection.solid.bg|selection.bg"
+fg = "@selection.solid.fg"
+bg = "@selection.solid.bg"
 
 [DiagnosticError]
 fg = "@status.error"

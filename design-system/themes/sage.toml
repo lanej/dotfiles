@@ -81,6 +81,15 @@ focus = "$lavender"
 "gutter.text" = "@text.subtle"
 "gutter.border" = "@border"
 
+# Filled content selections use inverse ink for all semantic emphases.
+"selection.content.fg" = "@selection.solid.fg"
+"selection.content.bg" = "@selection.solid.bg"
+"selection.content.attention" = "@selection.solid.fg"
+"selection.content.accent" = "@selection.solid.fg"
+"selection.content.success" = "@selection.solid.fg"
+"selection.content.number" = "@selection.solid.fg"
+
 [presentation]
 "diff.markers" = true
 "tmux.tabs.compact" = true
+"gutter.explicit" = true

@@ -231,22 +231,19 @@ class ThemeTests(unittest.TestCase):
         check("Pi tool error output", pi["toolOutput"], pi["toolErrorBg"])
         check("Pi tool error status", pi["error"], pi["toolErrorBg"])
 
-    def test_optional_role_fallbacks(self):
-        shared = theme.read(theme.SOURCE / "tokens.toml")["roles"]
+    def test_universal_role_schema(self):
+        shared = theme.read(theme.SOURCE / "tokens.toml")
+        expected = set(shared["roles"]) | set(shared["required_roles"])
         for name in ("nord", "sage"):
             data = theme.read(theme.SOURCE / "themes" / f"{name}.toml")
-            colors, value = theme.resolve(data, shared)
-            expected = colors.get("text.on.error", colors["text.strong"])
-            self.assertEqual(value("@text.on.error|text.strong"), expected)
-            self.assertEqual(theme.render_roles("{{text.on.error|text.strong}}", colors), expected)
-            with self.assertRaises(ValueError):
-                value("@text.on.error|missing")
+            colors, value = theme.resolve(data, shared["roles"])
+            self.assertEqual(set(colors), expected)
+            self.assertEqual(value("@text.on.error"), colors["text.on.error"])
+            self.assertEqual(theme.render_roles("{{text.on.error}}", colors), colors["text.on.error"])
             with self.assertRaises(KeyError):
                 value("@missing")
-        data = theme.read(theme.SOURCE / "themes/sage.toml")
-        data["roles"]["text.on.error"] = "@text.on.error|text.strong"
-        with self.assertRaises(ValueError):
-            theme.resolve(data, shared)
+            with self.assertRaises(KeyError):
+                value("@text.on.error|text.strong")
 
     def test_semantic_state_review_catalog(self):
         groups = theme.read(theme.SOURCE / "semantic-states.toml")
@@ -255,6 +252,9 @@ class ThemeTests(unittest.TestCase):
                           "interaction", "connectivity", "data", "access"])
         sage = theme.read(theme.SOURCE / "themes/sage.toml")
         nord = theme.read(theme.SOURCE / "themes/nord.toml")
+        shared = theme.read(theme.SOURCE / "tokens.toml")["roles"]
+        sage_roles, _ = theme.resolve(sage, shared)
+        nord_roles, _ = theme.resolve(nord, shared)
         seen = set()
         for group in groups:
             for state in group["states"]:
@@ -262,9 +262,8 @@ class ThemeTests(unittest.TestCase):
                     key = (group["id"], state["id"])
                     self.assertNotIn(key, seen)
                     seen.add(key)
-                    self.assertIn(state["role"], sage["roles"])
-                    self.assertIn(state["role"] if state["role"] in nord["roles"]
-                                  else state["fallback_role"], nord["roles"])
+                    self.assertIn(state["role"], sage_roles)
+                    self.assertIn(state["role"], nord_roles)
                     self.assertTrue(state["label"] and state["description"] and state["example"])
                     self.assertEqual(len(state["glyph"]), 1)
                     self.assertEqual(len(state["ascii"]), 1)
@@ -314,7 +313,7 @@ class ThemeTests(unittest.TestCase):
                         for state in group["states"]:
                             key = group["id"] + "." + state["id"]
                             token = exported[key]
-                            role = state["role"] if state["role"] in colors else state["fallback_role"]
+                            role = state["role"]
                             self.assertEqual(token["fg"], colors[role])
                             self.assertEqual(token["color_role"], "@" + role)
                             self.assertEqual(token["symbol"], state["ascii"] if symbols == "ascii" else state["glyph"])
@@ -322,7 +321,7 @@ class ThemeTests(unittest.TestCase):
                             self.assertEqual(token["label"], state["label"])
                             self.assertEqual(token["description"], state["description"])
                     self.assertEqual(exported["configuration.off"]["color_role"],
-                                     "@text.subtle" if name == "sage" else "@text.muted")
+                                     "@text.subtle")
 
     def test_semantic_state_token_validation_rejects_invalid_declarations(self):
         groups = theme.read(theme.SOURCE / "semantic-states.toml")
