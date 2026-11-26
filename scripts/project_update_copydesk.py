@@ -72,9 +72,7 @@ def main():
         return 0
 
     source = Path.cwd()
-    origin = git(source, "config", "--local", "--get", "remote.origin.url")
-    if origin not in {REMOTE, REMOTE.removesuffix(".git"), "git@github.com:lanej/copydesk.git",
-                      "ssh://git@github.com/lanej/copydesk.git"}:
+    if git(source, "remote", "get-url", "origin") != REMOTE:
         raise ValueError(f"Expected the upstream Copydesk checkout: {source}")
     expected = git(source, "rev-parse", "--verify", "refs/remotes/origin/main^{commit}")
     data = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share")

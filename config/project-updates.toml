@@ -57,6 +57,7 @@ depends_on = ["beads", "octo-manager", "intent"]
 repository = "https://github.com/lanej/copydesk.git"
 path = "~/src/copydesk"
 remote = "origin"
+verify_remote = true
 hydrate_checkout = false
 command = ["{python}", "{dotfiles}/scripts/project_update_copydesk.py"]
 lifecycle = "stateless"

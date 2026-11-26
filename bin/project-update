@@ -56,6 +56,10 @@ def load_projects(config):
         if repository is not None and (not isinstance(repository, str) or not repository.strip()
                                        or repository.startswith("-")):
             raise ValueError(f"{name}: repository must be a nonempty Git clone URL or path")
+        if not isinstance(project.get("verify_remote", False), bool):
+            raise ValueError(f"{name}: verify_remote must be a boolean")
+        if project.get("verify_remote") and repository is None:
+            raise ValueError(f"{name}: verify_remote requires a repository URL")
         dependencies = project.get("depends_on", [])
         if not isinstance(dependencies, list) or not all(isinstance(x, str) for x in dependencies):
             raise ValueError(f"{name}: depends_on must be an array of project names")
@@ -338,6 +342,8 @@ def remote_for(path, project):
     remote = project.get("remote", "upstream" if "upstream" in remotes else "origin")
     if remote not in remotes:
         raise ValueError(f"No {remote} remote in {path}")
+    if project.get("verify_remote") and git(path, "remote", "get-url", remote) != project["repository"]:
+        raise ValueError(f"{path}: remote {remote} does not match the registered repository URL")
     return remote
 
 

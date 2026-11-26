@@ -1154,6 +1154,21 @@ chmod +x "$HOME/.local/bin/worktree"
         self.assertIsNone(status["installed_revision"])
         self.assertFalse(data.exists(), "Status created editor data")
 
+    def test_copydesk_refuses_to_pull_an_unrelated_checkout(self):
+        source = self.base / "src/copydesk"
+        source.parent.mkdir()
+        self.checkout.rename(source)
+        before = self.git(source, "rev-parse", "HEAD")
+        self.commit("second")
+        self.git(self.source, "push", "origin", "trunk")
+        for args in (("pull", "copydesk"), ("status", "copydesk", "--fetch")):
+            result = subprocess.run([sys.executable, str(COMMAND), *args],
+                                    env=self.env, text=True, capture_output=True)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("does not match the registered repository URL", result.stdout + result.stderr)
+        self.assertEqual(self.git(source, "rev-parse", "HEAD"), before)
+        self.assertEqual(self.git(source, "rev-parse", "origin/trunk"), before)
+
     def test_dotfiles_install_clones_and_preserves_both_tools(self):
         for project, directory in (("intent", "intent"), ("keylease", "1password-agent")):
             with self.subTest(project=project):
