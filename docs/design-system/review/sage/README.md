@@ -1,0 +1,1 @@
+These comparisons re-render the committed Nord fixture cell data with the recorded Nord colors and projected Sage colors. The Sage panels are not native executions or approved baselines. Review native capture artifacts independently before accepting the preset.
