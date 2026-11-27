@@ -52,7 +52,7 @@ const componentTarget = (name: string) => name.includes('.git.') ? `#git-style-$
 <section aria-labelledby="presentation-tokens">
   <h2 id="presentation-tokens">Presentation tokens</h2>
   <p>Inspect defaults, selected preset overrides and direct consumers. File status icons and gutter signs retain their own meanings. Native adapters own units and supported mappings.</p>
-  <p>Selected glyph representation: <strong>{tokens.symbols}</strong>. Git counts and ahead/behind composition stay in Starship’s native adapter. The bundled font previews default symbols; Unicode values identify variants requiring other glyphs.</p>
+  <p>Selected glyph representation: <strong>{tokens.symbols}</strong>. Git counts and ahead/behind composition stay in Starship’s native adapter. The bundled font previews shared and preset symbols. Unicode values identify the resolved glyph.</p>
   {tokenGroups.map(([prefix, title]) => (
     <details class="component token-group">
       <summary>{title}</summary>
