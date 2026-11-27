@@ -1,0 +1,3 @@
+borders_active_color = "@focus"
+borders_inactive_color = "@border"
+yabai_insert_feedback_color = "@accent.secondary"

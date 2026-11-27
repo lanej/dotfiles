@@ -1,10 +1,8 @@
-#!/bin/bash
+#!/bin/sh
 
-options=(
-	active_color=0xff73cef4
-	inactive_color=0xff494d64
-	width=4.0
-	style=square
-)
+config_path=$(realpath "$0") || exit 1
+theme_dir=${DOTFILES_THEME_DIR:-"${config_path%/*}/../design-system/generated"}
+# shellcheck source=design-system/generated/macos-window-colors.sh
+. "$theme_dir/macos-window-colors.sh" || exit 1
 
-borders "${options[@]}"
+exec borders "active_color=$borders_active_color" "inactive_color=$borders_inactive_color" width=4.0 style=square

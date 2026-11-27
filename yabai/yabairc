@@ -1,4 +1,11 @@
 #!/bin/sh
+
+config_path=$(realpath "$0") || exit 1
+theme_dir=${DOTFILES_THEME_DIR:-"${config_path%/*}/../design-system/generated"}
+# shellcheck source=design-system/generated/macos-window-colors.sh
+. "$theme_dir/macos-window-colors.sh" || exit 1
+
+yabai -m config insert_feedback_color "$yabai_insert_feedback_color"
 yabai -m config layout bsp
 yabai -m config top_padding    15
 yabai -m config bottom_padding 15

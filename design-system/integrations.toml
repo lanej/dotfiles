@@ -7,6 +7,14 @@ coverage = "Mapped; native config parse checked. Emulator compositing requires v
 sources = ["kitty/kittyconf", "design-system/generated/kitty.conf"]
 
 [[items]]
+id = "macos-window-borders"
+owner = "JankyBorders window outlines and Yabai insertion preview"
+mechanism = "generated ARGB colors sourced by the linked macOS configuration files"
+reload = "Regenerate the palette and apply bordersrc and Yabai's insert_feedback_color setting"
+coverage = "Both launchers pass the preset colors to their command-line tools. skhd sends the existing focus and tiling commands."
+sources = ["design-system/adapters/macos-window-colors.toml", "yabai/bordersrc", "yabai/yabairc", "yabai/skhdrc"]
+
+[[items]]
 id = "neovim"
 owner = "Owned colorscheme, standard groups and explicit plugin groups"
 mechanism = "generated Lua mappings; reapplied after LazyLoad/VeryLazy"
