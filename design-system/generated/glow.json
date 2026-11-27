@@ -68,7 +68,8 @@
   },
   "link": {
     "color": "#ACC8B7",
-    "underline": true
+    "underline": true,
+    "format": "{{if not (and (ge (len .text) 4) (eq (slice .text 0 4) \"\\x1b]8;\"))}}{{.text}}{{end}}"
   },
   "link_text": {
     "color": "#ACC8B7",
