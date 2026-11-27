@@ -105,7 +105,7 @@ prompt = "@accent"
 "symbol.separator.component.right" = { type = "string", value = "", ascii = "<" }
 "symbol.workspace.directory" = { type = "string", value = "▸", ascii = ">" }
 "symbol.git.worktree.linked" = { type = "string", value = "▣", ascii = "w" }
-"symbol.git.summary.branch" = { type = "string", value = "↱", ascii = "@" }
+"symbol.git.summary.branch" = { type = "string", value = { token = "symbol.git.file.branch" }, ascii = "@" }
 "symbol.git.summary.changed_files" = { type = "string", value = "Δ", ascii = "~" }
 "symbol.git.summary.added_lines" = { type = "string", value = "+", ascii = "+" }
 "symbol.git.summary.removed_lines" = { type = "string", value = "−", ascii = "-" }

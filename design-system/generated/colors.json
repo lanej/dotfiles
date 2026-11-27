@@ -202,7 +202,7 @@
     },
     "statusline.git.branch": {
       "fg": "#A3B1A7",
-      "symbol": "\u21b1"
+      "symbol": "\uf418"
     },
     "statusline.git.changed_files": {
       "fg": "#A3B1A7",

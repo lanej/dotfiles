@@ -1246,7 +1246,8 @@ return {
 ["symbol.separator.component.right"] = "",
 ["symbol.workspace.directory"] = "❯",
 ["symbol.git.worktree.linked"] = "▣",
-["symbol.git.summary.branch"] = "↱",
+["symbol.git.file.branch"] = "",
+["symbol.git.summary.branch"] = "",
 ["symbol.git.summary.changed_files"] = "Δ",
 ["symbol.git.summary.added_lines"] = "+",
 ["symbol.git.summary.removed_lines"] = "−",
@@ -1271,7 +1272,6 @@ return {
 ["symbol.git.file.typechanged"] = "",
 ["symbol.git.file.ahead"] = "",
 ["symbol.git.file.behind"] = "",
-["symbol.git.file.branch"] = "",
 ["symbol.git.hunk.add"] = "┃",
 ["symbol.git.hunk.change"] = "┃",
 ["symbol.git.hunk.delete"] = "▁",
@@ -1396,7 +1396,7 @@ return {
 },
 ["statusline.git.branch"] = {
 ["fg"] = "#A3B1A7",
-["symbol"] = "↱",
+["symbol"] = "",
 },
 ["statusline.git.changed_files"] = {
 ["fg"] = "#A3B1A7",

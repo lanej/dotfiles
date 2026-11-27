@@ -266,7 +266,7 @@ class ThemeTests(unittest.TestCase):
 
     def test_statusline_components_keep_git_counts_distinct(self):
         fields = {
-            "branch": ("↱", "@", "text.muted"),
+            "branch": ("\uf418", "@", "text.muted"),
             "changed_files": ("Δ", "~", "text.muted"),
             "added_lines": ("+", "+", "diff.add"),
             "removed_lines": ("−", "-", "diff.delete"),
