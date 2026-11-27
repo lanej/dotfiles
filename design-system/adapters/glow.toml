@@ -71,6 +71,8 @@ unticked = "[ ] "
 [link]
 color = "@link"
 underline = true
+# Drop OSC 8 destinations from the display. Glamour also uses this style for bare autolinks.
+format = '{{if not (and (ge (len .text) 4) (eq (slice .text 0 4) "\x1b]8;"))}}{{.text}}{{end}}'
 
 [link_text]
 color = "@link"
