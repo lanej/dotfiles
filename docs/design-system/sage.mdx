@@ -55,6 +55,10 @@ DOTFILES_THEME_DIR=/tmp/sage-preset bin/dotfiles-theme --color=always
 
 To select a preset, edit [preset selection](../../design-system/config.toml), run `make theme-generate` and follow the [configuration and reload instructions](../design-system.mdx#generate-configure-and-reload). Choose `theme = "nord"` for Nord. An isolated output alone does not switch every running application.
 
+## Codex CLI and Claude Code
+
+Run `make codex-config claude-config` to install the Sage Midnight picker entries. In Codex, run `/theme` and select `sage-midnight (custom)` for syntax-highlighted code and diffs. In Claude Code, select `Sage Midnight` from `/theme` for prompts, status indicators, transcript surfaces and diffs. Both entries stay available when the terminal preset changes. The terminal controls the main background.
+
 ## Native review
 
 The browser preview and older projected comparisons are design illustrations, not native screenshots. Review evidence must come from running each preset with the same native application versions and fixture at the same checkout.
