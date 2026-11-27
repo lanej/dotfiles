@@ -1,4 +1,5 @@
 #!/bin/sh
+
 yabai -m config layout bsp
 yabai -m config top_padding    15
 yabai -m config bottom_padding 15
@@ -17,3 +18,15 @@ yabai -m rule --add label=test-browser app="$test_browser" manage=off
 yabai -m signal --remove test-browser-created 2>/dev/null || :
 yabai -m signal --remove test-browser-focused 2>/dev/null || :
 yabai -m signal --remove test-browser-activated 2>/dev/null || :
+
+(
+	theme_dir=${DOTFILES_THEME_DIR:-}
+	if [ -z "$theme_dir" ]; then
+		config_path=$(realpath "$0") || exit 1
+		theme_dir="${config_path%/*}/../design-system/generated"
+	fi
+	theme_file="$theme_dir/macos-window-colors.sh"
+	[ -r "$theme_file" ] || exit 1
+	# shellcheck source=design-system/generated/macos-window-colors.sh
+	. "$theme_file" && yabai -m config insert_feedback_color "$yabai_insert_feedback_color"
+) || printf '%s\n' 'Yabai could not apply the theme insertion color.' >&2

@@ -356,6 +356,12 @@ installer = "macos-window-tool"
 platform = "macos"
 setup = ["yabai"]
 
+[tools.borders]
+description = "Install JankyBorders and link its window border configuration."
+installer = "macos-window-tool"
+platform = "macos"
+setup = ["yabai"]
+
 [tools.x11]
 description = "Link X11 session configuration for a separately installed desktop."
 installer = "config"

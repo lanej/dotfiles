@@ -134,6 +134,10 @@ Add its purpose, atomic level, composition, implementations and source locations
 
 Document unavailable customization in [the integration inventory](../design-system/integrations.toml), including the owning application or plugin and what remains unverified. Verbatim pane output, literal color previews and filetype icon colors have independent owners. Optional applications are listed as gaps rather than silently claimed as migrated.
 
+## macOS window borders
+
+The [macOS border adapter](../design-system/adapters/macos-window-colors.toml) gives JankyBorders the same focus and inactive border colors as Kitty. Yabai’s insertion preview uses the secondary accent. Sage resolves these to lavender, muted green, and teal. `make yabai` links the configs, and `make theme-generate` refreshes their color include. Bootstrap installs JankyBorders on macOS 14 and later. Start the JankyBorders service to draw window outlines. skhd supplies the existing window-management shortcuts.
+
 ## File listings and directory previews
 
 Eza consumes the [generated native adapter](../design-system/adapters/eza.toml) through `~/.config/eza/theme.yml`, installed by `make shell`. File kinds use shared `file.*` roles; native Git metadata uses shared `git.file.*` roles. `ll` and `la` retain exact byte sizes, and `lt` and fzf directory previews retain bounded trees and native index/worktree indicators. The shell login defaults reuse the generated fzf palette instead of resetting it to literal Nord colors.

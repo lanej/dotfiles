@@ -333,6 +333,44 @@ class ThemeTests(unittest.TestCase):
                 self.assertEqual(components["git.file.deleted"]["symbol"], expected[2])
                 self.assertEqual(components["git.file.staged"]["symbol"], "")
 
+    def test_macos_window_colors_reach_the_linked_configurations(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            tools = work / "bin"
+            tools.mkdir()
+            for name in ("borders", "yabai"):
+                stub = tools / name
+                stub.write_text('#!/bin/sh\nprintf "%s\\n" "$*"\n')
+                stub.chmod(0o755)
+            for config in ("bordersrc", "yabairc"):
+                (work / config).symlink_to(ROOT / "yabai" / config)
+            env = {**os.environ, "PATH": str(tools) + os.pathsep + os.environ["PATH"]}
+            env.pop("DOTFILES_THEME_DIR", None)
+            default_preset = theme.read(theme.SOURCE / "config.toml")["theme"]
+            alternate_preset = "nord" if default_preset == "sage" else "sage"
+            for preset in (default_preset, alternate_preset):
+                with self.subTest(preset=preset):
+                    outputs = theme.compile_theme(theme.SOURCE, preset)
+                    colors = json.loads(outputs["colors.json"])["roles"]
+                    expected = {role: "0xff" + colors[role][1:].lower()
+                                for role in ("focus", "border", "accent.secondary")}
+                    if preset != default_preset:
+                        (work / "macos-window-colors.sh").write_text(outputs["macos-window-colors.sh"])
+                        env["DOTFILES_THEME_DIR"] = str(work)
+                    borders = subprocess.check_output([str(work / "bordersrc")], env=env, text=True)
+                    self.assertEqual(borders.strip(),
+                                     f'active_color={expected["focus"]} inactive_color={expected["border"]} width=4.0 style=square')
+                    yabai = subprocess.check_output([str(work / "yabairc")], env=env, text=True)
+                    self.assertIn(f'-m config insert_feedback_color {expected["accent.secondary"]}', yabai.splitlines())
+
+            missing_theme = subprocess.run(
+                [str(work / "yabairc")], env={**env, "DOTFILES_THEME_DIR": str(work / "missing")},
+                check=True, capture_output=True, text=True,
+            )
+            self.assertIn("-m config layout bsp", missing_theme.stdout.splitlines())
+            self.assertIn("-m rule --add label=test-browser", missing_theme.stdout)
+            self.assertNotIn("insert_feedback_color", missing_theme.stdout)
+
     def test_atuin_semantic_theme(self):
         adapter = theme.read(theme.SOURCE / "adapters/atuin.toml")
         for preset in ("nord", "sage"):
