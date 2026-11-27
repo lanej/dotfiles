@@ -20,6 +20,10 @@ test('look up generated theme tokens and compare presets on a narrow screen', as
   await state.getByRole('link', { name: '@accent', exact: true }).click();
   await expect(search).toHaveValue('');
   await expect(page.locator('[id="color-roles-accent"]')).toBeInViewport();
+  await search.fill('access.approved');
+  await state.getByRole('link', { name: '@accent', exact: true }).click();
+  await expect(search).toHaveValue('');
+  await expect(page.locator('[id="color-roles-accent"]')).toBeInViewport();
 
   await search.fill('symbol.git.summary.branch');
   await expect(page.locator('[id="presentation-tokens-symbol.git.summary.branch"]')).toContainText('');
