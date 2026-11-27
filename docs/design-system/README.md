@@ -1,6 +1,6 @@
 # Catalog symbol font
 
-`symbols.woff2` contains only the default presentation-token characters from Hack Nerd Font Mono Regular, patched by Nerd Fonts v3.5.1. Its source is `HackNerdFontMono-Regular.ttf` in the [Nerd Fonts v3.5.1 Hack release](https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/Hack.zip). The subset retains font license metadata; [SYMBOLS-LICENSE.txt](SYMBOLS-LICENSE.txt) includes the Hack, Font Awesome, Octicons and Powerline Symbols license texts from that version.
+`symbols.woff2` contains the default and preset presentation glyphs, including semantic-state Octicons, from Hack Nerd Font Mono Regular, patched by Nerd Fonts v3.5.1. Its source is `HackNerdFontMono-Regular.ttf` in the [Nerd Fonts v3.5.1 Hack release](https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/Hack.zip). The subset retains font license metadata; [SYMBOLS-LICENSE.txt](SYMBOLS-LICENSE.txt) includes the Hack, Font Awesome, Octicons and Powerline Symbols license texts from that version.
 
 To regenerate after adding default symbols, supply that source font explicitly:
 

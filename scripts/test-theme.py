@@ -252,6 +252,87 @@ class ThemeTests(unittest.TestCase):
         check("Pi tool error output", pi["toolOutput"], pi["toolErrorBg"])
         check("Pi tool error status", pi["error"], pi["toolErrorBg"])
 
+        components = resolved["components"]
+        for name, style in components.items():
+            if name.startswith("statusline.git."):
+                check(name, style["fg"], c["statusline.bg"])
+        for name in ("statusline.directory", "statusline.model", "statusline.model.context_usage", "tool.output"):
+            style = components[name]
+            check(name, style["fg"], style["bg"])
+        check("inline tool metadata", c["annotation.inlay"], c["tool.output.bg"])
+        check("code language label", c["code.language"], c["surface"])
+        for role in ("diagnostic.error", "diagnostic.warning"):
+            check(role, c[role], c["tool.output.bg"])
+
+    def test_statusline_components_keep_git_counts_distinct(self):
+        fields = {
+            "branch": ("\uf418", "@", "text.muted"),
+            "changed_files": ("\uf4d2", "~", "text.muted"),
+            "added_lines": ("\uf457", "+", "diff.add"),
+            "removed_lines": ("\uf458", "-", "diff.delete"),
+            "untracked_files": ("\uf4d0", "?", "status.warning"),
+        }
+        for representation in ("unicode", "ascii"):
+            with self.subTest(symbols=representation):
+                outputs = theme.compile_theme(theme.SOURCE, "sage", representation)
+                resolved = json.loads(outputs["colors.json"])
+                roles, components = resolved["roles"], resolved["components"]
+                for field, (symbol, fallback, color) in fields.items():
+                    self.assertEqual(components[f"statusline.git.{field}"], {
+                        "symbol": symbol if representation == "unicode" else fallback,
+                        "fg": roles[color],
+                    })
+                self.assertNotEqual(components["statusline.git.untracked_files"],
+                                    components["git.file.untracked"])
+                self.assertEqual(components["statusline.directory"]["symbol"],
+                                 "\uf460" if representation == "unicode" else ">")
+                self.assertEqual(components["statusline.directory.linked"]["symbol"],
+                                 "\uf482" if representation == "unicode" else "w")
+                self.assertEqual(components["statusline.git.pull_request"]["symbol"],
+                                 "\uf407" if representation == "unicode" else "P")
+                self.assertEqual(components["statusline.model.context_usage"]["symbol"],
+                                 "\uf463" if representation == "unicode" else "C")
+                pi = json.loads(outputs["pi.json"])
+                statusline = json.loads(outputs["studio-statusline.json"])
+                for field, component in (("branch", "git.branch"), ("addedLines", "git.added_lines"),
+                                         ("directory", "directory"), ("contextUsage", "model.context_usage")):
+                    self.assertEqual(statusline[field], components[f"statusline.{component}"]["symbol"])
+                self.assertEqual(pi["vars"]["syntaxNull"], roles["syntax.null"])
+                self.assertEqual(pi["vars"]["footerBg"], "#1C2B23")
+                self.assertEqual(pi["vars"]["footerDirectoryBg"], "#35493E")
+                self.assertEqual(pi["vars"]["footerModelBg"], "#2A4034")
+                self.assertEqual(pi["colors"]["toolSuccessBg"], "#121D18")
+                self.assertEqual(pi["colors"]["toolPendingBg"], pi["colors"]["toolSuccessBg"])
+                self.assertEqual(pi["colors"]["toolErrorBg"], roles["tool.error.bg"])
+                self.assertEqual(components["annotation.inlay"]["fg"], "#B1B1B1")
+                self.assertEqual(components["diagnostic.warning"], {
+                    "fg": roles["diagnostic.warning"],
+                    "symbol": "\uf421" if representation == "unicode" else "!",
+                })
+                presentation = json.loads(outputs["tokens.json"])["presentation"]
+                levels = ("off", "minimal", "low", "medium", "high", "extra_high")
+                self.assertEqual(
+                    [presentation[f"symbol.model.reasoning.{level}"]["resolved"] for level in levels],
+                    ["", *("▁▂▄▆█" if representation == "unicode" else "12345")],
+                )
+
+    def test_sage_octicon_git_signs_and_ascii_fallbacks(self):
+        for representation, expected in (("unicode", "\uf457\uf459\uf458"), ("ascii", "+~-")):
+            with self.subTest(symbols=representation):
+                outputs = theme.compile_theme(theme.SOURCE, "sage", representation)
+                components = json.loads(outputs["colors.json"])["components"]
+                for suffix, glyph in zip(("add", "change", "delete"), expected):
+                    unstaged = components[f"git.hunk.{suffix}"]
+                    staged = components[f"git.staged_hunk.{suffix}"]
+                    compare = components[f"git.branch_hunk.{suffix}"]
+                    self.assertEqual(unstaged["symbol"], glyph)
+                    self.assertNotEqual(unstaged["fg"], staged["fg"])
+                    if representation == "unicode":
+                        self.assertNotIn(glyph, (staged["symbol"], compare["symbol"]))
+                self.assertEqual(components["git.file.modified"]["symbol"], expected[1])
+                self.assertEqual(components["git.file.deleted"]["symbol"], expected[2])
+                self.assertEqual(components["git.file.staged"]["symbol"], "")
+
     def test_macos_window_colors_reach_the_linked_configurations(self):
         with tempfile.TemporaryDirectory() as directory:
             work = Path(directory)
@@ -404,6 +485,7 @@ class ThemeTests(unittest.TestCase):
                             self.assertEqual(token["fg"], colors[role])
                             self.assertEqual(token["color_role"], "@" + role)
                             self.assertEqual(token["symbol"], state["ascii"] if symbols == "ascii" else state["glyph"])
+                            self.assertEqual(token.get("octicon"), state.get("octicon"))
                             self.assertEqual(token["bold"], state.get("bold", False))
                             self.assertEqual(token["label"], state["label"])
                             self.assertEqual(token["description"], state["description"])
@@ -425,6 +507,8 @@ class ThemeTests(unittest.TestCase):
             ({"role": "missing"}, KeyError),
             ({"fallback_role": "missing"}, ValueError),
             ({"glyph": "wide"}, ValueError),
+            ({"octicon": "wide"}, ValueError),
+            ({"octicon": "✓"}, ValueError),
             ({"glyph": "界"}, ValueError),
             ({"ascii": "é"}, ValueError),
             ({"bold": "true"}, ValueError),
@@ -736,6 +820,15 @@ class ThemeTests(unittest.TestCase):
             self.assertNotIn("\x1b", plain)
             self.assertIn("◐ CONNECTING", plain)
             self.assertIn("✓ APPROVED", plain)
+            octicons = subprocess.check_output([*command, "--octicons", "--color=never"], env=env, text=True)
+            self.assertIn("\uf510 APPROVED", octicons)
+            self.assertIn("\uf46f DEBUG", octicons)
+            ascii_tokens = theme.compile_theme(theme.SOURCE, "sage", "ascii")["tokens.json"]
+            (Path(directory) / "tokens.json").write_text(ascii_tokens)
+            ascii_catalog = subprocess.check_output([*command, "--octicons", "--color=never"], env=env, text=True)
+            self.assertIn("+ APPROVED", ascii_catalog)
+            self.assertNotIn("\uf510", ascii_catalog)
+            (Path(directory) / "tokens.json").write_text(sage["tokens.json"])
             colored = subprocess.check_output([*command, "--color=always"], env=env, text=True)
             self.assertIn("\x1b[38;2;172;200;183m✓ APPROVED", colored)
 

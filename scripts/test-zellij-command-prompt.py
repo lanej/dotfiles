@@ -565,7 +565,9 @@ def exercise_files(first, second, home):
     first.until('relative filename candidates arrive', lambda: 'notes one.txt' in prompt_text(first))
     assert ': edit notes' in command_line(first), 'Example hides the command or query'
     assert_match_underlines(first, 'notes one.txt', set(range(5)))
-    for name, icon in [('notes one.txt', '\uf15b'), ('notes folder', '\uf07b')]:
+    presentation = json.loads((ROOT / "design-system/generated/tokens.json").read_text())["presentation"]
+    for name, kind in [("notes one.txt", "regular"), ("notes folder", "directory")]:
+        icon = presentation[f"symbol.file.{kind}"]["resolved"]
         line = next(line for line in screen(first) if name in line)
         assert line.index(icon) < line.index(name), 'Type icon must precede the filename'
     capture(first, 'file-completion')

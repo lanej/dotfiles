@@ -19,12 +19,12 @@ test('inspect native theme examples and follow atomic composition', async ({ pag
   await page.locator('details').filter({ has: gitToken }).locator('summary').click();
   await expect(gitToken).toContainText('starship');
   await expect(gitToken).toContainText('string');
-  await expect(gitToken).toContainText('None');
+  await expect(gitToken).toContainText('symbol.diff.change');
+  await expect(gitToken).toContainText('U+F459');
   await expect(gitToken).toContainText('ASCII');
   const peerTokens = page.locator('details').filter({ has: gitToken }).locator('.token');
   expect((await peerTokens.nth(0).boundingBox())?.y).toBe((await peerTokens.nth(1).boundingBox())?.y);
-  await page.evaluate(() => document.fonts.ready);
-  expect(await page.evaluate(() => document.fonts.check('16px "Dotfiles Symbols"', ''))).toBe(true);
+  expect(await page.evaluate(async () => (await document.fonts.load('16px "Dotfiles Symbols"', '')).length)).toBeGreaterThan(0);
   await gitToken.getByRole('link', { name: 'components', exact: true }).click();
   const gitStyle = page.locator('#git-style-git-file-modified');
   await expect(gitStyle).toBeVisible();

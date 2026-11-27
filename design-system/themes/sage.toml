@@ -24,6 +24,11 @@ rose = "#F18C96"
 dusty_rose = "#D89DAE"
 copper = "#DDA783"
 subtle = "#909F95"
+statusline = "#1C2B23"
+statusline_directory = "#35493E"
+statusline_model = "#2A4034"
+tool_output = "#121D18"
+inlay = "#B1B1B1"
 
 [roles]
 surface = "$charcoal"
@@ -39,6 +44,11 @@ accent = "$sage"
 focus = "$lavender"
 "statusline.active.fg" = "@accent"
 "statusline.active.bg" = "@surface.raised"
+"statusline.bg" = "$statusline"
+"statusline.directory.bg" = "$statusline_directory"
+"statusline.model.bg" = "$statusline_model"
+"tool.output.bg" = "$tool_output"
+"annotation.inlay" = "$inlay"
 "status.success" = "$success"
 "status.warning" = "$amber"
 "status.error" = "$rose"
@@ -100,6 +110,33 @@ focus = "$lavender"
 "selection.content.number" = "@selection.solid.fg"
 
 [presentation]
+"symbol.workspace.directory" = ""
+"symbol.model.context_usage" = ""
+"symbol.execution.plan" = ""
+"symbol.execution.apply" = ""
+"symbol.execution.implement" = ""
+"symbol.git.worktree.linked" = ""
+"symbol.git.summary.changed_files" = ""
+"symbol.git.summary.added_lines" = { token = "symbol.diff.add" }
+"symbol.git.summary.removed_lines" = { token = "symbol.diff.delete" }
+"symbol.git.summary.untracked_files" = { token = "symbol.git.file.untracked" }
+"symbol.git.file.conflicted" = ""
+"symbol.git.file.stashed" = ""
+"symbol.git.file.deleted" = { token = "symbol.diff.delete" }
+"symbol.git.file.renamed" = ""
+"symbol.git.file.modified" = { token = "symbol.diff.change" }
+"symbol.git.file.untracked" = ""
+"symbol.git.file.typechanged" = ""
+"symbol.git.file.ahead" = ""
+"symbol.git.file.behind" = ""
+"symbol.git.hunk.add" = { token = "symbol.diff.add" }
+"symbol.git.hunk.change" = { token = "symbol.diff.change" }
+"symbol.git.hunk.delete" = { token = "symbol.diff.delete" }
+"symbol.git.hunk.untracked" = { token = "symbol.git.file.untracked" }
+"symbol.file.regular" = ""
+"symbol.file.directory" = ""
+"symbol.diagnostic.error" = ""
+"symbol.diagnostic.warning" = ""
 "statusline.mode.fill" = false
 "diff.markers" = true
 "tmux.tabs.compact" = true

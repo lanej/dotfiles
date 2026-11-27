@@ -11,20 +11,24 @@ import sys
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--catalog", action="store_true", help="Display compiled semantic states using their native glyph and foreground")
+    parser.add_argument("--octicons", action="store_true", help="Use the Nerd Fonts Octicon variant of the catalog")
     parser.add_argument("--color", choices=("auto", "always", "never"), default="auto")
     args = parser.parse_args()
     directory = Path(os.environ.get("DOTFILES_THEME_DIR", Path(__file__).resolve().parents[1] / "design-system/generated"))
     colors = json.loads((directory / "colors.json").read_text())["roles"]
     color = args.color == "always" or (args.color == "auto" and sys.stdout.isatty() and "NO_COLOR" not in os.environ and os.environ.get("TERM") != "dumb")
     if args.catalog:
-        states = json.loads((directory / "tokens.json").read_text())["semantic_states"]
+        catalog = json.loads((directory / "tokens.json").read_text())
+        states = catalog["semantic_states"]
+        use_octicons = args.octicons and catalog["symbols"] != "ascii"
         family = None
         for name, state in states.items():
             group = name.split(".", 1)[0]
             if group != family:
                 print(f"\n{group.upper()}" if family else group.upper())
                 family = group
-            label = f'{state["symbol"]} {state["label"]:<14}'
+            glyph = state.get("octicon", state["symbol"]) if use_octicons else state["symbol"]
+            label = f'{glyph} {state["label"]:<14}'
             if color:
                 rgb = ";".join(str(int(state["fg"][i:i+2], 16)) for i in (1, 3, 5))
                 weight = "1;" if state["bold"] else ""

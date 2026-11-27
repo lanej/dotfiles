@@ -210,6 +210,10 @@ def compile_semantic_states(groups, colors, symbols):
                         unicodedata.category(char).startswith("C") for char in value):
                     raise ValueError(f"{token}: invalid {field}")
             glyph, ascii_glyph = state["glyph"], state["ascii"]
+            octicon = state.get("octicon")
+            if "octicon" in state and (not isinstance(octicon, str) or len(octicon) != 1
+                                      or not 0xF400 <= ord(octicon) <= 0xF5FF):
+                raise ValueError(f"{token}: expected a Nerd Fonts Octicon codepoint")
             if (not isinstance(glyph, str) or len(glyph) != 1
                     or unicodedata.category(glyph)[0] in ("C", "M", "Z")
                     or unicodedata.east_asian_width(glyph) in ("W", "F")):
@@ -230,6 +234,7 @@ def compile_semantic_states(groups, colors, symbols):
                 "symbol": ascii_glyph if symbols == "ascii" else glyph,
                 "glyph": glyph,
                 "ascii": ascii_glyph,
+                **({"octicon": octicon} if octicon is not None else {}),
                 "fg": fg,
                 "bold": bold,
                 "color_role": "@" + role,
@@ -280,6 +285,8 @@ def compile_theme(source, theme_name, symbols="unicode"):
     pi["colors"] = {name: "" if color == "default" else color for name, color in pi["colors"].items()}
     pi["export"] = {name: "" if color == "default" else color for name, color in pi["export"].items()}
     output("pi.json", json.dumps(pi, indent=2))
+    studio_statusline = expand(read(source / "adapters/studio-statusline.toml"), value, tokens, "studio")
+    output("studio-statusline.json", json.dumps(studio_statusline, indent=2, ensure_ascii=False))
     output("colors.json", json.dumps({"theme": theme_name, "symbols": symbols, "roles": c, "components": components, "ansi": ansi}, indent=2))
     lumis = read(source / "adapters/lumis.toml")
     output("lumis.json", json.dumps({
