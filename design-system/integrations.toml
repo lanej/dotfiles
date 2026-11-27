@@ -23,6 +23,14 @@ coverage = "Native status/prefix and picker workflow checks exercise the pinned 
 sources = ["design-system/adapters/zellij.toml", "zellij/status/src/theme.rs"]
 
 [[items]]
+id = "studio"
+owner = "Studio Sage status line"
+mechanism = "generated glyph snapshot bundled with Studio"
+reload = "Refresh Studio's bundled snapshot and launch a new Studio session"
+coverage = "Git, workspace, task mode and context markers fit in the existing status line budget. Studio owns which fields it displays."
+sources = ["design-system/adapters/studio-statusline.toml", "design-system/generated/studio-statusline.json"]
+
+[[items]]
 id = "tmux"
 owner = "Native styles and owned agent-state helpers"
 mechanism = "generated source-file and role references"
