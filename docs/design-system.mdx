@@ -118,7 +118,7 @@ Document unavailable customization in [the integration inventory](../design-syst
 
 ## macOS window borders
 
-The [macOS border adapter](../design-system/adapters/macos-window-colors.toml) gives JankyBorders the same focus and inactive border colors as Kitty. Yabai’s insertion preview uses the secondary accent. Sage resolves these to lavender, muted green, and teal. `make yabai` links the configs, and `make theme-generate` refreshes their color include. JankyBorders is a separate program that must be running to draw window outlines. skhd supplies the existing window-management shortcuts.
+The [macOS border adapter](../design-system/adapters/macos-window-colors.toml) gives JankyBorders the same focus and inactive border colors as Kitty. Yabai’s insertion preview uses the secondary accent. Sage resolves these to lavender, muted green, and teal. `make yabai` links the configs, and `make theme-generate` refreshes their color include. Bootstrap installs JankyBorders on macOS 14 and later. Start the JankyBorders service to draw window outlines. skhd supplies the existing window-management shortcuts.
 
 ## File listings and directory previews
 

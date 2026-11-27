@@ -1236,13 +1236,19 @@ install_macos_window_tool() {
 		return 1
 	}
 	command -v "$1" >/dev/null && return 0
+	if [ "$1" = borders ]; then
+		local macos_version
+		macos_version=$(sw_vers -productVersion) || return 1
+		if [ "${macos_version%%.*}" -lt 14 ]; then
+			echo "Skipping borders, which requires macOS 14 or later."
+			return 0
+		fi
+		tap=FelixKratz/formulae
+	fi
 	command -v brew >/dev/null || {
 		echo "Homebrew is required to install $1" >&2
 		return 1
 	}
-	if [ "$1" = borders ]; then
-		tap=FelixKratz/formulae
-	fi
 	brew install "$tap/$1"
 }
 
