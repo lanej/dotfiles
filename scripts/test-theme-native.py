@@ -370,7 +370,12 @@ vim.api.nvim_win_set_cursor(0, {4, 0})
     if surface == "neovim":
         return neovim(work, env, plugins)
     if surface == "neovim-frame":
-        command = ["nvim", "-u", "NONE", "-i", "NONE", "-n", "--cmd", "set rtp^=" + str(ROOT / "nvim"), "-c", "colorscheme dotfiles", "-c", "syntax on", "-c", "set noshowmode noruler laststatus=0 noshowcmd", str(ROOT / "design-system/fixtures/code.lua")]
+        command = ["nvim", "-u", "NONE", "-i", "NONE", "-n",
+                   "--cmd", "set rtp^=" + str(ROOT / "nvim"),
+                   "--cmd", "set rtp+=" + str(ROOT / "nvim/after"),
+                   "-c", "colorscheme dotfiles", "-c", "syntax on",
+                   "-c", "set noshowmode noruler laststatus=0 noshowcmd",
+                   str(ROOT / "design-system/fixtures/code.lua")]
         if review:
             script = work / "visual-review.lua"
             script.write_text('''
@@ -418,6 +423,9 @@ print(json.dumps({name: str(getattr(opts, name)) for name in ("foreground", "bac
         for key in ("ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID", "ZELLIJ_CONFIG_DIR", "ZELLIJ_CONFIG_FILE", "ENV", "BASH_ENV"):
             native_env.pop(key, None)
         subprocess.run(["make", "--no-print-directory", "zellij"], cwd=ROOT, env=native_env, check=True, capture_output=True)
+        theme_link = work / "home/.config/zellij/themes/dotfiles.kdl"
+        theme_link.unlink()
+        theme_link.symlink_to(GENERATED / "zellij.kdl")
         # Keep machine-specific notices and status modules outside this narrow fixture.
         # Its fixed name is isolated by the private socket directory.
         name, columns, lines = ("work", 100, 16) if review else ("work", 28, 8)

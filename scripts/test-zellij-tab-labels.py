@@ -79,6 +79,8 @@ def fixed_title_controls(terminal, env, name, home, top_line, native_bar=False):
 def main(fixed_titles=False, native_bar=False):
     for name in ("zellij", "cargo", "fzf", "zsh", "git"):
         assert shutil.which(name), f"Install {name} before testing tab labels"
+    palette = json.loads((ROOT / "design-system/generated/colors.json").read_text())["roles"]
+    roles = {name: color[1:].lower() for name, color in palette.items()}
     scratch = tempfile.TemporaryDirectory(prefix="zj-labels-", dir="/tmp")
     with scratch as directory:
         work = Path(directory).resolve()
@@ -229,18 +231,18 @@ def main(fixed_titles=False, native_bar=False):
                         for column in range(left, left + source["pane_columns"])
                         if screen.buffer[row][column].data in "─┌┐╭╮"}
 
-            terminal.until("focused pane title and full border are purple", lambda:
-                           frame_title_color() == "b48ead" and frame_border_colors() == {"b48ead"})
+            terminal.until("focused pane title and full border use the focus color", lambda:
+                           frame_title_color() == roles["focus"] and frame_border_colors() == {roles["focus"]})
             terminal.prefix(b"h")
             terminal.until("unfocused pane title stays readable with a background-colored border", lambda:
-                           frame_title_color() == "d8dee9" and frame_border_colors() == {"2e3440"})
+                           frame_title_color() == roles["text"] and frame_border_colors() == {roles["surface"]})
             terminal.prefix(b"l")
-            terminal.until("returning to the pane restores the purple title and full border", lambda:
-                           frame_title_color() == "b48ead" and frame_border_colors() == {"b48ead"})
+            terminal.until("returning to the pane restores the focus color", lambda:
+                           frame_title_color() == roles["focus"] and frame_border_colors() == {roles["focus"]})
             terminal.prefix(b"z")
-            terminal.until("zoom uses the expand glyph on a gold tab", lambda:
+            terminal.until("zoom uses the expand glyph on a warning-colored tab", lambda:
                            "󰊓 9:" in top_line() and "FULLSCREEN" not in top_line()
-                           and screen.buffer[0][top_line().index("󰊓")].bg == "ebcb8b")
+                           and screen.buffer[0][top_line().index("󰊓")].bg == roles["status.warning"])
             terminal.prefix(b"z")
             terminal.until("restoring the split clears the zoom glyph", lambda: "󰊓" not in top_line())
             other = Terminal(binary, {**env, "SSH_CONNECTION": "192.0.2.2 4000 192.0.2.1 22"}, name)

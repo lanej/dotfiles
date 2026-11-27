@@ -31,7 +31,7 @@ On uses the primary sage accent; off and trace use the new subtle text tone (`#9
 
 The new families deliberately distinguish a connected transport from a healthy service, fresh evidence from valid data, a focused input from a selected item, and read-only access from a denied operation, and approval granted from execution succeeded. `access.approved` uses a sage checkmark, while `execution.succeeded` retains the success-green checkmark. Paused, retrying and skipped extend the execution lifecycle without treating every non-running state as a failure.
 
-Every state is emitted under `semantic_states` in the generated [token metadata](../../design-system/generated/tokens.json) for every preset. Use the family-qualified key (for example `connectivity.connected` or `access.approval`) to retrieve its label, resolved foreground, selected glyph, Unicode and ASCII variants, weight, color role and description. Glyph selection follows the existing `--symbols` option. The color role is resolved using the same semantic role for every preset; the default Nord metadata expands without changing its palette or native adapter styling.
+Every state is emitted under `semantic_states` in the generated [token metadata](../../design-system/generated/tokens.json) for every preset. Use the family-qualified key (for example `connectivity.connected` or `access.approval`) to retrieve its label, resolved foreground, selected glyph, Unicode and ASCII variants, weight, color role and description. Glyph selection follows the `--symbols` option. Each preset resolves the same semantic roles to its own palette.
 
 <SemanticStateCatalog preset="sage" />
 
@@ -45,7 +45,7 @@ These are solid sRGB measurements, not a claim of WCAG conformance for all nativ
 
 ## Evaluate locally
 
-Nord remains the selected default. Generate Sage in isolation without modifying installed configurations:
+Sage is the selected terminal default. Generate it in isolation to inspect its native output:
 
 ```sh
 python3 scripts/theme.py --theme sage --output-dir /tmp/sage-preset
@@ -53,7 +53,7 @@ python3 scripts/theme.py --theme sage --output-dir /tmp/sage-preset --check
 DOTFILES_THEME_DIR=/tmp/sage-preset bin/dotfiles-theme --color=always
 ```
 
-For a full local trial, select `theme = "sage"` in [preset selection](../../design-system/config.toml), run `make theme-generate` and follow the [configuration and reload instructions](../design-system.mdx#generate-configure-and-reload). Restore Nord by selecting `theme = "nord"` and regenerating/reloading. An isolated output alone does not switch every running application.
+To select a preset, edit [preset selection](../../design-system/config.toml), run `make theme-generate` and follow the [configuration and reload instructions](../design-system.mdx#generate-configure-and-reload). Choose `theme = "nord"` for Nord. An isolated output alone does not switch every running application.
 
 ## Native review
 
@@ -68,9 +68,9 @@ DOTFILES_THEME_DIR=/tmp/sage-preset uv run --script scripts/test-theme-native.py
   --surface bat --surface delta --surface glow --surface bottom
 ```
 
-Zellij uses the checkout's generated KDL and installed status plugin. Run its review in a disposable checkout with `make zellij-status` and the selected generated theme. CI captures both presets and publishes `native-theme-review` and `native-zellij-review` artifacts. Each includes the checkout commit, per-surface success or failure, compact observed cells, raw terminal output where applicable, and rendered SVGs. The richer fixtures include native diagnostics and lualine, a colored task picker with preview, Markdown code/table/link rendering, full tmux/bottom views, and multiple Zellij tabs. Sage retains explicit plus/minus markers in its actual generated Delta configuration; the review additionally enables Delta line numbers.
+Zellij uses the selected generated KDL and the native status plugin. Build the plugin with `make zellij-status` before capturing the Zellij fixture. CI captures both presets and publishes `native-theme-review` and `native-zellij-review` artifacts. Each includes the checkout commit, per-surface success or failure, compact observed cells, raw terminal output where applicable, and rendered SVGs. The richer fixtures include native diagnostics and lualine, a colored task picker with preview, Markdown code/table/link rendering, full tmux/bottom views, and multiple Zellij tabs. Sage retains explicit plus/minus markers in its actual generated Delta configuration. The review also enables Delta line numbers.
 
-The renderer uses terminal cell coordinates, including wide glyph continuations and combining text, and draws standard Powerline and box geometry independently of the browser's installed fonts. It does not substitute colors or fabricate missing text. Inspect failures and raw ANSI rather than approving a defective capture. All captured views are unapproved evidence; neither CI nor `--review-dir` overwrites regression baselines. Acceptance still requires the explicit `--record` workflow after inspection. Studio, Publisher, Kitty transparency and other application-owned behavior need their own actual runtime review.
+The renderer uses terminal cell coordinates, including wide glyph continuations and combining text, and draws standard Powerline and box geometry independently of the browser's installed fonts. Inspect failures and raw ANSI before recording a replacement baseline. CI compares the checked-in [Sage native baselines](../../design-system/baselines/sage/) and preserves review captures separately. The terminal preset also has [native frame examples](presets/sage/neovim-frame.svg). Studio, Publisher, and custom terminal transparency need their own runtime review.
 
 ## Native visual acceptance
 

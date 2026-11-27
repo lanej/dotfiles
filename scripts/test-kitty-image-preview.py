@@ -78,6 +78,12 @@ def exercise(work):
     (work / "bin/zellij-image-hints").symlink_to(ROOT / "bin/zellij-image-hints")
     (work / "bin/zellij-helper").symlink_to(ROOT / "bin/zellij-helper")
     subprocess.run(["make", "-s", "kitty-config", "zellij-config"], cwd=ROOT, env=env, check=True)
+    nord = work / "nord"
+    subprocess.run([sys.executable, str(ROOT / "scripts/theme.py"), "--theme", "nord",
+                    "--output-dir", str(nord)], cwd=ROOT, env=env, check=True)
+    theme_link = home / ".config/dotfiles/theme"
+    theme_link.unlink()
+    theme_link.symlink_to(nord)
     config = work / "config.kdl"
     # Keep the real image-hint binding independent of unrelated runtime/plugin modes.
     config.write_text(configuration())

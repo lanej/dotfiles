@@ -410,7 +410,7 @@ class ThemeTests(unittest.TestCase):
             work = Path(directory)
             source, output = work / "source", work / "output"
             shutil.copytree(theme.SOURCE, source, ignore=shutil.ignore_patterns("generated", "baselines"))
-            command = ["python3", str(ROOT / "scripts/theme.py"), "--source", str(source), "--output-dir", str(output)]
+            command = ["python3", str(ROOT / "scripts/theme.py"), "--source", str(source), "--output-dir", str(output), "--theme", "nord"]
             subprocess.run(command, check=True)
             before = {p.name: p.read_bytes() for p in output.iterdir()}
             subprocess.run([*command, "--check"], check=True)
@@ -430,7 +430,7 @@ class ThemeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="theme-ansi-") as directory:
             source, output = Path(directory) / "source", Path(directory) / "output"
             shutil.copytree(theme.SOURCE, source, ignore=shutil.ignore_patterns("generated", "baselines"))
-            command = ["python3", str(ROOT / "scripts/theme.py"), "--source", str(source), "--output-dir", str(output)]
+            command = ["python3", str(ROOT / "scripts/theme.py"), "--source", str(source), "--output-dir", str(output), "--theme", "nord"]
             subprocess.run(command, check=True)
             before = {p.name: p.read_bytes() for p in output.iterdir()}
             original = theme.read(source / "themes/nord.toml")
@@ -530,7 +530,7 @@ class ThemeTests(unittest.TestCase):
             work = Path(directory)
             source, output = work / "source", work / "output"
             shutil.copytree(theme.SOURCE, source, ignore=shutil.ignore_patterns("generated", "baselines"))
-            command = ["python3", str(ROOT / "scripts/theme.py"), "--source", str(source), "--output-dir", str(output)]
+            command = ["python3", str(ROOT / "scripts/theme.py"), "--source", str(source), "--output-dir", str(output), "--theme", "nord"]
             subprocess.run(command, check=True)
             before = {p.name: p.read_bytes() for p in output.iterdir()}
             preset = theme.read(source / "themes/nord.toml")
@@ -579,7 +579,7 @@ class ThemeTests(unittest.TestCase):
             preset["roles"]["file.directory"] = "@status.attention"
             preset["roles"]["git.file.modified"] = "@accent.secondary"
             write_definition(source / "themes/nord.toml", preset)
-            subprocess.run(["python3", str(ROOT / "scripts/theme.py"), "--source", str(source), "--output-dir", str(output)], check=True)
+            subprocess.run(["python3", str(ROOT / "scripts/theme.py"), "--source", str(source), "--output-dir", str(output), "--theme", "nord"], check=True)
             configuration = home / ".config/eza"
             configuration.mkdir(parents=True)
             (configuration / "theme.yml").symlink_to(output / "eza.yml")
@@ -637,13 +637,13 @@ class ThemeTests(unittest.TestCase):
                     "underscore": False, **styles}
         rows = [
             [cell("A\u0301"), cell("界"), cell(""), cell("\ue0b0", fg="acc8b7", bg="c4b2d9"),
-             cell("─"), cell(" ", bg="26352d"), cell(" ")],
-            [cell(" ") for _ in range(7)],
+             cell("─"), cell("\uf023"), cell(" ", bg="26352d"), cell(" ")],
+            [cell(" ") for _ in range(8)],
         ]
         svg = render_svg("geometry", rows, theme_data)
         root = ET.fromstring(svg)
         ns = {"s": "http://www.w3.org/2000/svg"}
-        self.assertEqual(root.get("width"), str(6 * 9 + 24))
+        self.assertEqual(root.get("width"), str(7 * 9 + 24))
         self.assertEqual(root.get("height"), str(20 + 24))
         self.assertNotIn("textLength", svg)
         self.assertNotIn("\ue0b0", svg)
@@ -651,9 +651,10 @@ class ThemeTests(unittest.TestCase):
         self.assertEqual(labels["A\u0301"].get("x"), "16.5")
         self.assertEqual(labels["界"].get("x"), "30")
         self.assertIn('transform="translate(39 12)" fill="#ACC8B7"', svg)
+        self.assertIn('aria-label="U+F023"', svg)
         self.assertIn('width="9" height="20" fill="#26352D"', svg)
         full = ET.fromstring(render_svg("full", rows, theme_data, trim=False))
-        self.assertEqual(full.get("width"), str(7 * 9 + 24))
+        self.assertEqual(full.get("width"), str(8 * 9 + 24))
         self.assertEqual(full.get("height"), str(2 * 20 + 24))
 
     def test_terminal_color_queries_across_split_reads(self):
@@ -702,12 +703,13 @@ class ThemeTests(unittest.TestCase):
 
     def test_cli_preserves_meaning_without_color(self):
         command = [str(ROOT / "bin/dotfiles-theme")]
-        plain = subprocess.check_output(command, text=True, env={**os.environ, "NO_COLOR": "1"})
+        env = {key: value for key, value in os.environ.items() if key != "DOTFILES_THEME_DIR"}
+        plain = subprocess.check_output(command, text=True, env={**env, "NO_COLOR": "1"})
         self.assertNotIn("\x1b", plain)
         self.assertIn("ERROR    Failed", plain)
         self.assertIn("UNKNOWN  No observation", plain)
-        colored = subprocess.check_output([*command, "--color=always"], text=True)
-        self.assertIn("\x1b[38;2;191;97;106mERROR", colored)
+        colored = subprocess.check_output([*command, "--color=always"], text=True, env=env)
+        self.assertIn("\x1b[38;2;241;140;150mERROR", colored)
 
 
 if __name__ == "__main__":

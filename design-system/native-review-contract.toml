@@ -32,6 +32,7 @@ zellij = ["zellij"]
 [surfaces.neovim-frame]
 anchors = ["code.lua", "Review retry budget", "Fixture diagnostic", "print(greet"]
 forbidden = ["E1568:", "Error detected while processing", "Press ENTER or type command"]
+primitives = [{ kind = "syntax-roles", name = "nil-literal", anchor = "if name == nil then", tokens = { nil = "syntax.null" } }]
 
 [surfaces.tmux]
 anchors = ["Workspace review", "Editor", "Publisher", "Checks", "Shell"]
@@ -193,7 +194,7 @@ bat_language = "Lua"
 anchors = ["retry.lua","__index = Policy","setmetatable","function Policy:delay","retry budget exhausted","policy:delay(attempt)","Review retry policy"]
 forbidden = ["E1568:","Error detected while processing","Press ENTER or type command"]
 primitives = [
-  { kind = "syntax-roles", name = "nil-literal", anchor = 'if delay == nil then', tokens = { nil = "syntax.null" }, treesitter_only = true },
+  { kind = "syntax-roles", name = "nil-literal", anchor = 'if delay == nil then', tokens = { nil = "syntax.null" } },
   { kind = "syntax-roles", name = "true-literal", anchor = 'Policy.new({ 100, 200, 400 }, true)', tokens = { true = "syntax.boolean.true" }, treesitter_only = true },
   { kind = "syntax-roles", name = "false-literal", anchor = 'enabled ~= false', tokens = { false = "syntax.boolean.false" }, treesitter_only = true },
   { kind = "syntax-diversity", anchors = ["__index = Policy","setmetatable","function Policy:delay","return nil, \"retry budget exhausted\""], minimum_colors = 4 },

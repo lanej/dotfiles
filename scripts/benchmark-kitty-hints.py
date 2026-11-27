@@ -4,6 +4,7 @@ import math
 import os
 from pathlib import Path
 import platform
+import re
 import signal
 import socket as unix_socket
 import statistics
@@ -31,6 +32,12 @@ def clock(fn):
 
 def report(data):
     print("HINT_BENCH " + json.dumps(data, sort_keys=True), flush=True)
+
+
+def target_fill_pattern(color):
+    rgb = [str(int(color[offset:offset + 2], 16)) for offset in (1, 3, 5)]
+    formats = ("48;2;" + ";".join(rgb), "48:2:" + ":".join(rgb))
+    return re.compile(r"(?:\x1b\[|;)(?:" + "|".join(formats) + r")(?=[;m])")
 
 
 def fixture(cols, rows, links, truecolor=False):
@@ -69,6 +76,8 @@ def gui():
             env = {**os.environ, "HOME":str(home), "XDG_CONFIG_HOME":str(home / ".config"),
                    "XDG_CACHE_HOME":str(home / ".cache"), "XDG_DATA_HOME":str(home / ".local/share")}
             subprocess.run(["make", "-s", "kitty-config"], cwd=ROOT, env=env, check=True)
+            palette = json.loads((home / ".config/dotfiles/theme/colors.json").read_text())
+            target_fill = target_fill_pattern(palette["ansi"][0])
             helper = Path(os.environ["KITTY_NATIVE_HINTS_BIN"]).resolve()
             installed = home / ".local/bin/hint-native"
             installed.parent.mkdir(parents=True, exist_ok=True)
@@ -127,14 +136,13 @@ def gui():
                 run("xdotool", "key", "--delay", "1", "--clearmodifiers", k)
 
             # ANSI transitions can appear within the target itself.
-            import re
             def overlay_ready():
                 windows = [w for ow in json.loads(remote("ls")) for tab in ow["tabs"] for w in tab["windows"]]
                 overlay = next((w for w in windows if w["title"] == "Choose URL"), None)
                 if overlay is None:
                     return False
                 out = remote("get-text", "--ansi", "--match", f"id:{overlay['id']}")
-                return target in re.sub(r"\x1b\[[0-9;:]*m", "", out) and ("mark:" in out or "59;66;82" in out or "59:66:82" in out)
+                return target in re.sub(r"\x1b\[[0-9;:]*m", "", out) and ("mark:" in out or target_fill.search(out) is not None)
 
             def source_ready():
                 return all(w["title"] != "Choose URL" for ow in json.loads(remote("ls"))

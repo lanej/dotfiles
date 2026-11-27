@@ -5,10 +5,11 @@ test('inspect native theme examples and follow atomic composition', async ({ pag
   await page.goto('./design-system/');
   await expect(page.getByRole('heading', { name: 'Terminal design system', exact: true })).toBeVisible();
   await expect(page.locator('#theme-roles')).toContainText('Resolved theme roles');
+  await expect(page.locator('section[aria-labelledby="theme-roles"] strong')).toHaveText('sage');
   const visibleGitStyle = page.locator('#git-style-git-file-modified');
   await expect(visibleGitStyle).toBeVisible();
   const dimPreview = page.locator('#git-style-git-file-stashed .token-value');
-  await expect(dimPreview).toHaveCSS('color', 'rgb(165, 170, 178)');
+  await expect(dimPreview).toHaveCSS('color', 'rgb(154, 162, 158)');
   await expect(dimPreview).toHaveCSS('opacity', '1');
   const headingToken = page.locator('#token-emphasis-heading');
   await page.locator('details').filter({ has: headingToken }).locator('summary').click();
@@ -64,7 +65,7 @@ test('Nord is documented as a preset with its own palette and native captures', 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
-test('Sage is discoverable and compares both presets without changing the default', async ({ page }) => {
+test('Sage compares the default preset with Nord', async ({ page }) => {
   await page.goto('./design-system/');
   await page.getByRole('link', { name: 'Sage preset', exact: true }).first().click();
   await expect(page).toHaveURL(/\/design-system\/sage\/$/);

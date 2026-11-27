@@ -18,6 +18,8 @@ ROOT, Terminal, PROMPT = workflow.ROOT, workflow.Terminal, workflow.PROMPT
 def main():
     for name in ("zellij", "fzf", "cargo", "python3"):
         assert shutil.which(name), f"Install {name} before testing notifications"
+    palette = json.loads((ROOT / "design-system/generated/colors.json").read_text())["roles"]
+    roles = {name: color[1:].lower() for name, color in palette.items()}
     with tempfile.TemporaryDirectory(prefix="zj-notify-", dir="/tmp") as directory:
         work = Path(directory)
         home, runtime, temporary = work / "home", work / "run", work / "tmp"
@@ -117,7 +119,7 @@ for line in sys.stdin:
             client.until("urgent count and a notice are visible", lambda:
                          " │ !1" in view().splitlines()[0] and "? 0:" in screen.display[0])
             question = screen.buffer[0][screen.display[0].index("? 0:")]
-            assert (question.fg, question.bg, question.bold) == ("2e3440", "d08770", True)
+            assert (question.fg, question.bg, question.bold) == (roles["surface"], roles["status.attention"], True)
             capture("notice")
             assert focused_pane() == focused
             client.send(b"echo notice-kept-keyboard-focus\r")
@@ -148,9 +150,9 @@ for line in sys.stdin:
             capture("history")
             glyphs = [(cell.data, cell.fg) for y in range(3, screen.lines)
                       for cell in screen.buffer[y].values()]
-            assert ("✓", "a3be8c") in glyphs, "Completion glyph lost its green color"
-            assert ("·", "88c0d0") in glyphs, "Info glyph lost its blue color"
-            assert ("!", "ebcb8b") in glyphs, "Attention glyph lost its yellow color"
+            assert ("✓", "a3be8c") in glyphs, "Completion glyph lost its history color"
+            assert ("·", "88c0d0") in glyphs, "Info glyph lost its history color"
+            assert ("!", "ebcb8b") in glyphs, "Warning glyph lost its history color"
             assert ("B", "a3be8c") in glyphs, "Pane preview lost its source text color"
             client.send(b"Version ready")
             client.until("history search finds a script notice", lambda:

@@ -25,13 +25,14 @@ BOX_LINES = {
     "╯": "M0 10Q4.5 10 4.5 5V0",
     "\ue0b1": "M0 0L9 10L0 20", "\ue0b3": "M9 0L0 10L9 20",
 }
-# Known one-cell glyphs in the pinned lualine fixture. Keep the recorded
-# codepoint in the SVG metadata; draw a portable semantic outline.
+# Known one-cell glyphs in the native fixtures. Keep the recorded
+# codepoint in the SVG metadata and draw a portable semantic outline.
 GLYPH_PATHS = {
     "\ue0a0": "M2.5 5V15M2.5 10Q6.5 10 6.5 5M2.5 4a1 1 0 1 0 0.01 0M2.5 15a1 1 0 1 0 0.01 0M6.5 4a1 1 0 1 0 0.01 0",
     "\U000f015a": "M4.5 4a6 6 0 1 0 0.01 0M2.5 8l4 4m0-4l-4 4",
     "\U000f002a": "M4.5 3L8.3 16H0.7ZM4.5 7V11m0 2v1",
     "\ue712": "M4.5 3Q7 3 7 8L8 15 6 17H3L1 15 2 8Q2 3 4.5 3ZM3 7h.5m2 0H6M3 10Q4.5 11 6 10M3 17l-2 1m5-1 2 1",
+    "\uf023": "M2.5 9V6a2 2 0 0 1 4 0V9M1.5 9h6v7h-6zM4.5 12v1.5",
 }
 FILLED = {
     "\ue0b0": "M0 0L9 10L0 20Z", "\ue0b2": "M9 0L0 10L9 20Z",

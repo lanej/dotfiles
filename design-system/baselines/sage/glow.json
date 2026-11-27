@@ -1,0 +1,327 @@
+[
+  [
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "                                                                            ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "  ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "acc8b7",
+      "bold": true,
+      "data": " Service inspection ",
+      "fg": "0d1513",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "                                                ",
+      "fg": "d7dfd9",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "      ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "  ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "                                                                    ",
+      "fg": "d7dfd9",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "      ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "  ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "Inspect ",
+      "fg": "d7dfd9",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": true,
+      "data": "api",
+      "fg": "d7dfd9",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": " before accepting the selection.                         ",
+      "fg": "d7dfd9",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "      ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "  ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "                                                                    ",
+      "fg": "d7dfd9",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "      ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "  ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "\u2022 OK: complete                                                      ",
+      "fg": "d7dfd9",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "      ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "  ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "\u2022 ERROR: failed                                                     ",
+      "fg": "d7dfd9",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "      ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "  ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "                                                                    ",
+      "fg": "d7dfd9",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "      ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "  ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "\u2502 Missing data remains unknown.                                     ",
+      "fg": "d7dfd9",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    },
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "      ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "                                                                            ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "                                                                            ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "                                                                            ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "                                                                            ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    }
+  ],
+  [
+    {
+      "bg": "default",
+      "bold": false,
+      "data": "                                                                            ",
+      "fg": "default",
+      "italics": false,
+      "reverse": false,
+      "underscore": false
+    }
+  ]
+]
