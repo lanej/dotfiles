@@ -24,6 +24,11 @@ rose = "#F18C96"
 dusty_rose = "#D89DAE"
 copper = "#DDA783"
 subtle = "#909F95"
+statusline = "#1C2B23"
+statusline_directory = "#35493E"
+statusline_model = "#2A4034"
+tool_output = "#121D18"
+inlay = "#B1B1B1"
 
 [roles]
 surface = "$charcoal"
@@ -39,6 +44,11 @@ accent = "$sage"
 focus = "$lavender"
 "statusline.active.fg" = "@accent"
 "statusline.active.bg" = "@surface.raised"
+"statusline.bg" = "$statusline"
+"statusline.directory.bg" = "$statusline_directory"
+"statusline.model.bg" = "$statusline_model"
+"tool.output.bg" = "$tool_output"
+"annotation.inlay" = "$inlay"
 "status.success" = "$success"
 "status.warning" = "$amber"
 "status.error" = "$rose"
@@ -100,6 +110,7 @@ focus = "$lavender"
 "selection.content.number" = "@selection.solid.fg"
 
 [presentation]
+"symbol.workspace.directory" = "❯"
 "statusline.mode.fill" = false
 "diff.markers" = true
 "tmux.tabs.compact" = true

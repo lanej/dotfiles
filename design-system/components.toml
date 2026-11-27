@@ -55,6 +55,74 @@ fg = "@text"
 [diff]
 fg = "@text"
 
+[statusline]
+bg = "@statusline.bg"
+
+["statusline.directory"]
+bg = "@statusline.directory.bg"
+fg = "@text"
+symbol = { token = "symbol.workspace.directory" }
+
+["statusline.directory.linked"]
+bg = "@statusline.directory.bg"
+fg = "@text"
+symbol = { token = "symbol.git.worktree.linked" }
+
+["statusline.model"]
+bg = "@statusline.model.bg"
+fg = "@accent"
+
+["statusline.model.context_usage"]
+bg = "@statusline.model.bg"
+fg = "@text.muted"
+symbol = { token = "symbol.model.context_usage" }
+
+["statusline.git.branch"]
+fg = "@git.summary.branch"
+symbol = { token = "symbol.git.summary.branch" }
+
+["statusline.git.changed_files"]
+fg = "@git.summary.changed_files"
+symbol = { token = "symbol.git.summary.changed_files" }
+
+["statusline.git.added_lines"]
+fg = "@git.summary.added_lines"
+symbol = { token = "symbol.git.summary.added_lines" }
+
+["statusline.git.removed_lines"]
+fg = "@git.summary.removed_lines"
+symbol = { token = "symbol.git.summary.removed_lines" }
+
+["statusline.git.untracked_files"]
+fg = "@git.summary.untracked_files"
+symbol = { token = "symbol.git.summary.untracked_files" }
+
+["statusline.git.pull_request"]
+fg = "@git.pull_request"
+symbol = { token = "symbol.git.pull_request" }
+
+["tool.output"]
+fg = "@text"
+bg = "@tool.output.bg"
+
+["tool.error"]
+fg = "@text"
+bg = "@tool.error.bg"
+
+["annotation.inlay"]
+fg = "@annotation.inlay"
+
+["diagnostic.error"]
+fg = "@diagnostic.error"
+symbol = { token = "symbol.diagnostic.error" }
+
+["diagnostic.warning"]
+fg = "@diagnostic.warning"
+symbol = { token = "symbol.diagnostic.warning" }
+
+["code.language"]
+fg = "@code.language"
+
 ["git.file.conflicted"]
 symbol = { token = "symbol.git.file.conflicted" }
 fg = "@git.file.conflicted"

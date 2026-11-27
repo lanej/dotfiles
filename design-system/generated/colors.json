@@ -15,6 +15,11 @@
     "focus": "#C4B2D9",
     "statusline.active.fg": "#ACC8B7",
     "statusline.active.bg": "#17231E",
+    "statusline.bg": "#1C2B23",
+    "statusline.directory.bg": "#35493E",
+    "statusline.model.bg": "#2A4034",
+    "tool.output.bg": "#121D18",
+    "annotation.inlay": "#B1B1B1",
     "status.success": "#A6CD82",
     "status.warning": "#E8C88B",
     "status.error": "#F18C96",
@@ -96,10 +101,20 @@
     "tab.active.fg": "#0D1513",
     "tab.inactive.bg": "#0D1513",
     "tab.inactive.fg": "#A3B1A7",
+    "tool.error.bg": "#312828",
+    "code.language": "#6B8575",
+    "diagnostic.error": "#F18C96",
+    "diagnostic.warning": "#E8C88B",
     "keyhint": "#ACC8B7",
     "heading": "#ACC8B7",
     "link": "#ACC8B7",
     "prompt": "#ACC8B7",
+    "git.summary.branch": "#A3B1A7",
+    "git.summary.changed_files": "#A3B1A7",
+    "git.summary.added_lines": "#A6CD82",
+    "git.summary.removed_lines": "#F18C96",
+    "git.summary.untracked_files": "#E8C88B",
+    "git.pull_request": "#ACC8B7",
     "file.directory": "#A3B1A7",
     "file.executable": "#A6CD82",
     "file.special": "#C4B2D9",
@@ -162,6 +177,74 @@
     },
     "diff": {
       "fg": "#D7DFD9"
+    },
+    "statusline": {
+      "bg": "#1C2B23"
+    },
+    "statusline.directory": {
+      "bg": "#35493E",
+      "fg": "#D7DFD9",
+      "symbol": "\u276f"
+    },
+    "statusline.directory.linked": {
+      "bg": "#35493E",
+      "fg": "#D7DFD9",
+      "symbol": "\u25a3"
+    },
+    "statusline.model": {
+      "bg": "#2A4034",
+      "fg": "#ACC8B7"
+    },
+    "statusline.model.context_usage": {
+      "bg": "#2A4034",
+      "fg": "#A3B1A7",
+      "symbol": "\u25d4"
+    },
+    "statusline.git.branch": {
+      "fg": "#A3B1A7",
+      "symbol": "\u21b1"
+    },
+    "statusline.git.changed_files": {
+      "fg": "#A3B1A7",
+      "symbol": "\u0394"
+    },
+    "statusline.git.added_lines": {
+      "fg": "#A6CD82",
+      "symbol": "+"
+    },
+    "statusline.git.removed_lines": {
+      "fg": "#F18C96",
+      "symbol": "\u2212"
+    },
+    "statusline.git.untracked_files": {
+      "fg": "#E8C88B",
+      "symbol": "?"
+    },
+    "statusline.git.pull_request": {
+      "fg": "#ACC8B7",
+      "symbol": "\uf407"
+    },
+    "tool.output": {
+      "fg": "#D7DFD9",
+      "bg": "#121D18"
+    },
+    "tool.error": {
+      "fg": "#D7DFD9",
+      "bg": "#312828"
+    },
+    "annotation.inlay": {
+      "fg": "#B1B1B1"
+    },
+    "diagnostic.error": {
+      "fg": "#F18C96",
+      "symbol": "\u00d7"
+    },
+    "diagnostic.warning": {
+      "fg": "#E8C88B",
+      "symbol": "\u26a0"
+    },
+    "code.language": {
+      "fg": "#6B8575"
     },
     "git.file.conflicted": {
       "symbol": "\uf071",

@@ -19,8 +19,8 @@
     "customMessageBg": "#17231E",
     "customMessageText": "#D7DFD9",
     "customMessageLabel": "#8FB9A8",
-    "toolPendingBg": "#17231E",
-    "toolSuccessBg": "#17231E",
+    "toolPendingBg": "#121D18",
+    "toolSuccessBg": "#121D18",
     "toolErrorBg": "#312828",
     "toolTitle": "#EEF1EE",
     "toolOutput": "#D7DFD9",
@@ -58,5 +58,11 @@
     "pageBg": "#0D1513",
     "cardBg": "#17231E",
     "infoBg": "#17231E"
+  },
+  "vars": {
+    "syntaxNull": "#D89DAE",
+    "footerBg": "#1C2B23",
+    "footerDirectoryBg": "#35493E",
+    "footerModelBg": "#2A4034"
   }
 }

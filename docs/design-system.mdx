@@ -74,6 +74,22 @@ A symbol token supplies a character; a semantic component pairs it with a foregr
 
 Shared Git foreground defaults reference ANSI slots, preserving the existing prompt palette while giving each state its own semantic role. The component always refers to that role. Unstaged, staged and branch-comparison components pair their sign tokens with separate diff foregrounds; the native editor adapter turns those components into sign text and highlight groups. Dim file status selects its `dim_fg` role before native output is generated; Starship receives the resulting RGB without a faint attribute. Staged/branch colors retain their separate muted diff roles. Shared recipes blend each semantic hue toward the preset surface; presets can supply a different shade through role overrides. Other symbols, such as separators, inherit the style of their enclosing component.
 
+### Git summaries and terminal status bars
+
+`git.summary.*` covers aggregate status beside the current directory. The changed-file and line totals describe tracked differences against the selected baseline. Untracked files have their own count. In Studio the baseline is `HEAD`, and the tracked totals include staged and unstaged differences. File-level and gutter symbols retain their existing meanings.
+
+| Status | Token suffix under `symbol.git.summary` | Unicode | ASCII | Foreground |
+| --- | --- | --- | --- | --- |
+| Current branch | `branch` | ↱ | @ | Muted |
+| Tracked files changed | `changed_files` | Δ | ~ | Muted |
+| Lines added | `added_lines` | + | + | Diff addition |
+| Lines removed | `removed_lines` | − | - | Diff deletion |
+| Untracked files | `untracked_files` | ? | ? | Amber in Sage |
+
+The directory chevron, linked-worktree marker, and pull-request glyph have distinct symbols. Both angled boundaries reuse the existing `symbol.separator.section.*` family. The Sage footer has separate `statusline.bg`, `statusline.directory.bg`, and `statusline.model.bg` roles. The model region uses `symbol.model.context_usage` for context percentage. `symbol.model.reasoning.*` describes requested reasoning effort from off through extra high, with an empty off mark and an ASCII `1`–`5` scale.
+
+Tool output and failed tool output have their own background roles. `annotation.inlay` covers inline metadata such as durations and token counts. `code.language` covers the label above a rendered code block. Diagnostic error and warning colors and symbols have their own roles, so their presentation can vary independently of task outcome colors. Consumers can resolve components in `colors.json` and separators in `tokens.json`. The Pi export includes the shared tool colors and passes footer colors and `syntax.null` through optional theme variables.
+
 ## Generate, configure and reload
 
 ```sh

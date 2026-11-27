@@ -252,6 +252,66 @@ class ThemeTests(unittest.TestCase):
         check("Pi tool error output", pi["toolOutput"], pi["toolErrorBg"])
         check("Pi tool error status", pi["error"], pi["toolErrorBg"])
 
+        components = resolved["components"]
+        for name, style in components.items():
+            if name.startswith("statusline.git."):
+                check(name, style["fg"], c["statusline.bg"])
+        for name in ("statusline.directory", "statusline.model", "statusline.model.context_usage", "tool.output"):
+            style = components[name]
+            check(name, style["fg"], style["bg"])
+        check("inline tool metadata", c["annotation.inlay"], c["tool.output.bg"])
+        check("code language label", c["code.language"], c["surface"])
+        for role in ("diagnostic.error", "diagnostic.warning"):
+            check(role, c[role], c["tool.output.bg"])
+
+    def test_statusline_components_keep_git_counts_distinct(self):
+        fields = {
+            "branch": ("↱", "@", "text.muted"),
+            "changed_files": ("Δ", "~", "text.muted"),
+            "added_lines": ("+", "+", "diff.add"),
+            "removed_lines": ("−", "-", "diff.delete"),
+            "untracked_files": ("?", "?", "status.warning"),
+        }
+        for representation in ("unicode", "ascii"):
+            with self.subTest(symbols=representation):
+                outputs = theme.compile_theme(theme.SOURCE, "sage", representation)
+                resolved = json.loads(outputs["colors.json"])
+                roles, components = resolved["roles"], resolved["components"]
+                for field, (symbol, fallback, color) in fields.items():
+                    self.assertEqual(components[f"statusline.git.{field}"], {
+                        "symbol": symbol if representation == "unicode" else fallback,
+                        "fg": roles[color],
+                    })
+                self.assertNotEqual(components["statusline.git.untracked_files"],
+                                    components["git.file.untracked"])
+                self.assertEqual(components["statusline.directory"]["symbol"],
+                                 "❯" if representation == "unicode" else ">")
+                self.assertEqual(components["statusline.directory.linked"]["symbol"],
+                                 "▣" if representation == "unicode" else "w")
+                self.assertEqual(components["statusline.git.pull_request"]["symbol"],
+                                 "\uf407" if representation == "unicode" else "P")
+                self.assertEqual(components["statusline.model.context_usage"]["symbol"],
+                                 "◔" if representation == "unicode" else "C")
+                pi = json.loads(outputs["pi.json"])
+                self.assertEqual(pi["vars"]["syntaxNull"], roles["syntax.null"])
+                self.assertEqual(pi["vars"]["footerBg"], "#1C2B23")
+                self.assertEqual(pi["vars"]["footerDirectoryBg"], "#35493E")
+                self.assertEqual(pi["vars"]["footerModelBg"], "#2A4034")
+                self.assertEqual(pi["colors"]["toolSuccessBg"], "#121D18")
+                self.assertEqual(pi["colors"]["toolPendingBg"], pi["colors"]["toolSuccessBg"])
+                self.assertEqual(pi["colors"]["toolErrorBg"], roles["tool.error.bg"])
+                self.assertEqual(components["annotation.inlay"]["fg"], "#B1B1B1")
+                self.assertEqual(components["diagnostic.warning"], {
+                    "fg": roles["diagnostic.warning"],
+                    "symbol": "⚠" if representation == "unicode" else "!",
+                })
+                presentation = json.loads(outputs["tokens.json"])["presentation"]
+                levels = ("off", "minimal", "low", "medium", "high", "extra_high")
+                self.assertEqual(
+                    [presentation[f"symbol.model.reasoning.{level}"]["resolved"] for level in levels],
+                    ["", *("▁▂▄▆█" if representation == "unicode" else "12345")],
+                )
+
     def test_atuin_semantic_theme(self):
         adapter = theme.read(theme.SOURCE / "adapters/atuin.toml")
         for preset in ("nord", "sage"):

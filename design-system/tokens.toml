@@ -20,6 +20,15 @@ match = "@status.success"
 "tab.inactive.fg" = "@text.muted"
 "statusline.active.fg" = "@tab.active.fg"
 "statusline.active.bg" = "@tab.active.bg"
+"statusline.bg" = "@surface.raised"
+"statusline.directory.bg" = "@statusline.bg"
+"statusline.model.bg" = "@statusline.bg"
+"tool.output.bg" = "@surface.raised"
+"tool.error.bg" = "@diff.delete.bg"
+"annotation.inlay" = "@text.muted"
+"code.language" = "@border"
+"diagnostic.error" = "@status.error"
+"diagnostic.warning" = "@status.warning"
 "syntax.member" = "@syntax.variable"
 "syntax.boolean.true" = "@syntax.number"
 "syntax.boolean.false" = "@syntax.number"
@@ -56,6 +65,12 @@ prompt = "@accent"
 "git.file.ahead.dim" = { mix = ["@surface", "@git.file.ahead"], amount = 0.65 }
 "git.file.behind.dim" = { mix = ["@surface", "@git.file.behind"], amount = 0.65 }
 "git.file.branch.dim" = { mix = ["@surface", "@git.file.branch"], amount = 0.65 }
+"git.summary.branch" = "@text.muted"
+"git.summary.changed_files" = "@text.muted"
+"git.summary.added_lines" = "@diff.add"
+"git.summary.removed_lines" = "@diff.delete"
+"git.summary.untracked_files" = "@status.warning"
+"git.pull_request" = "@link"
 "file.directory" = "@text.muted"
 "file.executable" = "@status.success"
 "file.special" = "@syntax.number"
@@ -88,6 +103,23 @@ prompt = "@accent"
 "symbol.separator.section.right" = { type = "string", value = "", ascii = "<" }
 "symbol.separator.component.left" = { type = "string", value = "", ascii = ">" }
 "symbol.separator.component.right" = { type = "string", value = "", ascii = "<" }
+"symbol.workspace.directory" = { type = "string", value = "▸", ascii = ">" }
+"symbol.git.worktree.linked" = { type = "string", value = "▣", ascii = "w" }
+"symbol.git.summary.branch" = { type = "string", value = "↱", ascii = "@" }
+"symbol.git.summary.changed_files" = { type = "string", value = "Δ", ascii = "~" }
+"symbol.git.summary.added_lines" = { type = "string", value = "+", ascii = "+" }
+"symbol.git.summary.removed_lines" = { type = "string", value = "−", ascii = "-" }
+"symbol.git.summary.untracked_files" = { type = "string", value = "?", ascii = "?" }
+"symbol.git.pull_request" = { type = "string", value = "", ascii = "P" }
+"symbol.model.context_usage" = { type = "string", value = "◔", ascii = "C" }
+"symbol.model.reasoning.off" = { type = "string", value = "", ascii = "" }
+"symbol.model.reasoning.minimal" = { type = "string", value = "▁", ascii = "1" }
+"symbol.model.reasoning.low" = { type = "string", value = "▂", ascii = "2" }
+"symbol.model.reasoning.medium" = { type = "string", value = "▄", ascii = "3" }
+"symbol.model.reasoning.high" = { type = "string", value = "▆", ascii = "4" }
+"symbol.model.reasoning.extra_high" = { type = "string", value = "█", ascii = "5" }
+"symbol.diagnostic.error" = { type = "string", value = "×", ascii = "x" }
+"symbol.diagnostic.warning" = { type = "string", value = "⚠", ascii = "!" }
 "symbol.git.file.conflicted" = { type = "string", value = "", ascii = "!" }
 "symbol.git.file.stashed" = { type = "string", value = "", ascii = "s" }
 "symbol.git.file.deleted" = { type = "string", value = "", ascii = "-" }
