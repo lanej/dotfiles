@@ -184,12 +184,12 @@
     "statusline.directory": {
       "bg": "#35493E",
       "fg": "#D7DFD9",
-      "symbol": "\u276f"
+      "symbol": "\uf460"
     },
     "statusline.directory.linked": {
       "bg": "#35493E",
       "fg": "#D7DFD9",
-      "symbol": "\u25a3"
+      "symbol": "\uf482"
     },
     "statusline.model": {
       "bg": "#2A4034",
@@ -206,19 +206,19 @@
     },
     "statusline.git.changed_files": {
       "fg": "#A3B1A7",
-      "symbol": "\u0394"
+      "symbol": "\uf4d2"
     },
     "statusline.git.added_lines": {
       "fg": "#A6CD82",
-      "symbol": "+"
+      "symbol": "\uf457"
     },
     "statusline.git.removed_lines": {
       "fg": "#F18C96",
-      "symbol": "\u2212"
+      "symbol": "\uf458"
     },
     "statusline.git.untracked_files": {
       "fg": "#E8C88B",
-      "symbol": "?"
+      "symbol": "\uf4d0"
     },
     "statusline.git.pull_request": {
       "fg": "#ACC8B7",
@@ -237,45 +237,45 @@
     },
     "diagnostic.error": {
       "fg": "#F18C96",
-      "symbol": "\u00d7"
+      "symbol": "\uf467"
     },
     "diagnostic.warning": {
       "fg": "#E8C88B",
-      "symbol": "\u26a0"
+      "symbol": "\uf421"
     },
     "code.language": {
       "fg": "#6B8575"
     },
     "git.file.conflicted": {
-      "symbol": "\uf071",
+      "symbol": "\uf421",
       "fg": "#F18C96",
       "bold": true,
       "dim": false,
       "dim_fg": "#DF828C"
     },
     "git.file.stashed": {
-      "symbol": "\uf187",
+      "symbol": "\uf411",
       "fg": "#9AA29E",
       "bold": false,
       "dim": true,
       "dim_fg": "#9AA29E"
     },
     "git.file.deleted": {
-      "symbol": "\uf1f8",
+      "symbol": "\uf458",
       "fg": "#F18C96",
       "bold": false,
       "dim": false,
       "dim_fg": "#DF828C"
     },
     "git.file.renamed": {
-      "symbol": "\uf02b",
+      "symbol": "\uf45a",
       "fg": "#8CC5CC",
       "bold": false,
       "dim": false,
       "dim_fg": "#75A5AB"
     },
     "git.file.modified": {
-      "symbol": "\uf040",
+      "symbol": "\uf459",
       "fg": "#E8C88B",
       "bold": false,
       "dim": false,
@@ -289,28 +289,28 @@
       "dim_fg": "#86A66B"
     },
     "git.file.untracked": {
-      "symbol": "\uf059",
+      "symbol": "\uf4d0",
       "fg": "#95B5D3",
       "bold": false,
       "dim": false,
       "dim_fg": "#83A0BA"
     },
     "git.file.typechanged": {
-      "symbol": "\uf074",
+      "symbol": "\uf443",
       "fg": "#C4B2D9",
       "bold": false,
       "dim": false,
       "dim_fg": "#A597B7"
     },
     "git.file.ahead": {
-      "symbol": "\uf062",
+      "symbol": "\uf431",
       "fg": "#A6CD82",
       "bold": false,
       "dim": false,
       "dim_fg": "#86A66B"
     },
     "git.file.behind": {
-      "symbol": "\uf063",
+      "symbol": "\uf433",
       "fg": "#E8C88B",
       "bold": false,
       "dim": false,
@@ -324,15 +324,15 @@
       "dim_fg": "#83A0BA"
     },
     "git.hunk.add": {
-      "symbol": "\u2503",
+      "symbol": "\uf457",
       "fg": "#A6CD82"
     },
     "git.hunk.change": {
-      "symbol": "\u2503",
+      "symbol": "\uf459",
       "fg": "#E8C88B"
     },
     "git.hunk.delete": {
-      "symbol": "\u2581",
+      "symbol": "\uf458",
       "fg": "#F18C96"
     },
     "git.hunk.topdelete": {
@@ -344,7 +344,7 @@
       "fg": "#E8C88B"
     },
     "git.hunk.untracked": {
-      "symbol": "\u2506",
+      "symbol": "\uf4d0",
       "fg": "#A6CD82"
     },
     "git.staged_hunk.add": {

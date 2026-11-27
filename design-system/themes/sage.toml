@@ -110,7 +110,29 @@ focus = "$lavender"
 "selection.content.number" = "@selection.solid.fg"
 
 [presentation]
-"symbol.workspace.directory" = "❯"
+"symbol.workspace.directory" = ""
+"symbol.git.worktree.linked" = ""
+"symbol.git.summary.changed_files" = ""
+"symbol.git.summary.added_lines" = { token = "symbol.diff.add" }
+"symbol.git.summary.removed_lines" = { token = "symbol.diff.delete" }
+"symbol.git.summary.untracked_files" = { token = "symbol.git.file.untracked" }
+"symbol.git.file.conflicted" = ""
+"symbol.git.file.stashed" = ""
+"symbol.git.file.deleted" = { token = "symbol.diff.delete" }
+"symbol.git.file.renamed" = ""
+"symbol.git.file.modified" = { token = "symbol.diff.change" }
+"symbol.git.file.untracked" = ""
+"symbol.git.file.typechanged" = ""
+"symbol.git.file.ahead" = ""
+"symbol.git.file.behind" = ""
+"symbol.git.hunk.add" = { token = "symbol.diff.add" }
+"symbol.git.hunk.change" = { token = "symbol.diff.change" }
+"symbol.git.hunk.delete" = { token = "symbol.diff.delete" }
+"symbol.git.hunk.untracked" = { token = "symbol.git.file.untracked" }
+"symbol.file.regular" = ""
+"symbol.file.directory" = ""
+"symbol.diagnostic.error" = ""
+"symbol.diagnostic.warning" = ""
 "statusline.mode.fill" = false
 "diff.markers" = true
 "tmux.tabs.compact" = true

@@ -267,10 +267,10 @@ class ThemeTests(unittest.TestCase):
     def test_statusline_components_keep_git_counts_distinct(self):
         fields = {
             "branch": ("\uf418", "@", "text.muted"),
-            "changed_files": ("Δ", "~", "text.muted"),
-            "added_lines": ("+", "+", "diff.add"),
-            "removed_lines": ("−", "-", "diff.delete"),
-            "untracked_files": ("?", "?", "status.warning"),
+            "changed_files": ("\uf4d2", "~", "text.muted"),
+            "added_lines": ("\uf457", "+", "diff.add"),
+            "removed_lines": ("\uf458", "-", "diff.delete"),
+            "untracked_files": ("\uf4d0", "?", "status.warning"),
         }
         for representation in ("unicode", "ascii"):
             with self.subTest(symbols=representation):
@@ -285,9 +285,9 @@ class ThemeTests(unittest.TestCase):
                 self.assertNotEqual(components["statusline.git.untracked_files"],
                                     components["git.file.untracked"])
                 self.assertEqual(components["statusline.directory"]["symbol"],
-                                 "❯" if representation == "unicode" else ">")
+                                 "\uf460" if representation == "unicode" else ">")
                 self.assertEqual(components["statusline.directory.linked"]["symbol"],
-                                 "▣" if representation == "unicode" else "w")
+                                 "\uf482" if representation == "unicode" else "w")
                 self.assertEqual(components["statusline.git.pull_request"]["symbol"],
                                  "\uf407" if representation == "unicode" else "P")
                 self.assertEqual(components["statusline.model.context_usage"]["symbol"],
@@ -303,7 +303,7 @@ class ThemeTests(unittest.TestCase):
                 self.assertEqual(components["annotation.inlay"]["fg"], "#B1B1B1")
                 self.assertEqual(components["diagnostic.warning"], {
                     "fg": roles["diagnostic.warning"],
-                    "symbol": "⚠" if representation == "unicode" else "!",
+                    "symbol": "\uf421" if representation == "unicode" else "!",
                 })
                 presentation = json.loads(outputs["tokens.json"])["presentation"]
                 levels = ("off", "minimal", "low", "medium", "high", "extra_high")
@@ -311,6 +311,23 @@ class ThemeTests(unittest.TestCase):
                     [presentation[f"symbol.model.reasoning.{level}"]["resolved"] for level in levels],
                     ["", *("▁▂▄▆█" if representation == "unicode" else "12345")],
                 )
+
+    def test_sage_octicon_git_signs_and_ascii_fallbacks(self):
+        for representation, expected in (("unicode", "\uf457\uf459\uf458"), ("ascii", "+~-")):
+            with self.subTest(symbols=representation):
+                outputs = theme.compile_theme(theme.SOURCE, "sage", representation)
+                components = json.loads(outputs["colors.json"])["components"]
+                for suffix, glyph in zip(("add", "change", "delete"), expected):
+                    unstaged = components[f"git.hunk.{suffix}"]
+                    staged = components[f"git.staged_hunk.{suffix}"]
+                    compare = components[f"git.branch_hunk.{suffix}"]
+                    self.assertEqual(unstaged["symbol"], glyph)
+                    self.assertNotEqual(unstaged["fg"], staged["fg"])
+                    if representation == "unicode":
+                        self.assertNotIn(glyph, (staged["symbol"], compare["symbol"]))
+                self.assertEqual(components["git.file.modified"]["symbol"], expected[1])
+                self.assertEqual(components["git.file.deleted"]["symbol"], expected[2])
+                self.assertEqual(components["git.file.staged"]["symbol"], "")
 
     def test_atuin_semantic_theme(self):
         adapter = theme.read(theme.SOURCE / "adapters/atuin.toml")

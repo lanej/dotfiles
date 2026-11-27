@@ -111,6 +111,9 @@ prompt = "@accent"
 "symbol.git.summary.removed_lines" = { type = "string", value = "−", ascii = "-" }
 "symbol.git.summary.untracked_files" = { type = "string", value = "?", ascii = "?" }
 "symbol.git.pull_request" = { type = "string", value = "", ascii = "P" }
+"symbol.diff.add" = { type = "string", value = "", ascii = "+" }
+"symbol.diff.change" = { type = "string", value = "", ascii = "~" }
+"symbol.diff.delete" = { type = "string", value = "", ascii = "-" }
 "symbol.model.context_usage" = { type = "string", value = "◔", ascii = "C" }
 "symbol.model.reasoning.off" = { type = "string", value = "", ascii = "" }
 "symbol.model.reasoning.minimal" = { type = "string", value = "▁", ascii = "1" }

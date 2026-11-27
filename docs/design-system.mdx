@@ -78,15 +78,15 @@ Shared Git foreground defaults reference ANSI slots, preserving the existing pro
 
 `git.summary.*` covers aggregate status beside the current directory. The changed-file and line totals describe tracked differences against the selected baseline. Untracked files have their own count. In Studio the baseline is `HEAD`, and the tracked totals include staged and unstaged differences. File-level and gutter symbols retain their existing meanings.
 
-| Status | Token suffix under `symbol.git.summary` | Unicode | ASCII | Foreground |
+| Status | Token suffix under `symbol.git.summary` | Sage | ASCII | Foreground |
 | --- | --- | --- | --- | --- |
 | Current branch | `branch` |  | @ | Muted |
-| Tracked files changed | `changed_files` | Δ | ~ | Muted |
-| Lines added | `added_lines` | + | + | Diff addition |
-| Lines removed | `removed_lines` | − | - | Diff deletion |
-| Untracked files | `untracked_files` | ? | ? | Amber in Sage |
+| Tracked files changed | `changed_files` |  | ~ | Muted |
+| Lines added | `added_lines` |  | + | Diff addition |
+| Lines removed | `removed_lines` |  | - | Diff deletion |
+| Untracked files | `untracked_files` |  | ? | Amber in Sage |
 
-The directory chevron, linked-worktree marker, and pull-request glyph have distinct symbols. Both angled boundaries reuse the existing `symbol.separator.section.*` family. The Sage footer has separate `statusline.bg`, `statusline.directory.bg`, and `statusline.model.bg` roles. The model region uses `symbol.model.context_usage` for context percentage. `symbol.model.reasoning.*` describes requested reasoning effort from off through extra high, with an empty off mark and an ASCII `1`–`5` scale.
+Sage uses [Octicons](https://github.com/ryanoasis/nerd-fonts/wiki/Glyph-Sets-and-Code-Points#octicons) for Git summaries, branch and file status, unstaged gutter signs, workspace and file icons, and diagnostic marks. `symbol.diff.add`, `symbol.diff.change` and `symbol.diff.delete` supply the boxed marks. Staged gutter and branch-comparison signs keep their own shapes and colors. The directory chevron, linked-worktree marker, and pull-request glyph have distinct symbols. Both angled boundaries reuse the existing `symbol.separator.section.*` family. The Sage footer has separate `statusline.bg`, `statusline.directory.bg`, and `statusline.model.bg` roles. The model region uses `symbol.model.context_usage` for context percentage. `symbol.model.reasoning.*` describes requested reasoning effort from off through extra high, with an empty off mark and an ASCII `1`–`5` scale.
 
 Tool output and failed tool output have their own background roles. `annotation.inlay` covers inline metadata such as durations and token counts. `code.language` covers the label above a rendered code block. Diagnostic error and warning colors and symbols have their own roles, so their presentation can vary independently of task outcome colors. Consumers can resolve components in `colors.json` and separators in `tokens.json`. The Pi export includes the shared tool colors and passes footer colors and `syntax.null` through optional theme variables.
 
