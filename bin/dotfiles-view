@@ -1,0 +1,139 @@
+#!/usr/bin/env bash
+# Use Lumis for ordinary bat views and pass other bat invocations through.
+set -u
+
+theme_dir=${DOTFILES_THEME_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/theme}
+theme=$theme_dir/lumis.json
+color=auto
+paging=auto
+numbers=0
+language=
+line_limit=
+path=
+has_path=0
+
+parse_bat_view() {
+    while (($#)); do
+        case "$1" in
+            --color=auto | --color=always | --color=never) color=${1#*=} ;;
+            -f | --force-colorization) color=always ;;
+            --paging=auto | --paging=never | --paging=always) paging=${1#*=} ;;
+            --no-pager) paging=never ;;
+            -p | --plain | --style=plain) numbers=0 ;;
+            -n | --number | --style=numbers) numbers=1 ;;
+            --theme=Dotfiles) ;;
+            -l | --language)
+                (($# > 1)) || return 1
+                language=$2
+                [[ -n $language ]] || return 1
+                shift
+                ;;
+            --language=*)
+                language=${1#*=}
+                [[ -n $language ]] || return 1
+                ;;
+            --line-range=:*)
+                line_limit=${1#*:}
+                [[ $line_limit =~ ^[1-9][0-9]*$ ]] || return 1
+                ;;
+            --)
+                shift
+                ((! has_path && $# == 1)) || return 1
+                path=$1
+                has_path=1
+                break
+                ;;
+            - | [!-]*)
+                ((! has_path)) || return 1
+                path=$1
+                has_path=1
+                ;;
+            *) return 1 ;;
+        esac
+        shift
+    done
+    case "$language" in
+        man | help) return 1 ;;
+        md | Markdown) language=markdown ;;
+    esac
+    [[ -z $path || $path == - || -f $path ]]
+}
+
+bat_available() {
+    command -v bat >/dev/null 2>&1
+}
+
+if ! parse_bat_view "$@"; then
+    if bat_available; then
+        exec bat "$@"
+    fi
+    printf '%s\n' 'dotfiles-view: these options require bat' >&2
+    exit 2
+fi
+
+if ! command -v lumis >/dev/null 2>&1 || [[ ! -r $theme || $color == never ]] \
+    || { [[ $color == auto ]] && { [[ ! -t 1 ]] || [[ ${NO_COLOR+x} ]]; }; }; then
+    if bat_available; then
+        exec bat "$@"
+    fi
+    args=()
+    ((! numbers)) || args+=(-n)
+    [[ -z $path ]] || args+=(-- "$path")
+    if [[ -n $line_limit ]]; then
+        command cat "${args[@]}" | head -n "$line_limit"
+    else
+        exec cat "${args[@]}"
+    fi
+    exit
+fi
+
+if [[ -n $language ]] && ! lumis languages show -- "$language" </dev/null >/dev/null 2>&1; then
+    if bat_available; then
+        exec bat "$@"
+    fi
+    printf 'dotfiles-view: unknown language: %s\n' "$language" >&2
+    exit 2
+fi
+
+args=(highlight --theme "$theme")
+[[ -z $language ]] || args+=(--language "$language")
+((! numbers)) || args+=(--line-numbers)
+if [[ -n $path && $path != - ]]; then
+    args+=(-- "$path")
+fi
+
+render() {
+    if [[ -n $line_limit ]]; then
+        lumis "${args[@]}" | head -n "$line_limit"
+        local status=("${PIPESTATUS[@]}")
+        ((status[1] == 0)) || return "${status[1]}"
+        ((status[0] == 141)) || return "${status[0]}"
+    else
+        lumis "${args[@]}"
+    fi
+}
+
+scratch=$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-view.XXXXXXXX") || exit 1
+trap 'rm -rf -- "$scratch"' EXIT
+input=/dev/null
+if [[ -z $path || $path == - ]]; then
+    input=$scratch/input
+    command cat >"$input" || exit
+fi
+
+# Buffer the result so bat can replay input after a Lumis failure.
+if render <"$input" >"$scratch/output" 2>"$scratch/error"; then
+    if [[ $paging == always || ($paging == auto && -t 1) ]] && command -v less >/dev/null 2>&1; then
+        less -FRX <"$scratch/output"
+    else
+        command cat "$scratch/output"
+    fi
+else
+    render_status=$?
+    if bat_available; then
+        bat "$@" <"$input"
+    else
+        command cat "$scratch/error" >&2
+        exit "$render_status"
+    fi
+fi

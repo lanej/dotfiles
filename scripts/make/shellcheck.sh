@@ -41,5 +41,6 @@ shellcheck -x \
 	"$dotfiles/bin/source-code-worktree-hook" \
 	"$dotfiles/bin/git-worktree-policy" \
 	"$dotfiles/bin/dotfiles-fzf" \
+	"$dotfiles/bin/dotfiles-view" \
 	"$dotfiles/bin/sync-codex-mcp-servers" \
 	"$dotfiles/paseo-tasks/coordinator/init.sh"

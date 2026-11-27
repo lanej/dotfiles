@@ -184,6 +184,10 @@
           "type": "boolean",
           "description": "Enable the bat bootstrap recipe."
         },
+        "lumis": {
+          "type": "boolean",
+          "description": "Tree-sitter source viewer for the interactive shell and file previews."
+        },
         "fd": {
           "type": "boolean",
           "description": "Enable the fd bootstrap recipe."

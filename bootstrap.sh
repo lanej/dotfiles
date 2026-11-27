@@ -737,6 +737,43 @@ install_bat_from_release() {
 	cargo install bat -q --locked --version "$1"
 }
 
+install_lumis_from_release() (
+	local arch target stage archive url bin
+	case "$(uname -m)" in
+		arm64 | aarch64) arch=aarch64 ;;
+		x86_64) arch=x86_64 ;;
+		*)
+			printf '%s\n' 'Unsupported Lumis architecture' >&2
+			exit 1
+			;;
+	esac
+	case "$(uname -s)" in
+		Darwin) target="$arch-apple-darwin" ;;
+		Linux) target="$arch-unknown-linux-musl" ;;
+		*)
+			printf '%s\n' 'Unsupported Lumis OS' >&2
+			exit 1
+			;;
+	esac
+	stage=$(mktemp -d) || exit 1
+	trap 'rm -rf "$stage"' EXIT
+	archive="lumis-$target.tar.gz"
+	url="https://github.com/leandrocp/lumis/releases/download/cargo-lumis-cli/v$1"
+	curl -fsSL "$url/$archive" -o "$stage/$archive" || exit 1
+	curl -fsSL "$url/lumis-$target.sha256" -o "$stage/$archive.sha256" || exit 1
+	if command -v sha256sum >/dev/null; then
+		(cd "$stage" && sha256sum -c "$archive.sha256") || exit 1
+	else
+		(cd "$stage" && shasum -a 256 -c "$archive.sha256") || exit 1
+	fi
+	tar -xzf "$stage/$archive" -C "$stage" -- lumis || exit 1
+	"$stage/lumis" --version || exit 1
+	bin=${2:-"$HOME/.local/bin"}
+	mkdir -p "$bin" || exit 1
+	install -m 755 "$stage/lumis" "$bin/lumis.new" || exit 1
+	mv -f "$bin/lumis.new" "$bin/lumis"
+)
+
 install_fd_from_release() {
 	cargo install fd-find -q --locked --version "$1"
 }
