@@ -1,5 +1,36 @@
 import { test, expect } from '@playwright/test';
 
+test('look up generated theme tokens and compare presets on a narrow screen', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('./design-system/');
+  await page.getByRole('link', { name: 'token reference', exact: true }).last().click();
+  await expect(page.getByRole('heading', { name: 'Theme token reference' })).toBeVisible();
+  await expect(page.locator('[aria-labelledby="palette-sage"]')).toContainText('Default preset');
+
+  const search = page.getByRole('searchbox', { name: 'Find a token or color' });
+  await search.fill('syntax.string');
+  const role = page.locator('[id="color-roles-syntax.string"]');
+  expect(await role.getByRole('cell').allTextContents()).toEqual(['#B7CB91', '#A3BE8C']);
+  await expect(page.locator('[aria-labelledby="palettes"]')).toBeHidden();
+
+  await search.fill('access.approved');
+  const state = page.locator('[id="semantic-states-access.approved"]');
+  await expect(state).toContainText('ASCII');
+  await expect(state.getByLabel('Octicon ').first()).toBeVisible();
+  await state.getByRole('link', { name: '@accent', exact: true }).click();
+  await expect(search).toHaveValue('');
+  await expect(page.locator('[id="color-roles-accent"]')).toBeInViewport();
+
+  await search.fill('symbol.git.summary.branch');
+  await expect(page.locator('[id="presentation-tokens-symbol.git.summary.branch"]')).toContainText('');
+  await search.fill('no-such-token');
+  await expect(page.getByText('No matching tokens or colors.')).toBeVisible();
+  await page.getByRole('button', { name: 'Clear' }).click();
+  await expect(search).toBeFocused();
+  await expect(page.locator('[aria-labelledby="palettes"]')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+});
+
 test('inspect native theme examples and follow atomic composition', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('./design-system/');

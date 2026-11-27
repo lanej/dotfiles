@@ -1,0 +1,260 @@
+---
+import selection from '../generated-theme-inputs/selection.json';
+
+interface State {
+  label: string;
+  description: string;
+  color_role: string;
+  fg: string;
+  glyph: string;
+  ascii: string;
+  octicon?: string;
+  bold: boolean;
+}
+
+interface Presentation {
+  resolved: boolean | number | string;
+  ascii?: string;
+  unit?: string;
+}
+
+interface Preset {
+  name: string;
+  palette: Record<string, string>;
+  resolved_roles: Record<string, string>;
+  resolved_ansi: string[];
+  resolved_tokens: {
+    semantic_states: Record<string, State>;
+    presentation: Record<string, Presentation>;
+  };
+}
+
+interface Cell {
+  text: string;
+  color?: string;
+  glyph?: string;
+  octicon?: string;
+  bold?: boolean;
+}
+
+interface Row {
+  id: string;
+  label?: string;
+  description?: string;
+  role?: string;
+  ascii?: string;
+  cells: Cell[];
+}
+
+const definitions = Object.values(import.meta.glob<Preset>('../generated-theme-inputs/themes/*.json', {
+  eager: true, import: 'default',
+}));
+const active = definitions.find(preset => preset.name === selection.theme);
+if (!active) throw new Error(`Missing configured preset: ${selection.theme}`);
+const presets = [active, ...definitions.filter(preset => preset !== active)];
+const title = (name: string) => name.charAt(0).toUpperCase() + name.slice(1);
+const value = (token: Presentation) => token.resolved === '' ? '(empty)' :
+  `${token.resolved}${token.unit ? ` ${token.unit}` : ''}`;
+
+const roles: Row[] = Object.keys(active.resolved_roles).sort().map(id => ({
+  id,
+  cells: presets.map(preset => ({ text: preset.resolved_roles[id], color: preset.resolved_roles[id] })),
+}));
+const states: Row[] = Object.entries(active.resolved_tokens.semantic_states).map(([id, state]) => ({
+  id, label: state.label, description: state.description, role: state.color_role, ascii: state.ascii,
+  cells: presets.map(preset => {
+    const { fg, glyph, octicon, bold } = preset.resolved_tokens.semantic_states[id];
+    return { text: fg, color: fg, glyph, octicon, bold };
+  }),
+}));
+const presentation: Row[] = Object.entries(active.resolved_tokens.presentation).sort(([a], [b]) => a.localeCompare(b))
+  .map(([id, token]) => ({
+    id, ascii: token.ascii,
+    cells: presets.map(preset => ({ text: value(preset.resolved_tokens.presentation[id]) })),
+  }));
+const sections = [
+  { id: 'color-roles', title: 'Color roles', rows: roles },
+  { id: 'semantic-states', title: 'Semantic states', rows: states },
+  { id: 'presentation-tokens', title: 'Presentation tokens', rows: presentation },
+];
+---
+
+<div class="token-reference" data-token-reference>
+  <p>Compare presets using values generated from the terminal theme sources.</p>
+  <nav aria-label="Reference sections">
+    <a href="#palettes">Palettes</a>
+    {sections.map(section => <a href={`#${section.id}`}>{section.title}</a>)}
+  </nav>
+
+  <form role="search" hidden>
+    <label for="token-search">Find a token or color</label>
+    <div class="search-field">
+      <input type="search" id="token-search" placeholder="Try syntax.string or #ACC8B7" autocomplete="off" spellcheck="false" />
+      <button type="reset">Clear</button>
+    </div>
+    <p role="status" class="visually-hidden"></p>
+  </form>
+  <p data-no-results hidden>No matching tokens or colors.</p>
+
+  <section aria-labelledby="palettes" data-token-section>
+    <h2 id="palettes">Palettes</h2>
+    <div class="palettes">
+      {presets.map(preset => (
+        <section class="palette" data-token-section aria-labelledby={`palette-${preset.name}`}>
+          <header>
+            <h3 id={`palette-${preset.name}`}>{title(preset.name)}</h3>
+            {preset === active && <span>Default preset</span>}
+          </header>
+          <div class="ansi-strip" aria-hidden="true">
+            {preset.resolved_ansi.map(color => <span style={{ backgroundColor: color }}></span>)}
+          </div>
+          {[
+            { label: 'Named colors', entries: Object.entries(preset.palette) },
+            { label: 'ANSI slots', entries: preset.resolved_ansi.map((color, index) => [`ANSI ${index}`, color]) },
+          ].map(group => (
+            <div data-token-section>
+              <h4>{group.label}</h4>
+              <dl>
+                {group.entries.map(([name, color]) => (
+                  <div data-token-entry data-search={`${preset.name} palette ${name} ${color}`}>
+                    <dt><span class="swatch" style={{ backgroundColor: color }} aria-hidden="true"></span><code>{name}</code></dt>
+                    <dd><code>{color}</code></dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          ))}
+        </section>
+      ))}
+    </div>
+  </section>
+
+  {sections.map(section => (
+    <section aria-labelledby={section.id} data-token-section>
+      <h2 id={section.id}>{section.title}</h2>
+      {section.id === 'semantic-states' && <p>Unicode appears first, followed by Octicon when available.</p>}
+      <table>
+        <thead>
+          <tr><th scope="col">Token</th>{presets.map(preset => <th scope="col">{title(preset.name)}</th>)}</tr>
+        </thead>
+        <tbody>
+          {section.rows.map(row => (
+            <tr id={`${section.id}-${row.id}`} data-token-entry
+              data-search={[section.title, row.id, row.label, row.description, row.role, row.ascii,
+                ...row.cells.flatMap(cell => [cell.text, cell.glyph, cell.octicon])].join(' ')}>
+              <th scope="row">
+                <a href={`#${section.id}-${row.id}`}><code>{row.id}</code></a>
+                {row.description && <span class="description">{row.description}</span>}
+                {(row.role || row.ascii !== undefined) && (
+                  <span class="metadata">
+                    {row.role && <a href={`#color-roles-${row.role.slice(1)}`}><code>{row.role}</code></a>}
+                    {row.ascii !== undefined && <span>ASCII <code>{row.ascii || '(empty)'}</code></span>}
+                  </span>
+                )}
+              </th>
+              {row.cells.map(cell => (
+                <td>
+                  <span class="cell">
+                    {cell.color && <span class="swatch" style={{ backgroundColor: cell.color }} aria-hidden="true"></span>}
+                    <code class={cell.color ? 'hex' : 'glyph'}>{cell.text}</code>
+                  </span>
+                  {cell.glyph && (
+                    <span class="symbols" style={{ fontWeight: cell.bold ? 700 : 400 }}>
+                      <code class="glyph" aria-label={`Unicode glyph ${cell.glyph}`}>{cell.glyph}</code>
+                      {cell.octicon && <code class="glyph" aria-label={`Octicon ${cell.octicon}`}>{cell.octicon}</code>}
+                    </span>
+                  )}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  ))}
+</div>
+
+<script>
+  const reference = document.querySelector('[data-token-reference]');
+  const form = reference?.querySelector('form');
+  const input = form?.querySelector('input');
+  const status = form?.querySelector('[role="status"]');
+  const empty = reference?.querySelector<HTMLElement>('[data-no-results]');
+
+  if (reference && form && input && status && empty) {
+    const entries = Array.from(reference.querySelectorAll<HTMLElement>('[data-token-entry]'));
+    const sections = Array.from(reference.querySelectorAll<HTMLElement>('[data-token-section]'));
+    const filter = (query: string) => {
+      const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      let matches = 0;
+      for (const entry of entries) {
+        const text = entry.dataset.search?.toLowerCase() ?? '';
+        entry.hidden = !words.every(word => text.includes(word));
+        if (!entry.hidden) matches++;
+      }
+      for (const section of sections) section.hidden = !section.querySelector('[data-token-entry]:not([hidden])');
+      empty.hidden = matches > 0;
+      status.textContent = words.length ? `${matches} matching entries` : '';
+    };
+
+    form.hidden = false;
+    input.addEventListener('input', () => filter(input.value));
+    form.addEventListener('submit', event => event.preventDefault());
+    form.addEventListener('reset', () => {
+      filter('');
+      input.focus();
+    });
+    window.addEventListener('hashchange', () => {
+      const target = document.getElementById(location.hash.slice(1));
+      if (target?.closest('[data-token-reference]') && target.closest('[hidden]')) {
+        input.value = '';
+        filter('');
+        target.scrollIntoView();
+      }
+    });
+  }
+</script>
+
+<style>
+  @font-face { font-family: 'Dotfiles Symbols'; src: url('../../../docs/design-system/symbols.woff2') format('woff2'); font-display: swap; }
+  .token-reference [hidden] { display: none; }
+  .token-reference nav { display: flex; flex-wrap: wrap; gap: .35rem 1.15rem; font-size: .875rem; }
+  .token-reference nav a { margin: 0; }
+  form { padding: .85rem 1rem 1rem; border: 1px solid var(--sl-color-gray-5); border-radius: .45rem; background: var(--sl-color-gray-6); }
+  label { display: block; font-weight: 600; }
+  .search-field { display: flex; gap: .55rem; margin-top: .35rem; }
+  input, button { min-height: 2.75rem; border: 1px solid var(--sl-color-gray-4); border-radius: .3rem; font: inherit; color: var(--sl-color-white); margin: 0; }
+  input { width: 100%; min-width: 0; padding: .35rem .65rem; background: var(--sl-color-black); }
+  input::placeholder { color: var(--sl-color-gray-3); }
+  button { padding-inline: .8rem; background: var(--sl-color-gray-6); cursor: pointer; }
+  button:hover { border-color: var(--sl-color-text-accent); }
+  .palettes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: .85rem; align-items: start; }
+  .palette { min-width: 0; margin: 0; border: 1px solid var(--sl-color-gray-5); border-radius: .4rem; padding: .8rem; }
+  .palette header { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .75rem; }
+  .palette header span { color: var(--sl-color-gray-3); font-size: .8125rem; }
+  .palette h3, .palette h4, .palette header span { margin: 0; }
+  .ansi-strip { display: flex; height: 1.25rem; overflow: hidden; border: 1px solid var(--sl-color-gray-5); border-radius: .2rem; }
+  .ansi-strip span { flex: 1; margin: 0; }
+  .palette h4 { font-size: .875rem; color: var(--sl-color-gray-2); }
+  .palette dl { margin: .3rem 0 0; }
+  .palette dl div { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .35rem; padding-block: .16rem; margin: 0; }
+  .palette dt { display: flex; align-items: center; min-width: 0; gap: .4rem; }
+  .palette dd { margin: 0; }
+  .swatch { flex: 0 0 auto; display: inline-block; width: .85rem; height: .85rem; border: 1px solid var(--sl-color-gray-4); border-radius: .17rem; }
+  table { display: table; width: 100%; table-layout: fixed; }
+  thead th:first-child { width: 55%; }
+  td, th { vertical-align: top; padding-inline: .5rem; }
+  td code, th code, .palette code { overflow-wrap: anywhere; }
+  .description, .metadata { display: block; }
+  .description { margin-top: .15rem; font-size: .875rem; font-weight: 400; color: var(--sl-color-gray-2); }
+  .metadata { display: flex; flex-wrap: wrap; gap: .1rem .45rem; font-size: .8125rem; font-weight: 400; }
+  .cell, .symbols { display: flex; align-items: center; gap: .3rem; }
+  .cell { flex-wrap: wrap; }
+  .symbols { margin-top: .2rem; }
+  .glyph { font-family: 'Dotfiles Symbols', var(--sl-font-mono), monospace; }
+  .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  @media (max-width: 38rem) {
+    thead th:first-child { width: 48%; }
+    td, th { padding-inline: .25rem; }
+  }
+</style>

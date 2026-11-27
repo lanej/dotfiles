@@ -25,8 +25,14 @@ sys.path.insert(0, str(source.parent / "scripts"))
 from theme import read, compile_theme
 for p in source.glob("themes/*.toml"):
     data = read(p)
-    data["resolved_roles"] = json.loads(compile_theme(source, p.stem)["colors.json"])["roles"]
+    compiled = compile_theme(source, p.stem)
+    colors = json.loads(compiled["colors.json"])
+    data["resolved_roles"] = colors["roles"]
+    data["resolved_ansi"] = colors["ansi"]
+    data["resolved_tokens"] = json.loads(compiled["tokens.json"])
     (target / p.relative_to(source).with_suffix(".json")).write_text(json.dumps(data, ensure_ascii=False))
+selection = read(source / "config.toml")
+(target / "selection.json").write_text(json.dumps(selection))
 for name in ("catalog", "integrations", "semantic-states"):
     (target / (name + ".json")).write_text(json.dumps(read(source / (name + ".toml")), ensure_ascii=False))
 `, resolve(repo, 'design-system'), themeInputs]);
@@ -38,6 +44,7 @@ const pages = [
   { file: 'docs/architecture.mdx', slug: 'architecture' },
   { file: 'docs/components.mdx', slug: 'components' },
   { file: 'docs/design-system.mdx', slug: 'design-system' },
+  { file: 'docs/design-system/tokens.mdx', slug: 'design-system/tokens' },
   { file: 'docs/design-system/nord.mdx', slug: 'design-system/nord' },
   { file: 'docs/design-system/sage.mdx', slug: 'design-system/sage' },
   { file: 'docs/terminal-workflows.mdx', slug: 'terminal' },
