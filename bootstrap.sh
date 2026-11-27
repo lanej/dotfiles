@@ -1230,6 +1230,7 @@ install_build_dependencies() {
 }
 
 install_macos_window_tool() {
+	local tap=koekeishiya/formulae
 	[ "$os" = macos ] || {
 		echo "$1 requires macOS" >&2
 		return 1
@@ -1239,12 +1240,10 @@ install_macos_window_tool() {
 		echo "Homebrew is required to install $1" >&2
 		return 1
 	}
-	brew install "koekeishiya/formulae/$1"
-}
-
-install_macos_window_tools() {
-	[ "$os" = macos ] || return 0
-	install_macos_window_tool yabai && install_macos_window_tool skhd
+	if [ "$1" = borders ]; then
+		tap=FelixKratz/formulae
+	fi
+	brew install "$tap/$1"
 }
 
 install_hack_nerd_font() (

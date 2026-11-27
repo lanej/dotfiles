@@ -388,6 +388,10 @@
           "type": "boolean",
           "description": "Enable the skhd bootstrap recipe."
         },
+        "borders": {
+          "type": "boolean",
+          "description": "Install JankyBorders and link its window border configuration."
+        },
         "x11": {
           "type": "boolean",
           "description": "Link X11 session configuration for a separately installed desktop."
