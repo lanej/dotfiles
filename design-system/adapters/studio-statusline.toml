@@ -1,0 +1,14 @@
+directory = { token = "symbol.workspace.directory" }
+linkedWorktree = { token = "symbol.git.worktree.linked" }
+branch = { token = "symbol.git.summary.branch" }
+changedFiles = { token = "symbol.git.summary.changed_files" }
+addedLines = { token = "symbol.git.summary.added_lines" }
+removedLines = { token = "symbol.git.summary.removed_lines" }
+untrackedFiles = { token = "symbol.git.summary.untracked_files" }
+pullRequest = { token = "symbol.git.pull_request" }
+contextUsage = { token = "symbol.model.context_usage" }
+directoryDivider = { token = "symbol.separator.section.left" }
+modelDivider = { token = "symbol.separator.section.right" }
+planning = { token = "symbol.execution.plan" }
+applying = { token = "symbol.execution.apply" }
+implementing = { token = "symbol.execution.implement" }

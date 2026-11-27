@@ -111,6 +111,10 @@ focus = "$lavender"
 
 [presentation]
 "symbol.workspace.directory" = ""
+"symbol.model.context_usage" = ""
+"symbol.execution.plan" = ""
+"symbol.execution.apply" = ""
+"symbol.execution.implement" = ""
 "symbol.git.worktree.linked" = ""
 "symbol.git.summary.changed_files" = ""
 "symbol.git.summary.added_lines" = { token = "symbol.diff.add" }

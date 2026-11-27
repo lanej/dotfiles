@@ -1257,7 +1257,10 @@ return {
 ["symbol.git.summary.untracked_files"] = "",
 ["symbol.git.pull_request"] = "",
 ["symbol.diff.change"] = "",
-["symbol.model.context_usage"] = "◔",
+["symbol.model.context_usage"] = "",
+["symbol.execution.plan"] = "",
+["symbol.execution.apply"] = "",
+["symbol.execution.implement"] = "",
 ["symbol.model.reasoning.off"] = "",
 ["symbol.model.reasoning.minimal"] = "▁",
 ["symbol.model.reasoning.low"] = "▂",
@@ -1395,7 +1398,7 @@ return {
 ["statusline.model.context_usage"] = {
 ["bg"] = "#2A4034",
 ["fg"] = "#A3B1A7",
-["symbol"] = "◔",
+["symbol"] = "",
 },
 ["statusline.git.branch"] = {
 ["fg"] = "#A3B1A7",

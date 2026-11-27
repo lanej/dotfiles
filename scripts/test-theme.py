@@ -291,8 +291,12 @@ class ThemeTests(unittest.TestCase):
                 self.assertEqual(components["statusline.git.pull_request"]["symbol"],
                                  "\uf407" if representation == "unicode" else "P")
                 self.assertEqual(components["statusline.model.context_usage"]["symbol"],
-                                 "◔" if representation == "unicode" else "C")
+                                 "\uf463" if representation == "unicode" else "C")
                 pi = json.loads(outputs["pi.json"])
+                statusline = json.loads(outputs["studio-statusline.json"])
+                for field, component in (("branch", "git.branch"), ("addedLines", "git.added_lines"),
+                                         ("directory", "directory"), ("contextUsage", "model.context_usage")):
+                    self.assertEqual(statusline[field], components[f"statusline.{component}"]["symbol"])
                 self.assertEqual(pi["vars"]["syntaxNull"], roles["syntax.null"])
                 self.assertEqual(pi["vars"]["footerBg"], "#1C2B23")
                 self.assertEqual(pi["vars"]["footerDirectoryBg"], "#35493E")
@@ -443,6 +447,7 @@ class ThemeTests(unittest.TestCase):
                             self.assertEqual(token["fg"], colors[role])
                             self.assertEqual(token["color_role"], "@" + role)
                             self.assertEqual(token["symbol"], state["ascii"] if symbols == "ascii" else state["glyph"])
+                            self.assertEqual(token.get("octicon"), state.get("octicon"))
                             self.assertEqual(token["bold"], state.get("bold", False))
                             self.assertEqual(token["label"], state["label"])
                             self.assertEqual(token["description"], state["description"])
@@ -464,6 +469,8 @@ class ThemeTests(unittest.TestCase):
             ({"role": "missing"}, KeyError),
             ({"fallback_role": "missing"}, ValueError),
             ({"glyph": "wide"}, ValueError),
+            ({"octicon": "wide"}, ValueError),
+            ({"octicon": "✓"}, ValueError),
             ({"glyph": "界"}, ValueError),
             ({"ascii": "é"}, ValueError),
             ({"bold": "true"}, ValueError),
@@ -775,6 +782,15 @@ class ThemeTests(unittest.TestCase):
             self.assertNotIn("\x1b", plain)
             self.assertIn("◐ CONNECTING", plain)
             self.assertIn("✓ APPROVED", plain)
+            octicons = subprocess.check_output([*command, "--octicons", "--color=never"], env=env, text=True)
+            self.assertIn("\uf510 APPROVED", octicons)
+            self.assertIn("\uf46f DEBUG", octicons)
+            ascii_tokens = theme.compile_theme(theme.SOURCE, "sage", "ascii")["tokens.json"]
+            (Path(directory) / "tokens.json").write_text(ascii_tokens)
+            ascii_catalog = subprocess.check_output([*command, "--octicons", "--color=never"], env=env, text=True)
+            self.assertIn("+ APPROVED", ascii_catalog)
+            self.assertNotIn("\uf510", ascii_catalog)
+            (Path(directory) / "tokens.json").write_text(sage["tokens.json"])
             colored = subprocess.check_output([*command, "--color=always"], env=env, text=True)
             self.assertIn("\x1b[38;2;172;200;183m✓ APPROVED", colored)
 

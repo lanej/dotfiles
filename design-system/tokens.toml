@@ -115,6 +115,9 @@ prompt = "@accent"
 "symbol.diff.change" = { type = "string", value = "", ascii = "~" }
 "symbol.diff.delete" = { type = "string", value = "", ascii = "-" }
 "symbol.model.context_usage" = { type = "string", value = "◔", ascii = "C" }
+"symbol.execution.plan" = { type = "string", value = "◇", ascii = "p" }
+"symbol.execution.apply" = { type = "string", value = "◐", ascii = "a" }
+"symbol.execution.implement" = { type = "string", value = "◆", ascii = "i" }
 "symbol.model.reasoning.off" = { type = "string", value = "", ascii = "" }
 "symbol.model.reasoning.minimal" = { type = "string", value = "▁", ascii = "1" }
 "symbol.model.reasoning.low" = { type = "string", value = "▂", ascii = "2" }

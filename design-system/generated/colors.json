@@ -198,7 +198,7 @@
     "statusline.model.context_usage": {
       "bg": "#2A4034",
       "fg": "#A3B1A7",
-      "symbol": "\u25d4"
+      "symbol": "\uf463"
     },
     "statusline.git.branch": {
       "fg": "#A3B1A7",
