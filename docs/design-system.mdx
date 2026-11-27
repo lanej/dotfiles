@@ -118,7 +118,11 @@ Document unavailable customization in [the integration inventory](../design-syst
 
 ## File listings and directory previews
 
-Eza consumes the [generated native adapter](../design-system/adapters/eza.toml) through `~/.config/eza/theme.yml`, installed by `make shell`. File kinds use shared `file.*` roles; native Git metadata uses shared `git.file.*` roles. `ll` and `la` retain exact byte sizes, and `lt` and fzf directory previews retain bounded trees and native index/worktree indicators. Previewed files use the generated bat theme through `BAT_THEME`. The shell login defaults reuse the generated fzf palette instead of resetting it to literal Nord colors.
+Eza consumes the [generated native adapter](../design-system/adapters/eza.toml) through `~/.config/eza/theme.yml`, installed by `make shell`. File kinds use shared `file.*` roles; native Git metadata uses shared `git.file.*` roles. `ll` and `la` retain exact byte sizes, and `lt` and fzf directory previews retain bounded trees and native index/worktree indicators. The shell login defaults reuse the generated fzf palette instead of resetting it to literal Nord colors.
+
+Interactive login shells and fzf file previews use Lumis through `dotfiles-view`. It reads the current preset's generated `lumis.json`, so switching between Sage and Nord uses the same workflow as the other adapters. The shell tool set installs Lumis, which caches parsers on first use. The system bat command remains available through `command bat`, and the viewer uses it for unsupported options, multi-file views, and uncolored output. Delta reads the separate Bat theme cache.
+
+Lumis uses its bundled Tree-sitter queries to classify tokens. Its Lua and Rust queries group `true` and `false`. The Lua query gives `nil` and `_VERSION` the same builtin-constant scope, which Sage styles in dusty rose.
 
 The opt-in [Studio daily-driver integration](https://github.com/lanej/studio#readme) bundles a theme generated from the [semantic TOML adapter](../design-system/adapters/pi.toml). Run `bun run configure` from `~/src/studio` to register the package and its bundled theme; existing theme choices and startup settings are preserved. The native task picker and compact footer use the selected Pi theme while the terminal retains its background and opacity. Narrow/wide task selection, details, keyboard recovery and actual color output are exercised through Pi 1.4.0; authenticated provider behavior is separate.
 

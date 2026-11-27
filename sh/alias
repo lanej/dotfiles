@@ -57,23 +57,25 @@ fi
 if command -v bat >/dev/null 2>&1; then
 	export BAT_THEME=Dotfiles
 
-	# Only alias cat to bat in login shells
-	# Rationale: Scripts and non-interactive shells expect POSIX-compliant cat behavior
-	# without syntax highlighting or paging, which could break pipelines and automation.
-	# Login shells are for interactive human use where bat's enhancements are desired.
-	if shopt -q login_shell 2>/dev/null || [[ -o login ]] 2>/dev/null; then
-		alias cat='bat'
-	fi
-
 	if [[ "$os_type" == 'darwin' ]]; then
 		export MANPAGER="sh -c 'col -b | bat -l man --plain' --pager=always"
 	else
 		# shellcheck disable=SC2068
-		man() { command man $@ | col -b | bat -l man --plain --color=always | less -C; }
+		man() { command man $@ | col -b | command bat -l man --plain --color=always | less -C; }
 	fi
 
 	# shellcheck disable=SC2068
-	help() { $@ --help | bat -l help --plain --no-pager -f | less -R; }
+	help() { $@ --help | command bat -l help --plain --no-pager -f | less -R; }
+fi
+
+# Scripts and noninteractive shells use the system cat and bat commands.
+if [[ $- == *i* ]] && { shopt -q login_shell 2>/dev/null || [[ -o login ]] 2>/dev/null; }; then
+	if command -v dotfiles-view >/dev/null 2>&1 && command -v lumis >/dev/null 2>&1; then
+		alias cat='dotfiles-view'
+		alias bat='dotfiles-view'
+	elif command -v bat >/dev/null 2>&1; then
+		alias cat='bat'
+	fi
 fi
 
 if ! command -v tmx >/dev/null 2>&1; then
@@ -137,7 +139,7 @@ next_version() {
 
 f() {
 	# shellcheck disable=SC2016
-	fzf --height 30% --reverse --bind alt-j:preview-down,alt-k:preview-up --preview '[[ $(file --mime {}) =~ binary ]] && echo {} is a binary file || (bat {} || cat {}) 2> /dev/null | head -500'
+	fzf --height 30% --reverse --bind alt-j:preview-down,alt-k:preview-up --preview '[[ $(file --mime {}) =~ binary ]] && echo {} is a binary file || (dotfiles-view --color=always --paging=never -- {} || cat {}) 2> /dev/null | head -500'
 }
 
 lsearch() {

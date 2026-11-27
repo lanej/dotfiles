@@ -6,6 +6,8 @@ on:
       - 'design-system/**'
       - 'scripts/theme.py'
       - 'scripts/theme-ci-tools.py'
+      - 'bootstrap.sh'
+      - 'bootstrap/tools.toml'
       - 'scripts/theme_review.py'
       - 'scripts/theme_review_contract.py'
       - 'scripts/test-theme*.py'
@@ -59,13 +61,22 @@ jobs:
         run: python3 scripts/theme-ci-tools.py "$RUNNER_TEMP/theme-tools"
       - name: Validate compiler and configuration wiring
         run: make theme-check test-theme
+      - name: Install pinned Lumis and prefetch its Lua parser
+        shell: bash
+        run: |
+          source ./bootstrap.sh
+          lumis_version=$(python3 -c 'import tomllib; print(tomllib.load(open("bootstrap/tools.toml", "rb"))["tools"]["lumis"]["version"])')
+          install_lumis_from_release "$lumis_version" "$RUNNER_TEMP/theme-tools/bin"
+          "$RUNNER_TEMP/theme-tools/bin/lumis" --data-dir "$RUNNER_TEMP/lumis" languages download lua
       - name: Exercise native fixtures
         shell: bash
         run: |
           export PATH="$RUNNER_TEMP/theme-tools/bin:$PATH"
+          export LUMIS_DATA_DIR="$RUNNER_TEMP/lumis"
           nord="$RUNNER_TEMP/theme-nord-baselines"
           python3 scripts/theme.py --theme nord --output-dir "$nord"
           for theme in "$PWD/design-system/generated" "$nord"; do
+            DOTFILES_THEME_DIR="$theme" python3 scripts/test-theme-lumis.py
             DOTFILES_THEME_DIR="$theme" uv run --script scripts/test-theme-native.py --plugins-dir "$RUNNER_TEMP/theme-tools/plugins" --surface neovim --surface neovim-frame --surface tmux --surface cli --surface fzf --surface bat --surface delta --surface glow --surface bottom
           done
           uv run --script scripts/test-theme-presentation.py --plugins-dir "$RUNNER_TEMP/theme-tools/plugins"

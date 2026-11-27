@@ -47,6 +47,14 @@ coverage = "Native listings and fzf previews use semantic file and Git roles. Ex
 sources = ["design-system/adapters/eza.toml", "sh/alias", "bin/fzf-path-preview"]
 
 [[items]]
+id = "lumis"
+owner = "Tree-sitter source viewing in the local shell and file previews"
+mechanism = "generated Lumis JSON theme passed by the dotfiles viewer"
+reload = "Regenerate the theme and open a new login shell"
+coverage = "Interactive cat and bat aliases and fzf file previews use Lumis for supported invocations. Bat handles unsupported options, man and help formats, and Delta's syntax assets."
+sources = ["design-system/adapters/lumis.toml", "bin/dotfiles-view", "sh/alias"]
+
+[[items]]
 id = "bat-delta"
 owner = "Syntax theme cache and delta diff features"
 mechanism = "generated tmTheme and native gitconfig include"

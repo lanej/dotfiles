@@ -118,6 +118,10 @@ version = "2.0.0"
 requires = ["rust"]
 version = "0.25.0"
 
+[tools.lumis]
+description = "Tree-sitter source viewer for the interactive shell and file previews."
+version = "0.8.10"
+
 [tools.fd]
 requires = ["rust"]
 version = "10.2.0"

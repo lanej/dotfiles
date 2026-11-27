@@ -1,0 +1,99 @@
+{
+  "$schema": "https://lumis.sh/schemas/themes/v1.0.0.json",
+  "name": "sage",
+  "appearance": "dark",
+  "revision": "1",
+  "highlights": {
+    "normal": {
+      "fg": "#D7DFD9",
+      "bg": "#0D1513"
+    },
+    "comment": {
+      "fg": "#9CAB9F"
+    },
+    "string": {
+      "fg": "#B7CB91"
+    },
+    "string.escape": {
+      "fg": "#E8C88B"
+    },
+    "character": {
+      "fg": "#B7CB91"
+    },
+    "number": {
+      "fg": "#C4B2D9"
+    },
+    "boolean": {
+      "fg": "#C4B2D9"
+    },
+    "boolean.true": {
+      "fg": "#95B5D3"
+    },
+    "boolean.false": {
+      "fg": "#C4B2D9"
+    },
+    "constant": {
+      "fg": "#D7DFD9"
+    },
+    "constant.null": {
+      "fg": "#D89DAE"
+    },
+    "constant.builtin.lua": {
+      "fg": "#D89DAE"
+    },
+    "keyword": {
+      "fg": "#95B5D3"
+    },
+    "operator": {
+      "fg": "#95B5D3"
+    },
+    "function": {
+      "fg": "#8CC5CC"
+    },
+    "type": {
+      "fg": "#B7BDE3"
+    },
+    "constructor": {
+      "fg": "#B7BDE3"
+    },
+    "variable": {
+      "fg": "#D7DFD9"
+    },
+    "variable.builtin": {
+      "fg": "#ACC8B7"
+    },
+    "variable.member": {
+      "fg": "#8FB9A8"
+    },
+    "property": {
+      "fg": "#8FB9A8"
+    },
+    "module": {
+      "fg": "#B7BDE3"
+    },
+    "label": {
+      "fg": "#ACC8B7"
+    },
+    "attribute": {
+      "fg": "#E8C88B"
+    },
+    "markup.heading": {
+      "fg": "#ACC8B7"
+    },
+    "markup.link": {
+      "fg": "#ACC8B7"
+    },
+    "diff.plus": {
+      "fg": "#A6CD82"
+    },
+    "diff.minus": {
+      "fg": "#F18C96"
+    },
+    "error": {
+      "fg": "#F18C96"
+    },
+    "line_number": {
+      "fg": "#909F95"
+    }
+  }
+}

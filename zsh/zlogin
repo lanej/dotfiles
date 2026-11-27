@@ -23,8 +23,8 @@ if command -v fzf >/dev/null; then
 	--bind 'ctrl-y:execute-silent(echo -n {2..} | pbcopy)+abort'
 	"
 
-	if command -v bat >/dev/null; then
-		export FZF_CTRL_R_OPTS=$FZF_CTRL_R_OPTS"--preview='echo {} | bat --plain --color=always -l zsh --plain'"
+	if command -v lumis >/dev/null || command -v bat >/dev/null; then
+		export FZF_CTRL_R_OPTS=$FZF_CTRL_R_OPTS"--preview='echo {} | dotfiles-view --plain --color=always --paging=never -l zsh'"
 	fi
 
 	if command -v eza >/dev/null; then
@@ -43,10 +43,10 @@ if command -v fzf >/dev/null; then
 		fi
 	fi
 
-	if command -v bat >/dev/null; then
+	if command -v lumis >/dev/null || command -v bat >/dev/null; then
 		unset FZF_CTRL_T_OPTS
 		export FZF_CTRL_T_OPTS=$FZF_DEFAULT_OPTS"
-		--preview='bat --plain --color=always {}'
+		--preview='dotfiles-view --plain --color=always --paging=never -- {}'
 		--preview-window right:60%:border-left:wrap"
 	fi
 	# Candidates already encode file visits and directory depth; keep that order on ties.

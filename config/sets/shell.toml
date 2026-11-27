@@ -9,6 +9,7 @@ git-delta = true
 mergiraf = true
 glow = true
 bat = true
+lumis = true
 fd = true
 eza = true
 zsh-autosuggestions = true

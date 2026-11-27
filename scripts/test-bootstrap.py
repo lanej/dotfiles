@@ -954,7 +954,7 @@ else:
         for tool in (
             "uname", "git", "sudo", "apt-get", "apt-cache", "dnf", "curl", "uv", "node", "npm", "bun",
             "make", "cmake", "cc", "cargo", "rustc", "rust-analyzer", "go",
-            "fzf", "starship", "atuin", "sk", "delta", "bat", "fd",
+            "fzf", "starship", "atuin", "sk", "delta", "bat", "lumis", "fd",
             "zsh-autosuggestions", "cargo-sweep", "cargo-cache",
             "gh", "git-crypt", "jq", "rg", "stylua", "nvim", "shfmt",
             "bash-language-server", "typescript-language-server", "gopls",
