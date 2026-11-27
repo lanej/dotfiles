@@ -120,7 +120,7 @@ def main():
             assert rejected.returncode != 0 and "duplicate tool 'beads'" in rejected.stderr, rejected.stderr
             assert "tools/beads/tool.toml" in rejected.stderr and "bootstrap/tools.toml" in rejected.stderr
         platform_set = "macos" if sys.platform == "darwin" else "linux"
-        native_tools = {"git", "git-worktree-hooks", "worktree-policy", "build"} | ({"yabai", "skhd"} if platform_set == "macos" else {"x11", "polybar", "bspwm", "bsdtar"})
+        native_tools = {"git", "git-worktree-hooks", "worktree-policy", "build"} | ({"yabai", "skhd", "borders"} if platform_set == "macos" else {"x11", "polybar", "bspwm", "bsdtar"})
         disabled_native = "yabai" if platform_set == "macos" else "polybar"
         assert baseline["sets"] == ["base", platform_set, "shell", "terminal"]
         assert {tool["name"] for tool in baseline["baseline"]["tools"]} == native_tools
@@ -217,7 +217,9 @@ def main():
         assert "mergiraf-config" not in reduced["setup"]
         for host in ("macos", "linux"):
             fresh = json.loads(run(*command, "--platform", host, "--format", "json").stdout)
-            assert {"git", "zsh", "zellij"} <= {tool["name"] for tool in fresh["tools"]}
+            fresh_tools = {tool["name"] for tool in fresh["tools"]}
+            assert {"git", "zsh", "zellij"} <= fresh_tools
+            assert ("borders" in fresh_tools) == (host == "macos"), fresh_tools
             assert "git" in fresh["baseline"]["setup"]
             assert "tmux" not in {tool["name"] for tool in fresh["tools"]}
             assert "mergiraf-config" not in fresh["setup"]

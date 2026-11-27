@@ -11,6 +11,8 @@ on:
       - 'scripts/theme_review.py'
       - 'scripts/theme_review_contract.py'
       - 'scripts/test-theme*.py'
+      - 'yabai/bordersrc'
+      - 'yabai/yabairc'
       - 'nvim/colors/dotfiles.lua'
       - 'nvim/after/syntax/lua.vim'
       - 'nvim/lua/dotfiles-theme.lua'

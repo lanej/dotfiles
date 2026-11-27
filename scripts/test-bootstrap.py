@@ -191,6 +191,29 @@ def test_compatibility(root):
             assert (result.returncode == 0) == success, result.stdout + result.stderr
             return result
 
+        window_tools = '''
+os=macos
+command() {
+    case "$*" in
+        "-v borders") [ "${TEST_BORDERS_INSTALLED:-0}" = 1 ] ;;
+        "-v brew") return 0 ;;
+        *) builtin command "$@" ;;
+    esac
+}
+sw_vers() { printf '%s\\n' "$TEST_MACOS_VERSION"; }
+brew() { printf '%s\\n' "$*"; }
+install_macos_window_tool borders
+'''
+        for version, installed, expected in (
+            ("14.0", "0", "install FelixKratz/formulae/borders"),
+            ("13.7", "0", "Skipping borders, which requires macOS 14 or later."),
+            ("14.0", "1", ""),
+        ):
+            result = run(window_tools, extra={
+                "TEST_MACOS_VERSION": version, "TEST_BORDERS_INSTALLED": installed,
+            })
+            assert result.stdout.strip() == expected, (version, installed, result.stdout)
+
         python = home / "python3"
         python.write_text(f"#!{sys.executable}\n" + '''
 import os
