@@ -53,11 +53,11 @@ def bottom():
 
 def tmux():
     roles = THEME["roles"]
-    cells = row(" fixture  0:Editor  ◐  1:Publisher ×  2:Checks !  3:Shell")
+    cells = row(" fixture  0:Editor  ◐  1:Publisher   2:Checks   3:Shell")
     paint(cells, "0:Editor", roles["text.inverse"], roles["focus"])
     for label in ("1:Publisher", "2:Checks", "3:Shell"):
         paint(cells, label, roles["text.muted"], roles["surface"])
-    for glyph, role in (("◐", "status.info"), ("×", "status.error"), ("!", "status.attention")):
+    for glyph, role in (("◐", "status.info"), ("", "status.error"), ("", "status.attention")):
         paint(cells, glyph, roles[role], roles["surface"])
     return [row("Workspace review"), cells]
 
@@ -94,7 +94,7 @@ class NativeReviewContractTests(unittest.TestCase):
         self.assertIn("tmux.no-inactive-ribbons", bad)
         self.assertNotIn("contrast.text", bad)
         specimen = tmux()
-        paint(specimen[-1], "×", "#A3B1A7", "#0D1513")
+        paint(specimen[-1], "", "#A3B1A7", "#0D1513")
         self.assertIn("tmux.marker.status.error", failures(report("tmux", specimen)))
 
     def test_actual_low_contrast_and_incomplete_fixture_are_rejected(self):

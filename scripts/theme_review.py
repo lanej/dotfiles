@@ -28,6 +28,8 @@ BOX_LINES = {
 # Known one-cell glyphs in the native fixtures. Keep the recorded
 # codepoint in the SVG metadata and draw a portable semantic outline.
 GLYPH_PATHS = {
+    "\uf467": "M2 7l5 6m0-6-5 6",
+    "\uf49c": "M1 5H8v8H5l-3 3v-3H1ZM3 9l1 1 2-2",
     "\ue0a0": "M2.5 5V15M2.5 10Q6.5 10 6.5 5M2.5 4a1 1 0 1 0 0.01 0M2.5 15a1 1 0 1 0 0.01 0M6.5 4a1 1 0 1 0 0.01 0",
     "\U000f015a": "M4.5 4a6 6 0 1 0 0.01 0M2.5 8l4 4m0-4l-4 4",
     "\U000f002a": "M4.5 3L8.3 16H0.7ZM4.5 7V11m0 2v1",

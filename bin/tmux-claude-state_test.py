@@ -58,6 +58,7 @@ def test_window_tab_separates_needs_from_activity_from_dormancy(
     sweep = load_script("tmux-claude-sweep")
     assert sweep.state is state
     assert callable(state.style)
+    approval_mark = state.STATES["approval"][4]
     home = private_tmux.folder / "home"
     home.mkdir()
     (home / ".files").symlink_to(ROOT)
@@ -275,34 +276,16 @@ def test_window_tab_separates_needs_from_activity_from_dormancy(
                 "question": question, "idle": idle, "dormant": dormant}
     assert len(set(rendered.values())) == len(rendered), rendered
 
-    # Needs are the emphasised ones: bold, and sharing the hottest colour.
-    for name in ("plan", "approval", "question"):
-        assert "bold" in rendered[name] and "nobold" not in rendered[name], name
-    for name in ("busy", "idle", "dormant"):
-        assert "nobold" in rendered[name], name
-
-    # Every part of the tab -- segment, text, and both powerline caps -- has to
-    # come from the same state, or a half-wired format shows the wrong colours.
+    # Inactive tabs keep their neutral chrome and style only the state mark.
     for name, tab_state in (("plan", "plan"), ("busy", "tool"), ("approval", "approval"),
                             ("question", "question"), ("idle", "idle"),
                             ("dormant", "dormant")):
         _, bg, fg, _, glyph = state.STATES[tab_state]
+        ink = fg if tab_state in ("idle", "dormant") else bg
         drawn = rendered[name]
-        current, runs = {}, []
-        for part in re.split(r"(#\[[^]]*\])", drawn):
-            if part.startswith("#["):
-                for attribute in part[2:-1].split(","):
-                    if "=" in attribute:
-                        key, value = attribute.split("=", 1)
-                        current[key] = value
-            elif part:
-                runs.append((part, current.copy()))
-        label = next(style for text, style in runs if glyph in text)
-        assert (label["fg"], label["bg"]) == (fg, bg), (name, "state text")
-        caps = [style for text, style in runs if "" in text]
-        surface = state.COLORS["surface"]
-        assert [(style["fg"], style["bg"]) for style in caps] == [(surface, bg), (bg, surface)], (name, "powerline caps")
-        assert glyph in drawn, (name, "state glyph survives a colourless terminal")
+        assert f"#[fg={ink}]#[bold]{glyph}" in drawn, (name, "state mark")
+        assert f"#[bg={state.COLORS['surface']}]" in drawn, (name, "neutral tab background")
+        assert "" not in drawn, (name, "inactive tab has no ribbon")
 
     # The status bar rolls the same states up across every session, so a need in
     # a window you are not looking at still reaches you.
@@ -313,7 +296,7 @@ def test_window_tab_separates_needs_from_activity_from_dormancy(
     # Claude's state outranks tmux's own bell, which cannot say why it rang: the
     # notification hook above left a bell pending on this very window.
     assert option("window_bell_flag") == "1"
-    assert state.STATES["approval"][1] in tab()
+    assert state.STATES["approval"][4] in tab()
 
     # SessionEnd hands the tab back to tmux's own signals -- here, that pending
     # bell -- and once it is acknowledged, to a plain window.
@@ -416,7 +399,7 @@ if "app-name" in items and "thread-id" in items:
 
     emit_codex("PermissionRequest", tool_name="Bash")
     assert option("@claude-class", codex_window) == "activity"
-    assert "▲" not in codex_tab() and "[approval" not in codex_tab()
+    assert state.STATES["approval"][4] not in codex_tab() and "[approval" not in codex_tab()
     private_tmux.call("select-pane", "-t", codex_pane, "-T",
                       f"[ ! ] Action Required | codex | {codex_session[:29]}... | project")
     deadline = time.monotonic() + 5
@@ -425,7 +408,7 @@ if "app-name" in items and "thread-id" in items:
             [str(broker_binary), "status"], text=True)
         time.sleep(0.02)
     assert option("@claude-state", codex_window) == "approval"
-    assert state.STATES["approval"][1] in codex_tab() and "▲" in codex_tab()
+    assert state.STATES["approval"][1] in codex_tab() and state.STATES["approval"][4] in codex_tab()
     # A Codex need outranks a busy Claude window, both in the summary and when
     # jumping from the user's shell. The hook must target its background pane.
     monkeypatch.setenv("TMUX_PANE", pane)
@@ -437,7 +420,8 @@ if "app-name" in items and "thread-id" in items:
     assert option("@claude-state") == "tool", "a late old end must not tombstone the resumed client"
     emit("PreToolUse", "claude-tmux-state-hook", tool_name="Bash")
     roll_up = capture(sweep.main)
-    assert "▲1" in roll_up and "●1" in roll_up
+    assert state.SEMANTIC["execution.blocked"] + "1" in roll_up
+    assert state.SEMANTIC["execution.running"] + "1" in roll_up
     private_tmux.call("select-window", "-t", "main:keep")
     monkeypatch.setenv("TMUX_PANE", private_tmux.pane)
     subprocess.run([str(BIN / "tmux-quickswitch-alert")], capture_output=True,
@@ -452,7 +436,7 @@ if "app-name" in items and "thread-id" in items:
     assert option("@claude-class", codex_window) == "activity"
     emit_codex("PreToolUse", tool_name="request_user_input", tool_use_id="question-1")
     assert option("@claude-state", codex_window) == "question"
-    assert "?" in codex_tab()
+    assert state.STATES["question"][4] in codex_tab()
     emit_codex("PostToolUse", tool_name="request_user_input", tool_use_id="question-1")
     assert option("@claude-state", codex_window) == "thinking"
     emit_codex("PreToolUse", tool_name="wait_agent", tool_use_id="agent-wait")
@@ -522,7 +506,7 @@ if "app-name" in items and "thread-id" in items:
         dict(hook_event_name="PermissionRequest", session_id=codex_session,
              tool_name="exec_command", tool_use_id="approval-title-refresh")) == 0
     assert option("@claude-state", codex_window) == "approval"
-    assert f" {state.STATES['approval'][4]} · project" in private_tmux.call(
+    assert f" {approval_mark} · project" in private_tmux.call(
         "display-message", "-p", "-t", codex_pane, "#{E:pane-border-format}")
     emit_codex("UserPromptSubmit")
     assert option("@claude-state", codex_window) == "thinking"

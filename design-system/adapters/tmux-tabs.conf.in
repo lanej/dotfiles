@@ -12,7 +12,7 @@ set -g status-right "#{prefix_highlight}#[fg={{surface.raised}},bg={{surface}},n
 set-window-option -g window-status-current-format "\
 #{?window_zoomed_flag,#[bg={{status.warning}}],#[bg={{tab.active.bg}}]}\
 #[fg={{surface}}]{{symbol.separator.section.left}}\
-#{?window_zoomed_flag,#[fg={{surface}}],#[fg={{tab.active.fg}}]}#[bold] #{?#{@claude-glyph},#{@claude-glyph} ,}#I* {{symbol.separator.component.left}}\
+#{?window_zoomed_flag,#[fg={{surface}}],#[fg={{tab.active.fg}}]}#[bold] #{?{{agent.glyph}},{{agent.glyph}} ,}#I* {{symbol.separator.component.left}}\
  #W \
 #{?window_zoomed_flag,#[fg={{status.warning}}],#[fg={{tab.active.bg}}]}\
 #[bg={{surface}}]{{symbol.separator.section.left}}"
@@ -23,5 +23,5 @@ set-window-option -g window-status-current-format "\
 set-window-option -g window-status-format "\
 #[fg={{surface}},bg={{surface}},noitalics,nodim]\
 #{?#{@claude-state},#[bg={{agent.bg}}]#[fg={{surface}}]{{symbol.separator.section.left}},#{?window_bell_flag,#[bg={{status.attention}}]#[fg={{surface}}]{{symbol.separator.section.left}},#{?window_activity_flag,#[bg={{status.warning}}]#[fg={{surface}}]{{symbol.separator.section.left}},#[fg={{surface}}]#[bg={{surface.raised}}]{{symbol.separator.section.left}}}}}\
-#{?#{@claude-state},#[fg={{agent.fg}}#,#{@claude-attr}],#{?window_bell_flag,#[fg={{surface}}],#{?window_activity_flag,#[fg={{surface}}],#[fg={{accent}}]#[bg={{surface.raised}}]}}} #{?#{@claude-glyph},#{@claude-glyph} ,}#I #W\
+#{?#{@claude-state},#[fg={{agent.fg}}#,#{@claude-attr}],#{?window_bell_flag,#[fg={{surface}}],#{?window_activity_flag,#[fg={{surface}}],#[fg={{accent}}]#[bg={{surface.raised}}]}}} #{?{{agent.glyph}},{{agent.glyph}} ,}#I #W\
 #{?#{@claude-state},#[fg={{agent.bg}}]#[bg={{surface}}]{{symbol.separator.section.left}},#{?window_bell_flag,#[fg={{status.attention}}]#[bg={{surface}}]{{symbol.separator.section.left}},#{?window_activity_flag,#[fg={{status.warning}}]#[bg={{surface}}]{{symbol.separator.section.left}},#[fg={{surface.raised}}]#[bg={{surface}}]{{symbol.separator.section.left}}}}}"

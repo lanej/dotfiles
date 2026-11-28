@@ -244,7 +244,7 @@ function M.pick()
 				return entry and by_id[entry:match("^(%d+)\t")]
 			end
 			local tokens = require("dotfiles-theme").tokens()
-			local current = tokens["symbol.ui.selection"]
+			local current_mark = tokens["symbol.ui.selection"]
 			local branch_width, path_width = 26, 22
 			local function row(tree, now)
 				local branch = tree.branch or ("detached@" .. (tree.head or ""):sub(1, 7))
@@ -253,7 +253,7 @@ function M.pick()
 				end
 				return tree.id
 					.. "\t"
-					.. (tree.current and current .. " " or "  ")
+					.. (tree.current and current_mark .. " " or "  ")
 					.. column(branch, branch_width)
 					.. "  "
 					.. column(location(tree.path, primary), path_width)
