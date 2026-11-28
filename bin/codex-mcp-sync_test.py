@@ -34,6 +34,7 @@ def test_make_codex_preserves_curated_servers_and_local_configuration(tmp_path):
         'approval_policy = "leave this instruction alone"\n"""\n'
         'approval_policy = "never"\napprovals_reviewer = "user"\n'
         'sandbox_mode = "read-only"\n'
+        '[tui]\ntheme = "nord" # local theme comment\nstatus_line = ["model-name"]\n'
         '[apps.local]\napprovals_reviewer = "user"\n'
         '[apps.connector_76869538009648d5b282a4bb21c3d157]\n'
         'enabled = true # local GitHub setting\nopen_world_enabled = false\n'
@@ -195,6 +196,7 @@ else:
     original_config = (home / ".codex/config.toml").read_bytes()
     subprocess.run([*command, "codex-tmux"], cwd=repo, env=env,
                    check=True, capture_output=True, text=True)
+    assert tomllib.loads((home / ".codex/config.toml").read_text())["tui"]["theme"] == "nord"
     subprocess.run([*command, "codex"], cwd=repo, env=env,
                    check=True, capture_output=True, text=True)
     installed_config = (home / ".codex/config.toml").read_text()
@@ -206,6 +208,9 @@ else:
     assert config["approvals_reviewer"] == "auto_review"
     assert config["sandbox_mode"] == "workspace-write"
     assert config["model"] == "local-model"
+    assert config["tui"]["theme"] == "sage-midnight"
+    assert config["tui"]["status_line"] == ["model-name"]
+    assert "# local theme comment" in installed_config
     assert config["developer_instructions"] == (
         '[Review guidance]\napproval_policy = "leave this instruction alone"\n')
     assert config["apps"]["local"]["approvals_reviewer"] == "user"
@@ -284,6 +289,7 @@ else:
         "approvals_reviewer": "auto_review",
         "sandbox_mode": "workspace-write",
     })
+    expected_personal["tui"]["theme"] = "sage-midnight"
     assert personal_config == expected_personal, "personal setup changed integration preferences"
     assert (home / ".codex/AGENTS.md").read_text() == "Fixture base guidance.\n"
     assert state.read_bytes() == previous_state

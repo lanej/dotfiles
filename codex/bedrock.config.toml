@@ -8,7 +8,6 @@ region = "us-west-2"
 
 [tui]
 screen_reader_detection_done = true
-theme = "nord"
 
 [projects."/Users/joshlane/src/connect-easypost-promise"]
 trust_level = "trusted"

@@ -132,6 +132,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--github-enabled", choices=("true", "false"), required=True)
     parser.add_argument("--easypost", choices=("true", "false"), required=True)
+    parser.add_argument("--theme", help="Select the installed Codex syntax theme")
     args = parser.parse_args()
     github_enabled = args.github_enabled == "true"
     root = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))).expanduser()
@@ -144,6 +145,8 @@ def main():
     root.mkdir(parents=True, exist_ok=True)
     expected = copy.deepcopy(config)
     expected.update(DEFAULTS)
+    if args.theme is not None:
+        expected.setdefault("tui", {})["theme"] = args.theme
     features = config.get("features", {})
     enable_questions = (
         isinstance(features, dict)
@@ -167,6 +170,8 @@ def main():
 
     document = tomlkit.parse(original)
     document.update(DEFAULTS)
+    if args.theme is not None:
+        document.setdefault("tui", tomlkit.table())["theme"] = args.theme
     if enable_questions:
         document.setdefault("features", tomlkit.table())[DEFAULT_QUESTION_FEATURE] = True
     apps = document.setdefault("apps", tomlkit.table())

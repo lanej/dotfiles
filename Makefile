@@ -363,9 +363,12 @@ codex-env:
 	@bash "$(MAKE_SCRIPTS)/config.sh" "$@" "$(DOTFILES)" "$(HOME)" "$(UV)" "$(UNAME_S)"
 codex: claude codex-skills codex-agents codex-tmux codex-config
 .PHONY: codex-permissions
+# Full configuration installs the theme via codex-env. Include its selection in
+# the same TOML write as the defaults, even when parallel targets share this step.
+codex-theme-option = $(if $(filter codex codex-config,$(MAKECMDGOALS)),--theme sage-midnight)
 codex-permissions:
 	$(call require-command,$(UV))
-	@"$(UV)" run --script "$(DOTFILES)/bin/sync-codex-permissions" --github-enabled "$(call config-value,DOTFILES_CODEX_GITHUB_ENABLED)" --easypost "$(call config-value,DOTFILES_CODEX_EASYPOST)"
+	@"$(UV)" run --script "$(DOTFILES)/bin/sync-codex-permissions" --github-enabled "$(call config-value,DOTFILES_CODEX_GITHUB_ENABLED)" --easypost "$(call config-value,DOTFILES_CODEX_EASYPOST)" $(codex-theme-option)
 .PHONY: codex-guidance
 codex-config: codex-guidance codex-permissions
 codex-guidance: codex-env codex-skills
