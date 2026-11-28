@@ -153,6 +153,24 @@ class ThemeTests(unittest.TestCase):
             self.assertEqual(scopes[scope]["background"], colors[f"diff.{change}.bg"])
             self.assertEqual(claude[token], scopes[scope]["background"])
 
+    def test_named_codex_theme_uses_sage_gutter_with_nord_active(self):
+        import plistlib
+
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "design-system"
+            shutil.copytree(theme.SOURCE, source, ignore=shutil.ignore_patterns("generated", "baselines"))
+            sage_path = source / "themes/sage.toml"
+            sage = theme.read(sage_path)
+            for explicit in (True, False):
+                with self.subTest(explicit=explicit):
+                    sage["presentation"]["gutter.explicit"] = explicit
+                    write_definition(sage_path, sage)
+                    outputs = theme.compile_theme(source, "nord")
+                    codex = plistlib.loads(outputs["sage-midnight.tmTheme"].encode())
+                    settings = codex["settings"][0]["settings"]
+                    self.assertEqual("gutter" in settings, explicit)
+                    self.assertEqual("gutterForeground" in settings, explicit)
+
     def test_sage_native_contrast_contract(self):
         """Check actual filled styles, text roles and essential non-text indicators."""
         def luminance(color):

@@ -1,0 +1,80 @@
+---
+interface Props {
+  id: string;
+  preset: {
+    resolved_roles: Record<string, string>;
+    resolved_tokens: {
+      presentation: Record<string, { resolved: boolean | number | string; unit?: string }>;
+      git_states: Record<string, { fg: string; bold: boolean; symbol: string }>;
+      semantic_states: Record<string, { fg: string; glyph: string }>;
+    };
+  };
+}
+
+const { id, preset } = Astro.props;
+const { resolved_roles: colors, resolved_tokens: { presentation, git_states } } = preset;
+const { resolved, unit } = presentation[id];
+const symbol = id.startsWith('symbol.');
+const symbolRole = id.slice('symbol.'.length);
+const gitEmphasis = /^emphasis\.(git\.file\.\w+)\.(?:bold|dim)$/.exec(id)?.[1];
+const git = gitEmphasis ? git_states[gitEmphasis] : symbol ? git_states[symbolRole] : undefined;
+const codepoints = symbol && typeof resolved === 'string' ? Array.from(resolved, glyph =>
+  `U+${glyph.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}`).join(' ') : '';
+const captions: Record<string, string> = {
+  'diagnostic.error': 'Error', 'diagnostic.warning': 'Warning',
+  'diff.add': 'Added', 'diff.change': 'Changed', 'diff.delete': 'Deleted',
+};
+const literal = resolved === '' ? '(empty)' : `${resolved}${unit ? ` ${unit}` : ''}`;
+const literalColor = typeof resolved === 'boolean' ? colors[`syntax.boolean.${resolved}`] : colors['text.muted'];
+const setting = typeof resolved === 'boolean'
+  ? preset.resolved_tokens.semantic_states[resolved ? 'configuration.on' : 'configuration.off']
+  : undefined;
+---
+
+<div class="value" style={{ color: colors.text, backgroundColor: colors.surface }}>
+  {symbol && resolved !== '' && (
+    <span class="sample" style={{ color: git?.fg ?? colors[symbolRole] ?? colors.text, fontWeight: git?.bold ? 700 : 400 }}>
+      <span class="glyph">{resolved}</span>{captions[symbolRole] && <span>{captions[symbolRole]}</span>}
+    </span>
+  )}
+  {gitEmphasis && git && (
+    <span class="sample" aria-hidden="true" style={{ color: git.fg, fontWeight: git.bold ? 700 : 400 }}>
+      {git.symbol && <span class="glyph">{git.symbol}</span>}
+      <span>{['git.file.ahead', 'git.file.behind', 'git.file.branch'].includes(gitEmphasis) ? 'main' : 'main.rs'}</span>
+    </span>
+  )}
+  {id === 'emphasis.heading' && <span class="sample" aria-hidden="true" style={{ color: colors.heading, fontWeight: resolved ? 700 : 400 }}>Changes</span>}
+  {id === 'space.inline' && unit === 'cell' && (
+    <span class="sample" aria-hidden="true" style={{ paddingInline: `${resolved}ch`, backgroundColor: colors['surface.selected'], color: colors['syntax.string'] }}>git diff</span>
+  )}
+  {id === 'statusline.mode.fill' && (
+    <span class="sample segment" aria-hidden="true" style={{
+      color: resolved ? colors['text.inverse'] : colors.accent,
+      backgroundColor: resolved ? colors.accent : colors['statusline.active.bg'],
+    }}>NORMAL</span>
+  )}
+  {id === 'gutter.explicit' && (resolved ? (
+    <span class="sample" aria-hidden="true"><span style={{ color: colors['gutter.text'], borderInlineEnd: `1px solid ${colors['gutter.border']}`, paddingInlineEnd: '.5ch' }}>12</span>diff</span>
+  ) : <span class="sample" aria-hidden="true">Tool default</span>)}
+  {id === 'diff.markers' && (
+    <span class="sample" aria-hidden="true" style={{ backgroundColor: colors['diff.add.bg'], color: colors['diff.add'] }}>{resolved ? '+ ready' : 'ready'}</span>
+  )}
+  {id === 'tmux.tabs.compact' && (
+    <span class="sample segment" aria-hidden="true" style={{ backgroundColor: colors['tab.active.bg'], color: colors['tab.active.fg'] }}>
+      {resolved ? '1:edit' : <>1* <span class="glyph">{presentation['symbol.separator.component.left'].resolved}</span> edit</>}
+    </span>
+  )}
+  <span class="literal" style={{ color: literalColor }}>
+    {setting && <span class="setting-mark" aria-hidden="true" style={{ color: setting.fg }}>{setting.glyph}</span>}{codepoints || literal}
+  </span>
+</div>
+
+<style>
+  .value { display: grid; justify-items: start; align-content: start; gap: .25rem; min-width: 0; padding: .4rem .5rem; border-radius: .2rem; font: .8125rem/1.4 var(--sl-font-mono, monospace); }
+  .value span { margin: 0; }
+  .sample { display: inline-flex; gap: .5ch; align-items: center; min-height: 1.4em; }
+  .segment { padding-inline: .65ch; font-weight: 700; }
+  .sample .glyph { font-family: 'Dotfiles Symbols', var(--sl-font-mono, monospace); font-size: 1.125rem; line-height: 1; }
+  .literal { overflow-wrap: anywhere; }
+  .literal .setting-mark { margin-inline-end: .5ch; font-family: 'Dotfiles Symbols', var(--sl-font-mono, monospace); }
+</style>
