@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "jobs": [
+    {
+      "id": "pi-macos",
+      "workflow": "pi-resources.yml",
+      "job": "resources (macos-latest)",
+      "label": "macos-latest",
+      "platform": "macos",
+      "script": ".github/offline/pi-macos.sh",
+      "assets": [
+        {
+          "name": "pi.tar.gz",
+          "url": "https://github.com/earendil-works/pi/releases/download/v1.4.0/pi-darwin-arm64.tar.gz",
+          "sha256": "79d9979d76a2a5adb7c28e27e9b44629928ccd0dc9fbb6ae7217860bd5e8be5d"
+        }
+      ]
+    }
+  ]
+}
