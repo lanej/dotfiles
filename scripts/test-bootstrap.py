@@ -205,6 +205,44 @@ install_dependencies
         assert "System package installation did not provide fixture-missing-a" in failed_batch.stderr, failed_batch.stderr
         assert "unexpected next tool" not in failed_batch.stdout, failed_batch.stdout
 
+        local_package = run('''
+installed_semver() { test -f "$HOME/local-recipe" && printf '1.2.3\\n'; }
+package_semver() { echo "unexpected native lookup" >&2; return 1; }
+npm() {
+    test "$*" = "install --global --prefix $HOME/.local fixture-package@1.2.3" || return 1
+    touch "$HOME/local-recipe"
+}
+install_package_version fixture 1.2.3 1.2.3 npm fixture-package
+''')
+        assert "Installed fixture 1.2.3" in local_package.stdout, local_package.stdout
+        assert not local_package.stderr, local_package.stderr
+
+        build_packages = '''
+os=linux
+dnf() { return 99; }
+rpm() { [ "$3" != "${MISSING_PACKAGE:-}" ]; }
+sudo() { printf 'sudo %s\\n' "$*"; }
+install_build_dependencies
+'''
+        assert not run(build_packages).stdout
+        needed = run(build_packages, extra={"MISSING_PACKAGE": "openssl-devel"})
+        assert needed.stdout.strip() == "sudo dnf install -y openssl-devel", needed.stdout
+        assert "Using sudo for system package setup: dnf install -y openssl-devel" in needed.stderr, needed.stderr
+        run('''
+os=linux
+command() {
+    if [ "$*" = "-v dnf" ]; then return 1; fi
+    builtin command "$@"
+}
+apt-get() { return 99; }
+dpkg-query() {
+    test "$2" = '-f=${db:Status-Status}\\n' || return 1
+    printf 'config-files\\ninstalled\\n'
+}
+sudo() { echo "unexpected sudo" >&2; return 1; }
+install_build_dependencies
+''')
+
         window_tools = '''
 os=macos
 command() {
@@ -283,8 +321,8 @@ package_semver() { return 1; }
 npm() {
     printf 'npm %s\\n' "$*" >> "$HOME/events"
     case "$*" in
-        "list -g --depth=0 @johnnymorganz/stylua-bin") test -f "$HOME/npm-bin/stylua" ;;
-        "uninstall -g @johnnymorganz/stylua-bin") rm "$HOME/npm-bin/stylua" ;;
+        "list --global --prefix $HOME/.local --depth=0 @johnnymorganz/stylua-bin") test -f "$HOME/npm-bin/stylua" ;;
+        "uninstall --global --prefix $HOME/.local @johnnymorganz/stylua-bin") rm "$HOME/npm-bin/stylua" ;;
         *) return 1 ;;
     esac
 }
@@ -312,7 +350,7 @@ install_package_version() { test "$*" = "node 24"; }
 npm() { printf '%s\\n' "$*"; }
 install_stylua_from_release 2.6.0
 ''')
-        assert result.stdout.strip() == "install -g @johnnymorganz/stylua-bin@2.6.0"
+        assert result.stdout.strip() == f"install --global --prefix {home}/.local @johnnymorganz/stylua-bin@2.6.0"
         print("PASS source-built Linux StyLua replaces the incompatible npm wrapper; macOS retains npm")
 
         luacheck_fixtures = '''
@@ -320,6 +358,7 @@ command() {
     case "$*" in
         "-v brew"|"-v apt-get"|"-v pacman") return 1 ;;
         "-v dnf") return 0 ;;
+        "-v luarocks") [ "${TEST_NO_LUAROCKS:-0}" != 1 ] ;;
         *) builtin command "$@" ;;
     esac
 }
@@ -336,14 +375,14 @@ luarocks() {
 }
 install_luacheck_package
 '''
-        run(luacheck_fixtures, extra={"TEST_DNF_FAIL": "1"}, success=False)
+        run(luacheck_fixtures, extra={"TEST_NO_LUAROCKS": "1", "TEST_DNF_FAIL": "1"}, success=False)
         assert not (home / ".local/bin/luacheck").exists()
-        run(luacheck_fixtures, extra={"TEST_LUAROCKS_FAIL": "1"}, success=False)
+        run(luacheck_fixtures, extra={"TEST_NO_LUAROCKS": "1", "TEST_LUAROCKS_FAIL": "1"}, success=False)
         assert not (home / ".local/bin/luacheck").exists()
         result = run(luacheck_fixtures)
         assert result.stdout.strip() == "Luacheck: 1.2.0"
         events = (home / "events").read_text()
-        assert "dnf install -y luarocks lua-devel" in events
+        assert events.count("dnf install -y luarocks lua-devel") == 2, events
         assert f"luarocks install --tree {home}/.local luacheck" in events
         print("PASS DNF Luacheck installs through LuaRocks and propagates package failures")
 
@@ -702,6 +741,10 @@ nvm() {
   mkdir -p "$HOME/.nvm/versions/node/v24.0.0/bin" "$HOME/.nvm/alias"
   ln -fs "$HOME/fixture/driver" "$HOME/.nvm/versions/node/v24.0.0/bin/node"
   ln -fs "$HOME/fixture/driver" "$HOME/.nvm/versions/node/v24.0.0/bin/npm"
+  if [ ! -f "$HOME/codex-version" ]; then
+    ln -fs "$HOME/fixture/driver" "$HOME/.nvm/versions/node/v24.0.0/bin/codex"
+    printf '0.1.0\n' > "$HOME/codex-version"
+  fi
   echo 24 > "$HOME/.nvm/alias/default"
   export NVM_BIN="$HOME/.nvm/versions/node/v24.0.0/bin"
   export PATH="${PATH/$HOME\/.nvm\/versions\/node\/v16.19.1\/bin/$NVM_BIN}"
@@ -795,11 +838,13 @@ elif name == "bun":
     print("1.10.0")
 elif name == "npm" and args[:1] == ["list"]:
     print('{"dependencies": {"yaml-language-server": {"version": "99.0.0"}}}')
-elif name == "npm" and args[:2] == ["install", "-g"]:
+elif name == "npm" and args[:2] == ["install", "--global"]:
     package, version = args[-1].rsplit("@", 1)
     tool = {"@openai/codex": "codex"}[package]
     node_bin = Path(shutil.which("node")).parent
-    (node_bin / tool).symlink_to(fixture / "driver")
+    assert ".nvm/versions/" in str(node_bin), node_bin
+    assert args[2:4] == ["--prefix", str(node_bin.parent)], args
+    assert (node_bin / tool).is_symlink(), "Expected a stale NVM launcher to upgrade"
     (home / (tool + "-version")).write_text(version)
     record(tool)
 elif name in ("codex", "claude", "pi"):
@@ -942,6 +987,9 @@ elif name == "rustup" and args[:3] == ["run", "1.95.0", "cargo"]:
     record("zellij")
 elif name == "cargo" and args[:1] == ["install"]:
     crate = args[1]
+    if crate == "eza":
+        record("eza direct install failed")
+        sys.exit("Fixture: eza is unavailable from Cargo")
     executable, version = {"mergiraf": ("mergiraf", "0.20.0"), "fd-find": ("fd", "10.2.0")}[crate]
     assert args == ["install", crate, "-q", "--locked", "--version", version], args
     (home / ".cargo/bin" / executable).symlink_to(fixture / "driver")
@@ -1098,7 +1146,7 @@ else:
         assert (home / ".local/bin/pi").readlink() == home / ".local/share/pi-standalone/1.4.0/pi/pi"
         assert "mergiraf" in events
         assert (home / ".cargo/bin/mergiraf").is_file()
-        assert events.index("fd-find package lookup") < events.index("fd"), events
+        assert "fd" in events and "fd-find package lookup" not in events, events
         assert (home / ".cargo/bin/fd").is_file()
         assert "gopls" in events and (home / ".local/go/bin/gopls").is_file(), events
         assert events.count("glow source install") == 1
@@ -1108,7 +1156,7 @@ else:
         )
         assert "neovim setup" in events
         assert "neovim build" in events
-        assert "eza package" in events
+        assert events.index("eza direct install failed") < events.index("eza package"), events
         assert "treehouse build" in events
         assert "directory-picker build" in events
         treehouse_command = ["/bin/bash", str(checkout / "scripts/install-treehouse")]
