@@ -4,7 +4,8 @@ os=$(uname -s | tr '[:upper:]' '[:lower:]' | sed 's,^darwin$,macos,') # macos or
 
 detect_package_manager() {
 	local manager
-	for manager in brew yay pacman dnf apt-get; do
+	[ "$#" -ne 0 ] || set -- brew yay pacman dnf apt-get
+	for manager in "$@"; do
 		if command -v "$manager" >/dev/null; then
 			printf '%s\n' "$manager"
 			return 0
@@ -13,13 +14,59 @@ detect_package_manager() {
 	return 1
 }
 
+native_package_names() {
+	local name manager packages
+	while IFS=$'\t' read -r name manager packages; do
+		if [ "$name" = "$1" ] && [ "$manager" = "$2" ]; then
+			printf '%s\n' "$packages"
+			return 0
+		fi
+	done <<<"${DOTFILES_NATIVE_PACKAGES:-}"
+	local default=${3-$1}
+	[ -n "$default" ] || return 1
+	printf '%s\n' "$default"
+}
+
+install_native_packages() {
+	local manager=$1 name
+	shift
+	local packages=() resolved=()
+	for name in "$@"; do
+		IFS=' ' read -r -a resolved <<<"$(native_package_names "$name" "$manager")"
+		packages+=("${resolved[@]}")
+	done
+	package_manager_install "$manager" "${packages[@]}"
+}
+
+bootstrap_sudo() {
+	printf 'Using sudo for system package setup: %s\n' "$*" >&2
+	sudo "$@"
+}
+
+npm_user_prefix() {
+	case "${NVM_BIN:-}" in
+		"$HOME"/.nvm/versions/node/*/bin)
+			if [ "$(command -v npm)" = "$NVM_BIN/npm" ]; then
+				printf '%s\n' "${NVM_BIN%/bin}"
+				return 0
+			fi
+			;;
+	esac
+	printf '%s\n' "$HOME/.local"
+}
+
+npm_install_user() {
+	npm install --global --prefix "$(npm_user_prefix)" "$@"
+}
+
 package_manager_install() {
 	local manager=$1
 	shift
 	case "$manager" in
 		brew) brew install "$@" ;;
-		yay | pacman) sudo "$manager" -S --noconfirm "$@" ;;
-		dnf | apt-get) sudo "$manager" install -y "$@" ;;
+		yay) bootstrap_sudo yay -S --noconfirm "$@" ;;
+		pacman) bootstrap_sudo pacman -S --needed --noconfirm "$@" ;;
+		dnf | apt-get) bootstrap_sudo "$manager" install -y "$@" ;;
 	esac
 }
 
@@ -31,7 +78,7 @@ install_system_batch() {
 		return 1
 	}
 	echo "Installing system packages with $manager: $*"
-	package_manager_install "$manager" "$@" || {
+	install_native_packages "$manager" "$@" || {
 		echo "System package installation failed: $*" >&2
 		return 1
 	}
@@ -55,7 +102,7 @@ install_from_package_manager() {
 		echo "No supported package manager found for $package" >&2
 		return 1
 	}
-	package_manager_install "$manager" "$package"
+	install_native_packages "$manager" "$package"
 }
 
 package_manager_semver() {
@@ -80,7 +127,10 @@ package_semver() {
 	if declare -f "$1_package_semver" >/dev/null; then
 		"$1_package_semver" || (echo "Failed to get semver for based on custom script: $1" >&2 && return 1)
 	else
-		package_manager_semver "$1" || (echo "Failed to get semver for: $1" >&2 && return 1)
+		local manager native_package
+		manager=$(detect_package_manager) || return 1
+		native_package=$(native_package_names "$1" "$manager")
+		package_manager_semver "$native_package" "$manager" || (echo "Failed to get semver for: $1" >&2 && return 1)
 	fi
 }
 
@@ -132,24 +182,22 @@ install_bsdtar_rocky_archive() (
 		echo "Archived bsdtar RPM identity differs from $package" >&2
 		return 1
 	fi
-	sudo dnf install -y --setopt=localpkg_gpgcheck=1 "$stage/$package.rpm"
+	bootstrap_sudo dnf install -y --setopt=localpkg_gpgcheck=1 "$stage/$package.rpm"
 )
 
 install_bsdtar_package() {
 	if command -v bsdtar >/dev/null; then
 		return 0
 	fi
-	if command -v brew >/dev/null; then
-		brew install libarchive
-	elif command -v dnf >/dev/null; then
-		sudo dnf install -y bsdtar || install_bsdtar_rocky_archive
-	elif command -v apt-get >/dev/null; then
-		sudo apt-get install -y libarchive-tools
-	elif command -v pacman >/dev/null; then
-		sudo pacman -S --needed --noconfirm libarchive
-	else
+	local manager
+	manager=$(detect_package_manager brew dnf apt-get pacman) || {
 		echo 'Install bsdtar before installing patched Git' >&2
 		return 1
+	}
+	if [ "$manager" = dnf ]; then
+		install_native_packages "$manager" bsdtar || install_bsdtar_rocky_archive
+	else
+		install_native_packages "$manager" bsdtar
 	fi
 }
 
@@ -158,10 +206,9 @@ install_imagemagick_package() {
 	if command -v magick >/dev/null || command -v convert >/dev/null; then
 		return 0
 	fi
-	local manager package=imagemagick
+	local manager
 	manager=$(detect_package_manager) || return 1
-	[ "$manager" != dnf ] || package=ImageMagick
-	package_manager_install "$manager" "$package"
+	install_native_packages "$manager" imagemagick
 }
 
 install_fd_package() {
@@ -180,20 +227,7 @@ install_fd_package() {
 			return 1 # This will trigger the fallback to cargo installation
 		fi
 	fi
-	package_manager_install "$manager" "$(fd_package_name "$manager")"
-}
-
-fd_package_name() {
-	case "$1" in
-		dnf | apt-get) printf '%s\n' fd-find ;;
-		*) printf '%s\n' fd ;;
-	esac
-}
-
-fd_package_semver() {
-	local manager
-	manager=$(detect_package_manager) || return 1
-	package_manager_semver "$(fd_package_name "$manager")" "$manager"
+	install_native_packages "$manager" fd
 }
 
 install_explicitly() {
@@ -203,7 +237,7 @@ install_explicitly() {
 		case "$fallback" in
 			cargo) cargo install "$fallback_package" -q --locked --version "$2" ;;
 			go) go install "$fallback_package@v$2" ;;
-			npm) npm install -g "$fallback_package@$2" ;;
+			npm) npm_install_user "$fallback_package@$2" ;;
 			*)
 				echo "Unknown package fallback: $fallback" >&2
 				return 1
@@ -219,13 +253,27 @@ install_explicitly() {
 		"install_$1_package" "$2"
 	else
 		echo "Unable to install: $1" >&2
-		exit 1
+		return 1
 	fi
 }
 
 install_package() {
 	local package=$1
 	local version=$2
+	local fallback=${3:--} fallback_package=${4:--} tried_direct=0
+	local minimum=${5:-$version} installed
+	if [ "$fallback" != - ] || declare -F "install_${package}_from_release" >/dev/null \
+		|| declare -F "install_${package}_from_source" >/dev/null; then
+		if install_explicitly "$package" "$version" "$fallback" "$fallback_package"; then
+			hash -r
+			installed=$(installed_semver "$package") || installed=""
+			if [ -n "$installed" ] && semver_ge "$installed" "$minimum"; then
+				return 0
+			fi
+		fi
+		tried_direct=1
+		printf 'Direct install did not provide %s >= %s. Checking system packages.\n' "$package" "$minimum" >&2
+	fi
 	local package_version
 	package_version=$(package_semver "$package") || package_version=""
 
@@ -234,7 +282,7 @@ install_package() {
 	elif semver_ge "$package_version" "$version"; then
 		echo "$package $package_version is available in package manager"
 		if install_from_package_manager "$package" "$version"; then
-			local installed
+			hash -r
 			installed=$(installed_semver "$package") || installed=""
 			if [ -n "$installed" ] && semver_ge "$installed" "$version"; then
 				return 0
@@ -244,30 +292,30 @@ install_package() {
 		echo "$package needs to be explicitly upgraded '$package_version' < '$version'"
 	fi
 
-	# Otherwise, install the package explicitly
-	install_explicitly "$package" "$version" "${3:--}" "${4:--}" || (echo "Failed to install: $package" && exit 1)
+	[ "$tried_direct" -eq 0 ] || return 1
+	install_explicitly "$package" "$version" "$fallback" "$fallback_package"
 }
 
 install_gh_package() {
-	if command -v dnf &>/dev/null; then
-		sudo dnf install 'dnf-command(config-manager)'
-		sudo dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
-		sudo dnf install gh --repo gh-cli -y
-	elif command -v brew &>/dev/null; then
-		brew install gh
-	elif command -v yay &>/dev/null; then
-		sudo yay -S --noconfirm github-cli
-	elif command -v pacman &>/dev/null; then
-		sudo pacman -S --noconfirm github-cli
-	elif command -v apt-get &>/dev/null; then
-		curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-		echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
-		sudo apt update
-		sudo apt install gh
-	else
-		echo "No supported package manager found for gh installation"
-		exit 1
-	fi
+	local manager
+	manager=$(detect_package_manager) || {
+		echo "No supported package manager found for gh installation" >&2
+		return 1
+	}
+	case "$manager" in
+		dnf)
+			bootstrap_sudo dnf install 'dnf-command(config-manager)' || return 1
+			bootstrap_sudo dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo || return 1
+			bootstrap_sudo dnf install --repo gh-cli -y "$(native_package_names gh "$manager")" || return 1
+			;;
+		apt-get)
+			curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | bootstrap_sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg || return 1
+			echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | bootstrap_sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null || return 1
+			bootstrap_sudo apt update || return 1
+			install_native_packages "$manager" gh || return 1
+			;;
+		*) install_native_packages "$manager" gh || return 1 ;;
+	esac
 
 	# Check if gh is authenticated
 	setup_gh_auth
@@ -436,26 +484,6 @@ rust_current_semver() {
 	rustc --version 2>/dev/null | parse_semver | head -n1
 }
 
-install_go_package() {
-	if command -v dnf &>/dev/null; then
-		sudo dnf install -y golang
-		# Refresh PATH to pick up go
-		export PATH=$PATH:/usr/bin
-		hash -r
-	elif command -v yay &>/dev/null; then
-		sudo yay -S --noconfirm go
-	elif command -v pacman &>/dev/null; then
-		sudo pacman -S --noconfirm go
-	elif command -v apt-get &>/dev/null; then
-		sudo apt-get install -y golang-go
-	elif command -v brew &>/dev/null; then
-		brew install go
-	else
-		# Install from source as fallback
-		install_go_from_release "$1"
-	fi
-}
-
 install_go_from_release() (
 	local go_arch
 	case "$(uname -m)" in
@@ -547,7 +575,7 @@ install_package_version() {
 	fi
 
 	# install package to preferred version
-	install_package "$package" "$preferred_version" "${4:--}" "${5:--}" || return 1
+	install_package "$package" "$preferred_version" "${4:--}" "${5:--}" "$min_version" || return 1
 	hash -r
 	current_version=$(installed_semver "$package") || current_version=""
 	if [ -z "$current_version" ] || ! semver_ge "$current_version" "$min_version"; then
@@ -568,6 +596,12 @@ install_fzf_from_source() {
 
 	~/src/oss/fzf/install --all --no-fish --key-bindings --completion --no-update-rc --xdg
 	ln -fs ~/src/oss/fzf/bin/fzf "$HOME/.local/bin/fzf"
+}
+
+load_native_packages() {
+	local root
+	root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
+	DOTFILES_NATIVE_PACKAGES=$(python3 "$root/scripts/dotfiles-config.py" --format native-packages)
 }
 
 load_dotfiles_config() {
@@ -845,38 +879,40 @@ install_stylua_from_release() {
 		# Release binaries require newer glibc than some supported development VMs.
 		cargo install stylua --locked --version "$1" --features lua54,luajit,luau || return 1
 		# An older npm wrapper on NVM's PATH can shadow the source-built executable.
-		if npm list -g --depth=0 @johnnymorganz/stylua-bin >/dev/null 2>&1; then
-			npm uninstall -g @johnnymorganz/stylua-bin || return 1
+		local prefix
+		prefix=$(npm_user_prefix)
+		if npm list --global --prefix "$prefix" --depth=0 @johnnymorganz/stylua-bin >/dev/null 2>&1; then
+			npm uninstall --global --prefix "$prefix" @johnnymorganz/stylua-bin || return 1
 		fi
 		hash -r
 	else
 		install_package_version node 24 || return 1
-		npm install -g "@johnnymorganz/stylua-bin@$1"
+		npm_install_user "@johnnymorganz/stylua-bin@$1"
 	fi
 }
 
 install_luacheck_package() {
-	if command -v brew >/dev/null; then
-		brew install luacheck
-	elif command -v apt-get >/dev/null; then
-		sudo apt-get install -y lua-check
-	elif command -v pacman >/dev/null; then
-		sudo pacman -S --noconfirm luacheck
-	elif command -v dnf >/dev/null; then
-		sudo dnf install -y luarocks lua-devel || return 1
+	if command -v luarocks >/dev/null && luarocks install --tree "$HOME/.local" luacheck; then
+		"$HOME/.local/bin/luacheck" --version
+		return
+	fi
+	local manager
+	manager=$(detect_package_manager brew apt-get pacman dnf) || {
+		echo 'Install Luacheck with LuaRocks, then rerun make install.' >&2
+		return 1
+	}
+	install_native_packages "$manager" luacheck || return 1
+	if [ "$manager" = dnf ]; then
 		luarocks install --tree "$HOME/.local" luacheck || return 1
 		"$HOME/.local/bin/luacheck" --version
-	else
-		printf 'Install Luacheck with LuaRocks, then rerun make install; automatic installation supports Homebrew, APT, Pacman, and DNF.\n' >&2
-		return 1
 	fi
 }
 
 install_mmdc_from_release() (
 	install_package_version node 24 || exit 1
-	npm install -g --ignore-scripts "@mermaid-js/mermaid-cli@$1" || exit 1
+	npm_install_user --ignore-scripts "@mermaid-js/mermaid-cli@$1" || exit 1
 	local mermaid_root
-	mermaid_root=$(npm root -g) || exit 1
+	mermaid_root=$(npm root --global --prefix "$(npm_user_prefix)") || exit 1
 	cd "$mermaid_root/@mermaid-js/mermaid-cli/node_modules/puppeteer" || exit 1
 	# WHY: npm can block Puppeteer's browser download; run only that setup explicitly.
 	node install.mjs
@@ -965,15 +1001,49 @@ install_zsh-autosuggestions_from_source() {
 }
 
 yaml-language-server_current_semver() {
-	command -v yaml-language-server >/dev/null || return 1
-	npm list --global yaml-language-server --depth=0 --json 2>/dev/null \
+	local binary args=()
+	binary=$(command -v yaml-language-server) || return 1
+	if [ "$binary" = "$HOME/.local/bin/yaml-language-server" ]; then
+		args=(--prefix "$HOME/.local")
+	elif [ "$binary" = "${NVM_BIN:-}/yaml-language-server" ]; then
+		args=(--prefix "$(npm_user_prefix)")
+	fi
+	npm list --global "${args[@]}" yaml-language-server --depth=0 --json 2>/dev/null \
 		| jq -r '.dependencies["yaml-language-server"].version // empty'
 }
 
-install_direnv_from_release() {
-	# WARN: this is a security risk
-	curl -sfL https://direnv.net/install.sh | bash
-}
+install_direnv_from_release() (
+	local stage release_os arch bin="$HOME/.local/bin"
+	case "$os" in
+		macos) release_os=darwin ;;
+		linux) release_os=linux ;;
+		*)
+			printf 'Unsupported direnv OS: %s\n' "$os" >&2
+			exit 1
+			;;
+	esac
+	case "$(uname -m)" in
+		x86_64) arch=amd64 ;;
+		arm64 | aarch64) arch=arm64 ;;
+		i386 | i686) arch=386 ;;
+		armv7l) arch=arm ;;
+		*)
+			printf 'Unsupported direnv architecture\n' >&2
+			exit 1
+			;;
+	esac
+	mkdir -p "$bin" || exit 1
+	stage=$(mktemp -d "$bin/.direnv-XXXXXXXX") || exit 1
+	trap 'rm -rf "$stage"' EXIT
+	curl -fsSL "https://github.com/direnv/direnv/releases/download/v$1/direnv.$release_os-$arch" \
+		-o "$stage/direnv" || exit 1
+	chmod 755 "$stage/direnv" || exit 1
+	[ "$("$stage/direnv" version)" = "$1" ] || {
+		printf 'Downloaded direnv does not report version %s\n' "$1" >&2
+		exit 1
+	}
+	mv -f "$stage/direnv" "$bin/direnv"
+)
 
 install_uv_from_release() (
 	uv_stage=$(mktemp) || exit 1
@@ -1050,12 +1120,6 @@ install_git-crypt_from_source() (
 	make install PREFIX="$HOME/.local"
 )
 
-install_ctags-lsp_package() {
-	if command -v brew &>/dev/null; then
-		brew install netmute/tap/ctags-lsp
-	fi
-}
-
 install_ctags-lsp_from_source() {
 	go install github.com/netmute/ctags-lsp@latest
 }
@@ -1110,20 +1174,39 @@ prepare_bootstrap_environment() {
 }
 
 install_build_dependencies() {
+	local manager package names
 	if [ "$os" = macos ]; then
-		brew install cmake pkg-config openssl@3
-		return $?
+		manager=brew
+	else
+		[ "$os" = linux ] || return 0
+		manager=$(detect_package_manager dnf apt-get pacman) || {
+			echo 'Unsupported Linux package manager for build dependencies' >&2
+			return 1
+		}
 	fi
-	[ "$os" = linux ] || return 0
-	# WHY: Minimal Perl installations omit IPC::Cmd and Time::Piece needed by vendored OpenSSL.
-	if command -v dnf >/dev/null; then
-		sudo dnf install -y cmake ninja-build gettext gcc gcc-c++ make unzip autoconf automake libtool openssl-devel pkgconfig ncurses perl-IPC-Cmd perl-Time-Piece libcurl-devel expat-devel zlib-devel
-	elif command -v apt-get >/dev/null; then
-		sudo apt-get update
-		sudo apt-get install -y cmake ninja-build gettext build-essential unzip autoconf automake libtool libssl-dev pkg-config ncurses-bin perl libcurl4-openssl-dev libexpat1-dev zlib1g-dev
-	elif command -v pacman >/dev/null; then
-		sudo pacman -S --needed --noconfirm base-devel cmake ninja unzip openssl ncurses perl curl expat zlib
+	names=$(native_package_names build "$manager" "") || {
+		printf 'No build packages defined for %s\n' "$manager" >&2
+		return 1
+	}
+	local packages=() missing=()
+	IFS=' ' read -r -a packages <<<"$names"
+	if [ "$manager" = brew ]; then
+		package_manager_install "$manager" "${packages[@]}"
+		return
 	fi
+	for package in "${packages[@]}"; do
+		case "$manager" in
+			dnf) rpm -q --whatprovides "$package" >/dev/null 2>&1 && continue ;;
+			apt-get) dpkg-query -W -f='${db:Status-Status}\n' "$package" 2>/dev/null | grep -Fx installed >/dev/null && continue ;;
+			pacman) pacman -Q "$package" >/dev/null 2>&1 && continue ;;
+		esac
+		missing+=("$package")
+	done
+	[ "${#missing[@]}" -gt 0 ] || return 0
+	if [ "$manager" = apt-get ]; then
+		bootstrap_sudo apt-get update || return 1
+	fi
+	package_manager_install "$manager" "${missing[@]}"
 }
 
 install_macos_window_tool() {

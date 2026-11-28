@@ -212,7 +212,11 @@ setup_atuin_sync
                     patch("urllib.request.urlopen", side_effect=lambda *a, **k: io.StringIO('{"version":"18.21.0"}')), \
                     patch("time.strftime", return_value="20261006-000000"), \
                     patch.dict(os.environ, {"USER": "josh"}), contextlib.redirect_stdout(output):
-                bootstrap()
+                notes = io.StringIO()
+                with contextlib.redirect_stderr(notes):
+                    bootstrap()
+                self.assertIn("Using sudo to enable systemd linger for vagrant.", notes.getvalue())
+                self.assertIn("Used sudo to enable systemd linger on dev2.", notes.getvalue())
                 account_path = homes[0] / ".local/share/atuin" / helper.ACCOUNT_FILE
                 account = json.loads(account_path.read_text())
                 account_path.unlink()

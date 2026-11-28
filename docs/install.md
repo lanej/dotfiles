@@ -32,6 +32,10 @@ make install
 
 Open a new shell after setup to load the linked shell configuration.
 
+Run `make install` from your normal account. The installer reuses suitable tools and prefers user-level installers. It reports when a missing system dependency needs `sudo` and installs the system package separately from the tools and configuration in your home directory.
+
+Atuin sync tries to enable systemd linger as the target user before falling back to `sudo` on the Linux host. This also applies when a Mac configures the Linux host over SSH.
+
 ## Choose a setup command
 
 | Command | Use it to |
@@ -45,7 +49,7 @@ Open a new shell after setup to load the linked shell configuration.
 
 `make configure`, `make setup`, and `make all` are aliases for `make`. `bash bootstrap.sh` and `bash bootstrap.sh install` are the script equivalents of the two installation stages. Neither stage pulls updates or switches branches. Linting and tests run separately with `make lint` and the `test` targets.
 
-`make lua-check` runs StyLua and Luacheck on every tracked or untracked, non-ignored Lua source file, including Neovim, WezTerm, tests, scripts, fixtures, and generated modules. `make lua-format` applies formatting before analysis. The editor tool set installs both tools through Homebrew, APT, or Pacman; other systems need Luacheck installed with LuaRocks first. Generated data tables retain their generator's layout with StyLua directives; parsing and static analysis still cover those files. The Lua quality workflow runs the same check for Lua changes in pull requests and on `master`.
+`make lua-check` runs StyLua and Luacheck on every tracked or untracked, non-ignored Lua source file, including Neovim, WezTerm, tests, scripts, fixtures, and generated modules. `make lua-format` applies formatting before analysis. The editor tool set can use an existing LuaRocks installation to install Luacheck into `~/.local`. Homebrew can also provide Luacheck without elevation. Generated data tables retain their generator's layout with StyLua directives; parsing and static analysis still cover those files. The Lua quality workflow runs the same check for Lua changes in pull requests and on `master`.
 
 ## Update an existing machine
 

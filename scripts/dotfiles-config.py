@@ -64,6 +64,8 @@ TOOLS, TOOL_SOURCES = load_tools()
 INSTALLERS = {"studio", "approval-cli", "beads", "package", "system", "config", "build", "rust", "go", "zellij", "font", "git-worktree-hooks", "worktree-policy", "worktree-manager", "treehouse", "firstmate", "macos-window-tool", "npm", "octo-manager"}
 HOOKS = {"directory-picker", "github-auth", "bedrock-credentials", "bedrock-router", "agent-status-broker", "kitty-terminfo", "neovim", "atuin-sync", "sql-formatters", "zellij-status", "zellij-copy-hop"}
 NPM_PACKAGE = r"(?:@[a-z0-9_.-]+/)?[a-z0-9_.-]+"
+NATIVE_MANAGERS = {"apt-get", "brew", "dnf", "pacman", "yay"}
+NATIVE_PACKAGE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.+@-]*(?:/[A-Za-z0-9][A-Za-z0-9_.+@-]*)*")
 PACKAGE_FALLBACKS = {
     "cargo": ("rust", SET_NAME.pattern),
     "go": ("go", r"[a-z0-9.-]+(?:/[a-zA-Z0-9_.-]+)+"),
@@ -95,6 +97,29 @@ def package_fallback(name, recipe):
     if runtime not in recipe.get("requires", []):
         raise ValueError(f"{source}: {via} fallback for {name} requires tools.{runtime}")
     return via, package
+
+
+def native_package_rows():
+    rows = []
+    seen = set()
+    for name, recipe in TOOLS.items():
+        packages = recipe.get("native_packages", {})
+        if not isinstance(packages, dict) or packages.keys() - NATIVE_MANAGERS:
+            raise ValueError(f"{TOOL_SOURCES[name]}: invalid native package manager for {name}")
+        package = recipe.get("package", name)
+        if packages and (not isinstance(package, str) or not SET_NAME.fullmatch(package)):
+            raise ValueError(f"{TOOL_SOURCES[name]}: invalid native package key for {name}")
+        for manager, names in packages.items():
+            if (not isinstance(names, list) or not names
+                    or any(not isinstance(value, str) or not NATIVE_PACKAGE.fullmatch(value) for value in names)):
+                raise ValueError(f"{TOOL_SOURCES[name]}: invalid {manager} native packages for {name}")
+            if recipe.get("installer", "package") in {"package", "go"} and len(names) != 1:
+                raise ValueError(f"{TOOL_SOURCES[name]}: versioned tool {name} needs one {manager} native package")
+            if (package, manager) in seen:
+                raise ValueError(f"{TOOL_SOURCES[name]}: duplicate {manager} native recipe for {package}")
+            seen.add((package, manager))
+            rows.append("\t".join((package, manager, " ".join(names))))
+    return "\n".join(rows)
 
 
 def tool_plan(values, origins, specified, host, requirements=None):
@@ -326,8 +351,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, help="use an alternate machine configuration")
     parser.add_argument("--platform", help="native OS for the plan (macos or linux); defaults to this host")
-    parser.add_argument("--format", choices=("toml", "json", "plan", "make", "shell", "schema", "make-targets"), default="toml")
+    parser.add_argument("--format", choices=("toml", "json", "plan", "make", "shell", "schema", "make-targets", "native-packages"), default="toml")
     options = parser.parse_args()
+    native_packages = native_package_rows()
+    if options.format == "native-packages":
+        print(native_packages)
+        return
     if options.format == "schema":
         print(json.dumps(editor_schema(), indent=2))
         return
@@ -373,6 +402,7 @@ def main():
         ):
             print(f"{variable}={shlex.quote(','.join(values)) if options.format == 'shell' else ','.join(values)}")
         if options.format == "shell":
+            print(f"DOTFILES_NATIVE_PACKAGES={shlex.quote(native_packages)}")
             rows = []
             for tool in result["tools"]:
                 name = tool["name"]

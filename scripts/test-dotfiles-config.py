@@ -128,6 +128,12 @@ def main():
             rejected = run(sys.executable, str(fixture / "scripts/dotfiles-config.py"), "--format", "shell", check=False)
             assert rejected.returncode != 0 and "invalid cargo fallback package for fd" in rejected.stderr, rejected.stderr
             assert not rejected.stdout, rejected.stdout
+            (fixture / "bootstrap/tools.toml").write_text(source.read_text().replace(
+                'apt-get = ["golang-go"]', 'apt-get = ["--reinstall"]',
+            ))
+            rejected = run(sys.executable, str(fixture / "scripts/dotfiles-config.py"), "--format", "shell", check=False)
+            assert rejected.returncode != 0 and "invalid apt-get native packages for go" in rejected.stderr, rejected.stderr
+            assert not rejected.stdout, rejected.stdout
         platform_set = "macos" if sys.platform == "darwin" else "linux"
         native_tools = {"git", "git-worktree-hooks", "worktree-policy", "build"} | ({"yabai", "skhd", "borders"} if platform_set == "macos" else {"x11", "polybar", "bspwm", "bsdtar"})
         disabled_native = "yabai" if platform_set == "macos" else "polybar"

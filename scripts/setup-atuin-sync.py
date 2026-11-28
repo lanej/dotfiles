@@ -184,6 +184,13 @@ def server(request):
         call([atuin, "sync"], env=env)
         verify(atuin)
         return {"ready": True}
+    user = os.environ["USER"]
+    used_sudo = False
+    if "Linger=yes" not in call(["loginctl", "show-user", user, "-p", "Linger"], allow_failure=True).stdout:
+        if call(["loginctl", "--no-ask-password", "enable-linger", user], allow_failure=True).returncode:
+            print(f"Using sudo to enable systemd linger for {user}.", file=sys.stderr)
+            call(["sudo", "-n", "loginctl", "enable-linger", user])
+            used_sudo = True
     atuin = install("atuin", request["version"], root / "bootstrap.sh")
     install("atuin-server", request["version"], root / "bootstrap.sh")
     configure_client(root, base64.b64decode(request["key"]), request["config"],
@@ -220,10 +227,7 @@ def server(request):
     call([atuin, "history", "init-store"], env=env)
     verify(atuin)
     call([atuin, "sync"], env=env)
-    if "Linger=yes" not in call(["loginctl", "show-user", os.environ["USER"], "-p", "Linger"]).stdout:
-        if call(["loginctl", "enable-linger", os.environ["USER"]], allow_failure=True).returncode:
-            call(["sudo", "-n", "loginctl", "enable-linger", os.environ["USER"]])
-    return {"ready": True}
+    return {"ready": True, "used_sudo": used_sudo}
 
 
 def connection_settings(host):
@@ -408,7 +412,8 @@ def setup(args):
                        "config": (root / "sh/atuin.toml").read_text(),
                        "server_config": (root / "sh/atuin-server.toml.template").read_text(),
                        "unit": (root / "rc/systemd/atuin-server.service").read_text()}
-            remote(request)
+            if remote(request).get("used_sudo") is True:
+                print(f"Used sudo to enable systemd linger on {args.host}.", file=sys.stderr)
             tunnel(root, args.host)
             env = dict(os.environ)
             env["ATUIN_SESSION"] = call([atuin, "uuid"]).stdout.strip()

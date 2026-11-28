@@ -43,6 +43,8 @@ Initialization MUST create missing parent directories and MUST preserve existing
 
 **SETUP-08 — Selected full installation.** Full installation MUST install only the resolved tool plan and its required dependencies, install shared dependencies once and before their dependents, then apply the selected configuration and integration hooks. Individual disables MUST be honored; disabled tools MUST NOT trigger their own installation or post-install hooks. The command MUST ensure its parser runtime is available so it can be invoked directly or retried independently of minimal bootstrap. A failed tool installation MUST stop the remaining installation phases and return failure.
 
+**SETUP-12 — Prefer user-level installation.** Bootstrap and full installation MUST reuse suitable installed tools. When a versioned recipe has a direct install path, try it before installing a system package. Automatic npm installation MUST use a user-owned prefix. Report when the installer needs `sudo` for system packages or a system setting.
+
 ## Convergence and maintenance
 
 **SETUP-09 — Safe reruns and visible failures.** Setup MUST converge when rerun and preserve user-managed configuration outside its managed links and explicitly selected integrations. Disabling a tool MUST NOT implicitly uninstall an existing application. Configuration checklists MUST report failed steps, continue independent configuration steps where possible, and return nonzero when incomplete. Both installation stages MUST use the current checkout without implicitly pulling updates or switching its revision.
