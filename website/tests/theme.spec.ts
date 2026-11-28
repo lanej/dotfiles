@@ -10,7 +10,7 @@ test('look up generated theme tokens and compare presets on a narrow screen', as
   const search = page.getByRole('searchbox', { name: 'Find a token or color' });
   await search.fill('syntax.string');
   const role = page.locator('[id="color-roles-syntax.string"]');
-  expect(await role.getByRole('cell').allTextContents()).toEqual(['#B7CB91', '#A3BE8C']);
+  await expect(role.getByRole('cell').locator('code')).toHaveText(['#B7CB91', '#A3BE8C']);
   await expect(page.locator('[aria-labelledby="palettes"]')).toBeHidden();
 
   await search.fill('access.approved');
@@ -27,6 +27,24 @@ test('look up generated theme tokens and compare presets on a narrow screen', as
 
   await search.fill('symbol.git.summary.branch');
   await expect(page.locator('[id="presentation-tokens-symbol.git.summary.branch"]')).toContainText('');
+  await search.fill('statusline.mode.fill');
+  const mode = page.locator('[id="presentation-tokens-statusline.mode.fill"]');
+  const [sage, nord] = await mode.getByRole('cell').all();
+  await expect(mode.getByRole('rowheader')).toContainText('statusline.mode.fill');
+  await expect(sage).toContainText('Sage');
+  await expect(nord).toContainText('Nord');
+  await expect(sage.getByText('NORMAL')).toHaveCSS('background-color', 'rgb(23, 35, 30)');
+  await expect(nord.getByText('NORMAL')).toHaveCSS('background-color', 'rgb(136, 192, 208)');
+  await expect(sage.locator('.literal')).toContainText('false');
+  await expect(sage.locator('.literal')).toHaveCSS('color', 'rgb(196, 178, 217)');
+  await expect(sage.locator('.setting-mark')).toHaveText('○');
+  await expect(nord.locator('.setting-mark')).toHaveText('●');
+  await search.fill('U+F467');
+  const diagnostic = page.locator('[id="presentation-tokens-symbol.diagnostic.error"]');
+  const error = diagnostic.getByRole('cell').first();
+  await expect(error.getByText('Error', { exact: true })).toHaveCSS('color', 'rgb(241, 140, 150)');
+  await expect(error.locator('.glyph')).toHaveCSS('font-family', /Dotfiles Symbols/);
+  await expect(error).toContainText('U+F467');
   await search.fill('no-such-token');
   await expect(page.getByText('No matching tokens or colors.')).toBeVisible();
   await page.getByRole('button', { name: 'Clear' }).click();

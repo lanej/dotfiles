@@ -1,5 +1,6 @@
 ---
 import selection from '../generated-theme-inputs/selection.json';
+import PresentationValue from './PresentationValue.astro';
 
 interface State {
   label: string;
@@ -26,6 +27,7 @@ interface Preset {
   resolved_tokens: {
     semantic_states: Record<string, State>;
     presentation: Record<string, Presentation>;
+    git_states: Record<string, { fg: string; bold: boolean; symbol: string }>;
   };
 }
 
@@ -52,6 +54,12 @@ const definitions = Object.values(import.meta.glob<Preset>('../generated-theme-i
 const active = definitions.find(preset => preset.name === selection.theme);
 if (!active) throw new Error(`Missing configured preset: ${selection.theme}`);
 const presets = [active, ...definitions.filter(preset => preset !== active)];
+const referenceStyle = {
+  '--reference-heading': active.resolved_roles.heading,
+  '--reference-heading-weight': active.resolved_tokens.presentation['emphasis.heading'].resolved ? '700' : '400',
+  '--reference-link': active.resolved_roles.link,
+  '--reference-focus': active.resolved_roles.focus,
+};
 const title = (name: string) => name.charAt(0).toUpperCase() + name.slice(1);
 const value = (token: Presentation) => token.resolved === '' ? '(empty)' :
   `${token.resolved}${token.unit ? ` ${token.unit}` : ''}`;
@@ -79,7 +87,7 @@ const sections = [
 ];
 ---
 
-<div class="token-reference" data-token-reference>
+<div class="token-reference" data-token-reference style={referenceStyle}>
   <p>Compare presets using values generated from the terminal theme sources.</p>
   <nav aria-label="Reference sections">
     <a href="#palettes">Palettes</a>
@@ -133,17 +141,19 @@ const sections = [
     <section aria-labelledby={section.id} data-token-section>
       <h2 id={section.id}>{section.title}</h2>
       {section.id === 'semantic-states' && <p>Unicode appears first, followed by Octicon when available.</p>}
-      <table>
-        <thead>
-          <tr><th scope="col">Token</th>{presets.map(preset => <th scope="col">{title(preset.name)}</th>)}</tr>
+      <table role="table" aria-labelledby={section.id} style={{ '--preset-count': presets.length }}>
+        <thead role="rowgroup">
+          <tr role="row"><th scope="col" role="columnheader">Token</th>{presets.map(preset => <th scope="col" role="columnheader">{title(preset.name)}</th>)}</tr>
         </thead>
-        <tbody>
+        <tbody role="rowgroup">
           {section.rows.map(row => (
-            <tr id={`${section.id}-${row.id}`} data-token-entry
+            <tr role="row" id={`${section.id}-${row.id}`} data-token-entry
               data-search={[section.title, row.id, row.label, row.description, row.role, row.ascii,
                 ...row.cells.flatMap(cell => [cell.text, cell.glyph, cell.octicon])].join(' ')}>
-              <th scope="row">
-                <a href={`#${section.id}-${row.id}`}><code>{row.id}</code></a>
+              <th scope="row" role="rowheader">
+                <a class="token-name" href={`#${section.id}-${row.id}`}><code>{row.id.split('.').map((part, index) => (
+                  <>{index > 0 && <>.<wbr /></>}{part}</>
+                ))}</code></a>
                 {row.description && <span class="description">{row.description}</span>}
                 {(row.role || row.ascii !== undefined) && (
                   <span class="metadata">
@@ -152,17 +162,25 @@ const sections = [
                   </span>
                 )}
               </th>
-              {row.cells.map(cell => (
-                <td>
-                  <span class="cell">
-                    {cell.color && <span class="swatch" style={{ backgroundColor: cell.color }} aria-hidden="true"></span>}
-                    <code class={cell.color ? 'hex' : 'glyph'}>{cell.text}</code>
-                  </span>
-                  {cell.glyph && (
-                    <span class="symbols" style={{ fontWeight: cell.bold ? 700 : 400 }}>
-                      <code class="glyph" aria-label={`Unicode glyph ${cell.glyph}`}>{cell.glyph}</code>
-                      {cell.octicon && <code class="glyph" aria-label={`Octicon ${cell.octicon}`}>{cell.octicon}</code>}
-                    </span>
+              {row.cells.map((cell, i) => (
+                <td role="cell">
+                  <span class="preset-label" aria-hidden="true">{title(presets[i].name)}</span>
+                  {section.id === 'presentation-tokens' ? (
+                    <PresentationValue id={row.id} preset={presets[i]} />
+                  ) : (
+                    <>
+                      <span class="cell">
+                        <span class="swatch" style={{ backgroundColor: cell.color }} aria-hidden="true"></span>
+                        <code class="hex">{cell.text}</code>
+                      </span>
+                      {cell.glyph && (
+                        <span class="symbols" style={{ color: cell.color, backgroundColor: presets[i].resolved_roles.surface, fontWeight: cell.bold ? 700 : 400 }}>
+                          <span class="glyph" aria-label={`Unicode glyph ${cell.glyph}`}>{cell.glyph}</span>
+                          {cell.octicon && <span class="glyph" aria-label={`Octicon ${cell.octicon}`}>{cell.octicon}</span>}
+                          <span>{row.label}</span>
+                        </span>
+                      )}
+                    </>
                   )}
                 </td>
               ))}
@@ -182,13 +200,14 @@ const sections = [
   const empty = reference?.querySelector<HTMLElement>('[data-no-results]');
 
   if (reference && form && input && status && empty) {
-    const entries = Array.from(reference.querySelectorAll<HTMLElement>('[data-token-entry]'));
+    const entries = Array.from(reference.querySelectorAll<HTMLElement>('[data-token-entry]'), entry => ({
+      entry, text: [entry.dataset.search, entry.textContent].join(' ').toLowerCase(),
+    }));
     const sections = Array.from(reference.querySelectorAll<HTMLElement>('[data-token-section]'));
     const filter = (query: string) => {
       const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
       let matches = 0;
-      for (const entry of entries) {
-        const text = entry.dataset.search?.toLowerCase() ?? '';
+      for (const { entry, text } of entries) {
         entry.hidden = !words.every(word => text.includes(word));
         if (!entry.hidden) matches++;
       }
@@ -249,7 +268,7 @@ const sections = [
   .palette dd { margin: 0; }
   .swatch { flex: 0 0 auto; display: inline-block; width: .85rem; height: .85rem; border: 1px solid var(--sl-color-gray-4); border-radius: .17rem; }
   table { display: table; width: 100%; table-layout: fixed; }
-  thead th:first-child { width: 55%; }
+  thead th:first-child { width: 42%; }
   td, th { vertical-align: top; padding-inline: .5rem; }
   td code, th code, .palette code { overflow-wrap: anywhere; }
   .description, .metadata { display: block; }
@@ -257,11 +276,23 @@ const sections = [
   .metadata { display: flex; flex-wrap: wrap; gap: .1rem .45rem; font-size: .8125rem; font-weight: 400; }
   .cell, .symbols { display: flex; align-items: center; gap: .3rem; }
   .cell { flex-wrap: wrap; }
-  .symbols { margin-top: .2rem; }
-  .glyph { font-family: 'Dotfiles Symbols', var(--sl-font-mono), monospace; }
+  .symbols { display: inline-flex; flex-wrap: wrap; padding: .2rem .45rem; margin-top: .2rem; font: .875rem/1.45 var(--sl-font-mono, monospace); }
+  .glyph { font-family: 'Dotfiles Symbols', var(--sl-font-mono, monospace); }
+  .preset-label { display: none; }
+  .token-name code, .cell code { padding: 0; background: transparent; color: inherit; }
+  .token-name { text-underline-offset: .18em; text-decoration-thickness: 1px; }
+  .token-reference :is(h2, h3, h4) { font-weight: var(--reference-heading-weight); }
+  :global(:root[data-theme='dark']) .token-reference :is(h2, h3, h4) { color: var(--reference-heading); }
+  :global(:root[data-theme='dark']) .token-reference a { color: var(--reference-link); }
+  :global(:root[data-theme='dark']) .token-reference :focus-visible { outline-color: var(--reference-focus); }
   .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   @media (max-width: 38rem) {
-    thead th:first-child { width: 48%; }
-    td, th { padding-inline: .25rem; }
+    table, tbody { display: block; }
+    thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    tbody tr { display: grid; grid-template-columns: repeat(var(--preset-count), minmax(0, 1fr)); gap: .25rem .75rem; border-bottom: 1px solid var(--sl-color-gray-5); margin: 0; padding-block: .65rem; }
+    td, th { min-width: 0; margin: 0; padding: 0; border: 0; }
+    tbody th { grid-column: 1 / -1; }
+    .preset-label { display: block; color: var(--sl-color-gray-3); font: 500 .75rem/1.5 var(--sl-font); }
+    td > .preset-label + * { margin-top: .1rem; }
   }
 </style>

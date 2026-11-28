@@ -485,10 +485,16 @@ def compile_theme(source, theme_name, symbols="unicode"):
     ))
 
     # These named picker entries always use Sage, even when the terminal uses another preset.
-    sage, sage_value = resolve(read(source / "themes/sage.toml"), shared["roles"])
-    output("sage-midnight.tmTheme", textmate_theme("Sage Midnight", sage, scopes, gutter=True, diff_backgrounds={
-        "markup.inserted": "diff.add.bg", "markup.deleted": "diff.delete.bg",
-    }))
+    if theme_name == "sage":
+        sage, sage_value, sage_tokens = colors, value, tokens
+    else:
+        sage_preset = read(source / "themes/sage.toml")
+        sage, sage_value = resolve(sage_preset, shared["roles"])
+        sage_tokens = Presentation(shared["presentation"], sage_preset.get("presentation", {}), symbols)
+    output("sage-midnight.tmTheme", textmate_theme(
+        "Sage Midnight", sage, scopes, gutter=sage_tokens.get("gutter.explicit", "codex-cli", "boolean"),
+        diff_backgrounds={"markup.inserted": "diff.add.bg", "markup.deleted": "diff.delete.bg"},
+    ))
     claude_colors = read(source / "adapters/claude-code.toml")
     output("sage-midnight.json", json.dumps({
         "name": "Sage Midnight", "base": "dark",
