@@ -1,0 +1,65 @@
+claude = "@accent"
+claudeShimmer = "@text.strong"
+text = "@text"
+inverseText = "@text.inverse"
+inactive = "@text.muted"
+inactiveShimmer = "@text"
+subtle = "@text.subtle"
+suggestion = "@focus"
+permission = "@status.attention"
+remember = "@accent.secondary"
+success = "@status.success"
+error = "@status.error"
+warning = "@status.warning"
+merged = "@focus"
+promptBorder = "@accent"
+promptBorderShimmer = "@text.strong"
+planMode = "@focus"
+autoAccept = "@status.success"
+bashBorder = "@status.warning"
+ide = "@status.info"
+fastMode = "@status.attention"
+effortUltra = "@syntax.type"
+diffAdded = "@diff.add.bg"
+diffRemoved = "@diff.delete.bg"
+diffAddedWord = "@diff.add.emph.bg"
+diffRemovedWord = "@diff.delete.emph.bg"
+userMessageBackground = "@surface.raised"
+userMessageBackgroundHover = "@surface.selected"
+bashMessageBackgroundColor = "@tool.output.bg"
+memoryBackgroundColor = "@surface.raised"
+selectionBg = "@surface.selected"
+composerSidebarBackground = "@tool.output.bg"
+rate_limit_fill = "@accent"
+rate_limit_empty = "@border"
+briefLabelYou = "@accent.secondary"
+briefLabelClaude = "@accent"
+permissionShimmer = { mix = ["@status.attention", "@text.strong"], amount = 0.45 }
+warningShimmer = { mix = ["@status.warning", "@text.strong"], amount = 0.45 }
+fastModeShimmer = { mix = ["@status.attention", "@text.strong"], amount = 0.45 }
+diffAddedDimmed = { mix = ["@surface", "@diff.add.bg"], amount = 0.5 }
+diffRemovedDimmed = { mix = ["@surface", "@diff.delete.bg"], amount = 0.5 }
+
+red_FOR_SUBAGENTS_ONLY = "@status.error"
+blue_FOR_SUBAGENTS_ONLY = "@syntax.keyword"
+green_FOR_SUBAGENTS_ONLY = "@status.success"
+yellow_FOR_SUBAGENTS_ONLY = "@status.warning"
+purple_FOR_SUBAGENTS_ONLY = "@focus"
+orange_FOR_SUBAGENTS_ONLY = "@status.attention"
+pink_FOR_SUBAGENTS_ONLY = "@syntax.null"
+cyan_FOR_SUBAGENTS_ONLY = "@status.info"
+
+rainbow_red = "@status.error"
+rainbow_red_shimmer = { mix = ["@status.error", "@text.strong"], amount = 0.45 }
+rainbow_orange = "@status.attention"
+rainbow_orange_shimmer = { mix = ["@status.attention", "@text.strong"], amount = 0.45 }
+rainbow_yellow = "@status.warning"
+rainbow_yellow_shimmer = { mix = ["@status.warning", "@text.strong"], amount = 0.45 }
+rainbow_green = "@status.success"
+rainbow_green_shimmer = { mix = ["@status.success", "@text.strong"], amount = 0.45 }
+rainbow_blue = "@syntax.keyword"
+rainbow_blue_shimmer = { mix = ["@syntax.keyword", "@text.strong"], amount = 0.45 }
+rainbow_indigo = "@syntax.type"
+rainbow_indigo_shimmer = { mix = ["@syntax.type", "@text.strong"], amount = 0.45 }
+rainbow_violet = "@focus"
+rainbow_violet_shimmer = { mix = ["@focus", "@text.strong"], amount = 0.45 }

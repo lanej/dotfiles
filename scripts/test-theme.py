@@ -137,6 +137,22 @@ class ThemeTests(unittest.TestCase):
                             with self.subTest(state=state["id"], background=background):
                                 self.assertGreaterEqual(contrast(colors[state["role"]], colors[background]), 4.5)
 
+    def test_named_agent_themes_keep_sage_colors_across_preset_changes(self):
+        import plistlib
+
+        sage = theme.compile_theme(theme.SOURCE, "sage")
+        nord = theme.compile_theme(theme.SOURCE, "nord")
+        for name in ("sage-midnight.json", "sage-midnight.tmTheme"):
+            self.assertEqual(sage[name], nord[name])
+        colors = json.loads(sage["colors.json"])["roles"]
+        claude = json.loads(nord["sage-midnight.json"])["overrides"]
+        codex = plistlib.loads(nord["sage-midnight.tmTheme"].encode())
+        scopes = {item.get("scope"): item["settings"] for item in codex["settings"]}
+        self.assertEqual(claude["claude"], colors["accent"])
+        for change, token, scope in (("add", "diffAdded", "markup.inserted"), ("delete", "diffRemoved", "markup.deleted")):
+            self.assertEqual(scopes[scope]["background"], colors[f"diff.{change}.bg"])
+            self.assertEqual(claude[token], scopes[scope]["background"])
+
     def test_sage_native_contrast_contract(self):
         """Check actual filled styles, text roles and essential non-text indicators."""
         def luminance(color):

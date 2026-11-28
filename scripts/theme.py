@@ -243,6 +243,37 @@ def compile_semantic_states(groups, colors, symbols):
     return result
 
 
+def textmate_theme(name, colors, scopes, *, gutter, diff_backgrounds):
+    syntax = ET.Element("plist", version="1.0")
+    dictionary = ET.SubElement(syntax, "dict")
+
+    def entry(parent, key, val):
+        ET.SubElement(parent, "key").text = key
+        ET.SubElement(parent, "string").text = val
+
+    entry(dictionary, "name", name)
+    ET.SubElement(dictionary, "key").text = "settings"
+    settings = ET.SubElement(dictionary, "array")
+    for scope, role in {"": "text", **scopes}.items():
+        item = ET.SubElement(settings, "dict")
+        if scope:
+            entry(item, "scope", scope)
+        ET.SubElement(item, "key").text = "settings"
+        attributes = ET.SubElement(item, "dict")
+        entry(attributes, "foreground", colors[role])
+        if not scope:
+            entry(attributes, "background", colors["surface"])
+            entry(attributes, "selection", colors["selection.bg"])
+            if gutter:
+                # syntect exposes these TextMate settings to bat's native gutter.
+                entry(attributes, "gutter", colors["surface"])
+                entry(attributes, "gutterForeground", colors["gutter.text"])
+        if scope in diff_backgrounds:
+            entry(attributes, "background", colors[diff_backgrounds[scope]])
+    ET.indent(syntax)
+    return '<?xml version="1.0" encoding="UTF-8"?>\n' + ET.tostring(syntax, encoding="unicode")
+
+
 def compile_theme(source, theme_name, symbols="unicode"):
     if not re.fullmatch(r"[a-z][a-z0-9-]*", theme_name):
         raise ValueError("invalid theme name")
@@ -448,33 +479,21 @@ def compile_theme(source, theme_name, symbols="unicode"):
     minus-non-emph-style = syntax "{c['diff.delete.bg']}"
     minus-emph-style = bold syntax "{c['diff.delete.emph.bg']}"
     whitespace-error-style = "{c['status.error']}" reverse{gutter_override}''')
-    syntax = ET.Element("plist", version="1.0")
-    dictionary = ET.SubElement(syntax, "dict")
-
-    def entry(parent, key, val):
-        ET.SubElement(parent, "key").text = key
-        ET.SubElement(parent, "string").text = val
-
-    entry(dictionary, "name", "Dotfiles")
-    ET.SubElement(dictionary, "key").text = "settings"
-    settings = ET.SubElement(dictionary, "array")
     scopes = read(source / "adapters/syntax.toml")
-    for scope, role in {"": "text", **scopes}.items():
-        item = ET.SubElement(settings, "dict")
-        if scope:
-            entry(item, "scope", scope)
-        ET.SubElement(item, "key").text = "settings"
-        attributes = ET.SubElement(item, "dict")
-        entry(attributes, "foreground", c[role])
-        if not scope:
-            entry(attributes, "background", c["surface"])
-            entry(attributes, "selection", c["selection.bg"])
-            if tokens.get("gutter.explicit", "bat", "boolean"):
-                # syntect exposes these TextMate settings to bat's native gutter.
-                entry(attributes, "gutter", c["surface"])
-                entry(attributes, "gutterForeground", c["gutter.text"])
-    ET.indent(syntax)
-    output("Dotfiles.tmTheme", '<?xml version="1.0" encoding="UTF-8"?>\n' + ET.tostring(syntax, encoding="unicode"))
+    output("Dotfiles.tmTheme", textmate_theme(
+        "Dotfiles", c, scopes, gutter=tokens.get("gutter.explicit", "bat", "boolean"), diff_backgrounds={},
+    ))
+
+    # These named picker entries always use Sage, even when the terminal uses another preset.
+    sage, sage_value = resolve(read(source / "themes/sage.toml"), shared["roles"])
+    output("sage-midnight.tmTheme", textmate_theme("Sage Midnight", sage, scopes, gutter=True, diff_backgrounds={
+        "markup.inserted": "diff.add.bg", "markup.deleted": "diff.delete.bg",
+    }))
+    claude_colors = read(source / "adapters/claude-code.toml")
+    output("sage-midnight.json", json.dumps({
+        "name": "Sage Midnight", "base": "dark",
+        "overrides": {token: sage_value(role) for token, role in claude_colors.items()},
+    }, indent=2))
     bottom = (source / "adapters/bottom.toml.in").read_text()
     rendered = render_roles(bottom, c)
     if "{{" in rendered:

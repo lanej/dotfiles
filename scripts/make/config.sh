@@ -323,6 +323,9 @@ case "$target" in
         test -f "${setup_home}/.config/dev-cache-budgets.json" || cp "${dotfiles}/rc/dev-cache-budgets.json" "${setup_home}/.config/dev-cache-budgets.json"
         ;;
     claude-config)
+        theme_dir="${CLAUDE_CONFIG_DIR:-"$setup_home/.claude"}/themes"
+        mkdir -p "$theme_dir"
+        ln -fs "$dotfiles/design-system/generated/sage-midnight.json" "$theme_dir/sage-midnight.json"
         mkdir -p "${setup_home}/.claude"
         mkdir -p "${setup_home}/.claude/local"
         ln -fs "${dotfiles}/.claude/settings.json" "${setup_home}/.claude/settings.json"
@@ -352,6 +355,9 @@ case "$target" in
         check_command "jq"
         ;;
     codex-env)
+        theme_dir="${CODEX_HOME:-"$setup_home/.codex"}/themes"
+        mkdir -p "$theme_dir"
+        ln -fs "$dotfiles/design-system/generated/sage-midnight.tmTheme" "$theme_dir/sage-midnight.tmTheme"
         mkdir -p "${setup_home}/.codex"
         if [ ! -e "${setup_home}/.codex/.env" ] && [ ! -L "${setup_home}/.codex/.env" ] ||
             [ "$(readlink "${setup_home}/.codex/.env")" = "${dotfiles}/codex/env" ]; then
