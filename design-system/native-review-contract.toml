@@ -36,7 +36,7 @@ primitives = [{ kind = "syntax-roles", name = "nil-literal", anchor = "if name =
 
 [surfaces.tmux]
 anchors = ["Workspace review", "Editor", "Publisher", "Checks", "Shell"]
-primitives = [{ kind = "tab-strip", row = "last", labels = ["0:Editor", "1:Publisher", "2:Checks", "3:Shell"], active = 0, active_ink = "text.inverse", active_fill = "focus", inactive_ink = "text.muted", padding = 1, markers = [{ after = 0, glyph = "◐", ink = "status.info" }, { after = 1, glyph = "×", ink = "status.error" }, { after = 2, glyph = "!", ink = "status.attention" }] }]
+primitives = [{ kind = "tab-strip", row = "last", labels = ["0:Editor", "1:Publisher", "2:Checks", "3:Shell"], active = 0, active_ink = "text.inverse", active_fill = "focus", inactive_ink = "text.muted", padding = 1, markers = [{ after = 0, glyph = "◐", ink = "status.info" }, { after = 1, glyph = "", ink = "status.error" }, { after = 2, glyph = "", ink = "status.attention" }] }]
 
 [surfaces.cli]
 anchors = ["CONFIGURATION", "SEVERITY", "EXECUTION", "HEALTH", "INTERACTION", "CONNECTIVITY", "DATA", "ACCESS", "CONNECTING", "APPROVED"]

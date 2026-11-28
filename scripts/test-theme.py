@@ -367,6 +367,22 @@ class ThemeTests(unittest.TestCase):
                 self.assertEqual(components["git.file.deleted"]["symbol"], expected[2])
                 self.assertEqual(components["git.file.staged"]["symbol"], "")
 
+    def test_shared_state_and_surface_exports_resolve_both_symbol_modes(self):
+        for mode, running, branch in (("unicode", "\uf500", "\uf418"), ("ascii", ">", "@")):
+            with self.subTest(mode=mode):
+                outputs = theme.compile_theme(theme.SOURCE, "sage", mode)
+                ui = json.loads(outputs["terminal-ui.json"])
+                # Success and authorization describe different events, even in ASCII.
+                self.assertEqual(len({ui["states"]["access.approval"], ui["symbols"]["publication.checks_passed"],
+                                      ui["symbols"]["publication.merged"]}), 3)
+                self.assertEqual(ui["states"]["execution.running"], running)
+                self.assertEqual(ui["symbols"]["git.summary.branch"], branch)
+                self.assertIn(f'RUNNING: &str = "{running}";', outputs["zellij-states.rs"])
+                self.assertIn(f'animation-charging-0 = {ui["symbols"]["battery.empty"]}', outputs["polybar-modules.ini"])
+                eza = json.loads(outputs["eza.yml"].split("\n", 1)[1])
+                self.assertEqual(eza["filenames"]["README.md"]["icon"]["glyph"], ui["symbols"]["file.regular"])
+                self.assertIn(f'ssh_symbol = "{ui["symbols"]["terminal.ssh"]} "', outputs["starship.toml"])
+
     def test_macos_window_colors_reach_the_linked_configurations(self):
         with tempfile.TemporaryDirectory() as directory:
             work = Path(directory)

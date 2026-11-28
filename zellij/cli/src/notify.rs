@@ -18,13 +18,18 @@ enum Level {
     Warn,
     Error,
 }
+#[allow(dead_code)]
+mod glyphs {
+    include!("../../../design-system/generated/zellij-states.rs");
+}
+
 impl Level {
     fn glyph(self) -> (&'static str, &'static str) {
         match self {
-            Self::Info => ("·", "136;192;208"),
-            Self::Success => ("✓", "163;190;140"),
-            Self::Warn => ("!", "235;203;139"),
-            Self::Error => ("×", "191;97;106"),
+            Self::Info => (glyphs::INFO, glyphs::INFO_RGB),
+            Self::Success => (glyphs::SUCCEEDED, glyphs::SUCCESS_RGB),
+            Self::Warn => (glyphs::WARNING, glyphs::WARNING_RGB),
+            Self::Error => (glyphs::ERROR, glyphs::ERROR_RGB),
         }
     }
 }
@@ -289,7 +294,7 @@ fn history() -> Result<()> {
         "--with-nth=2..".into(),
         "--no-sort".into(),
         "--ansi".into(),
-        "--prompt=› ".into(),
+        format!("--prompt={}", glyphs::PROMPT),
         "--bind=ctrl-/:toggle-preview".into(),
         "--preview".into(),
         format!("{} show {{1}}", helper_command("notify")?),

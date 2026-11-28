@@ -9,66 +9,45 @@ if wezterm.config_builder then
 end
 
 -- =============================================================================
--- COLORS - Exact Nord Theme Match (from kitty/kittyconf)
+-- COLORS
 -- =============================================================================
 
-config.colors = {
-	foreground = "#D8DEE9",
-	background = "#2E3440",
-	cursor_bg = "#81A1C1",
-	cursor_fg = "#2E3440",
-	cursor_border = "#81A1C1",
-	selection_fg = "#000000",
-	selection_bg = "#FFFACD",
+local theme_dir = os.getenv("DOTFILES_THEME_DIR")
+	or ((os.getenv("XDG_CONFIG_HOME") or (wezterm.home_dir .. "/.config")) .. "/dotfiles/theme")
+local loaded, theme = pcall(dofile, theme_dir .. "/terminal-ui.lua")
+local roles = loaded and theme.roles or {}
+local symbols = loaded and theme.symbols or {}
+local surface = roles.surface or "#2E3440"
+local muted_surface = roles["surface.raised"] or "#4C566A"
+local text = roles.text or "#D8DEE9"
+local accent = roles.accent or "#88C0D0"
+local tab_active_bg = roles["tab.active.bg"] or accent
+local tab_active_fg = roles["tab.active.fg"] or surface
 
-	-- ANSI colors (kitty lines 61-91)
-	ansi = {
-		"#434C5E", -- black
-		"#BF616A", -- red
-		"#A3BE8C", -- green
-		"#EBCB8B", -- yellow
-		"#81A1C1", -- blue
-		"#B48EAD", -- magenta
-		"#88C0D0", -- cyan
-		"#E5E9F0", -- white
-	},
-	brights = {
-		"#4C566A", -- bright black
-		"#D08770", -- bright red
-		"#B5CEA8", -- bright green
-		"#E5C07B", -- bright yellow
-		"#88C0D0", -- bright blue
-		"#C678DD", -- bright magenta
-		"#8FBCBB", -- bright cyan
-		"#ECEFF4", -- bright white
-	},
-
-	split = "#4C566A", -- Nord dark gray for pane borders
-
-	tab_bar = {
-		background = "#2E3440",
-		active_tab = {
-			bg_color = "#88C0D0", -- Nord cyan
-			fg_color = "#2E3440", -- Black
+if loaded then
+	config.colors = {
+		foreground = text,
+		background = surface,
+		cursor_bg = accent,
+		cursor_fg = surface,
+		cursor_border = accent,
+		selection_fg = roles["selection.solid.fg"],
+		selection_bg = roles["selection.solid.bg"],
+		ansi = { table.unpack(theme.ansi, 1, 8) },
+		brights = { table.unpack(theme.ansi, 9, 16) },
+		split = roles.border,
+		tab_bar = {
+			background = surface,
+			active_tab = { bg_color = tab_active_bg, fg_color = tab_active_fg },
+			inactive_tab = { bg_color = roles["tab.inactive.bg"], fg_color = roles["tab.inactive.fg"] },
+			inactive_tab_hover = { bg_color = roles["surface.selected"], fg_color = text },
+			new_tab = { bg_color = surface, fg_color = accent },
+			new_tab_hover = { bg_color = roles["surface.selected"], fg_color = text },
 		},
-		inactive_tab = {
-			bg_color = "#4C566A", -- Nord dark gray
-			fg_color = "#88C0D0", -- Nord cyan
-		},
-		inactive_tab_hover = {
-			bg_color = "#4C566A",
-			fg_color = "#D8DEE9",
-		},
-		new_tab = {
-			bg_color = "#2E3440",
-			fg_color = "#88C0D0",
-		},
-		new_tab_hover = {
-			bg_color = "#4C566A",
-			fg_color = "#D8DEE9",
-		},
-	},
-}
+	}
+else
+	config.color_scheme = "Nord (Gogh)"
+end
 
 -- =============================================================================
 -- FONT & VISUAL SETTINGS
@@ -121,17 +100,17 @@ config.show_tab_index_in_tab_bar = false
 config.tab_max_width = 32
 
 -- Powerline separators
-local SOLID_LEFT_ARROW = wezterm.nerdfonts.pl_right_hard_divider
-local SOLID_RIGHT_ARROW = wezterm.nerdfonts.pl_left_hard_divider
+local SOLID_LEFT_ARROW = symbols["separator.section.right"] or "<"
+local SOLID_RIGHT_ARROW = symbols["separator.section.left"] or ">"
 
 -- Format tab titles (tmux style: index* title)
 wezterm.on("format-tab-title", function(tab, tabs, _panes, _config, _hover, _max_width)
-	local background = "#4C566A"
-	local foreground = "#88C0D0"
+	local background = roles["tab.inactive.bg"] or muted_surface
+	local foreground = roles["tab.inactive.fg"] or accent
 
 	if tab.is_active then
-		background = "#88C0D0"
-		foreground = "#2E3440"
+		background = tab_active_bg
+		foreground = tab_active_fg
 	end
 
 	local index = tab.tab_index
@@ -143,16 +122,16 @@ wezterm.on("format-tab-title", function(tab, tabs, _panes, _config, _hover, _max
 	end
 
 	-- Mark active with *
-	local marker = tab.is_active and "*" or ""
+	local marker = tab.is_active and (symbols["ui.selection"] or "*") or ""
 
 	-- Determine next tab's background for interlocking chevrons
 	local next_tab = tabs[tab.tab_index + 2] -- tabs is 1-indexed
-	local next_background = "#2E3440" -- default to bar background
+	local next_background = surface -- default to bar background
 	if next_tab then
 		if next_tab.is_active then
-			next_background = "#88C0D0"
+			next_background = tab_active_bg
 		else
-			next_background = "#4C566A"
+			next_background = roles["tab.inactive.bg"] or muted_surface
 		end
 	end
 
@@ -222,31 +201,31 @@ wezterm.on("update-right-status", function(window, _pane)
 	local ssh_env = os.getenv("SSH_CONNECTION") or os.getenv("SSH_CLIENT") or os.getenv("SSH_TTY")
 	if ssh_env then
 		table.insert(segment_data, {
-			bg = "#4C566A",
-			fg = "#88C0D0",
-			text = " 🔐 SSH ",
+			bg = muted_surface,
+			fg = accent,
+			text = " " .. (symbols["terminal.ssh"] or "@") .. " SSH ",
 		})
 	end
 
 	-- Battery status
 	for _, b in ipairs(wezterm.battery_info()) do
 		local charge = b.state_of_charge * 100
-		local icon = "⚡"
-		local color = "#EBCB8B" -- Nord yellow
+		local icon = symbols["battery.discharging"] or "-"
+		local color = roles["status.warning"] or "#EBCB8B"
 
 		if b.state == "Charging" then
-			icon = "🔋"
-			color = "#A3BE8C" -- Nord green
+			icon = symbols["battery.charging"] or "+"
+			color = roles["status.success"] or "#A3BE8C"
 		elseif charge < 10 then
-			icon = "🪫"
-			color = "#BF616A" -- Nord red
+			icon = symbols["battery.empty"] or "!"
+			color = roles["status.error"] or "#BF616A"
 		elseif charge < 20 then
-			icon = "⚠️"
-			color = "#D08770" -- Nord orange
+			icon = symbols["battery.low"] or "!"
+			color = roles["status.warning"] or "#EBCB8B"
 		end
 
 		table.insert(segment_data, {
-			bg = "#4C566A",
+			bg = muted_surface,
 			fg = color,
 			text = string.format(" %s%.0f%% ", icon, charge),
 		})
@@ -255,23 +234,23 @@ wezterm.on("update-right-status", function(window, _pane)
 	-- Date and time
 	local datetime = wezterm.strftime("%Y-%m-%d %H:%M")
 	table.insert(segment_data, {
-		bg = "#4C566A",
-		fg = "#D8DEE9",
+		bg = muted_surface,
+		fg = text,
 		text = " " .. datetime .. " ",
 	})
 
 	-- Hostname
 	local hostname = wezterm.hostname()
 	table.insert(segment_data, {
-		bg = "#88C0D0",
-		fg = "#2E3440",
+		bg = accent,
+		fg = surface,
 		text = " " .. hostname .. " ",
 	})
 
 	-- Build formatted segments with interlocking chevrons
 	local formatted_segments = {}
 	for i, seg in ipairs(segment_data) do
-		local prev_bg = "#2E3440" -- Default to bar background
+		local prev_bg = surface -- Default to bar background
 		if i > 1 then
 			prev_bg = segment_data[i - 1].bg
 		end

@@ -25,7 +25,7 @@ sources = ["nvim/lua/dotfiles-theme.lua", "design-system/adapters/neovim.toml"]
 [[items]]
 id = "zellij"
 owner = "Native theme and owned status plugin"
-mechanism = "generated KDL; status consumes ModeInfo.style"
+mechanism = "generated KDL colors and generated Rust glyphs"
 reload = "Zellij watches managed config; use a new session if a native theme-file edit is not picked up. Rebuild/install the status plugin once for this migration."
 coverage = "Native status/prefix and picker workflow checks exercise the pinned runtime. No synchronized live-switch guarantee."
 sources = ["design-system/adapters/zellij.toml", "zellij/status/src/theme.rs"]
@@ -33,16 +33,16 @@ sources = ["design-system/adapters/zellij.toml", "zellij/status/src/theme.rs"]
 [[items]]
 id = "studio"
 owner = "Studio Sage status line"
-mechanism = "generated glyph snapshot bundled with Studio"
+mechanism = "bundled generated footer and terminal UI snapshots"
 reload = "Refresh Studio's bundled snapshot and launch a new Studio session"
-coverage = "Git, workspace, task mode and context markers fit in the existing status line budget. Studio owns which fields it displays."
+coverage = "The footer, task status, runtime dashboard, diagnostics, and transcript consume shared glyphs. Studio owns labels and state decisions."
 sources = ["design-system/adapters/studio-statusline.toml", "design-system/generated/studio-statusline.json"]
 
 [[items]]
 id = "tmux"
 owner = "Native styles and owned agent-state helpers"
 mechanism = "generated source-file and role references"
-reload = "tmux source-file ~/.config/tmux/tmux.conf; refresh-theme updates persisted segment colors without changing state age"
+reload = "tmux source-file ~/.config/tmux/tmux.conf; refresh-theme updates persisted segment colors and glyphs without changing state age"
 coverage = "Style parsing and repeated source-file checked in an isolated server. The main config reload refreshes persisted @claude colors without resetting state age or reason. Broker events supply state; generated formats resolve its colors locally and ignore broker color values."
 sources = ["design-system/adapters/tmux.conf.in", "bin/tmux-claude-state", "design-system/adapters/tmux-states.toml"]
 
@@ -59,7 +59,7 @@ id = "eza"
 owner = "Native file metadata, file kinds and Git status styles"
 mechanism = "generated eza YAML adapter linked as ~/.config/eza/theme.yml; legacy ls color variables removed only for eza"
 reload = "Run make shell once to install the theme link; regenerate and open a new listing or picker"
-coverage = "Native listings and fzf previews use semantic file and Git roles. Exact bytes and tree depth remain listing policy. Eza owns its Git letter pairs and file icons: glyph tokens cannot replace its status markers, and its single new style cannot color staged-new and untracked states independently; their index/worktree columns remain distinct."
+coverage = "Native listings and fzf previews use semantic file and Git roles. Exact bytes and tree depth remain listing policy. The adapter supplies the shared file glyph for README filenames. Eza owns its other file icons and Git letter pairs, and its single new style cannot color staged-new and untracked states independently; their index/worktree columns remain distinct."
 sources = ["design-system/adapters/eza.toml", "sh/alias", "bin/fzf-path-preview"]
 
 [[items]]
@@ -107,7 +107,7 @@ id = "starship"
 owner = "Shared Git-state components; existing native prompt layout"
 mechanism = "generated complete native TOML with literal symbol escaping"
 reload = "The next prompt reads the generated configuration; no shell initialization change is required."
-coverage = "Native Git fixtures exercise file states, stash, conflicts, counts, branch and tracking status. Git components generate semantic foregrounds and bold/dim flags; shared defaults use ANSI slots to preserve the original colors. Independent overrides of glyph, color and emphasis are exercised. Other prompt module symbols remain application specific."
+coverage = "Native Git fixtures exercise file states, stash, conflicts, counts, branch and tracking status. Git components generate semantic foregrounds and bold/dim flags; shared defaults use ANSI slots to preserve the original colors. Independent overrides of glyph, color and emphasis are exercised. Battery, SSH and exit status marks are generated. Language and product logos are module-specific."
 sources = ["design-system/adapters/starship.toml.in", "design-system/tokens.toml", "design-system/components.toml"]
 
 [[items]]
@@ -139,6 +139,38 @@ id = "external-color-owners"
 owner = "Filetype icons, literal-color previews, other plugins and optional tools"
 mechanism = "explicit gaps"
 reload = "Application specific"
-coverage = "Devicons may assign filetype colors; nvim-highlight-colors intentionally displays data colors; Markview, Snacks, Noice, Octo and other enabled plugin surfaces need interactive audits. Optional presenterm, btop, WezTerm, Xresources, NeoMutt and graphical apps are outside this daily-theme migration."
+coverage = "Devicons may assign filetype colors; nvim-highlight-colors intentionally displays data colors; Markview, Snacks, Noice, Octo and other enabled plugin surfaces need interactive audits. Optional presenterm, btop, Xresources, NeoMutt and graphical apps are outside this daily-theme migration."
 sources = ["nvim/init.lua", "presenterm/themes/nord.yaml", "btop/btop.conf", "wezterm.lua", "rc/Xresources", "mail/neomuttrc"]
 
+
+[[items]]
+id = "publisher"
+owner = "Publisher dashboard palette and operational state glyphs"
+mechanism = "bundled terminal UI export"
+reload = "Refresh the bundled export and start a new dashboard"
+coverage = "Terminal and dark use Sage. Approval, passing current checks, and confirmed merge have distinct marks with text labels. Monochrome uses ASCII."
+sources = ["design-system/generated/terminal-ui.json"]
+
+[[items]]
+id = "wezterm"
+owner = "WezTerm palette and tab, SSH and battery symbols"
+mechanism = "generated Lua data read by the owned config"
+reload = "Reload the WezTerm configuration"
+coverage = "The configuration reads shared palette and glyph data with a native fallback for a standalone installation."
+sources = ["wezterm.lua", "design-system/generated/terminal-ui.lua"]
+
+[[items]]
+id = "polybar"
+owner = "Polybar workspace, battery and network glyphs"
+mechanism = "generated modules include"
+reload = "Restart Polybar"
+coverage = "Workspace occupancy, battery level and network glyphs are mapped. Hardware-dependent rendering requires a Linux session."
+sources = ["polybar/modules.ini", "design-system/adapters/polybar-modules.ini.in"]
+
+[[items]]
+id = "atuin"
+owner = "Atuin history and syntax color roles"
+mechanism = "generated TOML theme"
+reload = "Open a new history picker"
+coverage = "Atuin exposes semantic colors in its theme. The history UI owns its glyphs."
+sources = ["sh/atuin.toml", "design-system/adapters/atuin.toml"]

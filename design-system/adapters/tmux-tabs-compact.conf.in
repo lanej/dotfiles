@@ -14,10 +14,10 @@ set-window-option -g window-status-current-format "\
 #[bg={{tab.active.bg}}]#[fg={{tab.active.fg}}]#[bold]#[noitalics]#[nodim] #I:#W \
 #[bg={{surface}}]#[fg={{text.muted}}]#[nobold]\
 #{?window_zoomed_flag, #[fg={{status.warning}}]Z,}\
-#{?#{@claude-state}, #[fg={{agent.marker}}]#[bold]#{?#{@claude-glyph},#{@claude-glyph},?},#{?window_bell_flag, #[fg={{status.attention}}]!,#{?window_activity_flag, #[fg={{status.warning}}].,}}}\
+#{?#{@claude-state}, #[fg={{agent.marker}}]#[bold]#{?{{agent.glyph}},{{agent.glyph}},?},#{?window_bell_flag, #[fg={{status.attention}}]!,#{?window_activity_flag, #[fg={{status.warning}}].,}}}\
 #[fg={{text.muted}}]#[nobold]"
 
 set-window-option -g window-status-format "\
 #[bg={{surface}}]#[fg={{text.muted}}]#[nobold]#[noitalics]#[nodim] #I:#W\
-#{?#{@claude-state}, #[fg={{agent.marker}}]#[bold]#{?#{@claude-glyph},#{@claude-glyph},?},#{?window_bell_flag, #[fg={{status.attention}}]!,#{?window_activity_flag, #[fg={{status.warning}}].,}}}\
+#{?#{@claude-state}, #[fg={{agent.marker}}]#[bold]#{?{{agent.glyph}},{{agent.glyph}},?},#{?window_bell_flag, #[fg={{status.attention}}]!,#{?window_activity_flag, #[fg={{status.warning}}].,}}}\
 #[fg={{text.muted}}]#[nobold] "

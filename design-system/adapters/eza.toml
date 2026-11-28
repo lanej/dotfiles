@@ -107,3 +107,9 @@ foreground = "@status.error"
 
 [broken_path_overlay]
 foreground = "@status.error"
+
+[filenames."README".icon]
+glyph = { token = "symbol.file.regular" }
+
+[filenames."README.md".icon]
+glyph = { token = "symbol.file.regular" }

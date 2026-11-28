@@ -19,7 +19,7 @@ check_os() {
 
 # WHY: Native consumers share committed artifacts without a startup generator.
 case "$target" in
-    shell|tmux-config|zellij-config|vim-config|kitty-config|git)
+    shell|tmux-config|zellij-config|vim-config|kitty-config|git|wezterm|claude-config)
         mkdir -p "$setup_home/.config/dotfiles"
         if [[ -e "$setup_home/.config/dotfiles/theme" && ! -L "$setup_home/.config/dotfiles/theme" ]]; then
             printf '%s\n' "Theme path is not a managed link: $setup_home/.config/dotfiles/theme" >&2

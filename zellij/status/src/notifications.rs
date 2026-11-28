@@ -19,9 +19,9 @@ fn clean(text: &str, limit: usize) -> String {
 
 fn level(status: AttentionStatus) -> Option<(&'static str, &'static str)> {
     match status {
-        AttentionStatus::NeedsYou => Some(("warn", "!")),
-        AttentionStatus::Failed => Some(("error", "×")),
-        AttentionStatus::Done => Some(("success", "✓")),
+        AttentionStatus::NeedsYou => Some(("warn", crate::glyphs::ATTENTION)),
+        AttentionStatus::Failed => Some(("error", crate::glyphs::FAILED)),
+        AttentionStatus::Done => Some(("success", crate::glyphs::SUCCEEDED)),
         _ => None,
     }
 }
@@ -96,11 +96,21 @@ impl Notifications {
                 && !(item.is_current && focused == Some(item.item.pane_id))
             {
                 let glyph = if status == AttentionStatus::NeedsYou
-                    && state.detail.kind == Some(BlockedKind::Question) { "?" } else { glyph };
+                    && state.detail.kind == Some(BlockedKind::Question)
+                {
+                    crate::glyphs::QUESTION
+                } else {
+                    glyph
+                };
                 let message = if title == item.item.pane_title
-                    && title.strip_prefix("Pane #").is_some_and(|number| number.parse::<u32>().is_ok()) {
+                    && title
+                        .strip_prefix("Pane #")
+                        .is_some_and(|number| number.parse::<u32>().is_ok())
+                {
                     glyph.to_owned()
-                } else { format!("{glyph} {title}") };
+                } else {
+                    format!("{glyph} {title}")
+                };
                 self.show(severity, &message);
             }
             if recorder && item.is_current {
@@ -167,7 +177,13 @@ impl Notifications {
         self.pending = false;
         if code != Some(0) {
             eprintln!("notification history: {}", String::from_utf8_lossy(error));
-            self.show("error", "× Notification history could not be saved");
+            self.show(
+                "error",
+                &format!(
+                    "{}Notification history could not be saved",
+                    crate::glyphs::ERROR_MARK
+                ),
+            );
             // The elected recorder may be on an inactive tab. Tell this
             // client's visible bars too, without recording the error again.
             pipe_message_to_plugin(
@@ -243,7 +259,13 @@ impl Notifications {
         if message.payload.as_deref() != Some(get_plugin_ids().client_id.to_string().as_str()) {
             return false;
         }
-        self.show("error", "× Notification history could not be saved");
+        self.show(
+            "error",
+            &format!(
+                "{}Notification history could not be saved",
+                crate::glyphs::ERROR_MARK
+            ),
+        );
         true
     }
 }
@@ -284,11 +306,15 @@ mod tests {
             ..Default::default()
         };
         first_snapshot.observe(&global, 1, None, true, false);
-        assert_eq!(first_snapshot.notice(), Some(("warn", "! Tests")));
+        let expected = format!("{} Tests", crate::glyphs::ATTENTION);
+        assert_eq!(first_snapshot.notice(), Some(("warn", expected.as_str())));
         global.items[0].item.pane_title = "Pane #1".into();
         global.items[0].item.attention.detail.kind = Some(BlockedKind::Question);
         first_snapshot.observe(&global, 1, None, true, false);
-        assert_eq!(first_snapshot.notice(), Some(("warn", "?")));
+        assert_eq!(
+            first_snapshot.notice(),
+            Some(("warn", crate::glyphs::QUESTION))
+        );
         global.items[0].item.attention.status = AttentionStatus::Working;
         notices.observe(&global, 1, None, true, false);
         global.items[0].item.attention.status = AttentionStatus::NeedsYou;

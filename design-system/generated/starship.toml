@@ -30,11 +30,11 @@ disabled = true
 
 [battery]
 disabled = false
-full_symbol = "󰁹 "
+full_symbol = " "
 charging_symbol = "󰂄 "
 discharging_symbol = "󰂃 "
 unknown_symbol = "󰂑 "
-empty_symbol = "󰂎 "
+empty_symbol = " "
 
 [[battery.display]]
 threshold = 10
@@ -59,8 +59,8 @@ format = "[$user]($style)@"
 
 [hostname]
 disabled = false
-ssh_symbol = " "
-format = "[$hostname](bold green) "
+ssh_symbol = " "
+format = "[$ssh_symbol$hostname](bold green) "
 
 [aws]
 symbol = " "

@@ -101,11 +101,15 @@ make shell kitty tmux-config vim-config zellij
 make theme-cache    # refresh bat's cache, also consumed by delta
 ```
 
-For the initial Zellij migration, build the changed status plugin with `make zellij-status zellij`. Subsequent palette changes use native KDL theme styles; the status renderer no longer embeds the theme RGB values. Runtime installation remains explicit and separate from theme generation.
+For the initial Zellij migration, build the changed status plugin with `make zellij-status zellij`. Palette changes use native KDL theme styles in the status plugin. Rebuild the plugin and notification helper after changing generated Zellij symbols. Runtime installation remains explicit and separate from theme generation.
 
-Use Kitty's existing Cmd+Shift+R binding, `:colorscheme dotfiles` in Neovim, and `tmux source-file ~/.config/tmux/tmux.conf`. Reopen pickers and pagers; restart bottom. Start a new Zellij session if its native watcher does not reload a theme-file edit. The main tmux config reload refreshes existing agent segment colors without resetting their state age. There is no coordinated live-switch guarantee.
+Use Kitty's existing Cmd+Shift+R binding, `:colorscheme dotfiles` in Neovim, and `tmux source-file ~/.config/tmux/tmux.conf`. Reopen pickers and pagers; restart bottom. Start a new Zellij session if its native watcher does not reload a theme-file edit. The main tmux config reload refreshes existing agent segment colors and glyphs without resetting their state age. There is no coordinated live-switch guarantee.
 
 For an isolated theme experiment, run `python3 scripts/theme.py --theme nord --output-dir /tmp/my-theme`. `DOTFILES_THEME_DIR` selects alternate generated artifacts for the native fixture runner and owned Python/Neovim/fzf consumers; it does not select a theme globally across running applications. Generated files carry native formats and require no generator during normal startup.
+
+## Shared symbols in application exports
+
+The compiler emits [terminal UI data](../design-system/generated/terminal-ui.json) for standalone Studio and Publisher snapshots, alongside native shell, Lua, Rust and Polybar outputs. Sage consumers select the declared Octicon where a semantic state has one. The generated ASCII representation uses the catalog fallback. Each app owns its state transitions and labels. An approval mark, passing checks and a confirmed merge describe different events.
 
 ## Presets
 
@@ -148,4 +152,4 @@ Lumis uses its bundled Tree-sitter queries to classify tokens. Its Lua and Rust 
 
 The opt-in [Studio daily-driver integration](https://github.com/lanej/studio#readme) bundles a theme generated from the [semantic TOML adapter](../design-system/adapters/pi.toml). Run `bun run configure` from `~/src/studio` to register the package and its bundled theme; existing theme choices and startup settings are preserved. The native task picker and compact footer use the selected Pi theme while the terminal retains its background and opacity. Narrow/wide task selection, details, keyboard recovery and actual color output are exercised through Pi 1.4.0; authenticated provider behavior is separate.
 
-Eza owns its Git letter pairs and file icons. Shared glyph tokens cannot replace those markers, and its single `new` style cannot give staged-new and untracked files independent colors; the two Git columns preserve that distinction. The [integration inventory](../design-system/integrations.toml) records these native limits. Legacy `LS_COLORS` and `EZA_COLORS` are removed only for eza so they do not override the selected preset.
+Eza uses the shared README icon through its filename override and provides the remaining file icons itself. Its Git letters are native, and its single `new` style assigns the same color to staged-new and untracked files. The two Git columns distinguish them. The [integration inventory](../design-system/integrations.toml) records these native limits. Legacy `LS_COLORS` and `EZA_COLORS` are removed only for eza so they do not override the selected preset.

@@ -96,6 +96,60 @@ prompt = "@accent"
 "selection.content.number" = "@syntax.number"
 
 [presentation]
+"symbol.workspace.empty" = { type = "string", value = "○", ascii = "o" }
+"symbol.workspace.occupied" = { type = "string", value = "◉", ascii = "*" }
+"symbol.diagnostic.info" = { type = "string", value = "i", ascii = "i" }
+"symbol.diagnostic.hint" = { type = "string", value = "󰌵", ascii = "?" }
+"symbol.annotation.type" = { type = "string", value = "", ascii = "T" }
+"symbol.annotation.parameter" = { type = "string", value = "", ascii = "p" }
+"symbol.annotation.unspecified" = { type = "string", value = "", ascii = "?" }
+"symbol.annotation.nonstandard" = { type = "string", value = "", ascii = "!" }
+"symbol.completion.source.language_server" = { type = "string", value = "", ascii = "L" }
+"symbol.completion.source.snippet" = { type = "string", value = "", ascii = "s" }
+"symbol.completion.source.buffer" = { type = "string", value = "", ascii = "b" }
+"symbol.completion.source.lazy" = { type = "string", value = "󰒲", ascii = "z" }
+"symbol.git.staged_files" = { type = "string", value = "+", ascii = "+" }
+"symbol.task.open" = { type = "string", value = "○", ascii = "o" }
+"symbol.task.deferred" = { type = "string", value = "◷", ascii = "d" }
+"symbol.task.closed" = { type = "string", value = "●", ascii = "c" }
+"symbol.task.unknown" = { type = "string", value = "?", ascii = "?" }
+"symbol.agent.thinking" = { type = "string", value = "◐", ascii = "t" }
+"symbol.agent.idle" = { type = "string", value = "○", ascii = "o" }
+"symbol.agent.dormant" = { type = "string", value = "·", ascii = "." }
+"symbol.agent.new_output" = { type = "string", value = "·", ascii = "." }
+"symbol.agent.waiting" = { type = "string", value = "…", ascii = "." }
+"symbol.agent.waiting.worker" = { type = "string", value = "⇄", ascii = "w" }
+"symbol.agent.waiting.timer" = { type = "string", value = "◷", ascii = "t" }
+"symbol.agent.waiting.review" = { type = "string", value = "⟳", ascii = "r" }
+"symbol.agent.plan_review" = { type = "string", value = "▣", ascii = "p" }
+"symbol.terminal.ssh" = { type = "string", value = "", ascii = "@" }
+"symbol.search" = { type = "string", value = "⌕", ascii = "/" }
+"symbol.network.upload" = { type = "string", value = "↑", ascii = "^" }
+"symbol.network.download" = { type = "string", value = "↓", ascii = "v" }
+"symbol.audio.muted" = { type = "string", value = "", ascii = "x" }
+"symbol.audio.low" = { type = "string", value = "", ascii = "-" }
+"symbol.audio.medium" = { type = "string", value = "", ascii = "~" }
+"symbol.audio.high" = { type = "string", value = "", ascii = "+" }
+"symbol.system.brightness" = { type = "string", value = "", ascii = "*" }
+"symbol.system.cpu" = { type = "string", value = "", ascii = "C" }
+"symbol.system.memory" = { type = "string", value = "󰍛", ascii = "M" }
+"symbol.battery.full" = { type = "string", value = "", ascii = "5" }
+"symbol.battery.high" = { type = "string", value = "", ascii = "4" }
+"symbol.battery.half" = { type = "string", value = "", ascii = "3" }
+"symbol.battery.low" = { type = "string", value = "", ascii = "2" }
+"symbol.battery.empty" = { type = "string", value = "", ascii = "1" }
+"symbol.battery.charging" = { type = "string", value = "󰂄", ascii = "+" }
+"symbol.battery.discharging" = { type = "string", value = "󰂃", ascii = "-" }
+"symbol.battery.unknown" = { type = "string", value = "󰂑", ascii = "?" }
+"symbol.ui.selection" = { type = "string", value = "›", ascii = ">" }
+"symbol.ui.fullscreen" = { type = "string", value = "󰊓", ascii = "Z" }
+"symbol.ui.expand" = { type = "string", value = "▸", ascii = ">" }
+"symbol.ui.collapse" = { type = "string", value = "▾", ascii = "v" }
+"symbol.publication.checks_passed" = { type = "string", value = "✓", ascii = "+" }
+"symbol.publication.merged" = { type = "string", value = "", ascii = "M" }
+"symbol.publication.ready" = { type = "string", value = "◇", ascii = "r" }
+"symbol.sandbox.enabled" = { type = "string", value = "", ascii = "+" }
+"symbol.sandbox.disabled" = { type = "string", value = "", ascii = "-" }
 "statusline.mode.fill" = { type = "boolean", value = true }
 "emphasis.heading" = { type = "boolean", value = true, note = "Glow h6 remains subdued; other heading consumers use this emphasis." }
 "space.inline" = { type = "dimension", value = 1, unit = "cell" }

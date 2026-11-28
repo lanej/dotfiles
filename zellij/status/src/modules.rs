@@ -52,13 +52,13 @@ fn battery(
     let icon = match (reading.state, ascii) {
         (Charging, true) => "AC+",
         (_, true) => "BAT",
-        (Charging, false) => "󰂄",
+        (Charging, false) => crate::glyphs::BATTERY_CHARGING,
         _ => match n {
-            0..=10 => "",
-            11..=35 => "",
-            36..=60 => "",
-            61..=85 => "",
-            _ => "",
+            0..=10 => crate::glyphs::BATTERY_EMPTY,
+            11..=35 => crate::glyphs::BATTERY_LOW,
+            36..=60 => crate::glyphs::BATTERY_HALF,
+            61..=85 => crate::glyphs::BATTERY_HIGH,
+            _ => crate::glyphs::BATTERY_FULL,
         },
     };
     let short = format!("{icon} {n}%");
@@ -109,7 +109,7 @@ pub(crate) fn right_side(
         let ascii = mode.capabilities.arrow_fonts;
         let host = clipped(&plain(&view.host), 20);
         let host = if remote && !host.is_empty() {
-            format!("{} {host}", if ascii { "SSH" } else { "" })
+            format!("{} {host}", if ascii { "SSH" } else { crate::glyphs::SSH })
         } else {
             host
         };
@@ -202,7 +202,10 @@ mod tests {
         ] {
             mode.remote_client = location.map(str::to_owned);
             let rendered = text(right_side(&view, &mode, "", None, 100, 25, 20));
-            assert_eq!(rendered.contains(" dev"), lock);
+            assert_eq!(
+                rendered.contains(&format!("{} dev", crate::glyphs::SSH)),
+                lock
+            );
             assert!(rendered.contains("12% 0:36"));
             assert!(!rendered.contains("192.0.2.1"));
         }

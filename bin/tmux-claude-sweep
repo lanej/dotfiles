@@ -53,8 +53,8 @@ STALL_AFTER = int(os.environ.get("CLAUDE_STALL_AFTER", "3600"))
 
 # Status-bar roll-up: one glyph per class, hottest first, matching the tab colours.
 SUMMARY = (
-    ("need", state.COLORS["status.attention"], "▲"),
-    ("activity", state.COLORS["status.warning"], "●"),
+    ("need", state.COLORS["status.attention"], state.SEMANTIC["execution.blocked"]),
+    ("activity", state.COLORS["status.warning"], state.SEMANTIC["execution.running"]),
     ("quiet", state.COLORS["text.muted"], "·"),
 )
 

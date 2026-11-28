@@ -1,0 +1,138 @@
+[module/clock]
+type = internal/date
+time = %I:%M
+date = %Y-%m-%d %H:%M%
+
+[module/bspwm]
+type = internal/bspwm
+format = <label-state>
+pin-workspaces = true
+
+label-empty = {{symbol.workspace.empty}}
+label-empty-foreground = ${colors.foreground}
+label-empty-padding = 1
+label-focused = {{symbol.ui.selection}}
+label-focused-background = ${colors.background}
+label-focused-foreground = ${colors.foreground}
+label-focused-padding = 1
+label-focused-underline = ${colors.color4}
+label-occupied = {{symbol.workspace.occupied}}
+label-occupied-background = ${colors.background}
+label-occupied-foreground = ${colors.foreground}
+label-occupied-padding = 1
+
+[module/battery]
+type = internal/battery
+battery = BAT0
+adapter = AC
+full-at = 99
+
+format-charging = <animation-charging>  <label-charging>
+format-discharging = <ramp-capacity>  <label-discharging>
+format-full = {{symbol.battery.full}}   <label-full>
+label-charging = %percentage%%
+label-discharging = %percentage%%
+
+format-charging-padding = 1
+format-discharging-padding = 1
+format-full-padding = 1
+
+format-charging-foreground = ${colors.color4}
+format-discharging-foreground = FFCC66
+format-full-foreground = FFFFFF
+
+ramp-capacity-0 = {{symbol.battery.empty}}
+ramp-capacity-1 = {{symbol.battery.low}}
+ramp-capacity-2 = {{symbol.battery.half}}
+ramp-capacity-3 = {{symbol.battery.high}}
+ramp-capacity-4 = {{symbol.battery.full}}
+
+animation-charging-0 = {{symbol.battery.empty}}
+animation-charging-1 = {{symbol.battery.low}}
+animation-charging-2 = {{symbol.battery.half}}
+animation-charging-3 = {{symbol.battery.high}}
+animation-charging-4 = {{symbol.battery.full}}
+
+label-full = %percentage%%
+
+[module/alsa]
+type = internal/alsa
+
+format-volume = <ramp-volume> <label-volume>
+label-muted = {{symbol.audio.muted}}
+format-volume-padding = 1
+format-muted-padding = 1
+format-volume-background = ${colors.color4}
+format-muted-background = ${colors.color4}
+label-background = ${colors.color4}
+
+ramp-volume-0 = {{symbol.audio.low}}
+ramp-volume-1 = {{symbol.audio.medium}}
+ramp-volume-2 = {{symbol.audio.high}}
+
+[module/pulseaudio]
+type = internal/pulseaudio
+
+format-volume = <ramp-volume> <label-volume>
+label-muted = {{symbol.audio.muted}}
+format-volume-padding = 1
+format-muted-padding = 2
+format-volume-foreground = ${colors.color4}
+format-muted-foreground = ${colors.color4}
+label-foreground = ${colors.color4}
+
+ramp-volume-0 = {{symbol.audio.low}}
+ramp-volume-1 = {{symbol.audio.medium}}
+ramp-volume-2 = {{symbol.audio.high}}
+
+[module/backlight]
+type = internal/backlight
+
+card = intel_backlight
+enable-scroll = true
+format = {{symbol.system.brightness}} <label>
+format-padding = 1
+format-foreground = ${colors.color5}
+label = %percentage:2:2%%
+
+[module/cpu]
+type = internal/cpu
+
+format = {{symbol.system.cpu}} <label>
+format-padding = 1
+label = %percentage:2:3%%
+format-foreground = ${colors.color1}
+
+[module/memory]
+type = internal/memory
+interval = 3
+
+format = {{symbol.system.memory}} <label>
+label = %percentage_used%%
+format-padding = 1
+format-foreground = ${colors.color2}
+
+[module/wifi]
+type = internal/network
+interface = wlp60s0
+interval = 30
+ping-interval = 30
+
+format-connected = <label-connected>
+format-packetloss = <animation-packetloss> <label-connected>
+
+label-connected = %{F#b0c289}{{symbol.network.download}}%downspeed:3:3%%{F-} %{F#FFFDD0}{{symbol.network.upload}}%upspeed:3:3%%{F-} %{F#0099E6}{{state.connectivity.connected}} %signal:2:2%%%{F-}
+label-disconnected = {{state.connectivity.disconnected}}
+label-disconnected-foreground = ${colors.color3}
+
+ramp-signal-0 = 1
+ramp-signal-1 = 2
+ramp-signal-2 = 3
+ramp-signal-3 = 4
+ramp-signal-4 = 5
+
+animation-packetloss-0 = {{state.connectivity.disconnected}}
+animation-packetloss-0-foreground = ${colors.color3}
+animation-packetloss-1 = {{state.connectivity.disconnected}}
+animation-packetloss-1-foreground = ${colors.color11}
+animation-packetloss-framerate = 500

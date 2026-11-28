@@ -134,6 +134,11 @@ if command -v fzf >/dev/null 2>&1 && command -v fd >/dev/null 2>&1 && \
 		fi
 	}
 	
+	theme_symbols_file="${DOTFILES_THEME_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/theme}/shell-symbols.sh"
+	[[ ! -r $theme_symbols_file ]] || source "$theme_symbols_file"
+	: ${DOTFILES_DIRECTORY_SYMBOL:=d} ${DOTFILES_SEARCH_SYMBOL:=/}
+	unset theme_symbols_file
+
 	# Override fzf-cd-widget (Alt-C / Ctrl+U) with toggle for hidden dirs
 	# Default: no hidden dirs, respects .gitignore/.ignore
 	# Press Ctrl+U inside fzf to toggle hidden/ignored dirs on/off
@@ -152,10 +157,10 @@ if command -v fzf >/dev/null 2>&1 && command -v fd >/dev/null 2>&1 && \
 			FZF_DEFAULT_OPTS=$(__fzf_defaults "--reverse --scheme=path +m" "${FZF_ALT_C_OPTS-}") \
 			FZF_DEFAULT_OPTS_FILE='' \
 			fzf \
-				--prompt='📁 > ' \
+				--prompt="$DOTFILES_DIRECTORY_SYMBOL > " \
 				--preview '"$HOME/.files/bin/fzf-path-preview" {}' \
 				--preview-window="$preview_window" \
-				--bind="ctrl-u:transform:[[ \$FZF_PROMPT =~ hidden ]] && echo \"reload($cmd_normal)+change-prompt(📁 > )\" || echo \"reload($cmd_hidden)+change-prompt(📁 [hidden] > )\"" \
+				--bind="ctrl-u:transform:[[ \$FZF_PROMPT =~ hidden ]] && echo \"reload($cmd_normal)+change-prompt($DOTFILES_DIRECTORY_SYMBOL > )\" || echo \"reload($cmd_hidden)+change-prompt($DOTFILES_DIRECTORY_SYMBOL [hidden] > )\"" \
 				--bind="ctrl-b:replace-query" \
 			< /dev/tty
 		)
@@ -235,8 +240,8 @@ if command -v fzf >/dev/null 2>&1 && command -v fd >/dev/null 2>&1 && \
 			cmd_normal='python3 "$HOME/.files/scripts/file-history.py" files'
 			cmd_hidden="$cmd_normal --hidden --no-ignore"
 		fi
-		local normal_action="reload($cmd_normal)+change-prompt(🔍 > )"
-		local hidden_action="reload($cmd_hidden)+change-prompt(🔍 [hidden] > )"
+		local normal_action="reload($cmd_normal)+change-prompt($DOTFILES_SEARCH_SYMBOL > )"
+		local hidden_action="reload($cmd_hidden)+change-prompt($DOTFILES_SEARCH_SYMBOL [hidden] > )"
 		local toggle_binding="ctrl-o:transform:[[ \$FZF_PROMPT =~ hidden ]] && printf '%s' ${(q)normal_action} || printf '%s' ${(q)hidden_action}"
 		
 		# Dynamic preview window positioning
@@ -256,7 +261,7 @@ if command -v fzf >/dev/null 2>&1 && command -v fd >/dev/null 2>&1 && \
 				--smart-case
 				--tiebreak=index
 				-m
-				--prompt='🔍 > '
+				--prompt="$DOTFILES_SEARCH_SYMBOL > "
 				--preview-window='$preview_window'
 				--bind=${(qqq)toggle_binding}
 			" \
@@ -379,8 +384,8 @@ if command -v fzf >/dev/null 2>&1 && command -v fd >/dev/null 2>&1 && \
 	# upstream) implies --tiebreak=pathname,length; reorder to favor the
 	# shortest match first.
 	export FZF_COMPLETION_OPTS="--tiebreak=length,pathname --preview='\"\$HOME/.files/bin/fzf-path-preview\" {}' --preview-window=$(__fzf_dynamic_preview_window)"
-	export FZF_COMPLETION_DIR_OPTS="$(__fzf_ctrl_g_opts '📁' '--type d')"
-	export FZF_COMPLETION_PATH_OPTS="$(__fzf_ctrl_g_opts '🔍' '')"
+	export FZF_COMPLETION_DIR_OPTS="$(__fzf_ctrl_g_opts "$DOTFILES_DIRECTORY_SYMBOL" '--type d')"
+	export FZF_COMPLETION_PATH_OPTS="$(__fzf_ctrl_g_opts "$DOTFILES_SEARCH_SYMBOL" '')"
 
 	# Empty trigger = show the recursive picker immediately on Ctrl+G, no
 	# need to type `**` first. Global setting for the fzf-completion widget —

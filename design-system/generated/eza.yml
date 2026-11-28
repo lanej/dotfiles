@@ -234,5 +234,17 @@
   },
   "broken_path_overlay": {
     "foreground": "#F18C96"
+  },
+  "filenames": {
+    "README": {
+      "icon": {
+        "glyph": ""
+      }
+    },
+    "README.md": {
+      "icon": {
+        "glyph": ""
+      }
+    }
   }
 }

@@ -46,6 +46,21 @@ output.write_bytes(b"fixture wasm\\0" + os.environ["ZELLIJ_ACTIVATION_IMAGE_ID"]
         assert selected.exists(), "The shared plugin build alias died with a disposable HOME"
         assert selected.read_bytes() == expected, "The shared plugin build changed its bytes"
         assert installed[0].read_bytes() == expected, "A later install changed the earlier image"
+        repo = source.parent.parent
+        other_source = work / "zellij/status"
+        shutil.copytree(source, other_source, ignore=shutil.ignore_patterns("target"))
+        shutil.copytree(source.parent / "protocol", other_source.parent / "protocol")
+        generated = work / "design-system/generated"
+        generated.mkdir(parents=True)
+        for name in ("zellij-symbols.rs", "zellij-states.rs"):
+            shutil.copyfile(repo / "design-system/generated" / name, generated / name)
+        states = generated / "zellij-states.rs"
+        states.write_text(states.read_text().replace('pub const RUNNING: &str = "', 'pub const RUNNING: &str = "R'))
+        subprocess.run([sys.executable, str(artifacts), "plugin", "lane-status",
+                        str(other_source), str(target), str(selected)],
+                       env={**env, "HOME": str(homes[0])}, cwd=work, check=True, timeout=30)
+        assert selected.read_bytes() != expected, "A change to status glyphs must change the activation identity"
+        assert installed[0].read_bytes() == expected, "Selecting new glyphs changed the previous image"
     print("PASS shared Zellij plugin build survives disposable HOME cleanup")
 
 

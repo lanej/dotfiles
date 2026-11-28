@@ -876,13 +876,14 @@ require("lazy").setup({
 								},
 								source = {
 									text = function(ctx)
+										local tokens = require("dotfiles-theme").tokens()
 										local map = {
-											["lazydev"] = "[💤]",
-											["lsp"] = "[]",
-											["path"] = "[󰉋]",
-											["snippets"] = "[]",
-											["ripgrep"] = "[]",
-											["buffer"] = "[]",
+											["lazydev"] = "[" .. tokens["symbol.completion.source.lazy"] .. "]",
+											["lsp"] = "[" .. tokens["symbol.completion.source.language_server"] .. "]",
+											["path"] = "[" .. tokens["symbol.file.directory"] .. "]",
+											["snippets"] = "[" .. tokens["symbol.completion.source.snippet"] .. "]",
+											["ripgrep"] = "[" .. tokens["symbol.search"] .. "]",
+											["buffer"] = "[" .. tokens["symbol.completion.source.buffer"] .. "]",
 											["emoji"] = "[]",
 										}
 
@@ -1828,24 +1829,27 @@ require("lazy").setup({
 	{
 		"chrisgrieser/nvim-lsp-endhints",
 		event = "LspAttach",
-		opts = {
-			icons = {
-				type = " ",
-				parameter = " ",
-				offspec = " ", -- hint kind not defined in official LSP spec
-				unknown = " ", -- hint kind is nil
-			},
-			label = {
-				truncateAtChars = 20,
-				padding = 1,
-				marginLeft = 0,
-				sameKindSeparator = ", ",
-			},
-			extmark = {
-				priority = 50,
-			},
-			autoEnableHints = true,
-		},
+		opts = function()
+			local tokens = require("dotfiles-theme").tokens()
+			return {
+				icons = {
+					type = tokens["symbol.annotation.type"] .. " ",
+					parameter = tokens["symbol.annotation.parameter"] .. " ",
+					offspec = tokens["symbol.annotation.nonstandard"] .. " ", -- hint kind not defined in official LSP spec
+					unknown = tokens["symbol.annotation.unspecified"] .. " ", -- hint kind is nil
+				},
+				label = {
+					truncateAtChars = 20,
+					padding = 1,
+					marginLeft = 0,
+					sameKindSeparator = ", ",
+				},
+				extmark = {
+					priority = 50,
+				},
+				autoEnableHints = true,
+			}
+		end,
 	},
 	{
 		"nvim-treesitter/nvim-treesitter-context",
