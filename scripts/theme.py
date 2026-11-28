@@ -466,8 +466,10 @@ def compile_theme(source, theme_name, symbols="unicode"):
                 raise ValueError(f"{name}: Git file component requires symbol, normal/dim foregrounds, bold and dim")
             expand(declarations[name], value, tokens, "starship")
 
-    def starship_symbol(match):
+    def starship_placeholder(match):
         name = match[1]
+        if name.startswith("color."):
+            return c[name.removeprefix("color.")]
         if name.startswith("git.file."):
             component = name.removesuffix(".style").removesuffix(".diverged").removesuffix(".symbol")
             style = git_states[component]
@@ -480,10 +482,11 @@ def compile_theme(source, theme_name, symbols="unicode"):
             symbol = tokens.get(name, "starship", "string")
         escaped = re.sub(r"([\\$\[\]()])", r"\\\1", symbol)
         if name.startswith("git.file.") and not name.endswith(".symbol"):
-            escaped = "[" + escaped + "${" + count + "}](" + native_style + ") "
+            prefix = escaped + " " if escaped else ""
+            escaped = "[" + prefix + "${" + count + "}](" + native_style + ") "
         return json.dumps(escaped, ensure_ascii=False)[1:-1]
 
-    starship = re.sub(r"\{\{([a-z.]+)\}\}", starship_symbol, starship)
+    starship = re.sub(r"\{\{([a-z.]+)\}\}", starship_placeholder, starship)
     if "{{" in starship:
         raise ValueError("unresolved Starship template placeholder")
     tomllib.loads(starship)

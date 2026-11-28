@@ -2,14 +2,17 @@
 
 # Don't print a new line at the start of the prompt
 add_newline = false
-continuation_prompt = '▶▶ '
+continuation_prompt = '[▶▶]({{color.text.muted}}) '
 right_format = "$status"
 command_timeout = 2000
 
 [character]
-success_symbol = "[\\$](bold white)"
-error_symbol = "[\\$](bold red)"
-vimcmd_symbol = "[](bold yellow)"
+success_symbol = "[\\$](bold {{color.text.strong}})"
+error_symbol = "[\\$](bold {{color.status.error}})"
+vimcmd_symbol = "[](bold {{color.focus}})"
+
+[cmd_duration]
+style = "{{color.text.muted}}"
 
 [git_status]
 format = '($all_status$ahead_behind)'
@@ -38,11 +41,11 @@ empty_symbol = "{{symbol.battery.empty}} "
 
 [[battery.display]]
 threshold = 10
-style = 'bold red'
+style = 'bold {{color.status.error}}'
 
 [[battery.display]]
 threshold = 30
-style = 'bold yellow'
+style = 'bold {{color.status.warning}}'
 
 [git_branch]
 style = "{{git.file.branch.style}}"
@@ -51,16 +54,20 @@ format = "[$symbol$branch(:$remote_branch)]($style) "
 
 [status]
 symbol = "{{symbol.diagnostic.error}} "
+style = "bold {{color.status.error}}"
 disabled = false
 
 [username]
 disabled = false
 format = "[$user]($style)@"
+style_user = "{{color.text.muted}}"
+style_root = "bold {{color.status.error}}"
 
 [hostname]
 disabled = false
 ssh_symbol = "{{symbol.terminal.ssh}} "
-format = "[$ssh_symbol$hostname](bold green) "
+format = "[$ssh_symbol$hostname]($style) "
+style = "bold {{color.status.info}}"
 
 [aws]
 symbol = " "
@@ -72,26 +79,32 @@ symbol = " "
 [buf]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [bun]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [c]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [cpp]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [cmake]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [cobol]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [conda]
 symbol = " "
@@ -102,22 +115,28 @@ symbol = " "
 [crystal]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [daml]
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [dart]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [deno]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [direnv]
 symbol = " "
 
 [directory]
+style = "bold {{color.accent}}"
+read_only_style = "{{color.status.warning}}"
 read_only = " 󰌾"
 truncate_to_repo = true
 fish_style_pwd_dir_length = 1
@@ -130,26 +149,32 @@ symbol = " "
 [dotnet]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [elixir]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [elm]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [erlang]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [fennel]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [fortran]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [fossil_branch]
 symbol = "{{symbol.git.file.branch}} "
@@ -157,17 +182,24 @@ symbol = "{{symbol.git.file.branch}} "
 [gleam]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [git_commit]
 tag_symbol = '  '
+style = "{{color.text.muted}}"
+
+[git_state]
+style = "bold {{color.status.warning}}"
 
 [golang]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [gradle]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [guix_shell]
 symbol = " "
@@ -175,10 +207,12 @@ symbol = " "
 [haskell]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [haxe]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [helm]
 symbol = " "
@@ -189,14 +223,17 @@ symbol = "{{symbol.git.file.branch}} "
 [java]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [julia]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [kotlin]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [kubernetes]
 symbol = "󱃾 "
@@ -204,10 +241,12 @@ symbol = "󱃾 "
 [lua]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [maven]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [memory_usage]
 symbol = "󰍛 "
@@ -218,6 +257,7 @@ symbol = "󰔷 "
 [mojo]
 symbol = "󰈸 "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [nats]
 symbol = " "
@@ -228,6 +268,7 @@ symbol = "󰛳 "
 [nim]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [nix_shell]
 symbol = " "
@@ -235,18 +276,22 @@ symbol = " "
 [nodejs]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [ocaml]
 symbol = " "
 format = '[$symbol(\($switch_indicator$switch_name\) )]($style)'
+style = "{{color.accent.secondary}}"
 
 [odin]
 symbol = "󰟢 "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [opa]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [openstack]
 symbol = " "
@@ -313,14 +358,17 @@ Zorin = " "
 
 [package]
 symbol = "󰏗 "
+style = "{{color.accent.secondary}}"
 
 [perl]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [php]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [pijul_channel]
 symbol = "{{symbol.git.file.branch}} "
@@ -328,6 +376,7 @@ symbol = "{{symbol.git.file.branch}} "
 [pixi]
 symbol = "󰏗 "
 format = '[$symbol(\($environment\) )]($style)'
+style = "{{color.accent.secondary}}"
 
 [pulumi]
 symbol = " "
@@ -335,37 +384,46 @@ symbol = " "
 [purescript]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [python]
 symbol = " "
 format = '[$symbol(\($virtualenv\) )]($style)'
+style = "{{color.accent.secondary}}"
 
 [quarto]
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [raku]
 symbol = "󱖊 "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [red]
 symbol = "󱍼 "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [rlang]
 symbol = "󰟔 "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [ruby]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [rust]
 symbol = "󱘗 "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [scala]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [shlvl]
 symbol = "󰹍 "
@@ -376,6 +434,7 @@ symbol = " "
 [solidity]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [spack]
 symbol = " "
@@ -386,6 +445,7 @@ symbol = " "
 [swift]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [terraform]
 symbol = " "
@@ -393,10 +453,12 @@ symbol = " "
 [vlang]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [typst]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [vagrant]
 symbol = " "
@@ -404,10 +466,12 @@ symbol = " "
 [xmake]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [zig]
 symbol = " "
 format = "[$symbol]($style)"
+style = "{{color.accent.secondary}}"
 
 [gcloud]
 symbol = "󱇶 "
