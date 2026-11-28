@@ -104,11 +104,11 @@ sources = ["sh/profile", "design-system/adapters/starship.toml.in", "bin/dotfile
 
 [[items]]
 id = "starship"
-owner = "Shared Git-state components; existing native prompt layout"
-mechanism = "generated complete native TOML with literal symbol escaping"
+owner = "Semantic color roles and shared Git-state components; native prompt layout"
+mechanism = "generated native TOML with resolved foregrounds and literal symbol escaping"
 reload = "The next prompt reads the generated configuration; no shell initialization change is required."
 coverage = "Native Git fixtures exercise file states, stash, conflicts, counts, branch and tracking status. Git components generate semantic foregrounds and bold/dim flags; shared defaults use ANSI slots to preserve the original colors. Independent overrides of glyph, color and emphasis are exercised. Battery, SSH and exit status marks are generated. Language and product logos are module-specific."
-sources = ["design-system/adapters/starship.toml.in", "design-system/tokens.toml", "design-system/components.toml"]
+sources = ["design-system/adapters/starship.toml.in", "design-system/themes/sage.toml", "design-system/themes/nord.toml", "design-system/tokens.toml", "design-system/components.toml"]
 
 [[items]]
 id = "pi"

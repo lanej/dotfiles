@@ -2,28 +2,31 @@
 
 # Don't print a new line at the start of the prompt
 add_newline = false
-continuation_prompt = '▶▶ '
+continuation_prompt = '[▶▶](#A3B1A7) '
 right_format = "$status"
 command_timeout = 2000
 
 [character]
-success_symbol = "[\\$](bold white)"
-error_symbol = "[\\$](bold red)"
-vimcmd_symbol = "[](bold yellow)"
+success_symbol = "[\\$](bold #EEF1EE)"
+error_symbol = "[\\$](bold #F18C96)"
+vimcmd_symbol = "[](bold #C4B2D9)"
+
+[cmd_duration]
+style = "#A3B1A7"
 
 [git_status]
 format = '($all_status$ahead_behind)'
-conflicted = "[${count}](#F18C96 bold) "
-stashed = "[${count}](#9AA29E) "
-deleted = "[${count}](#F18C96) "
-renamed = "[${count}](#8CC5CC) "
-modified = "[${count}](#E8C88B) "
+conflicted = "[ ${count}](#F18C96 bold) "
+stashed = "[ ${count}](#9AA29E) "
+deleted = "[ ${count}](#F18C96) "
+renamed = "[ ${count}](#8CC5CC) "
+modified = "[ ${count}](#E8C88B) "
 staged = "[${count}](#A6CD82) "
-untracked = "[${count}](#95B5D3) "
-typechanged = "[${count}](#C4B2D9) "
-ahead = "[${count}](#A6CD82) "
-diverged = "[${ahead_count}](#A6CD82) [${behind_count}](#E8C88B) "
-behind = "[${count}](#E8C88B) "
+untracked = "[ ${count}](#95B5D3) "
+typechanged = "[ ${count}](#C4B2D9) "
+ahead = "[ ${count}](#A6CD82) "
+diverged = "[ ${ahead_count}](#A6CD82) [ ${behind_count}](#E8C88B) "
+behind = "[ ${count}](#E8C88B) "
 
 [git_metrics]
 disabled = true
@@ -38,11 +41,11 @@ empty_symbol = " "
 
 [[battery.display]]
 threshold = 10
-style = 'bold red'
+style = 'bold #F18C96'
 
 [[battery.display]]
 threshold = 30
-style = 'bold yellow'
+style = 'bold #E8C88B'
 
 [git_branch]
 style = "#95B5D3"
@@ -51,16 +54,20 @@ format = "[$symbol$branch(:$remote_branch)]($style) "
 
 [status]
 symbol = " "
+style = "bold #F18C96"
 disabled = false
 
 [username]
 disabled = false
 format = "[$user]($style)@"
+style_user = "#A3B1A7"
+style_root = "bold #F18C96"
 
 [hostname]
 disabled = false
 ssh_symbol = " "
-format = "[$ssh_symbol$hostname](bold green) "
+format = "[$ssh_symbol$hostname]($style) "
+style = "bold #8CC5CC"
 
 [aws]
 symbol = " "
@@ -72,26 +79,32 @@ symbol = " "
 [buf]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [bun]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [c]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [cpp]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [cmake]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [cobol]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [conda]
 symbol = " "
@@ -102,22 +115,28 @@ symbol = " "
 [crystal]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [daml]
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [dart]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [deno]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [direnv]
 symbol = " "
 
 [directory]
+style = "bold #ACC8B7"
+read_only_style = "#E8C88B"
 read_only = " 󰌾"
 truncate_to_repo = true
 fish_style_pwd_dir_length = 1
@@ -130,26 +149,32 @@ symbol = " "
 [dotnet]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [elixir]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [elm]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [erlang]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [fennel]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [fortran]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [fossil_branch]
 symbol = " "
@@ -157,17 +182,24 @@ symbol = " "
 [gleam]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [git_commit]
 tag_symbol = '  '
+style = "#A3B1A7"
+
+[git_state]
+style = "bold #E8C88B"
 
 [golang]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [gradle]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [guix_shell]
 symbol = " "
@@ -175,10 +207,12 @@ symbol = " "
 [haskell]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [haxe]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [helm]
 symbol = " "
@@ -189,14 +223,17 @@ symbol = " "
 [java]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [julia]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [kotlin]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [kubernetes]
 symbol = "󱃾 "
@@ -204,10 +241,12 @@ symbol = "󱃾 "
 [lua]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [maven]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [memory_usage]
 symbol = "󰍛 "
@@ -218,6 +257,7 @@ symbol = "󰔷 "
 [mojo]
 symbol = "󰈸 "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [nats]
 symbol = " "
@@ -228,6 +268,7 @@ symbol = "󰛳 "
 [nim]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [nix_shell]
 symbol = " "
@@ -235,18 +276,22 @@ symbol = " "
 [nodejs]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [ocaml]
 symbol = " "
 format = '[$symbol(\($switch_indicator$switch_name\) )]($style)'
+style = "#8FB9A8"
 
 [odin]
 symbol = "󰟢 "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [opa]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [openstack]
 symbol = " "
@@ -313,14 +358,17 @@ Zorin = " "
 
 [package]
 symbol = "󰏗 "
+style = "#8FB9A8"
 
 [perl]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [php]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [pijul_channel]
 symbol = " "
@@ -328,6 +376,7 @@ symbol = " "
 [pixi]
 symbol = "󰏗 "
 format = '[$symbol(\($environment\) )]($style)'
+style = "#8FB9A8"
 
 [pulumi]
 symbol = " "
@@ -335,37 +384,46 @@ symbol = " "
 [purescript]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [python]
 symbol = " "
 format = '[$symbol(\($virtualenv\) )]($style)'
+style = "#8FB9A8"
 
 [quarto]
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [raku]
 symbol = "󱖊 "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [red]
 symbol = "󱍼 "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [rlang]
 symbol = "󰟔 "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [ruby]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [rust]
 symbol = "󱘗 "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [scala]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [shlvl]
 symbol = "󰹍 "
@@ -376,6 +434,7 @@ symbol = " "
 [solidity]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [spack]
 symbol = " "
@@ -386,6 +445,7 @@ symbol = " "
 [swift]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [terraform]
 symbol = " "
@@ -393,10 +453,12 @@ symbol = " "
 [vlang]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [typst]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [vagrant]
 symbol = " "
@@ -404,10 +466,12 @@ symbol = " "
 [xmake]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [zig]
 symbol = " "
 format = "[$symbol]($style)"
+style = "#8FB9A8"
 
 [gcloud]
 symbol = "󱇶 "
