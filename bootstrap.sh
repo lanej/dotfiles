@@ -248,13 +248,18 @@ install_package() {
 	local package=$1
 	local version=$2
 	local fallback=${3:--} fallback_package=${4:--} tried_direct=0
+	local minimum=${5:-$version} installed
 	if [ "$fallback" != - ] || declare -F "install_${package}_from_release" >/dev/null \
 		|| declare -F "install_${package}_from_source" >/dev/null; then
 		if install_explicitly "$package" "$version" "$fallback" "$fallback_package"; then
-			return 0
+			hash -r
+			installed=$(installed_semver "$package") || installed=""
+			if [ -n "$installed" ] && semver_ge "$installed" "$minimum"; then
+				return 0
+			fi
 		fi
 		tried_direct=1
-		printf 'Direct install failed for %s. Checking system packages.\n' "$package" >&2
+		printf 'Direct install did not provide %s >= %s. Checking system packages.\n' "$package" "$minimum" >&2
 	fi
 	local package_version
 	package_version=$(package_semver "$package") || package_version=""
@@ -264,7 +269,6 @@ install_package() {
 	elif semver_ge "$package_version" "$version"; then
 		echo "$package $package_version is available in package manager"
 		if install_from_package_manager "$package" "$version"; then
-			local installed
 			installed=$(installed_semver "$package") || installed=""
 			if [ -n "$installed" ] && semver_ge "$installed" "$version"; then
 				return 0
@@ -577,7 +581,7 @@ install_package_version() {
 	fi
 
 	# install package to preferred version
-	install_package "$package" "$preferred_version" "${4:--}" "${5:--}" || return 1
+	install_package "$package" "$preferred_version" "${4:--}" "${5:--}" "$min_version" || return 1
 	hash -r
 	current_version=$(installed_semver "$package") || current_version=""
 	if [ -z "$current_version" ] || ! semver_ge "$current_version" "$min_version"; then

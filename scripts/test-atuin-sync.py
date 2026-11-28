@@ -216,6 +216,7 @@ setup_atuin_sync
                 with contextlib.redirect_stderr(notes):
                     bootstrap()
                 self.assertIn("Using sudo to enable systemd linger for vagrant.", notes.getvalue())
+                self.assertIn("Used sudo to enable systemd linger on dev2.", notes.getvalue())
                 account_path = homes[0] / ".local/share/atuin" / helper.ACCOUNT_FILE
                 account = json.loads(account_path.read_text())
                 account_path.unlink()

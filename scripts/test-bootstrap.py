@@ -988,8 +988,8 @@ elif name == "rustup" and args[:3] == ["run", "1.95.0", "cargo"]:
 elif name == "cargo" and args[:1] == ["install"]:
     crate = args[1]
     if crate == "eza":
-        record("eza direct install failed")
-        sys.exit("Fixture: eza is unavailable from Cargo")
+        record("eza direct install left no executable")
+        sys.exit(0)
     executable, version = {"mergiraf": ("mergiraf", "0.20.0"), "fd-find": ("fd", "10.2.0")}[crate]
     assert args == ["install", crate, "-q", "--locked", "--version", version], args
     (home / ".cargo/bin" / executable).symlink_to(fixture / "driver")
@@ -1156,7 +1156,7 @@ else:
         )
         assert "neovim setup" in events
         assert "neovim build" in events
-        assert events.index("eza direct install failed") < events.index("eza package"), events
+        assert events.index("eza direct install left no executable") < events.index("eza package"), events
         assert "treehouse build" in events
         assert "directory-picker build" in events
         treehouse_command = ["/bin/bash", str(checkout / "scripts/install-treehouse")]
