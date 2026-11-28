@@ -125,7 +125,10 @@ def main():
         assert baseline["sets"] == ["base", platform_set, "shell", "terminal"]
         assert {tool["name"] for tool in baseline["baseline"]["tools"]} == native_tools
         assert "mergiraf" in {tool["name"] for tool in baseline["tools"]}
-        assert {"git", "zsh", "fzf", "tmux", "zellij", "kitty", "wezterm"} <= {tool["name"] for tool in baseline["tools"]}
+        assert {"git", "zsh", "fzf", "tmux", "zellij", "kitty"} <= {tool["name"] for tool in baseline["tools"]}
+        assert baseline["settings"]["tools.wezterm"] is False
+        assert "wezterm" not in baseline["setup"]
+        assert "wezterm" not in {tool["name"] for tool in baseline["tools"]}
         assert "treehouse" not in {tool["name"] for tool in baseline["tools"]}
         assert "git-worktree-hooks" in {tool["name"] for tool in baseline["tools"]}
         assert baseline["settings"]["codex.github_enabled"] is False
@@ -135,6 +138,12 @@ def main():
         assert "studio" not in {tool["name"] for tool in baseline["tools"]}
         assert "source-code" not in {tool["name"] for tool in baseline["tools"]}
         config = home / ".config/dotfiles/config.toml"
+        config.parent.mkdir(parents=True, exist_ok=True)
+        config.write_text('[tools]\nwezterm = true\n')
+        for host in ("macos", "linux"):
+            wezterm = json.loads(run(*command, "--platform", host, "--format", "json").stdout)
+            assert wezterm["settings"]["tools.wezterm"] is True
+            assert "wezterm" in wezterm["setup"]
         sets = config.parent / "sets"
         sets.mkdir(parents=True)
         (sets / "inline-review.toml").write_text('[features]\nnvim_ghlite = true\n')
