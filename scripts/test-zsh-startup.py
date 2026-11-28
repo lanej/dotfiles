@@ -59,10 +59,10 @@ def test_transient_prompt(temporary, env, executables):
             "DOTFILES_ZSH_PROMPT": "transient", "DOTFILES_THEME_DIR": str(ROOT / "design-system/generated"),
         })
 
-    def next_prompt():
+    def read_until(marker=b"\x1b[?2004h"):
         output = b""
         deadline = time.monotonic() + 5
-        while b"\x1b[?2004h" not in output:
+        while marker not in output:
             remaining = deadline - time.monotonic()
             assert remaining > 0 and select.select([terminal], [], [], remaining)[0], output
             chunk = os.read(terminal, 65536)
@@ -76,7 +76,7 @@ def test_transient_prompt(temporary, env, executables):
     escape = re.compile(rb"\x1b(?:\[[0-?]*[ -/]*[@-~]|\([A-Za-z0-9])")
     try:
         fcntl.ioctl(terminal, termios.TIOCSWINSZ, struct.pack("HHHH", 18, 84, 0, 0))
-        initial = next_prompt()
+        initial = read_until()
         expected = "~/proj/field-notes   main 1 1  1+ 2 1 ".encode()
         assert expected in escape.sub(b"", initial), initial
         assert b"\x1b[48;" not in initial.split(b"~/proj/field-notes", 1)[0], initial
@@ -88,7 +88,7 @@ def test_transient_prompt(temporary, env, executables):
         ), initial
         assert not has_error_color(initial), initial
         os.write(terminal, b"false\r")
-        after_failure = next_prompt()
+        after_failure = read_until()
         assert after_failure.count(b"~/proj/field-notes") == 1, after_failure
         plain = escape.sub(b"", after_failure)
         assert b"$ false" in plain, after_failure
@@ -96,10 +96,20 @@ def test_transient_prompt(temporary, env, executables):
         assert has_error_color(after_failure.rsplit(b"~/proj/field-notes", 1)[-1]), after_failure
         shortpath.unlink()
         os.write(terminal, b"true\r")
-        after_success = next_prompt()
+        after_success = read_until()
         assert b"~/projects/field-notes" in after_success, after_success
         live_prompt = after_success.rsplit(b"~/projects/field-notes", 1)[-1]
         assert b"main" in live_prompt and not has_error_color(live_prompt), after_success
+        os.write(terminal, b"print aborted-fixture")
+        read_until(b"print aborted-fixture")
+        os.write(terminal, b"\x03")
+        read_until()
+        os.write(terminal, b'print -r -- "$ZLE_LINE_ABORTED"\r')
+        after_abort = read_until()
+        plain = escape.sub(b"", after_abort)
+        assert b'$ print -r -- "$ZLE_LINE_ABORTED"' in plain, after_abort
+        assert b"print aborted-fixture" in plain, after_abort
+        assert plain.count(b"~/projects/field-notes") == 1, after_abort
     finally:
         os.close(terminal)
         try:

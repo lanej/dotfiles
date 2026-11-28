@@ -119,7 +119,7 @@ _dotfiles_prompt_keymap() {
 }
 
 _dotfiles_prompt_finish() {
-	[[ $CONTEXT == start && -n ${BUFFER//[[:space:]]/} && -z ${ZLE_LINE_ABORTED-} ]] || return 0
+	[[ $CONTEXT == start && -n ${BUFFER//[[:space:]]/} ]] || return 0
 	PROMPT='${_dotfiles_prompt_color}%B$%b%f '
 	zle reset-prompt
 }
