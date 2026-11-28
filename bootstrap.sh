@@ -514,8 +514,8 @@ install_go_from_release() (
 )
 
 install_glow_from_source() {
-	install_package_version go 1.22
-	go install github.com/charmbracelet/glow/v2@v"$1"
+	install_package_version go 1.26.5 || return 1
+	GOBIN="$HOME/.local/bin" go install "charm.land/glow/v3@v$1"
 }
 
 installed_semver() {

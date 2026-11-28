@@ -949,17 +949,17 @@ elif name == "go":
     elif args == ["env", "GOPATH"]:
         print(os.environ["GOPATH"])
     elif args[:1] == ["install"]:
-        assert "charmbracelet/glow" in args[1], args
-        destination = Path(os.environ["GOPATH"]) / "bin"
-        destination.mkdir(parents=True)
-        (destination / "glow").symlink_to(fixture / "driver")
+        assert args == ["install", "charm.land/glow/v3@v3.0.0"], args
+        assert Path(os.environ["GOBIN"]) == home / ".local/bin"
+        (home / ".local/bin/glow").symlink_to(fixture / "driver")
+        record("glow source install")
     elif args[:2] == ["version", "-m"]:
-        assert args[2].endswith("/glow"), args
-        print("\tmod\tgithub.com/charmbracelet/glow/v2\tv2.0.0\tfixture")
+        assert Path(args[2]) == home / ".local/bin/glow", args
+        print("\tmod\tcharm.land/glow/v3\tv3.0.0\tfixture")
     else:
-        print("go version go1.26.2 linux/amd64")
+        print("go version go1.26.5 linux/amd64")
 elif name == "glow":
-    print("glow version master")
+    print("glow version 2.0.0" if Path(sys.argv[0]).parent == fixture else "glow version master")
 elif name == "treehouse":
     print("dev")
 elif name == "gh" and args == ["auth", "status"]:
@@ -976,7 +976,7 @@ else:
         (suggestions / "zsh-autosuggestions.zsh").write_text("# version 99.0.0\n")
         for tool in (
             "uname", "git", "sudo", "apt-get", "apt-cache", "dnf", "curl", "uv", "node", "npm", "bun",
-            "make", "cmake", "cc", "cargo", "rustc", "rust-analyzer", "go",
+            "make", "cmake", "cc", "cargo", "rustc", "rust-analyzer", "go", "glow",
             "fzf", "starship", "atuin", "sk", "delta", "bat", "lumis", "fd",
             "zsh-autosuggestions", "cargo-sweep", "cargo-cache",
             "gh", "git-crypt", "jq", "rg", "stylua", "nvim", "shfmt",
@@ -1069,6 +1069,8 @@ else:
         assert (home / ".local/bin/pi").readlink() == home / ".local/share/pi-standalone/1.4.0/pi/pi"
         assert "mergiraf" in events
         assert (home / ".cargo/bin/mergiraf").is_file()
+        assert events.count("glow source install") == 1
+        assert (home / ".local/bin/glow").resolve() == driver.resolve()
         assert events.index("make") > max(
             events.index(tool) for tool in ("uv", "node", "python", "rustup", "codex", "claude", "pi")
         )
@@ -1233,6 +1235,7 @@ else:
         assert "studio install" not in new_events
         assert "pi" not in new_events
         assert "mergiraf" not in new_events
+        assert "glow source install" not in new_events
         assert (home / "pi-version").read_text() == "1.5.0"
         assert "node" not in new_events and "zellij" not in new_events
         assert not (home / ".local/bin/nvim").exists()
