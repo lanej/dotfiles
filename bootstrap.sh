@@ -2,38 +2,73 @@
 
 os=$(uname -s | tr '[:upper:]' '[:lower:]' | sed 's,^darwin$,macos,') # macos or linux
 
+detect_package_manager() {
+	local manager
+	for manager in brew yay pacman dnf apt-get; do
+		if command -v "$manager" >/dev/null; then
+			printf '%s\n' "$manager"
+			return 0
+		fi
+	done
+	return 1
+}
+
+package_manager_install() {
+	local manager=$1
+	shift
+	case "$manager" in
+		brew) brew install "$@" ;;
+		yay | pacman) sudo "$manager" -S --noconfirm "$@" ;;
+		dnf | apt-get) sudo "$manager" install -y "$@" ;;
+	esac
+}
+
+install_system_batch() {
+	[ "$#" -gt 0 ] || return 0
+	local manager
+	manager=$(detect_package_manager) || {
+		echo "No supported package manager found for: $*" >&2
+		return 1
+	}
+	echo "Installing system packages with $manager: $*"
+	package_manager_install "$manager" "$@" || {
+		echo "System package installation failed: $*" >&2
+		return 1
+	}
+	hash -r
+	local package
+	for package in "$@"; do
+		if ! command -v "$package" >/dev/null; then
+			echo "System package installation did not provide $package" >&2
+			return 1
+		fi
+	done
+}
+
 install_from_package_manager() {
-	if declare -f "install_$1_package" >/dev/null; then
-		"install_$1_package" "$2"
-	elif command -v brew &>/dev/null; then
-		brew install "$1"
-	elif command -v yay; then # endeavoros
-		sudo yay -S --noconfirm "$1"
-	elif command -v pacman; then # arch
-		sudo pacman -S --noconfirm "$1"
-	elif command -v dnf; then
-		sudo dnf install -y "$1"
-	elif command -v apt-get; then
-		sudo apt-get install -y "$1"
-	else
-		exit 1
+	local package=$1 manager
+	if declare -f "install_${package}_package" >/dev/null; then
+		"install_${package}_package" "${2:-}"
+		return
 	fi
+	manager=$(detect_package_manager) || {
+		echo "No supported package manager found for $package" >&2
+		return 1
+	}
+	package_manager_install "$manager" "$package"
 }
 
 package_manager_semver() {
-	if command -v brew &>/dev/null; then
-		(brew info "$1" | sed -n '1p' | parse_semver | sed -n '1p') || (echo "package $1 not found in brew" >&2 && return 1)
-	elif command -v yay &>/dev/null; then
-		yay -Qi "$1" | parse_semver || (echo "package $1 not found in yay" && return 1)
-	elif command -v pacman &>/dev/null; then
-		pacman -Qi "$1" | parse_semver || (echo "package $1 not found in pacman" && return 1)
-	elif command -v dnf &>/dev/null; then
-		(dnf --cacheonly info "$1" 2>/dev/null | grep "^Version" | parse_semver | head -n1) || return 1
-	elif command -v apt-get &>/dev/null; then
-		apt_package_semver "$1"
-	else
-		exit 1
+	local package=$1 manager=${2:-}
+	if [ -z "$manager" ]; then
+		manager=$(detect_package_manager) || return 1
 	fi
+	case "$manager" in
+		brew) brew info "$package" | sed -n '1p' | parse_semver | sed -n '1p' ;;
+		yay | pacman) "$manager" -Qi "$package" | parse_semver ;;
+		dnf) dnf --cacheonly info "$package" 2>/dev/null | grep "^Version" | parse_semver | head -n1 ;;
+		apt-get) apt_package_semver "$package" ;;
+	esac
 }
 
 apt_package_semver() {
@@ -123,19 +158,10 @@ install_imagemagick_package() {
 	if command -v magick >/dev/null || command -v convert >/dev/null; then
 		return 0
 	fi
-	if command -v brew >/dev/null; then
-		brew install imagemagick
-	elif command -v yay >/dev/null; then
-		sudo yay -S --noconfirm imagemagick
-	elif command -v pacman >/dev/null; then
-		sudo pacman -S --noconfirm imagemagick
-	elif command -v dnf >/dev/null; then
-		sudo dnf install -y ImageMagick
-	elif command -v apt-get >/dev/null; then
-		sudo apt-get install -y imagemagick
-	else
-		return 1
-	fi
+	local manager package=imagemagick
+	manager=$(detect_package_manager) || return 1
+	[ "$manager" != dnf ] || package=ImageMagick
+	package_manager_install "$manager" "$package"
 }
 
 install_fd_package() {
@@ -145,44 +171,45 @@ install_fd_package() {
 		return 0
 	fi
 
-	if command -v brew &>/dev/null; then
-		brew install fd
-	elif command -v yay; then
-		sudo yay -S --noconfirm fd
-	elif command -v pacman; then
-		sudo pacman -S --noconfirm fd
-	elif command -v dnf; then
+	local manager
+	manager=$(detect_package_manager) || return 1
+	if [ "$manager" = dnf ]; then
 		# For dnf systems, prefer cargo installation if there are conflicts
 		if rpm -qa | grep -q "^fd-"; then
 			echo "Existing fd package found, will install via cargo to avoid conflict"
 			return 1 # This will trigger the fallback to cargo installation
 		fi
-		sudo dnf install -y fd-find
-	elif command -v apt-get; then
-		sudo apt-get install -y fd-find
-	else
-		exit 1
 	fi
+	package_manager_install "$manager" "$(fd_package_name "$manager")"
+}
+
+fd_package_name() {
+	case "$1" in
+		dnf | apt-get) printf '%s\n' fd-find ;;
+		*) printf '%s\n' fd ;;
+	esac
 }
 
 fd_package_semver() {
-	if command -v brew &>/dev/null; then
-		(brew info fd | head -n1 | parse_semver | head -n1) || (echo "package fd not found in brew" && return 1)
-	elif command -v yay &>/dev/null; then
-		yay -Qi fd | parse_semver || (echo "package fd not found in yay" && return 1)
-	elif command -v pacman &>/dev/null; then
-		pacman -Qi fd | parse_semver || (echo "package fd not found in pacman" && return 1)
-	elif command -v dnf &>/dev/null; then
-		(dnf --cacheonly info fd-find 2>/dev/null | grep "^Version" | parse_semver | head -n1) || return 1
-	elif command -v apt-get &>/dev/null; then
-		apt_package_semver fd-find
-	else
-		exit 1
-	fi
+	local manager
+	manager=$(detect_package_manager) || return 1
+	package_manager_semver "$(fd_package_name "$manager")" "$manager"
 }
 
 install_explicitly() {
-	if declare -f "install_$1_from_release" >/dev/null; then
+	local fallback=${3:--} fallback_package=${4:--}
+	if [ "$fallback" != - ]; then
+		echo "Installing $1 $2 via $fallback ($fallback_package)"
+		case "$fallback" in
+			cargo) cargo install "$fallback_package" -q --locked --version "$2" ;;
+			go) go install "$fallback_package@v$2" ;;
+			npm) npm install -g "$fallback_package@$2" ;;
+			*)
+				echo "Unknown package fallback: $fallback" >&2
+				return 1
+				;;
+		esac
+	elif declare -f "install_$1_from_release" >/dev/null; then
 		echo "Installing $1 $2 from release"
 		"install_$1_from_release" "$2"
 	elif declare -f "install_$1_from_source" >/dev/null; then
@@ -218,7 +245,7 @@ install_package() {
 	fi
 
 	# Otherwise, install the package explicitly
-	install_explicitly "$package" "$version" || (echo "Failed to install: $package" && exit 1)
+	install_explicitly "$package" "$version" "${3:--}" "${4:--}" || (echo "Failed to install: $package" && exit 1)
 }
 
 install_gh_package() {
@@ -337,25 +364,6 @@ semver_ge() {
 	fi
 }
 
-install_glibc() {
-	local version=$1
-	# Download glibc 2.29
-	curl -fLO "https://ftp.gnu.org/gnu/glibc/glibc-$version.tar.gz"
-	# Download glibc 2.29 checksum
-	curl -fLO "https://ftp.gnu.org/gnu/glibc/glibc-$version.tar.gz.sig"
-	# Import the glibc PGP key
-	# gpg --keyserver keys.gnupg.net --recv-keys 16792B4EA25340F8
-	# PGP verify the checksum
-	gpg --verify "glibc-$version.tar.gz.sig"
-
-	tar -zxvf glibc-"$version".tar.gz
-	mkdir -p glibc-"$version"/build
-	cd glibc-"$version"/build || exit 1
-	../configure --prefix=/opt/glibc
-	make
-	sudo make install
-}
-
 install_neovim_from_source() (
 	mkdir -p "$HOME/src/oss"
 	if [ ! -d ~/src/oss/neovim ]; then
@@ -371,35 +379,6 @@ install_neovim_from_source() (
 	make install CMAKE_BUILD_TYPE=Release CMAKE_INSTALL_PREFIX="$HOME/.local"
 )
 
-# WARN: installing glibc makes this more like a dentist visit
-# install_neovim_from_release() {
-# 	# Pull latest neovim binary from the latest github release
-# 	curl -fLO "https://github.com/neovim/neovim/releases/latest/download/nvim-$distro.tar.gz"
-# 	# Also download the checksum file
-# 	curl -fLO "https://github.com/neovim/neovim/releases/latest/download/nvim-$distro.tar.gz.sha256sum"
-# 	# Verify the checksum
-# 	sha256sum -c "nvim-$distro.tar.gz.sha256sum"
-#
-# 	# Extract the binary
-# 	tar xzf "nvim-$distro.tar.gz"
-#
-# 	# Link the binary to ~/.local/bin
-# 	ln -fs "$(pwd)/nvim-$distro/bin/nvim" "$HOME/.local/bin/nvim"
-#
-# 	if [ "$os" = "linux" ]; then
-# 		# If bison isn't available, install it
-# 		if ! command -v bison &>/dev/null; then
-# 			install_package bison
-# 		fi
-#
-# 		# install glibc if not installed or if version is not 2.29
-# 		if getconf GNU_LIBC_VERSION | grep -q "glibc 2.29"; then
-# 			echo "glibc is installed"
-# 		else
-# 			install_glibc "2.29"
-# 		fi
-# 	fi
-# }
 parse_semver() {
 	grep -Eo '[0-9]+\.[0-9]+(\.[0-9]+)?'
 }
@@ -568,7 +547,7 @@ install_package_version() {
 	fi
 
 	# install package to preferred version
-	install_package "$package" "$preferred_version" || return 1
+	install_package "$package" "$preferred_version" "${4:--}" "${5:--}" || return 1
 	hash -r
 	current_version=$(installed_semver "$package") || current_version=""
 	if [ -z "$current_version" ] || ! semver_ge "$current_version" "$min_version"; then
@@ -589,14 +568,6 @@ install_fzf_from_source() {
 
 	~/src/oss/fzf/install --all --no-fish --key-bindings --completion --no-update-rc --xdg
 	ln -fs ~/src/oss/fzf/bin/fzf "$HOME/.local/bin/fzf"
-}
-
-install_ripgrep_from_release() {
-	cargo install ripgrep -q --locked --version "$1"
-}
-
-install_starship_from_release() {
-	cargo install starship -q --locked --version "$1"
 }
 
 load_dotfiles_config() {
@@ -721,22 +692,6 @@ install_btop_from_release() (
 	install -m 755 "$btop_stage/btop/bin/btop" "$HOME/.local/bin/btop" || exit 1
 )
 
-install_skim_from_release() {
-	cargo install skim -q --locked --version "$1"
-}
-
-install_git-delta_from_release() {
-	cargo install git-delta -q --locked --version "$1"
-}
-
-install_mergiraf_from_release() {
-	cargo install mergiraf -q --locked --version "$1"
-}
-
-install_bat_from_release() {
-	cargo install bat -q --locked --version "$1"
-}
-
 install_lumis_from_release() (
 	local arch target stage archive url bin
 	case "$(uname -m)" in
@@ -773,14 +728,6 @@ install_lumis_from_release() (
 	install -m 755 "$stage/lumis" "$bin/lumis.new" || exit 1
 	mv -f "$bin/lumis.new" "$bin/lumis"
 )
-
-install_fd_from_release() {
-	cargo install fd-find -q --locked --version "$1"
-}
-
-install_eza_from_release() {
-	cargo install eza -q --locked --version "$1"
-}
 
 install_shfmt_from_release() {
 	install_package_version go 1.22
@@ -824,11 +771,6 @@ install_node_from_release() {
 	# Verify installation is working
 	echo "Node installed: $(node --version 2>/dev/null || echo 'FAILED')"
 	echo "NPM installed: $(npm --version 2>/dev/null || echo 'FAILED')"
-}
-
-install_codex_from_release() {
-	install_package_version node 24 || return 1
-	npm install -g "@openai/codex@$1"
 }
 
 install_firstmate_release() (
@@ -930,11 +872,6 @@ install_luacheck_package() {
 	fi
 }
 
-install_bash-language-server_from_release() {
-	install_package_version node 24
-	npm install -g "bash-language-server@$1"
-}
-
 install_mmdc_from_release() (
 	install_package_version node 24 || exit 1
 	npm install -g --ignore-scripts "@mermaid-js/mermaid-cli@$1" || exit 1
@@ -994,11 +931,6 @@ install_yq_from_release() {
 	chmod +x "$HOME/.local/bin/yq"
 }
 
-install_typescript-language-server_from_release() {
-	install_package_version node 24
-	npm install -g typescript-language-server@"$1"
-}
-
 install_rust-analyzer_from_release() {
 	rustup component add rust-analyzer
 }
@@ -1015,18 +947,8 @@ zsh-autosuggestions_current_semver() {
 	head -n3 "$HOME/.zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" 2>/dev/null | parse_semver
 }
 
-install_gopls_from_release() {
-	install_package_version go 1.22
-	go install golang.org/x/tools/gopls@v"$1"
-}
-
 gopls_current_semver() {
 	gopls version 2>/dev/null | parse_semver
-}
-
-install_gotestsum_from_release() {
-	install_package_version go 1.22
-	go install gotest.tools/gotestsum@v"$1"
 }
 
 gotestsum_current_semver() {
@@ -1046,15 +968,6 @@ yaml-language-server_current_semver() {
 	command -v yaml-language-server >/dev/null || return 1
 	npm list --global yaml-language-server --depth=0 --json 2>/dev/null \
 		| jq -r '.dependencies["yaml-language-server"].version // empty'
-}
-
-install_yaml-language-server_from_release() {
-	install_package_version node 24
-	npm install -g yaml-language-server@"$1"
-}
-
-install_hexyl_from_release() {
-	cargo install hexyl -q --locked --version "$1"
 }
 
 install_direnv_from_release() {
@@ -1117,18 +1030,6 @@ install_atuin_from_release() (
 	mv -f "$atuin_bin/$atuin_program.new" "$atuin_bin/$atuin_program" || exit 1
 )
 
-install_cargo-sweep_from_release() {
-	cargo install cargo-sweep --locked --version "$1"
-}
-
-install_cargo-cache_from_release() {
-	cargo install cargo-cache --locked --version "$1"
-}
-
-install_tree-sitter-cli_from_release() {
-	cargo install tree-sitter-cli --locked --version "$1"
-}
-
 tree-sitter-cli_current_semver() {
 	tree-sitter --version 2>/dev/null | parse_semver | head -n1
 }
@@ -1176,10 +1077,6 @@ install_cargo_from_release() {
 	# NOTE: rustup generates this file outside the repository.
 	# shellcheck disable=SC1091
 	source "$HOME"/.cargo/env
-}
-
-install_just_from_release() {
-	cargo install just --locked --version "$1"
 }
 
 prepare_bootstrap_environment() {
@@ -1352,7 +1249,8 @@ install_rust_runtime() {
 install_dependencies() {
 	install_config_runtime || return 1
 	load_dotfiles_config || return 1
-	local tool installer package version go_bin dotfiles_root requirements
+	local tool installer package version fallback fallback_package go_bin dotfiles_root requirements
+	local system_packages=()
 	dotfiles_root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
 	if dotfiles_has_tool studio || dotfiles_has_tool octo-manager; then
 		# Read every selected project's minimum before choosing one shared runtime.
@@ -1367,9 +1265,17 @@ install_dependencies() {
 		fi
 		rm -f "$requirements"
 	fi
-	while IFS=$'\t' read -r tool installer package version; do
+	while IFS=$'\t' read -r tool installer package version fallback fallback_package; do
 		[ -n "$tool" ] || continue
 		echo "Configuring tool: $tool"
+		if [ "$installer" = system-batch ] && ! declare -f "install_${package}_package" >/dev/null; then
+			if ! command -v "$package" >/dev/null; then
+				system_packages+=("$package")
+			fi
+			continue
+		fi
+		install_system_batch "${system_packages[@]}" || return 1
+		system_packages=()
 		case "$installer" in
 			npm)
 				current_npm_version=$(npm list --global --prefix "$HOME/.local" "$package" --depth=0 --json 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).dependencies?.[process.argv[1]]?.version || ""))' "$package") || current_npm_version=
@@ -1377,8 +1283,8 @@ install_dependencies() {
 					npm install --global --prefix "$HOME/.local" "$package@$version" || return 1
 				fi
 				;;
-			package) install_package_version "$package" "$version" || return 1 ;;
-			system)
+			package) install_package_version "$package" "$version" "$version" "$fallback" "$fallback_package" || return 1 ;;
+			system | system-batch)
 				if ! command -v "$package" >/dev/null; then
 					install_from_package_manager "$package" || return 1
 				fi
@@ -1431,6 +1337,7 @@ install_dependencies() {
 				;;
 		esac
 	done <<<"$DOTFILES_INSTALL_PLAN"
+	install_system_batch "${system_packages[@]}"
 }
 
 setup_atuin_sync() {
