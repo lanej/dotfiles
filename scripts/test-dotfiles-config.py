@@ -119,6 +119,15 @@ def main():
             rejected = run(sys.executable, str(fixture / "scripts/dotfiles-config.py"), "--format", "schema", check=False)
             assert rejected.returncode != 0 and "duplicate tool 'beads'" in rejected.stderr, rejected.stderr
             assert "tools/beads/tool.toml" in rejected.stderr and "bootstrap/tools.toml" in rejected.stderr
+            source = ROOT / "bootstrap/tools.toml"
+            (fixture / "config").symlink_to(ROOT / "config", target_is_directory=True)
+            (fixture / "bootstrap/tools.toml").write_text(source.read_text().replace(
+                'fallback = { via = "cargo", package = "fd-find" }',
+                'fallback = { via = "cargo", package = "-fd-find" }',
+            ))
+            rejected = run(sys.executable, str(fixture / "scripts/dotfiles-config.py"), "--format", "shell", check=False)
+            assert rejected.returncode != 0 and "invalid cargo fallback package for fd" in rejected.stderr, rejected.stderr
+            assert not rejected.stdout, rejected.stdout
         platform_set = "macos" if sys.platform == "darwin" else "linux"
         native_tools = {"git", "git-worktree-hooks", "worktree-policy", "build"} | ({"yabai", "skhd", "borders"} if platform_set == "macos" else {"x11", "polybar", "bspwm", "bsdtar"})
         disabled_native = "yabai" if platform_set == "macos" else "polybar"

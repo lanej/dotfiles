@@ -63,11 +63,38 @@ def load_tools():
 TOOLS, TOOL_SOURCES = load_tools()
 INSTALLERS = {"studio", "approval-cli", "beads", "package", "system", "config", "build", "rust", "go", "zellij", "font", "git-worktree-hooks", "worktree-policy", "worktree-manager", "treehouse", "firstmate", "macos-window-tool", "npm", "octo-manager"}
 HOOKS = {"directory-picker", "github-auth", "bedrock-credentials", "bedrock-router", "agent-status-broker", "kitty-terminfo", "neovim", "atuin-sync", "sql-formatters", "zellij-status", "zellij-copy-hop"}
+NPM_PACKAGE = r"(?:@[a-z0-9_.-]+/)?[a-z0-9_.-]+"
+PACKAGE_FALLBACKS = {
+    "cargo": ("rust", SET_NAME.pattern),
+    "go": ("go", r"[a-z0-9.-]+(?:/[a-zA-Z0-9_.-]+)+"),
+    "npm": ("node", NPM_PACKAGE),
+}
 for tool, recipe in TOOLS.items():
     SETTINGS[f"tools.{tool}"] = {
         "type": bool,
         "description": recipe.get("description", f"Enable the {tool} bootstrap recipe."),
     }
+
+
+def package_fallback(name, recipe):
+    """Return the validated fallback and the package argument used by its installer."""
+    fallback = recipe.get("fallback")
+    if fallback is None:
+        return ()
+    source = TOOL_SOURCES[name]
+    if (recipe.get("installer", "package") != "package" or not isinstance(fallback, dict)
+            or set(fallback) - {"via", "package"}):
+        raise ValueError(f"{source}: invalid package fallback for {name}")
+    via = fallback.get("via")
+    if not isinstance(via, str) or via not in PACKAGE_FALLBACKS:
+        raise ValueError(f"{source}: unknown package fallback for {name}")
+    runtime, pattern = PACKAGE_FALLBACKS[via]
+    package = fallback.get("package", recipe.get("package", name))
+    if not isinstance(package, str) or not re.fullmatch(pattern, package) or package.startswith("-"):
+        raise ValueError(f"{source}: invalid {via} fallback package for {name}")
+    if runtime not in recipe.get("requires", []):
+        raise ValueError(f"{source}: {via} fallback for {name} requires tools.{runtime}")
+    return via, package
 
 
 def tool_plan(values, origins, specified, host, requirements=None):
@@ -91,13 +118,14 @@ def tool_plan(values, origins, specified, host, requirements=None):
             raise ValueError(f"{TOOL_SOURCES[name]}: unknown installer for {name}")
         package = recipe.get("package", name)
         version = recipe.get("version", "-")
-        package_pattern = r"(?:@[a-z0-9_.-]+/)?[a-z0-9_.-]+" if recipe.get("installer") == "npm" else SET_NAME.pattern
+        package_pattern = NPM_PACKAGE if recipe.get("installer") == "npm" else SET_NAME.pattern
         if not isinstance(package, str) or not re.fullmatch(package_pattern, package):
             raise ValueError(f"{TOOL_SOURCES[name]}: invalid package name for {name}")
         if not isinstance(version, str) or (version != "-" and not re.fullmatch(r"[0-9]+(?:\.[0-9]+){0,2}", version)):
             raise ValueError(f"{TOOL_SOURCES[name]}: invalid version for {name}")
         if recipe.get("installer", "package") in {"package", "rust", "go", "npm"} and version == "-":
             raise ValueError(f"{TOOL_SOURCES[name]}: missing version for {name}")
+        package_fallback(name, recipe)
         for target in recipe.get("setup", []):
             if not isinstance(target, str) or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]*", target):
                 raise ValueError(f"{TOOL_SOURCES[name]}: invalid setup target for {name}")
@@ -345,7 +373,16 @@ def main():
         ):
             print(f"{variable}={shlex.quote(','.join(values)) if options.format == 'shell' else ','.join(values)}")
         if options.format == "shell":
-            rows = ["\t".join((tool["name"], tool.get("installer", "package"), tool.get("package", tool["name"]), tool.get("version", "-"))) for tool in result["tools"]]
+            rows = []
+            for tool in result["tools"]:
+                name = tool["name"]
+                installer = tool.get("installer", "package")
+                if installer == "system" and not any(tool.get(key) for key in ("requires", f"requires_{host}")):
+                    installer = "system-batch"
+                rows.append("\t".join((
+                    name, installer, tool.get("package", name),
+                    tool.get("version", "-"), *package_fallback(name, tool),
+                )))
             print(f"DOTFILES_INSTALL_PLAN={shlex.quote(chr(10).join(rows))}")
     else:
         print(f"# Machine configuration: {path}")

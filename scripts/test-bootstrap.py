@@ -191,6 +191,20 @@ def test_compatibility(root):
             assert (result.returncode == 0) == success, result.stdout + result.stderr
             return result
 
+        failed_batch = run('''
+install_config_runtime() { :; }
+load_dotfiles_config() {
+    DOTFILES_TOOLS=fixture-missing-a,fixture-missing-b
+    DOTFILES_INSTALL_PLAN=$'fixture-missing-a\\tsystem-batch\\tfixture-missing-a\\t-\\nfixture-missing-b\\tsystem-batch\\tfixture-missing-b\\t-\\nnext\\tpackage\\tnext\\t1'
+}
+brew() { printf 'brew %s\\n' "$*"; }
+install_package_version() { echo "unexpected next tool"; }
+install_dependencies
+''', success=False)
+        assert "brew install fixture-missing-a fixture-missing-b" in failed_batch.stdout, failed_batch.stdout
+        assert "System package installation did not provide fixture-missing-a" in failed_batch.stderr, failed_batch.stderr
+        assert "unexpected next tool" not in failed_batch.stdout, failed_batch.stdout
+
         window_tools = '''
 os=macos
 command() {
@@ -649,9 +663,11 @@ elif name == "sudo":
         record("imagemagick package")
     elif args == ["dnf", "install", "-y", "imagemagick"]:
         sys.exit("No match for argument: imagemagick")
-    elif args in (["apt-get", "install", "-y", "tmux"], ["dnf", "install", "-y", "tmux"]):
-        (home / ".local/bin/tmux").symlink_to(fixture / "driver")
-        record("tmux package")
+    elif args[:3] == ["dnf", "install", "-y"] and {"zsh", "tmux"}.intersection(args[3:]):
+        assert args[3:] == ["zsh", "tmux"], args
+        for package in args[3:]:
+            (home / ".local/bin" / package).symlink_to(fixture / "driver")
+        record("system packages: zsh tmux")
     elif args in (["apt-get", "install", "-y", "eza"], ["dnf", "install", "-y", "eza"]):
         (home / ".local/bin/eza").symlink_to(fixture / "driver")
         record("eza package")
@@ -665,6 +681,9 @@ elif name == "apt-cache":
     print(args[1] + ":\n  Installed: (none)\n  Candidate: " + version)
 elif name == "dnf":
     assert args[:2] == ["--cacheonly", "info"], args
+    if args[2].startswith("fd"):
+        assert args[2] == "fd-find", args
+        record("fd-find package lookup")
     if args[2] != "eza":
         sys.exit(1)
     print("Version : 0.20.19")
@@ -921,13 +940,15 @@ elif name == "rustup" and args[:3] == ["run", "1.95.0", "cargo"]:
     output.chmod(0o755)
     (home / "zellij-owned").write_text(revision)
     record("zellij")
-elif name == "cargo" and args[:2] == ["install", "mergiraf"]:
-    assert args == ["install", "mergiraf", "-q", "--locked", "--version", "0.20.0"], args
-    (home / ".cargo/bin/mergiraf").symlink_to(fixture / "driver")
-    record("mergiraf")
-elif name == "mergiraf":
+elif name == "cargo" and args[:1] == ["install"]:
+    crate = args[1]
+    executable, version = {"mergiraf": ("mergiraf", "0.20.0"), "fd-find": ("fd", "10.2.0")}[crate]
+    assert args == ["install", crate, "-q", "--locked", "--version", version], args
+    (home / ".cargo/bin" / executable).symlink_to(fixture / "driver")
+    record(executable)
+elif name in ("mergiraf", "fd"):
     assert args == ["--version"], args
-    print("mergiraf 0.20.0")
+    print({"mergiraf": "mergiraf 0.20.0", "fd": "fd 10.2.0"}[name])
 elif name in ("cargo", "rustc", "rustup", "rust-analyzer"):
     print(name + " 1.93.1")
 elif name == "go":
@@ -948,6 +969,11 @@ elif name == "go":
         print("")
     elif args == ["env", "GOPATH"]:
         print(os.environ["GOPATH"])
+    elif args == ["install", "golang.org/x/tools/gopls@v0.23.0"]:
+        output = Path(os.environ["GOPATH"]) / "bin/gopls"
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.symlink_to(fixture / "driver")
+        record("gopls")
     elif args[:1] == ["install"]:
         assert args == ["install", "charm.land/glow/v3@v3.0.0"], args
         assert Path(os.environ["GOBIN"]) == home / ".local/bin"
@@ -960,6 +986,9 @@ elif name == "go":
         print("go version go1.26.5 linux/amd64")
 elif name == "glow":
     print("glow version 2.0.0" if Path(sys.argv[0]).parent == fixture else "glow version master")
+elif name == "gopls":
+    assert args == ["version"], args
+    print("golang.org/x/tools/gopls v0.23.0")
 elif name == "treehouse":
     print("dev")
 elif name == "gh" and args == ["auth", "status"]:
@@ -977,10 +1006,10 @@ else:
         for tool in (
             "uname", "git", "sudo", "apt-get", "apt-cache", "dnf", "curl", "uv", "node", "npm", "bun",
             "make", "cmake", "cc", "cargo", "rustc", "rust-analyzer", "go", "glow",
-            "fzf", "starship", "atuin", "sk", "delta", "bat", "lumis", "fd",
+            "fzf", "starship", "atuin", "sk", "delta", "bat", "lumis",
             "zsh-autosuggestions", "cargo-sweep", "cargo-cache",
             "gh", "git-crypt", "jq", "rg", "stylua", "nvim", "shfmt",
-            "bash-language-server", "typescript-language-server", "gopls",
+            "bash-language-server", "typescript-language-server",
             "gotestsum", "ctags-lsp", "tree-sitter", "hexyl", "yaml-language-server",
             "direnv", "just", "loginctl", "zellij", "lsof",
             "no-mistakes", "gh-axi", "tasks-axi", "quota-axi",
@@ -990,7 +1019,7 @@ else:
         # Keep this fresh-box workflow independent of tools preinstalled on CI.
         system_bin = home / "system-bin"
         system_bin.mkdir()
-        missing_tools = {"python3", "tmux", "eza", "yq", "btop", "pi", "zellij", "rustup", "convert", "magick", "imagemagick", "treehouse"}
+        missing_tools = {"python3", "zsh", "tmux", "eza", "yq", "btop", "pi", "zellij", "rustup", "convert", "magick", "imagemagick", "treehouse", "fd", "gopls"}
         for system_dir in (Path("/usr/bin"), Path("/bin")):
             for tool in system_dir.iterdir():
                 destination = system_bin / tool.name
@@ -1069,6 +1098,9 @@ else:
         assert (home / ".local/bin/pi").readlink() == home / ".local/share/pi-standalone/1.4.0/pi/pi"
         assert "mergiraf" in events
         assert (home / ".cargo/bin/mergiraf").is_file()
+        assert events.index("fd-find package lookup") < events.index("fd"), events
+        assert (home / ".cargo/bin/fd").is_file()
+        assert "gopls" in events and (home / ".local/go/bin/gopls").is_file(), events
         assert events.count("glow source install") == 1
         assert (home / ".local/bin/glow").resolve() == driver.resolve()
         assert events.index("make") > max(
@@ -1087,7 +1119,7 @@ else:
             assert repeated.returncode == 0, repeated.stdout + repeated.stderr
             assert (home / "events").read_text().splitlines().count("treehouse build") == (2 if replaced else 1)
         assert (home / ".local/bin/tmux").is_file()
-        assert events.index("tmux package") < events.index("make")
+        assert events.index("system packages: zsh tmux") < events.index("make")
         assert "yq" in events
         assert "btop" in events
         assert (home / ".local/bin/zellij").is_file()
@@ -1235,6 +1267,8 @@ else:
         assert "studio install" not in new_events
         assert "pi" not in new_events
         assert "mergiraf" not in new_events
+        assert "system packages: zsh tmux" not in new_events
+        assert {"fd-find package lookup", "fd", "gopls", "codex"}.isdisjoint(new_events), new_events
         assert "glow source install" not in new_events
         assert (home / "pi-version").read_text() == "1.5.0"
         assert "node" not in new_events and "zellij" not in new_events

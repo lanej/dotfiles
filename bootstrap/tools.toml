@@ -89,6 +89,7 @@ requires = ["go", "fzf"]
 post = ["directory-picker"]
 
 [tools.starship]
+fallback = { via = "cargo" }
 requires = ["rust"]
 version = "1.25.0"
 
@@ -97,15 +98,18 @@ version = "18.21.0"
 post = ["atuin-sync"]
 
 [tools.skim]
+fallback = { via = "cargo" }
 requires = ["rust"]
 version = "0.16.0"
 
 [tools.git-delta]
+fallback = { via = "cargo" }
 requires = ["rust"]
 version = "0.18.2"
 
 [tools.mergiraf]
 description = "Install and activate syntax-aware merging for supported file types."
+fallback = { via = "cargo" }
 requires = ["git", "rust"]
 setup = ["git", "mergiraf-config"]
 version = "0.20.0"
@@ -115,6 +119,7 @@ requires = ["go"]
 version = "3.0.0"
 
 [tools.bat]
+fallback = { via = "cargo" }
 requires = ["rust"]
 version = "0.25.0"
 
@@ -123,10 +128,12 @@ description = "Tree-sitter source viewer for the interactive shell and file prev
 version = "0.8.10"
 
 [tools.fd]
+fallback = { via = "cargo", package = "fd-find" }
 requires = ["rust"]
 version = "10.2.0"
 
 [tools.eza]
+fallback = { via = "cargo" }
 requires = ["rust"]
 version = "0.20.19"
 
@@ -148,6 +155,7 @@ version = "1.7.1"
 version = "4.45.4"
 
 [tools.ripgrep]
+fallback = { via = "cargo" }
 requires = ["rust"]
 version = "14.1.0"
 
@@ -164,6 +172,7 @@ requires = ["go"]
 version = "3.14.1"
 
 [tools.bash-language-server]
+fallback = { via = "npm" }
 requires = ["node"]
 version = "5.4.3"
 
@@ -172,18 +181,22 @@ requires = ["rust"]
 version = "1.84.1"
 
 [tools.typescript-language-server]
+fallback = { via = "npm" }
 requires = ["node"]
 version = "4.3.3"
 
 [tools.gopls]
+fallback = { via = "go", package = "golang.org/x/tools/gopls" }
 requires = ["go"]
 version = "0.23.0"
 
 [tools.gotestsum]
+fallback = { via = "go", package = "gotest.tools/gotestsum" }
 requires = ["go"]
 version = "1.13.0"
 
 [tools.yaml-language-server]
+fallback = { via = "npm" }
 requires = ["node"]
 version = "0.16.0"
 
@@ -192,10 +205,12 @@ requires = ["go"]
 version = "0.6.1"
 
 [tools.tree-sitter-cli]
+fallback = { via = "cargo" }
 requires = ["rust"]
 version = "0.27.0"
 
 [tools.hexyl]
+fallback = { via = "cargo" }
 requires = ["rust"]
 version = "0.16.0"
 
@@ -203,14 +218,17 @@ version = "0.16.0"
 version = "2.35.0"
 
 [tools.just]
+fallback = { via = "cargo" }
 requires = ["rust"]
 version = "1.40.0"
 
 [tools.cargo-sweep]
+fallback = { via = "cargo" }
 requires = ["rust"]
 version = "0.7.0"
 
 [tools.cargo-cache]
+fallback = { via = "cargo" }
 requires = ["rust"]
 version = "0.8.3"
 
@@ -283,6 +301,7 @@ setup = ["claude-config", "claude-plugins", "software-standard", "claude-shared"
 version = "2.1.295"
 
 [tools.codex]
+fallback = { via = "npm", package = "@openai/codex" }
 requires = ["node", "jq", "claude-code"]
 setup = ["codex-config", "codex-skills", "codex-tmux-config", "codex-worktree-hook", "codex-agents", "codex-worktree-exit-hook"]
 version = "0.164.0"
