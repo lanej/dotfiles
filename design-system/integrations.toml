@@ -107,7 +107,7 @@ id = "starship"
 owner = "Semantic color roles and shared Git-state components; native prompt layout"
 mechanism = "generated native TOML with resolved foregrounds and literal symbol escaping"
 reload = "The next prompt reads the generated configuration; no shell initialization change is required."
-coverage = "Native Git fixtures exercise file states, stash, conflicts, counts, branch and tracking status. Git components generate semantic foregrounds and bold/dim flags; shared defaults use ANSI slots to preserve the original colors. Independent overrides of glyph, color and emphasis are exercised. Battery, SSH and exit status marks are generated. Language and product logos are module-specific."
+coverage = "Native Git fixtures exercise file states, stash, conflicts, counts, branch and tracking status. Git components generate semantic foregrounds and bold/dim flags; shared defaults use ANSI slots to preserve the original colors. Independent overrides of glyph, color and emphasis are exercised. Battery and SSH marks are generated. The prompt character changes color when the previous command fails. Language and product logos are module-specific."
 sources = ["design-system/adapters/starship.toml.in", "design-system/themes/sage.toml", "design-system/themes/nord.toml", "design-system/tokens.toml", "design-system/components.toml"]
 
 [[items]]

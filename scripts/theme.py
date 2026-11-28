@@ -482,8 +482,7 @@ def compile_theme(source, theme_name, symbols="unicode"):
             symbol = tokens.get(name, "starship", "string")
         escaped = re.sub(r"([\\$\[\]()])", r"\\\1", symbol)
         if name.startswith("git.file.") and not name.endswith(".symbol"):
-            prefix = escaped + " " if escaped else ""
-            escaped = "[" + prefix + "${" + count + "}](" + native_style + ") "
+            escaped = "[${" + count + "}" + escaped + "](" + native_style + ") "
         return json.dumps(escaped, ensure_ascii=False)[1:-1]
 
     starship = re.sub(r"\{\{([a-z.]+)\}\}", starship_placeholder, starship)

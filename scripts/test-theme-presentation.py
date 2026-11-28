@@ -93,7 +93,7 @@ class PresentationTests(unittest.TestCase):
         self.git(path, "add", "staged")
         (path / "untracked").write_text("new\n")
         status = self.module(path)
-        for expected in (" 1", " 1", " 1", " 1", " 1"):
+        for expected in ("1", "1", "1", "1", "1"):
             self.assertIn(expected, status)
         self.assertRegex(status, r"(?:^| )1(?: |$)")
         default_cells = native.ansi_cells(self.module(path, raw=True), columns=256)
@@ -106,9 +106,9 @@ class PresentationTests(unittest.TestCase):
         write_definition(self.source / "components.toml", components)
         self.generate({"symbol.git.file.untracked": '$[]()\\"', "symbol.git.file.modified": "M>", "symbol.git.file.staged": "+", "symbol.git.file.branch": "B", "emphasis.git.file.modified.bold": True}, roles={"git.file.modified": "@status.error"})
         variant = self.module(path)
-        self.assertIn('$[]()\\" 1', variant)
-        self.assertIn("M> 1", variant)
-        self.assertIn("+ 1", variant)
+        self.assertIn('1$[]()\\"', variant)
+        self.assertIn("1M>", variant)
+        self.assertIn("1+", variant)
         self.assertNotIn("", variant)
         changed_cells = native.ansi_cells(self.module(path, raw=True), columns=256)
         modified = next(cell for row in changed_cells for cell in row if cell["data"] == "M")
@@ -120,7 +120,7 @@ class PresentationTests(unittest.TestCase):
         path = self.repository()
         (path / "modified").write_text("stashed\n")
         self.git(path, "stash", "push", "-qm", "fixture")
-        self.assertIn(" 1", self.module(path))
+        self.assertIn("1", self.module(path))
         stashed = next(cell for row in native.ansi_cells(self.module(path, raw=True), columns=256) for cell in row if cell["data"] == "")
         self.assertEqual(stashed["fg"], "a5aab2")
         self.assertNotIn(";2m", self.module(path, raw=True))
@@ -131,7 +131,7 @@ class PresentationTests(unittest.TestCase):
         (path / "conflict").write_text("main\n")
         self.git(path, "commit", "-qam", "main")
         self.assertNotEqual(self.git(path, "merge", "other", check=False).returncode, 0)
-        self.assertIn(" 1", self.module(path))
+        self.assertIn("1", self.module(path))
         remote = self.work / "remote.git"
         self.git(path, "init", "--bare", "-q", str(remote))
         tracked = self.repository("tracked")
@@ -146,15 +146,15 @@ class PresentationTests(unittest.TestCase):
         self.git(peer, "commit", "-qm", "remote")
         self.git(peer, "push", "-q")
         self.git(tracked, "fetch", "-q")
-        self.assertIn(" 1", self.module(tracked))
+        self.assertIn("1", self.module(tracked))
         (tracked / "local-file").write_text("local\n")
         self.git(tracked, "add", ".")
         self.git(tracked, "commit", "-qm", "local")
         diverged = self.module(tracked)
-        self.assertIn(" 1", diverged)
-        self.assertIn(" 1", diverged)
+        self.assertIn("1", diverged)
+        self.assertIn("1", diverged)
         self.git(tracked, "merge", "--no-edit", "origin/main")
-        self.assertIn(" 2", self.module(tracked))
+        self.assertIn("2", self.module(tracked))
         self.assertNotIn("", self.module(tracked))
 
     def test_ascii_representation_reaches_native_git_consumers(self):
@@ -163,7 +163,7 @@ class PresentationTests(unittest.TestCase):
         (path / "modified").write_text("changed\n")
         (path / "deleted").unlink()
         (path / "untracked").write_text("new\n")
-        for expected in ("~ 1", "- 1", "? 1"):
+        for expected in ("1~", "1-", "1?"):
             self.assertIn(expected, self.module(path))
         self.assertIn("@ main", self.module(path, "git_branch"))
         script = self.work / "ascii.lua"

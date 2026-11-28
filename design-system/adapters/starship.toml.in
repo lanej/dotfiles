@@ -3,7 +3,6 @@
 # Don't print a new line at the start of the prompt
 add_newline = false
 continuation_prompt = '[▶▶]({{color.text.muted}}) '
-right_format = "$status"
 command_timeout = 2000
 
 [character]
@@ -51,11 +50,6 @@ style = 'bold {{color.status.warning}}'
 style = "{{git.file.branch.style}}"
 symbol = "{{git.file.branch.symbol}} "
 format = "[$symbol$branch(:$remote_branch)]($style) "
-
-[status]
-symbol = "{{symbol.diagnostic.error}} "
-style = "bold {{color.status.error}}"
-disabled = false
 
 [username]
 disabled = false
