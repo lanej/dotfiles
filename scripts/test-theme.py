@@ -723,6 +723,30 @@ class ThemeTests(unittest.TestCase):
             self.assertTrue((home / ".config/bat/themes/Dotfiles.tmTheme").is_file())
             self.assertEqual((home / ".config/glow/theme.json").resolve(), theme.SOURCE / "generated/glow.json")
 
+    def test_claude_theme_selection_preserves_alternate_profile_settings(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            profile = home / "alternate profile"
+            profile.mkdir()
+            settings = home / "personal.json"
+            settings.write_text('{"theme": "light", "env": {"MY_SETTING": "keep"}}')
+            (profile / "settings.json").symlink_to(settings)
+            # claude-config installs a Git clean filter. Isolate that write from the checkout.
+            git_dir = home / "fixture.git"
+            subprocess.run(["git", "init", "-q", "--bare", str(git_dir)], check=True)
+            env = dict(os.environ, HOME=str(home), GIT_DIR=str(git_dir), CLAUDE_CONFIG_DIR=str(profile))
+            command = ["bash", str(ROOT / "scripts/make/config.sh"), "claude-config", str(ROOT), str(home), "uv", "Linux"]
+            subprocess.run(command, env=env, check=True, capture_output=True)
+            for config in (home / ".claude", profile):
+                self.assertEqual(json.loads((config / "settings.json").read_text())["theme"], "custom:sage-midnight")
+                self.assertTrue((config / "themes/sage-midnight.json").is_file())
+            self.assertTrue((profile / "settings.json").is_symlink())
+            self.assertTrue((profile / "settings.json").samefile(settings))
+            self.assertEqual(json.loads(settings.read_text())["env"], {"MY_SETTING": "keep"})
+            modified = settings.stat().st_mtime_ns
+            subprocess.run(command, env=env, check=True, capture_output=True)
+            self.assertEqual(settings.stat().st_mtime_ns, modified)
+
     @unittest.skipUnless(shutil.which("eza"), "native eza is not installed")
     def test_eza_roles_and_git_states_through_native_consumers(self):
         with tempfile.TemporaryDirectory(prefix="theme-eza-") as directory:

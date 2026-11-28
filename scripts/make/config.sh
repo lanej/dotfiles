@@ -323,12 +323,16 @@ case "$target" in
         test -f "${setup_home}/.config/dev-cache-budgets.json" || cp "${dotfiles}/rc/dev-cache-budgets.json" "${setup_home}/.config/dev-cache-budgets.json"
         ;;
     claude-config)
-        theme_dir="${CLAUDE_CONFIG_DIR:-"$setup_home/.claude"}/themes"
-        mkdir -p "$theme_dir"
-        ln -fs "$dotfiles/design-system/generated/sage-midnight.json" "$theme_dir/sage-midnight.json"
-        mkdir -p "${setup_home}/.claude"
-        mkdir -p "${setup_home}/.claude/local"
+        claude_dir="${CLAUDE_CONFIG_DIR:-"$setup_home/.claude"}"
+        theme_file="$dotfiles/design-system/generated/sage-midnight.json"
+        mkdir -p "$setup_home/.claude/themes" "$setup_home/.claude/local"
+        ln -fs "$theme_file" "$setup_home/.claude/themes/sage-midnight.json"
         ln -fs "${dotfiles}/.claude/settings.json" "${setup_home}/.claude/settings.json"
+        if [[ ! "$claude_dir" -ef "$setup_home/.claude" ]]; then
+            mkdir -p "$claude_dir/themes"
+            ln -fs "$theme_file" "$claude_dir/themes/sage-midnight.json"
+            python3 "$make_scripts/claude-theme.py" "$dotfiles/.claude/settings.json" "$claude_dir/settings.json"
+        fi
         ln -fs "${dotfiles}/claude/CLAUDE.md" "${setup_home}/.claude/CLAUDE.md"
         ln -fs "${dotfiles}/claude/CONSTITUTION.md" "${setup_home}/.claude/CONSTITUTION.md"
         for d in commands workflows; do

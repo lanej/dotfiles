@@ -122,7 +122,7 @@ sources = ["design-system/adapters/pi.toml"]
 id = "codex-cli"
 owner = "Syntax highlighting in code blocks and diffs"
 mechanism = "Named Sage Midnight TextMate theme"
-reload = "Run make codex-config, then select sage-midnight in /theme."
+reload = "Run make codex-config and start a new Codex session."
 coverage = "The native picker previews the syntax and diff backgrounds. Terminal settings control the canvas."
 sources = ["design-system/adapters/syntax.toml", "design-system/generated/sage-midnight.tmTheme"]
 
@@ -130,7 +130,7 @@ sources = ["design-system/adapters/syntax.toml", "design-system/generated/sage-m
 id = "claude-code"
 owner = "Prompt, transcript, diff backgrounds and status colors"
 mechanism = "Named Sage Midnight JSON theme"
-reload = "Run make claude-config, then select Sage Midnight in /theme."
+reload = "Run make claude-config and start a new Claude Code session."
 coverage = "The native picker previews diff backgrounds. Claude Code chooses its own syntax highlighter."
 sources = ["design-system/adapters/claude-code.toml", "design-system/generated/sage-midnight.json"]
 

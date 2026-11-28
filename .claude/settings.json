@@ -374,7 +374,7 @@
   },
   "tui": "fullscreen",
   "skipDangerousModePermissionPrompt": true,
-  "theme": "auto",
+  "theme": "custom:sage-midnight",
   "editorMode": "vim",
   "verbose": true,
   "crossSessionInbound": "accept"
