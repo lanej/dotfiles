@@ -25,6 +25,8 @@ on:
       - 'bin/fzf-path-preview'
       - 'sh/atuin.toml'
       - 'scripts/make/config.sh'
+      - 'scripts/make/claude-theme.py'
+      - '.claude/settings.json'
       - 'sh/alias'
       - 'zsh/zlogin'
       - 'bin/tmux-claude-state'
