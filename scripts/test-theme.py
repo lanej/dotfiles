@@ -724,7 +724,8 @@ class ThemeTests(unittest.TestCase):
             for config in (home / ".claude", profile):
                 self.assertEqual(json.loads((config / "settings.json").read_text())["theme"], "custom:sage-midnight")
                 self.assertTrue((config / "themes/sage-midnight.json").is_file())
-            self.assertEqual((profile / "settings.json").resolve(), settings)
+            self.assertTrue((profile / "settings.json").is_symlink())
+            self.assertTrue((profile / "settings.json").samefile(settings))
             self.assertEqual(json.loads(settings.read_text())["env"], {"MY_SETTING": "keep"})
             modified = settings.stat().st_mtime_ns
             subprocess.run(command, env=env, check=True, capture_output=True)
