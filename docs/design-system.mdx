@@ -61,7 +61,7 @@ The default is `unicode`. ASCII mode selects each managed symbol’s declared fa
 
 ## Symbols and color
 
-A symbol token supplies a character; a semantic component pairs it with a foreground role and supported emphasis. For example, `git.file.modified` combines `symbol.git.file.modified`, the `git.file.modified` color role, and its bold/dim tokens. The Starship adapter formats that component together with its native count. A preset can change the glyph, color, or emphasis independently without editing the adapter.
+A symbol token supplies a character; a semantic component pairs it with a foreground role and supported emphasis. For example, `git.file.modified` combines `symbol.git.file.modified`, the `git.file.modified` color role, and its bold/dim tokens. The Starship adapter puts the count before its icon and leaves a space between states, giving Kitty room to render a wide icon. A preset can change the glyph, color, or emphasis independently without editing the adapter.
 
 ```toml
 [roles]
