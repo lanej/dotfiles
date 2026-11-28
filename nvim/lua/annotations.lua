@@ -8,10 +8,13 @@ function M.setup()
 			TODO = { icon = "🫥", color = "info" },
 			WHY = { icon = " ", color = "hint" },
 			rationale = { icon = " ", color = "hint" },
-			warning = { icon = " ", color = "warning" },
+			warning = {
+				icon = require("dotfiles-theme").tokens()["symbol.diagnostic.warning"] .. " ",
+				color = "warning",
+			},
 			workaround = { icon = " ", color = "warning" },
 			todo = { icon = "🫥", color = "info" },
-			fixme = { icon = " ", color = "error" },
+			fixme = { icon = require("dotfiles-theme").tokens()["symbol.diagnostic.error"] .. " ", color = "error" },
 		},
 		highlight = {
 			pattern = {

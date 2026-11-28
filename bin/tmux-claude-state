@@ -28,20 +28,26 @@ THEME_DIR = Path(os.environ.get("DOTFILES_THEME_DIR", Path(__file__).resolve().p
 THEME = runpy.run_path(str(THEME_DIR / "theme.py"))
 COLORS = THEME["COLORS"]
 STATE_STYLES = THEME["STATE_STYLES"]
+SYMBOLS = THEME["TOKENS"]
+SEMANTIC = THEME["STATE_SYMBOLS"]
 STATES = {
-    "approval": ("need", STATE_STYLES["approval"]["bg"], STATE_STYLES["approval"]["fg"], True, "▲"),
-    "question": ("need", STATE_STYLES["question"]["bg"], STATE_STYLES["question"]["fg"], True, "?"),
-    "plan": ("need", STATE_STYLES["plan"]["bg"], STATE_STYLES["plan"]["fg"], True, "▣"),
-    "tool": ("activity", STATE_STYLES["tool"]["bg"], STATE_STYLES["tool"]["fg"], False, "●"),
-    "thinking": ("activity", STATE_STYLES["thinking"]["bg"], STATE_STYLES["thinking"]["fg"], False, "◐"),
-    "waiting": ("activity", STATE_STYLES["waiting"]["bg"], STATE_STYLES["waiting"]["fg"], False, "…"),
-    "failed": ("need", STATE_STYLES["failed"]["bg"], STATE_STYLES["failed"]["fg"], True, "!"),
-    "idle": ("quiet", STATE_STYLES["idle"]["bg"], STATE_STYLES["idle"]["fg"], False, "○"),
-    "dormant": ("quiet", STATE_STYLES["dormant"]["bg"], STATE_STYLES["dormant"]["fg"], False, "·"),
+    "approval": ("need", STATE_STYLES["approval"]["bg"], STATE_STYLES["approval"]["fg"], True, SEMANTIC["access.approval"]),
+    "question": ("need", STATE_STYLES["question"]["bg"], STATE_STYLES["question"]["fg"], True, SEMANTIC["execution.input"]),
+    "plan": ("need", STATE_STYLES["plan"]["bg"], STATE_STYLES["plan"]["fg"], True, SYMBOLS["symbol.agent.plan_review"]),
+    "tool": ("activity", STATE_STYLES["tool"]["bg"], STATE_STYLES["tool"]["fg"], False, SEMANTIC["execution.running"]),
+    "thinking": ("activity", STATE_STYLES["thinking"]["bg"], STATE_STYLES["thinking"]["fg"], False, SYMBOLS["symbol.agent.thinking"]),
+    "waiting": ("activity", STATE_STYLES["waiting"]["bg"], STATE_STYLES["waiting"]["fg"], False, SYMBOLS["symbol.agent.waiting"]),
+    "failed": ("need", STATE_STYLES["failed"]["bg"], STATE_STYLES["failed"]["fg"], True, SEMANTIC["execution.failed"]),
+    "idle": ("quiet", STATE_STYLES["idle"]["bg"], STATE_STYLES["idle"]["fg"], False, SYMBOLS["symbol.agent.idle"]),
+    "dormant": ("quiet", STATE_STYLES["dormant"]["bg"], STATE_STYLES["dormant"]["fg"], False, SYMBOLS["symbol.agent.dormant"]),
 }
 
 ALIASES = {}
-WAIT_GLYPHS = {"agent": "⇄", "timer": "◷", "review": "⟳"}
+WAIT_GLYPHS = {
+    "agent": SYMBOLS["symbol.agent.waiting.worker"],
+    "timer": SYMBOLS["symbol.agent.waiting.timer"],
+    "review": SYMBOLS["symbol.agent.waiting.review"],
+}
 
 OPTIONS = ("@claude-state", "@claude-class", "@claude-bg",
            "@claude-fg", "@claude-attr", "@claude-glyph", "@claude-since", "@claude-reason")
@@ -105,16 +111,17 @@ def clear(target):
 
 
 def refresh_theme():
-    """Refresh persisted colors without changing state age, reason or glyph."""
-    rows = tmux("list-windows", "-a", "-F", "#{window_id}\t#{@claude-state}\t#{@claude-bg}\t#{@claude-fg}")
+    """Refresh persisted presentation without changing state age or reason."""
+    rows = tmux("list-windows", "-a", "-F", "#{window_id}\t#{@claude-state}\t#{@claude-bg}\t#{@claude-fg}\t#{@claude-reason}\t#{@claude-glyph}")
     for row in rows.splitlines():
-        fields = (row + "\t\t").split("\t")[:4]
-        if len(fields) != 4 or fields[1] not in STATES:
+        fields = (row + "\t\t\t\t").split("\t")[:6]
+        if len(fields) != 6 or fields[1] not in STATES:
             continue
-        target, name, old_bg, old_fg = fields
-        _, bg, fg, _, _ = STATES[name]
-        if (old_bg, old_fg) != (bg, fg):
-            write(target, {"@claude-bg": bg, "@claude-fg": fg})
+        target, name, old_bg, old_fg, reason, old_glyph = fields
+        _, bg, fg, _, default_glyph = STATES[name]
+        glyph = WAIT_GLYPHS.get(reason, default_glyph) if name == "waiting" else default_glyph
+        if (old_bg, old_fg, old_glyph) != (bg, fg, glyph):
+            write(target, {"@claude-bg": bg, "@claude-fg": fg, "@claude-glyph": glyph})
 
 
 def ansi_tab(text):

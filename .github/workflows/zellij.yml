@@ -6,6 +6,8 @@ on:
     paths:
       - 'zellij/**'
       - 'design-system/generated/zellij-symbols.rs'
+      - 'design-system/generated/zellij-states.rs'
+      - 'design-system/generated/terminal-ui.json'
       - 'design-system/generated/zellij.kdl'
       - 'design-system/generated/fzf.txt'
       - 'scripts/test-theme-native.py'
@@ -57,6 +59,8 @@ on:
     paths:
       - 'zellij/**'
       - 'design-system/generated/zellij-symbols.rs'
+      - 'design-system/generated/zellij-states.rs'
+      - 'design-system/generated/terminal-ui.json'
       - 'design-system/generated/zellij.kdl'
       - 'design-system/generated/fzf.txt'
       - 'scripts/test-theme-native.py'

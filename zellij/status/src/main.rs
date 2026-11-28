@@ -1,4 +1,8 @@
 mod theme;
+#[allow(dead_code)]
+mod glyphs {
+    include!("../../../design-system/generated/zellij-states.rs");
+}
 mod bar;
 use theme::{foreground, background};
 use lane_zellij_protocol::{ReloadRequest, ReloadAck, ReadinessRequest, ReadinessReply,

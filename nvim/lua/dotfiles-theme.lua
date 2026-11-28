@@ -15,6 +15,10 @@ function M.tokens()
 	return dofile(generated .. "/neovim.lua").tokens
 end
 
+function M.state_symbols()
+	return dofile(generated .. "/neovim.lua").states
+end
+
 function M.components()
 	return dofile(generated .. "/neovim.lua").components
 end
@@ -47,6 +51,17 @@ function M.apply()
 	for index, color in ipairs(theme.ansi) do
 		vim.g["terminal_color_" .. (index - 1)] = color
 	end
+	local diagnostic = vim.diagnostic.severity
+	vim.diagnostic.config({
+		signs = {
+			text = {
+				[diagnostic.ERROR] = theme.tokens["symbol.diagnostic.error"],
+				[diagnostic.WARN] = theme.tokens["symbol.diagnostic.warning"],
+				[diagnostic.INFO] = theme.tokens["symbol.diagnostic.info"],
+				[diagnostic.HINT] = theme.tokens["symbol.diagnostic.hint"],
+			},
+		},
+	})
 	-- WHY: Lualine caches its native theme independently of highlight groups.
 	if package.loaded["lualine"] then
 		require("lualine").setup({ options = M.lualine_options() })

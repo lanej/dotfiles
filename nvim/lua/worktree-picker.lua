@@ -243,6 +243,8 @@ function M.pick()
 			local function resolve(entry)
 				return entry and by_id[entry:match("^(%d+)\t")]
 			end
+			local tokens = require("dotfiles-theme").tokens()
+			local current = tokens["symbol.ui.selection"]
 			local branch_width, path_width = 26, 22
 			local function row(tree, now)
 				local branch = tree.branch or ("detached@" .. (tree.head or ""):sub(1, 7))
@@ -251,7 +253,7 @@ function M.pick()
 				end
 				return tree.id
 					.. "\t"
-					.. (tree.current and "● " or "  ")
+					.. (tree.current and current .. " " or "  ")
 					.. column(branch, branch_width)
 					.. "  "
 					.. column(location(tree.path, primary), path_width)
@@ -361,7 +363,7 @@ function M.pick()
 					inspect()
 				end
 			end, {
-				prompt = "Worktrees❯ ",
+				prompt = tokens["symbol.git.worktree.linked"] .. " Worktrees > ",
 				-- The default hide profile retains stale rows after changing cwd.
 				-- Closing on selection lets resume inspect Git and cwd again.
 				no_hide = true,
@@ -373,7 +375,8 @@ function M.pick()
 					["--delimiter"] = "\t",
 					["--with-nth"] = "2..",
 					["--no-sort"] = true,
-					["--header"] = "● current · S staged / M unstaged / ? untracked / ! conflicts · ↑↓ vs "
+					["--header"] = current
+						.. " current · S staged / M unstaged / ? untracked / ! conflicts · ↑↓ vs "
 						.. (primary.reference and "reference" or "primary")
 						.. "\n"
 						.. "  "

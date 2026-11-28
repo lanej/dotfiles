@@ -15,16 +15,19 @@ vim_mode=$(echo "$input" | jq -r '.vim.mode // empty')
 effort=$(echo "$input" | jq -r '.effort.level // empty')
 thinking=$(echo "$input" | jq -r '.thinking.enabled // empty')
 
+theme_dir=${DOTFILES_THEME_DIR:-"${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/theme"}
+# shellcheck source=design-system/generated/shell-symbols.sh
+[[ ! -r "$theme_dir/shell-symbols.sh" ]] || source "$theme_dir/shell-symbols.sh"
+
 # Change to working directory for git operations
 cd "$cwd" 2>/dev/null || true
 
-# Nerd Font glyphs via UTF-8 hex — safe on bash 3.2 (no $'\uNNNN' support there)
-ssh_sym=$(printf '\xef\xa0\x97')   # U+F817 nf-mdi-ssh
-git_sym=$(printf '\xee\x82\xa0')   # U+E0A0 nf-pl-branch
-wt_sym=$(printf '\xef\x84\xa6')    # U+F126 nf-fa-code_fork (worktree)
-vim_sym=$(printf '\xee\x98\xab')   # U+E62B nf-dev-vim
-lock_sym=$(printf '\xef\x80\xa3')  # U+F023 nf-fa-lock (sandbox enabled)
-unlock_sym=$(printf '\xef\x82\x9c') # U+F09C nf-fa-unlock (sandbox disabled)
+ssh_sym=${DOTFILES_SSH_SYMBOL:-@}
+git_sym=${DOTFILES_BRANCH_SYMBOL:-@}
+wt_sym=${DOTFILES_WORKTREE_SYMBOL:-w}
+vim_sym=$(printf '\xee\x98\xab')
+lock_sym=${DOTFILES_LOCK_SYMBOL:-+}
+unlock_sym=${DOTFILES_UNLOCK_SYMBOL:--}
 
 # User and hostname
 user=$(whoami)
@@ -164,11 +167,11 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
         behind=$(git rev-list --count HEAD..@{upstream} 2>/dev/null || echo "0")
 
         if [ "$ahead" -gt 0 ] && [ "$behind" -gt 0 ]; then
-          printf ' \033[33m⇕⇡%s⇣%s\033[0m' "$ahead" "$behind"
+          printf ' \033[33m%s%s%s%s\033[0m' "${DOTFILES_AHEAD_SYMBOL:-^}" "$ahead" "${DOTFILES_BEHIND_SYMBOL:-v}" "$behind"
         elif [ "$ahead" -gt 0 ]; then
-          printf ' \033[33m⇡%s\033[0m' "$ahead"
+          printf ' \033[33m%s%s\033[0m' "${DOTFILES_AHEAD_SYMBOL:-^}" "$ahead"
         elif [ "$behind" -gt 0 ]; then
-          printf ' \033[33m⇣%s\033[0m' "$behind"
+          printf ' \033[33m%s%s\033[0m' "${DOTFILES_BEHIND_SYMBOL:-v}" "$behind"
         fi
       fi
     fi
@@ -181,9 +184,9 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
 
   if [ "$staged" -gt 0 ] || [ "$modified" -gt 0 ] || [ "$untracked" -gt 0 ]; then
     printf ' '
-    [ "$staged" -gt 0 ]    && printf '\033[32m+%s\033[0m' "$staged"
-    [ "$modified" -gt 0 ]  && printf '\033[33m~%s\033[0m' "$modified"
-    [ "$untracked" -gt 0 ] && printf '\033[31m?%s\033[0m' "$untracked"
+    [ "$staged" -gt 0 ]    && printf '\033[32m%s%s\033[0m' "${DOTFILES_STAGED_SYMBOL:-+}" "$staged"
+    [ "$modified" -gt 0 ]  && printf '\033[33m%s%s\033[0m' "${DOTFILES_CHANGED_SYMBOL:-~}" "$modified"
+    [ "$untracked" -gt 0 ] && printf '\033[31m%s%s\033[0m' "${DOTFILES_UNTRACKED_SYMBOL:-?}" "$untracked"
   fi
 fi
 
@@ -227,10 +230,10 @@ fi
 
 # Mode indicators: thinking + effort
 # U+F0EB nf-fa-lightbulb_o (thinking); U+2191/2193 arrows (effort)
-lightbulb=$(printf '\xef\x83\xab')   # U+F0EB nf-fa-lightbulb_o
-[ "$thinking" = "true" ] && printf ' \033[33m%s\033[0m' "$lightbulb"
+thinking_sym=${DOTFILES_THINKING_SYMBOL:-t}
+[ "$thinking" = "true" ] && printf ' \033[33m%s\033[0m' "$thinking_sym"
 case "$effort" in
-  "low")          printf ' \033[90m↓\033[0m' ;;
-  "high")         printf ' \033[32m↑\033[0m' ;;
-  "xhigh"|"max")  printf ' \033[32;1m↑↑\033[0m' ;;
+  "low")          printf ' \033[90m%s\033[0m' "${DOTFILES_REASONING_LOW_SYMBOL:-2}" ;;
+  "high")         printf ' \033[32m%s\033[0m' "${DOTFILES_REASONING_HIGH_SYMBOL:-4}" ;;
+  "xhigh"|"max")  printf ' \033[32;1m%s\033[0m' "${DOTFILES_REASONING_MAX_SYMBOL:-5}" ;;
 esac

@@ -53,6 +53,12 @@ def main():
     for name in ("zellij", "cargo", "python3"):
         assert shutil.which(name), f"Install {name} before testing native attention"
     palette = json.loads((ROOT / "design-system/generated/colors.json").read_text())["roles"]
+    theme = json.loads((ROOT / "design-system/generated/terminal-ui.json").read_text())
+    states = theme["states"]
+    running = states["execution.running"]
+    attention_mark = states["execution.blocked"]
+    question_mark = states["execution.input"]
+    pending_counts = attention_mark + "?"
     roles = {name: color[1:].lower() for name, color in palette.items()}
     with tempfile.TemporaryDirectory(prefix="zj-status-", dir="/tmp") as directory:
         work = Path(directory).resolve()
@@ -161,8 +167,8 @@ def main():
                            PROMPT in terminal.output and len(terminal.terminals()) == 1)
             terminal.until("session badge and zero-based active tab are visible", lambda:
                            first[:18] in top_line(terminal) and "0:Tab #0" in top_line(terminal)
-                           and "!?" not in top_line(terminal))
-            assert "!0" not in top_line(terminal) and "●0" not in top_line(terminal)
+                           and pending_counts not in top_line(terminal))
+            assert attention_mark + "0" not in top_line(terminal) and running + "0" not in top_line(terminal)
             session_cell = display(terminal).buffer[0][top_line(terminal).index(first[:18])]
             assert (session_cell.fg, session_cell.bg, session_cell.bold) == (roles["text"], roles["surface"], True)
             active_cell = display(terminal).buffer[0][top_line(terminal).index("0:Tab #0")]
@@ -254,7 +260,7 @@ def main():
                         state(first, first_pane, "Blocked") and
                         pane(first, first_pane)["attention"]["detail"]["kind"] == "Question")
             other.until("visible bar counts a detached question and the working program", lambda:
-                        "!1 ●1" in top_line(other))
+                        f"{states['execution.blocked']}1 {states['execution.running']}1" in top_line(other))
             # The familiar key stays local. Native global triage remains an
             # explicit action rather than changing tmux's selection policy.
             other.prefix(b"\x01")
@@ -271,7 +277,7 @@ def main():
             other.name = first
             try:
                 other.until("native question glyph renders after reattachment", lambda:
-                            "?" in top_line(other) and "!?" not in top_line(other))
+                            question_mark in top_line(other) and pending_counts not in top_line(other))
             except AssertionError as error:
                 details = f"Decoded top row: {top_line(other)!r}"
                 try:
@@ -312,7 +318,7 @@ def main():
             other.send(b"blocked:kind=permission\r")
             other.until("approval needs an answer", lambda: state(first, approval_pane, "Blocked"))
             other.until("both requests reach the attention bar", lambda:
-                        "●2" in top_line(other) and "?" in top_line(other))
+                        running + "2" in top_line(other) and question_mark in top_line(other))
             other.prefix(b"0")
             other.until("triage starts on the original tab", lambda: focused_tab() == origin)
             other.prefix(b"a")
@@ -331,19 +337,19 @@ def main():
             other.send(b"working\r")
             other.action("paste", "--pane-id", f"terminal_{approval_pane}", "working\n")
             other.until("answered requests resume work in the global stream", lambda:
-                        "●4" in top_line(other))
+                        running + "4" in top_line(other))
             other.send(b"done\r")
             other.action("paste", "--pane-id", f"terminal_{approval_pane}", "done\n")
             other.until("both requests have completed", lambda:
                         state(first, question_pane, "Done") and state(first, approval_pane, "Done")
-                        and "●2" in top_line(other))
+                        and running + "2" in top_line(other))
             other.prefix(b"a")
             other.until("activity is selected after requests clear", lambda: focused_tab() == busy_tab)
             assert state(second, second_pane, "Working"), "Local triage modified another session"
             viewer = StatusTerminal(binary, env, first)
             clients.append(viewer)
             viewer.until("second attachment is usable", lambda:
-                         "!?" not in top_line(viewer) and "●" in top_line(viewer))
+                         pending_counts not in top_line(viewer) and running in top_line(viewer))
             viewer.prefix(b"0")
 
             def client_panes():
@@ -354,16 +360,16 @@ def main():
             other.until("clients have separate focused tabs", lambda:
                         client_panes() == {f"terminal_{first_pane}", f"terminal_{busy_pane}"})
             other.action("paste", "--pane-id", f"terminal_{question_pane}", "working\n")
-            other.until("new work reaches the global stream", lambda: "●3" in top_line(other))
+            other.until("new work reaches the global stream", lambda: running + "3" in top_line(other))
             other.action("paste", "--pane-id", f"terminal_{question_pane}", "blocked:kind=question\n")
             other.until("new request reaches the global stream", lambda:
-                        state(first, question_pane, "Blocked") and "●2" in top_line(other))
+                        state(first, question_pane, "Blocked") and running + "2" in top_line(other))
             other.prefix(b"a")
             other.until("only the invoking client's tab changes", lambda:
                         client_panes() == {f"terminal_{first_pane}", f"terminal_{question_pane}"})
             untouched = StatusTerminal(binary, env, second)
             clients.append(untouched)
-            untouched.until("untouched session reattaches", lambda: "●" in top_line(untouched))
+            untouched.until("untouched session reattaches", lambda: running in top_line(untouched))
             untouched.remember_sole_client()
             untouched_question, untouched_pane = agent_tab("untouched-question", untouched)
             untouched.send(b"blocked:kind=question\r")
@@ -404,7 +410,7 @@ def main():
             startup = StatusTerminal(binary, env, second)
             clients.append(startup)
             startup.until("new attachment loads the status bar", lambda:
-                          "●" in top_line(startup))
+                          running in top_line(startup))
             new_client_ids = startup.until("new attachment has a distinct client id", lambda:
                 {client_id for tab in startup.tabs() for client_id in tab["other_focused_clients"]}
                 - existing_client_ids)

@@ -58,7 +58,10 @@ def plugin(name, source, target, destination):
     files.append(lock)
     shared = source.parent / "protocol"
     files += sorted(shared.glob("src/**/*.rs")) + [shared / "Cargo.toml"]
-    files.append(source.parent.parent / "design-system/generated/zellij-symbols.rs")
+    generated = source.parent.parent / "design-system/generated"
+    files.append(generated / "zellij-symbols.rs")
+    if name == "lane-status":
+        files.append(generated / "zellij-states.rs")
     hasher = hashlib.sha256(b"zellij-plugin-image-v1:rust-1.95.0:wasm32-wasip1\0")
     for file in sorted(set(files)):
         hasher.update(os.path.relpath(file, source.parent).encode())

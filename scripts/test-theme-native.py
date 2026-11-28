@@ -597,18 +597,20 @@ return retries
             assert tmux("show-options", "-wv", "@claude-bg").strip() == json.loads((GENERATED / "colors.json").read_text())["roles"]["status.attention"]
             assert tmux("show-options", "-wv", "@claude-since").strip() == "123"
             assert tmux("show-options", "-wv", "@claude-reason").strip() == "fixture"
+            symbols = json.loads((GENERATED / "terminal-ui.json").read_text())
+            assert tmux("show-options", "-wv", "@claude-glyph").strip() == symbols["states"]["access.approval"]
             assert observations == {key: tmux("show-options", "-gv", key).strip() for key in observations}
             if review:
                 tmux("rename-window", "Editor")
                 tmux("set-option", "-w", "@claude-state", "thinking")
-                tmux("set-option", "-w", "@claude-glyph", "◐")
+                tmux("set-option", "-w", "@claude-glyph", symbols["symbols"]["agent.thinking"])
                 tmux("respawn-pane", "-k", "printf 'Workspace review\\n\\nReady to inspect changes.\\n'; sleep 60")
                 tmux("new-window", "-d", "-n", "Publisher", "sleep 60")
                 tmux("set-option", "-w", "-t", "fixture:Publisher", "@claude-state", "failed")
-                tmux("set-option", "-w", "-t", "fixture:Publisher", "@claude-glyph", "×")
+                tmux("set-option", "-w", "-t", "fixture:Publisher", "@claude-glyph", symbols["states"]["execution.failed"])
                 tmux("new-window", "-d", "-n", "Checks", "sleep 60")
                 tmux("set-option", "-w", "-t", "fixture:Checks", "@claude-state", "approval")
-                tmux("set-option", "-w", "-t", "fixture:Checks", "@claude-glyph", "!")
+                tmux("set-option", "-w", "-t", "fixture:Checks", "@claude-glyph", symbols["states"]["access.approval"])
                 tmux("new-window", "-d", "-n", "Shell", "sleep 60")
                 def tabs_ready(screen):
                     # A bad tab must still produce a counterexample.

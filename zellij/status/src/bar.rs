@@ -124,9 +124,9 @@ fn width_limit(widths: &mut [usize], mut cells: usize) -> usize {
 
 fn counts(counts: &AttentionCounts) -> String {
     [
-        ("!", counts.needs_you + counts.failed),
-        ("●", counts.working),
-        ("✓", counts.done),
+        (crate::glyphs::ATTENTION, counts.needs_you + counts.failed),
+        (crate::glyphs::RUNNING, counts.working),
+        (crate::glyphs::SUCCEEDED, counts.done),
     ]
     .into_iter()
     .filter(|(_, n)| *n > 0)
@@ -160,13 +160,15 @@ impl State {
                 tab.attention.status
             };
         let mark = match status {
-            NeedsYou if kinds.clone().any(|k| k == BlockedKind::Question) => "? ",
-            NeedsYou if kinds.any(|k| k == BlockedKind::Permission) => "▲ ",
-            NeedsYou => "! ",
-            Failed => "× ",
-            Done => "✓ ",
-            Working => "● ",
-            NewOutput => "· ",
+            NeedsYou if kinds.clone().any(|k| k == BlockedKind::Question) => {
+                crate::glyphs::QUESTION_MARK
+            }
+            NeedsYou if kinds.any(|k| k == BlockedKind::Permission) => crate::glyphs::APPROVAL_MARK,
+            NeedsYou => crate::glyphs::ATTENTION_MARK,
+            Failed => crate::glyphs::FAILED_MARK,
+            Done => crate::glyphs::SUCCEEDED_MARK,
+            Working => crate::glyphs::RUNNING_MARK,
+            NewOutput => crate::glyphs::NEW_OUTPUT_MARK,
             _ => "",
         };
         let style = match status {
@@ -211,7 +213,7 @@ impl State {
                 if self.mode.capabilities.arrow_fonts {
                     "L "
                 } else {
-                    " "
+                    crate::glyphs::LOCK_MARK
                 }
             } else {
                 ""
@@ -233,7 +235,7 @@ impl State {
             } else if self.mode.capabilities.arrow_fonts {
                 "Z "
             } else {
-                "󰊓 "
+                crate::glyphs::FULLSCREEN_MARK
             },
             style,
         }
@@ -245,7 +247,7 @@ impl State {
         let counts = if self.attention_ready {
             counts(&self.attention.counts)
         } else {
-            "!? ●? ✓?".into()
+            crate::glyphs::UNKNOWN_COUNTS.into()
         };
         let notification = self.notifications.notice();
         let notice_color = match notification.map(|(level, _)| level) {
@@ -380,7 +382,7 @@ mod tests {
         tab.active = true;
         let active = state.bar_tab(&tab);
         assert_eq!(foreground(active.style.fg), "38;5;17");
-        assert_eq!(active.mark.trim(), "×");
+        assert_eq!(active.mark.trim(), crate::glyphs::FAILED);
         let failure = active.mark_style.expect("active failure has separate ink");
         assert_eq!(foreground(failure.fg), "38;2;11;22;33");
         assert_eq!(failure.bg, state.mode.style.colors.text_unselected.background);
@@ -406,14 +408,14 @@ mod tests {
             name: "review".into(),
             ..Default::default()
         };
-        assert_eq!(state.bar_tab(&tab).lock, " ");
+        assert_eq!(state.bar_tab(&tab).lock, crate::glyphs::LOCK_MARK);
         state.mode.capabilities.arrow_fonts = true;
         assert_eq!(state.bar_tab(&tab).lock, "L ");
         state.mode.capabilities.arrow_fonts = false;
         state.view.auto_titles.insert("4".into(), "review".into());
         assert_eq!(state.bar_tab(&tab).lock, "");
         tab.name = "manual".into();
-        assert_eq!(state.bar_tab(&tab).lock, " ");
+        assert_eq!(state.bar_tab(&tab).lock, crate::glyphs::LOCK_MARK);
         state.mode.mode = InputMode::RenameTab;
         tab.active = true;
         assert_eq!(state.bar_tab(&tab).lock, "");

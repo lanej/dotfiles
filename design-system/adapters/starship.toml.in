@@ -30,11 +30,11 @@ disabled = true
 
 [battery]
 disabled = false
-full_symbol = "󰁹 "
-charging_symbol = "󰂄 "
-discharging_symbol = "󰂃 "
-unknown_symbol = "󰂑 "
-empty_symbol = "󰂎 "
+full_symbol = "{{symbol.battery.full}} "
+charging_symbol = "{{symbol.battery.charging}} "
+discharging_symbol = "{{symbol.battery.discharging}} "
+unknown_symbol = "{{symbol.battery.unknown}} "
+empty_symbol = "{{symbol.battery.empty}} "
 
 [[battery.display]]
 threshold = 10
@@ -50,7 +50,7 @@ symbol = "{{git.file.branch.symbol}} "
 format = "[$symbol$branch(:$remote_branch)]($style) "
 
 [status]
-symbol = " "
+symbol = "{{symbol.diagnostic.error}} "
 disabled = false
 
 [username]
@@ -59,8 +59,8 @@ format = "[$user]($style)@"
 
 [hostname]
 disabled = false
-ssh_symbol = " "
-format = "[$hostname](bold green) "
+ssh_symbol = "{{symbol.terminal.ssh}} "
+format = "[$ssh_symbol$hostname](bold green) "
 
 [aws]
 symbol = " "

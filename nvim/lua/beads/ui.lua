@@ -4,13 +4,22 @@ local document_windows = {}
 local trees = {}
 local namespace = vim.api.nvim_create_namespace("beads-sidebar")
 
-M.states = {
-	open = { icon = "", label = "Open", highlight = "BeadsOpen" },
-	in_progress = { icon = "󰐊", label = "In progress", highlight = "BeadsProgress" },
-	blocked = { icon = "", label = "Blocked", highlight = "BeadsBlocked" },
-	deferred = { icon = "󰥔", label = "Deferred", highlight = "BeadsDeferred" },
-	closed = { icon = "", label = "Closed", highlight = "BeadsClosed" },
-}
+local theme = require("dotfiles-theme")
+local tokens
+
+local function load_symbols()
+	tokens = theme.tokens()
+	local states = theme.state_symbols()
+	M.states = {
+		open = { icon = tokens["symbol.task.open"], label = "Open", highlight = "BeadsOpen" },
+		in_progress = { icon = states["execution.running"], label = "In progress", highlight = "BeadsProgress" },
+		blocked = { icon = states["execution.blocked"], label = "Blocked", highlight = "BeadsBlocked" },
+		deferred = { icon = tokens["symbol.task.deferred"], label = "Deferred", highlight = "BeadsDeferred" },
+		closed = { icon = tokens["symbol.task.closed"], label = "Closed", highlight = "BeadsClosed" },
+	}
+end
+
+load_symbols()
 
 function M.plain(text)
 	return tostring(text):gsub("[%c]", " ")
@@ -51,25 +60,27 @@ function M.setup()
 	end
 	initialized = true
 	highlights()
+	local function redraw()
+		for buf, project in pairs(trees) do
+			if vim.api.nvim_buf_is_valid(buf) and project.widget then
+				M.render(project)
+				for _, win in ipairs(vim.fn.win_findbuf(buf)) do
+					M.select(project, win)
+				end
+			else
+				trees[buf] = nil
+			end
+		end
+	end
 	vim.api.nvim_create_autocmd("ColorScheme", {
 		group = vim.api.nvim_create_augroup("BeadsAppearance", { clear = true }),
-		callback = highlights,
-	})
-	vim.api.nvim_create_autocmd("WinResized", {
-		group = "BeadsAppearance",
 		callback = function()
-			for buf, project in pairs(trees) do
-				if vim.api.nvim_buf_is_valid(buf) and project.widget then
-					M.render(project)
-					for _, win in ipairs(vim.fn.win_findbuf(buf)) do
-						M.select(project, win)
-					end
-				else
-					trees[buf] = nil
-				end
-			end
+			load_symbols()
+			highlights()
+			redraw()
 		end,
 	})
+	vim.api.nvim_create_autocmd("WinResized", { group = "BeadsAppearance", callback = redraw })
 end
 
 local function append(line, text, highlight)
@@ -139,17 +150,29 @@ local function prepare(p, node)
 		guides = "… " .. guides:sub(-18)
 	end
 	append(line, "  " .. guides .. (node.branch or ""), "BeadsGuide")
-	append(line, node:has_children() and (node:is_expanded() and " " or " ") or "  ", "BeadsGuide")
+	append(
+		line,
+		node:has_children()
+				and (node:is_expanded() and tokens["symbol.ui.collapse"] .. " " or tokens["symbol.ui.expand"] .. " ")
+			or "  ",
+		"BeadsGuide"
+	)
 	local state = M.states[node.task.status]
-		or { icon = "", highlight = "BeadsDeferred", label = M.plain(node.task.status or "Unknown") }
+		or {
+			icon = tokens["symbol.task.unknown"],
+			highlight = "BeadsDeferred",
+			label = M.plain(node.task.status or "Unknown"),
+		}
 	append(line, state.icon .. "  ", state.highlight)
 	if not M.states[node.task.status] then
 		append(line, "[" .. state.label .. "] ", state.highlight)
 	end
 	local attention = p.settings.attention and p.settings.attention(node.task) or nil
-	local badge = attention and "   " .. M.plain(attention) or node.warning and "   " .. node.warning or ""
+	local badge = attention and "  " .. tokens["symbol.diagnostic.warning"] .. " " .. M.plain(attention)
+		or node.warning and "  " .. tokens["symbol.diagnostic.warning"] .. " " .. node.warning
+		or ""
 	if width(p) < 40 and badge ~= "" then
-		badge = "  "
+		badge = "  " .. tokens["symbol.diagnostic.warning"]
 	end
 	local available = math.max(1, width(p) - line:width() - math.min(vim.fn.strdisplaywidth(badge), 18) - 1)
 	local style = node:has_children() and "BeadsParent" or "BeadsTask"

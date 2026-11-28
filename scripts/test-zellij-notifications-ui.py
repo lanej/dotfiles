@@ -19,6 +19,10 @@ def main():
     for name in ("zellij", "fzf", "cargo", "python3"):
         assert shutil.which(name), f"Install {name} before testing notifications"
     palette = json.loads((ROOT / "design-system/generated/colors.json").read_text())["roles"]
+    theme = json.loads((ROOT / "design-system/generated/terminal-ui.json").read_text())
+    states = theme["states"]
+    pending_counts = states["execution.blocked"] + "?"
+    selection = theme["symbols"]["ui.selection"]
     roles = {name: color[1:].lower() for name, color in palette.items()}
     with tempfile.TemporaryDirectory(prefix="zj-notify-", dir="/tmp") as directory:
         work = Path(directory)
@@ -91,23 +95,27 @@ for line in sys.stdin:
                      for x in range(screen.columns)] for y in range(screen.lines)]))
 
         try:
+            running = states["execution.running"] + "1"
+            attention = states["execution.blocked"] + "1"
+            completed = states["execution.succeeded"] + "1"
+            question_mark = states["execution.input"] + " 0:"
             client.grant_status_permissions()
-            client.until("notification bar ready", lambda: "0:Tab #0" in view() and "!?" not in screen.display[0])
+            client.until("notification bar ready", lambda: "0:Tab #0" in view() and pending_counts not in screen.display[0])
             client.prefix(b"B")
             client.until("empty history remains readable", lambda:
-                         "No notifications" in view() and "›" in view())
+                         "No notifications" in view() and selection in view())
             capture("empty-history")
             client.send(b"\x1b")
             client.until("empty history closes", lambda: "Notification history" not in view())
             agent = client.terminals()[0]["id"]
             pid = work / "agent-pid"
             client.send((shlex.join(["python3", str(program), str(pid)]) + "\r").encode())
-            client.until("agent working", lambda: pid.exists() and "●1" in view())
+            client.until("agent working", lambda: pid.exists() and running in view())
             original_pid = pid.read_text()
             client.prefix(b"c")
             client.until("background the agent", lambda: len(client.tabs()) == 2)
             client.until("the new tab has initialized its notification bar", lambda:
-                         "1:Tab #1" in view() and "●1" in screen.display[0])
+                         "1:Tab #1" in view() and running in screen.display[0])
             def focused_pane():
                 active = next(tab["tab_id"] for tab in client.tabs() if tab["active"])
                 return next(p["id"] for p in client.terminals()
@@ -117,8 +125,8 @@ for line in sys.stdin:
             client.until("background question enters history", lambda:
                          any(row["level"] == "warn" for row in history()))
             client.until("urgent count and a notice are visible", lambda:
-                         " │ !1" in view().splitlines()[0] and "? 0:" in screen.display[0])
-            question = screen.buffer[0][screen.display[0].index("? 0:")]
+                         f" │ {attention}" in view().splitlines()[0] and question_mark in screen.display[0])
+            question = screen.buffer[0][screen.display[0].index(question_mark)]
             assert (question.fg, question.bg, question.bold) == (roles["surface"], roles["status.attention"], True)
             capture("notice")
             assert focused_pane() == focused
@@ -130,7 +138,7 @@ for line in sys.stdin:
                          any(row["title"] == "Deploy" and row["message"] == "Version ready"
                              for row in history()))
             client.action("paste", "--pane-id", f"terminal_{agent}", "done\n")
-            client.until("completion is separate from urgency", lambda: "✓1" in view().splitlines()[0] and "!1" not in screen.display[0])
+            client.until("completion is separate from urgency", lambda: completed in view().splitlines()[0] and attention not in screen.display[0])
             client.until("completion retained in history", lambda:
                          any(row["level"] == "success" for row in history()))
             before = len(history())
@@ -150,9 +158,9 @@ for line in sys.stdin:
             capture("history")
             glyphs = [(cell.data, cell.fg) for y in range(3, screen.lines)
                       for cell in screen.buffer[y].values()]
-            assert ("✓", "a3be8c") in glyphs, "Completion glyph lost its history color"
-            assert ("·", "88c0d0") in glyphs, "Info glyph lost its history color"
-            assert ("!", "ebcb8b") in glyphs, "Warning glyph lost its history color"
+            assert (states["execution.succeeded"], roles["status.success"]) in glyphs, "Completion glyph lost its history color"
+            assert (states["severity.info"], roles["status.info"]) in glyphs, "Info glyph lost its history color"
+            assert (theme["symbols"]["diagnostic.warning"], roles["status.warning"]) in glyphs, "Warning glyph lost its history color"
             assert ("B", "a3be8c") in glyphs, "Pane preview lost its source text color"
             client.send(b"Version ready")
             client.until("history search finds a script notice", lambda:
@@ -176,7 +184,7 @@ for line in sys.stdin:
             decoder = codecs.getincrementaldecoder("utf-8")("replace")
             offset = 0
             client.grant_status_permissions()
-            client.until("narrow bar is ready", lambda: "0:Tab #0" in view() and "!?" not in screen.display[0])
+            client.until("narrow bar is ready", lambda: "0:Tab #0" in view() and pending_counts not in screen.display[0])
             client.prefix(b"B")
             client.until("narrow history opens with a full source preview", lambda:
                          "Notification history" in view() and "Build passed. Ready to deploy." in view())
