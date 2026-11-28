@@ -23,6 +23,7 @@ fi
 # Reuse the catalog's Go provisioning and the bootstrap tool adapter.
 # shellcheck source=bootstrap.sh
 source "$root/bootstrap.sh"
+load_native_packages
 install_package_version go "$go_version"
 install_shfmt_from_release "$version"
 printf 'Installed shfmt %s in %s/.local/bin\n' "$version" "$HOME"

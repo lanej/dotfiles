@@ -5,6 +5,21 @@
 
 [tools.build]
 installer = "build"
+native_packages.brew = ["cmake", "pkg-config", "openssl@3"]
+# Minimal Perl installations omit IPC::Cmd and Time::Piece needed by vendored OpenSSL.
+native_packages.dnf = [
+    "cmake", "ninja-build", "gettext", "gcc", "gcc-c++", "make", "unzip", "autoconf",
+    "automake", "libtool", "openssl-devel", "pkgconfig", "ncurses", "perl-IPC-Cmd",
+    "perl-Time-Piece", "libcurl-devel", "expat-devel", "zlib-devel",
+]
+native_packages.apt-get = [
+    "cmake", "ninja-build", "gettext", "build-essential", "unzip", "autoconf",
+    "automake", "libtool", "libssl-dev", "pkg-config", "ncurses-bin", "perl",
+    "libcurl4-openssl-dev", "libexpat1-dev", "zlib1g-dev",
+]
+native_packages.pacman = [
+    "base-devel", "cmake", "ninja", "unzip", "openssl", "ncurses", "perl", "curl", "expat", "zlib",
+]
 
 [tools.rust]
 installer = "rust"
@@ -21,6 +36,7 @@ version = "1.4.5"
 
 [tools.go]
 installer = "go"
+native_packages = { apt-get = ["golang-go"], dnf = ["golang"] }
 setup = ["go"]
 version = "1.26.2"
 
@@ -56,6 +72,7 @@ runtime_version = "2.56.0.worktree-hooks.1"
 
 [tools.bsdtar]
 installer = "system"
+native_packages = { brew = ["libarchive"], apt-get = ["libarchive-tools"], pacman = ["libarchive"] }
 
 [tools.zsh]
 installer = "system"
@@ -129,6 +146,7 @@ version = "0.8.10"
 
 [tools.fd]
 fallback = { via = "cargo", package = "fd-find" }
+native_packages = { apt-get = ["fd-find"], dnf = ["fd-find"] }
 requires = ["rust"]
 version = "10.2.0"
 
@@ -141,6 +159,7 @@ version = "0.20.19"
 version = "0.7.1"
 
 [tools.gh]
+native_packages = { yay = ["github-cli"], pacman = ["github-cli"] }
 version = "2.66.0"
 prepare = ["github-auth"]
 
@@ -166,6 +185,7 @@ version = "2.6.0"
 
 [tools.luacheck]
 installer = "system"
+native_packages = { apt-get = ["lua-check"], dnf = ["luarocks", "lua-devel"] }
 
 [tools.shfmt]
 requires = ["go"]
@@ -201,6 +221,7 @@ requires = ["node"]
 version = "0.16.0"
 
 [tools.ctags-lsp]
+native_packages = { brew = ["netmute/tap/ctags-lsp"] }
 requires = ["go"]
 version = "0.6.1"
 
@@ -234,6 +255,7 @@ version = "0.8.3"
 
 [tools.imagemagick]
 installer = "system"
+native_packages = { dnf = ["ImageMagick"] }
 
 [tools.mermaid]
 package = "mmdc"

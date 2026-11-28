@@ -219,6 +219,7 @@ install_package_version fixture 1.2.3 1.2.3 npm fixture-package
 
         build_packages = '''
 os=linux
+load_native_packages || exit
 dnf() { return 99; }
 rpm() { [ "$3" != "${MISSING_PACKAGE:-}" ]; }
 sudo() { printf 'sudo %s\\n' "$*"; }
@@ -228,8 +229,36 @@ install_build_dependencies
         needed = run(build_packages, extra={"MISSING_PACKAGE": "openssl-devel"})
         assert needed.stdout.strip() == "sudo dnf install -y openssl-devel", needed.stdout
         assert "Using sudo for system package setup: dnf install -y openssl-devel" in needed.stderr, needed.stderr
+        go_native = run('''
+load_native_packages || exit
+command() {
+    case "$*" in
+        "-v brew"|"-v yay"|"-v pacman"|"-v dnf") return 1 ;;
+        "-v apt-get") return 0 ;;
+        *) builtin command "$@" ;;
+    esac
+}
+install_go_from_release() { return 1; }
+installed_semver() { test -f "$HOME/native-go" && printf '1.26.2\\n'; }
+apt-cache() {
+    printf 'apt-cache %s\\n' "$*" >> "$HOME/go-native-events"
+    [ "$*" = "policy golang-go" ] || return 1
+    printf '  Candidate: 1.26.2-1\\n'
+}
+sudo() {
+    printf 'sudo %s\\n' "$*" >> "$HOME/go-native-events"
+    [ "$*" = "apt-get install -y golang-go" ] || return 1
+    touch "$HOME/native-go"
+}
+install_package_version go 1.26.2
+''')
+        assert "Installed go 1.26.2" in go_native.stdout, go_native.stdout
+        assert (home / "go-native-events").read_text().splitlines() == [
+            "apt-cache policy golang-go", "sudo apt-get install -y golang-go",
+        ]
         run('''
 os=linux
+load_native_packages || exit
 command() {
     if [ "$*" = "-v dnf" ]; then return 1; fi
     builtin command "$@"
@@ -354,6 +383,7 @@ install_stylua_from_release 2.6.0
         print("PASS source-built Linux StyLua replaces the incompatible npm wrapper; macOS retains npm")
 
         luacheck_fixtures = '''
+load_native_packages || exit
 command() {
     case "$*" in
         "-v brew"|"-v apt-get"|"-v pacman") return 1 ;;
@@ -387,6 +417,7 @@ install_luacheck_package
         print("PASS DNF Luacheck installs through LuaRocks and propagates package failures")
 
         bsdtar_fixtures = '''
+load_native_packages || exit
 command() {
     case "$*" in
         "-v bsdtar") test -x "$HOME/.local/bin/bsdtar" ;;
