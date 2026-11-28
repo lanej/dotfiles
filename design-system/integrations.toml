@@ -103,6 +103,14 @@ coverage = "Owned CLI sample checks labels and NO_COLOR behavior. Named colors i
 sources = ["sh/profile", "design-system/adapters/starship.toml.in", "bin/dotfiles-theme"]
 
 [[items]]
+id = "zsh-prompt"
+owner = "Transient Zsh prompt context groups"
+mechanism = "generated surface roles and shared Powerline chevrons"
+reload = "Start a new interactive shell with DOTFILES_ZSH_PROMPT=transient."
+coverage = "A Powerline notch joins the unfilled workspace to the Git block. Ahead and behind counts stay with the branch, and file counts have a separate group. The Zsh startup fixture exercises the grouped prompt and its compact scrollback."
+sources = ["design-system/adapters/zsh-prompt.toml", "zsh/zsh-native-prompt.zsh"]
+
+[[items]]
 id = "starship"
 owner = "Semantic color roles and shared Git-state components; native prompt layout"
 mechanism = "generated native TOML with resolved foregrounds and literal symbol escaping"

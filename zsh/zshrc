@@ -409,7 +409,10 @@ bindkey -M vicmd 'y' vi-yank-xclip
 local load_zsh_autosuggestions=true
 
 # prompt
-if command -v purs >/dev/null; then
+if [[ ${DOTFILES_ZSH_PROMPT-} == transient && -o interactive && -t 1 && ${TERM:-dumb} != dumb ]] &&
+   source "${${(%):-%x}:A:h}/zsh-native-prompt.zsh"; then
+	:
+elif command -v purs >/dev/null; then
 	function zle-line-init zle-keymap-select {
 	  PROMPT=`purs prompt -k "$KEYMAP" -r "$?" --venv "${${VIRTUAL_ENV:t}%-*}"`
 	  zle reset-prompt

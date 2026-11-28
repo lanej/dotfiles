@@ -136,6 +136,8 @@ The native platform set is selected automatically; explicitly requesting unsuppo
 
 Color is enabled in terminals. Use `NO_COLOR=1` to disable it or `CLICOLOR_FORCE=1` to enable it in captured output. The [setup requirements](setup-requirements.md) record the intended boundaries and acceptance criteria.
 
+Try the native transient prompt in one interactive shell with `DOTFILES_ZSH_PROMPT=transient zsh`. A Powerline notch marks the start of the Git branch segment after the directory. When available, the `shortpath` helper shortens each parent directory to its shortest unique sibling prefix and keeps the current directory in full. These abbreviations are display labels. The branch segment includes commits ahead or behind upstream, and a separate segment groups conflicts, staged changes, unstaged changes, and untracked files. Accepted commands retain a `$` marker in scrollback. The marker uses the terminal's error color after a failed command. Exit the trial shell to return to the parent shell. [Shortpath installation](../tools/shortpath/README.md#install)
+
 <details>
 <summary>Check shell startup and measure performance</summary>
 
