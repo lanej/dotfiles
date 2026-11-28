@@ -1,0 +1,5 @@
+DOTFILES_PROMPT_RAISED = "@surface.raised"
+DOTFILES_PROMPT_SELECTED = "@surface.selected"
+DOTFILES_PROMPT_BORDER = "@border"
+DOTFILES_PROMPT_CHEVRON = { token = "symbol.separator.section.left" }
+DOTFILES_PROMPT_OUTLINE = { token = "symbol.separator.component.left" }

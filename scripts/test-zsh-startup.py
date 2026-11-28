@@ -1,12 +1,122 @@
 #!/usr/bin/env python3
-"""Start a real login shell through partial setup, then enable fzf integration."""
+"""Exercise Zsh startup, optional integrations, and transient prompt redraws."""
+import fcntl
+import os
 from pathlib import Path
+import pty
+import re
+import select
 import shutil
+import signal
+import struct
 import subprocess
 import tempfile
+import termios
+import time
 
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def test_transient_prompt(temporary, env, executables):
+    home = temporary / "prompt-home"
+    project = home / "projects" / "field-notes"
+    project.mkdir(parents=True)
+    (home / ".zshrc").symlink_to(ROOT / "zsh/zshrc")
+    git = shutil.which("git")
+    (executables / "git").symlink_to(git)
+    shortpath = executables / "shortpath"
+    shortpath.write_text("#!/bin/sh\n"
+                         '[ "$PWD" = "$HOME" ] && [ "$*" = "--null -- projects/field-notes" ] || exit 1\n'
+                         "printf 'proj/field-notes\\0'\n")
+    shortpath.chmod(0o755)
+
+    def git_run(*args):
+        subprocess.run([git, "-c", "user.name=Prompt fixture", "-c", "user.email=fixture@example.invalid", *args],
+                       cwd=project, check=True, capture_output=True)
+
+    git_run("init", "-qb", "main")
+    (project / "changed.md").write_text("Original\n")
+    (project / "mixed.md").write_text("Original\n")
+    git_run("add", ".")
+    git_run("commit", "-qm", "Start")
+    git_run("switch", "-qc", "upstream")
+    git_run("commit", "--allow-empty", "-qm", "Upstream change")
+    git_run("switch", "-q", "main")
+    git_run("commit", "--allow-empty", "-qm", "Local change")
+    git_run("branch", "--set-upstream-to=upstream")
+    (project / "mixed.md").write_text("Staged\n")
+    git_run("add", "mixed.md")
+    (project / "mixed.md").write_text("Working copy\n")
+    (project / "changed.md").write_text("Updated\n")
+    (project / "another\nline.md").write_text("New\n")
+    shell = shutil.which("zsh")
+    child, terminal = pty.fork()
+    if child == 0:
+        os.chdir(project)
+        os.execve(shell, [shell, "-d", "-i"], {
+            **env, "HOME": str(home), "ZDOTDIR": str(home), "TERM": "xterm-256color",
+            "DOTFILES_ZSH_PROMPT": "transient", "DOTFILES_THEME_DIR": str(ROOT / "design-system/generated"),
+        })
+
+    def read_until(marker=b"\x1b[?2004h"):
+        output = b""
+        deadline = time.monotonic() + 5
+        while marker not in output:
+            remaining = deadline - time.monotonic()
+            assert remaining > 0 and select.select([terminal], [], [], remaining)[0], output
+            chunk = os.read(terminal, 65536)
+            assert chunk, output
+            output += chunk
+        return output
+
+    def has_error_color(output):
+        return b"\x1b[91m" in output or b"\x1b[38;5;9m" in output
+
+    escape = re.compile(rb"\x1b(?:\[[0-?]*[ -/]*[@-~]|\([A-Za-z0-9])")
+    try:
+        fcntl.ioctl(terminal, termios.TIOCSWINSZ, struct.pack("HHHH", 18, 84, 0, 0))
+        initial = read_until()
+        expected = "~/proj/field-notes   main 1 1  1+ 2 1 ".encode()
+        assert expected in escape.sub(b"", initial), initial
+        assert b"\x1b[48;" not in initial.split(b"~/proj/field-notes", 1)[0], initial
+        branch_boundary = initial.split(b"~/proj/field-notes", 1)[1]
+        assert re.match(
+            rb"(?:\x1b\[[0-9;]*m)* \x1b\[38;(?P<fill>[0-9;]+)m\x1b\[7m"
+            + "".encode() + rb"\x1b\[27m(?:\x1b\[[0-9;]*m)*\x1b\[48;(?P=fill)m ",
+            branch_boundary,
+        ), initial
+        assert not has_error_color(initial), initial
+        os.write(terminal, b"false\r")
+        after_failure = read_until()
+        assert after_failure.count(b"~/proj/field-notes") == 1, after_failure
+        plain = escape.sub(b"", after_failure)
+        assert b"$ false" in plain, after_failure
+        assert plain.count(expected) == 1, after_failure
+        assert has_error_color(after_failure.rsplit(b"~/proj/field-notes", 1)[-1]), after_failure
+        shortpath.unlink()
+        os.write(terminal, b"true\r")
+        after_success = read_until()
+        assert b"~/projects/field-notes" in after_success, after_success
+        live_prompt = after_success.rsplit(b"~/projects/field-notes", 1)[-1]
+        assert b"main" in live_prompt and not has_error_color(live_prompt), after_success
+        os.write(terminal, b"print aborted-fixture")
+        read_until(b"print aborted-fixture")
+        os.write(terminal, b"\x03")
+        read_until()
+        os.write(terminal, b'print -r -- "$ZLE_LINE_ABORTED"\r')
+        after_abort = read_until()
+        plain = escape.sub(b"", after_abort)
+        assert b'$ print -r -- "$ZLE_LINE_ABORTED"' in plain, after_abort
+        assert b"print aborted-fixture" in plain, after_abort
+        assert plain.count(b"~/projects/field-notes") == 1, after_abort
+    finally:
+        os.close(terminal)
+        try:
+            os.kill(child, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        os.waitpid(child, 0)
 
 
 def main():
@@ -131,10 +241,11 @@ zzz
         assert enabled.returncode == 0, enabled.stderr
         assert enabled.stdout == "READY\n" and enabled.stderr == "", enabled
         assert (home / ".zsh/cache/fzf-init.zsh").is_file()
+        test_transient_prompt(temporary, env, executables)
         print("PASS: noninteractive remote Zsh resolves installed Intent and its approval endpoint; "
               "partial zsh setup starts silently; installed fzf activates its widgets; "
               "Ctrl-B updates automatic tmux titles after Vim and preserves manual names and cancellation "
-              "(controlled tmux and ZLE boundaries).")
+              "(controlled tmux and ZLE boundaries); native Zsh collapses accepted prompts and shows failures.")
 
 
 if __name__ == "__main__":
